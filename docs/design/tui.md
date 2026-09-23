@@ -1,0 +1,176 @@
+# TUI design
+
+Status: accepted, 2026-09-24 (proposed 2026-09-23). It depends on the library work in [harness.md](harness.md); [implementation.md](implementation.md) places every file. Framework numbers come from [bench/tui](../../bench/tui/README.md).
+
+1. [Goal](#goal)
+2. [Framework](#framework)
+3. [Architecture](#architecture)
+4. [Screens](#screens)
+5. [Input and steering](#input-and-steering)
+6. [Slash commands and keys](#slash-commands-and-keys)
+7. [Performance rules](#performance-rules)
+8. [Testing](#testing)
+9. [Phases and open questions](#phases-and-open-questions)
+
+## Goal
+
+`uah` opens a live, resumable session: start or resume a session, watch turns and tools as they happen (including tools that run in parallel with the model), send messages while the agent works, switch model, effort, and fast mode, and browse past runs.
+It lives in this repository and builds on uagent's `core` and `harness` packages, so it shares every guard with the `uagent` CLI.
+
+## Framework
+
+Bubble Tea v2 (`charm.land/bubbletea/v2` v2.0.9, with lipgloss v2 and bubbles v2), under two conditions the benchmark showed are essential:
+
+- **Virtualize the transcript.** Render only the visible lines, with each item's rendered lines cached per width. Feeding the whole transcript to `bubbles/viewport` re-measured every line per update: 40 s of CPU for 10,000 events, and 50,000 lines never finished.
+- **Batch agent events.** Deliver at most one message per 16 ms window instead of one per event; unbatched bursts held the agent back for up to 0.9 s.
+
+With both, Bubble Tea used 4.2 s of CPU for 10,000 events at 200/s and wrote about 124 bytes per event, the fewest of the widget toolkits, which matters over SSH and tmux.
+
+| Option | First frame | Idle CPU | CPU, 10k events | Bytes per event | Why not first |
+| --- | --- | --- | --- | --- | --- |
+| **Bubble Tea v2** (virtualized, batched) | 24 ms (15 ms with `WithFPS(120)`) | ~0.6% of a core | 4.2 s | 124 | Chosen: the only option with a multi-line textarea, lists, markdown (glamour), and styling |
+| Ultraviolet direct (Charm's renderer) | 3.9 ms | 0 | 4.0 s | 97 | Untagged, unstable API; every widget is ours. The fallback if Bubble Tea's redraw loop ever shows up in profiles |
+| vaxis | 3.2 ms | 0 | 2.2 s | 1,250 | Most frugal, but one maintainer, single-line inputs only, and 10x the bytes written |
+| tcell v3 | 3.4 ms | 0 | 4.0 s | 1,324 | No widgets, no test screen in v3 |
+| tview | 4.6 ms | 0 | 6.9 s | 1,565 | Still on tcell v2 |
+| gocui | 4.4 ms | ~0.3% | 6.6 s | 1,362 | Stale; 207 MB with 50,000 lines |
+
+A 20 ms cold-start difference is below what people notice when a TUI opens, and Bubble Tea's idle cost is a constant render ticker. Both are accepted for its widgets and ecosystem.
+To keep the choice reversible, all state and layout logic stays framework-free (below), so moving to Ultraviolet or vaxis replaces only the thin shell.
+
+## Architecture
+
+```text
+cmd/uah/tui.go            `uah` default action: flags, session setup, starts the program
+internal/tui/state/       pure: State, Reduce, transcript items, queue, command registry, key intents
+internal/tui/render/      State -> lines with lipgloss; per-item line cache; no Bubble Tea import
+internal/tui/bubble/      the Bubble Tea shell: model, overlays, textarea, event batching, effect executor
+```
+
+The core is an Elm-style reducer with no framework import:
+
+```go
+type State struct {
+    Mode       Mode              // Chat, Picker, Inspector
+    Session    SessionView       // ID, workspace, settings, runs
+    Transcript []Item            // keyed items, updated in place
+    Live       *LiveRun          // nil when idle: run ID, current turn, open tools, timers
+    Queue      []PendingInput    // ID, text, state: queued, sent, delivered, failed
+    Totals     core.Stats        // from a core.StatsCollector fed the same events
+    Caps       harness.Capabilities // live input, live model, service tier
+    Notices    []Notice
+}
+
+func Reduce(s State, ev Event) (State, []Effect)
+```
+
+- `Event` is a `core.Event`, a session event (`InputQueued`, `InputDelivered`, `SettingsChanged`, `Idle`), or a user intent (`Submit`, `Slash`, `Interrupt`, `ToggleExpand`, `Scroll`).
+- `Effect` describes work for the shell to do: `StartRun`, `SendInput`, `SetSettings`, `Interrupt`, `LoadSessions`, `LoadSession`, `Quit`.
+- Transcript items are keyed (`msg:<id>`, `turn:<n>@<run>`, `call:<id>`, `op:<id>`). A tool that finishes after later turns started updates its original row, which is how this runner's asynchronous tools look.
+- Only the root Bubble Tea model has `Update`; child components expose methods and render functions (the pattern Charm's Crush uses).
+- The session's event channel is drained by one goroutine that batches events per 16 ms and calls `program.Send` once per batch, so ordering is preserved and nothing is dropped.
+
+## Screens
+
+Chat and live run (alt screen):
+
+```text
+┌ uagent · openai-codex/gpt-6-sol · high · ~/code/proj · 3f2a…            ● running 01:42 ┐
+│ › Fix the failing test in pkg/foo                                                        │
+│ turn 1  12.4k in · 830 out · 3.1s                                                        │
+│   ✓ Bash  go test ./pkg/foo          exit 1  2.3s  ├██████┤                              │
+│   ✓ Bash  rg -n "func TestBar"       exit 0  0.4s  ├█┤                                   │
+│ turn 2  14.1k in · 1.2k out · 5.0s                                                       │
+│   ⠋ Bash  go test ./... -run Bar     running 8.7s  ├────████████▶   ok pkg/a 0.2s        │
+│   · I'll patch the fixture while the suite runs.                                         │
+│ turn 3  ⠋ thinking 4.2s                                                                  │
+├ queued · sent when the agent is ready · ctrl+enter to send now ──────────────────────────┤
+│  1. also update the README                                                               │
+├──────────────────────────────────────────────────────────────────────────────────────────┤
+│ > type a message, / for commands                                                         │
+├──────────────────────────────────────────────────────────────────────────────────────────┤
+│ 26.5k in (18k cached) · 2.0k out · 3 tools (max ∥ 2) · overlap 61%   enter send · ^p cmds │
+└──────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+- Tool rows keep their slot, and a small bar shows each tool against its turn, so parallel and overlapping work is visible at a glance.
+- A running command shows the last line of its output file; `enter` on a row expands the output.
+- The final answer is rendered as markdown in its own block. Reasoning summaries are dim and toggle with `r`.
+
+Session picker (`/resume`, `ctrl+s`): type to filter, a preview of the first prompt, runs, tokens, and the answer; `enter` resumes, `v` opens read-only. It reads only `request.json` and `summary.json` and loads the transcript on selection.
+
+Run inspector (`tab` on a finished run, or `uah --view <run-dir>`): the statistics panel and a full timeline of model time and tool operations per turn.
+
+Model and effort dialog: provider default, recently used models, and a free-text row, then the effort list. The footer says whether the change applies now or at the next run.
+
+## Input and steering
+
+What Enter does depends on the session state and the engine (see [harness.md](harness.md#two-engines)):
+
+| State | Process engine | Embedded engine |
+| --- | --- | --- |
+| Idle | Start or resume a run | Submit to the inbox |
+| Running | Queue; deliver all queued messages as one resume when the run ends | Queue; deliver at the next tool boundary or idle point |
+| `ctrl+enter` while running | Interrupt (SIGINT), then resume with the queue | Submit now: the in-flight model request is cancelled and a new turn starts with the message |
+
+The keys never change meaning: Enter sends (queueing while the agent works), Ctrl+Enter steers immediately, and Shift+Enter inserts a new line. Enter queues because a steer in this runner cancels the in-flight model request and wastes its tokens, unlike Claude Code's delivery at a tool boundary. `↑` on an empty input pulls the last queued message back for editing. Queued items show their state: queued, sent, delivered (acknowledged by the runner's echo of the message ID).
+
+## Slash commands and keys
+
+One registry holds each command's name, aliases, arguments, whether it is available while running, and whether the current engine supports it. Unsupported commands stay visible with the reason.
+
+| Command | Effect | Process engine | Embedded engine |
+| --- | --- | --- | --- |
+| `/model [id]` | Change the model; no argument opens the dialog | Next run | Next model request |
+| `/effort <level>` | `low`, `medium`, `high`, `xhigh`, `max` | Next run | Next model request |
+| `/fast [on\|off]` | Priority service tier | Unavailable (upstream request b) | Next model request |
+| `/resume [id]` | Open the picker or resume a session | Yes (idle) | Yes (idle) |
+| `/new` (`/clear`) | Start a new session | Yes (idle) | Yes (idle) |
+| `/stop` | Stop when the current work is done | Interrupt | "Stop when idle" control |
+| `/status` | Session, settings, and statistics | Yes | Yes |
+| `/inspect` | Open the run inspector | Yes | Yes |
+| `/quit` (`/exit`) | Confirm if a run is live, interrupt, then exit | Yes | Yes |
+
+| Key | Action |
+| --- | --- |
+| `enter` | Send, or queue while running |
+| `shift+enter`, `ctrl+j` | New line (`ctrl+j` works in every terminal) |
+| `ctrl+enter` | Send now (steer or interrupt and send) |
+| `esc`, `esc esc` | Close an overlay; twice while running interrupts |
+| `↑` on empty input | Edit the last queued message |
+| `ctrl+p` | Command palette |
+| `ctrl+l` | Model dialog |
+| `alt+,`, `alt+.` | Lower or raise effort |
+| `ctrl+s`, `ctrl+n` | Sessions, new session |
+| `r`, `o` | Toggle reasoning, expand tool output |
+| `ctrl+c` twice | Quit (confirm when a run is live) |
+
+## Performance rules
+
+These come straight from the benchmark and are requirements, not tuning:
+
+1. The transcript is a windowed list: render only visible lines, cache each item's lines per width and version, and never re-render finished items.
+2. Agent events are batched per 16 ms window before reaching the program.
+3. Timers and spinners tick at 10 Hz only while a run is live; nothing ticks when idle.
+4. Tool-output tails are read on a 100 ms tick with a byte cap, and only for visible running tools.
+5. Use the real terminal cursor (`SetVirtualCursor(false)`), and `tea.WithFPS(120)` for a faster first frame.
+6. The picker never reads full event files; it reads summaries and loads one session on selection.
+
+## Testing
+
+1. **Reducer tests**, framework-free: replay the fixtures (`simple`, `parallel`, `timeout`) through `Reduce` and check item order, parallel tool slots, late tool completion, queue transitions, and which commands the current engine allows.
+2. **Golden screens**: render `State` at 100x30 with an ASCII color profile after each prefix of a fixture's events, stored under `internal/tui/render/testdata/` and regenerated with `-update`.
+3. **End to end**: drive the program against the fake runner (`FAKERUNNER_SPEED=0`), check that a queued message produces a resume request with the session ID and message IDs, and that interrupting leaves no processes behind. The benchmark's pty harness with a VT emulator (`bench/tui/harness`) checks the real terminal output for every framework, so it can check this TUI too.
+4. **By hand**: `FAKERUNNER_SPEED=1 uah --engine process --runner /tmp/fakerunner` replays real timing without tokens.
+
+## Phases and open questions
+
+1. **Library phase 1** from [harness.md](harness.md#roadmap): user messages in events, sessions, history, the session lock, the queue.
+2. **TUI v1** on the process engine: chat and live view, queue, picker, inspector, `/model` and `/effort` for the next run, `/new`, `/resume`, `/quit`.
+3. **TUI v2** on the embedded engine: live steering, live effort and model, `/fast`, `/stop`.
+
+Open questions:
+
+- Does switching model on resume work with the replayed encrypted reasoning? Capture a real run before promising `/model` on a resumed session.
+- Alt screen (Crush) or inline mode with native scrollback (Codex)? Alt screen for v1: it is simpler with overlays and the timeline.
+- `teatest` for Bubble Tea v2 is an untagged module; pin it, or rely on the reducer, golden, and pty tests.

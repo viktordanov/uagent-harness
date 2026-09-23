@@ -1,0 +1,1 @@
+SUMMARY bin=./bin/bt.stripped runs=20 median_first_byte_ms=14.00 median_first_full_ms=14.78 min_first_full_ms=13.99 max_first_full_ms=15.50
