@@ -26,7 +26,7 @@ func (e *Engine) Name() string { return "process" }
 
 func (e *Engine) Capabilities() engine.Capabilities { return engine.Capabilities{} }
 
-func (e *Engine) Start(ctx context.Context, req core.Request, sink core.Sink) (engine.Run, error) {
+func (e *Engine) Start(ctx context.Context, req core.Request, _ engine.Options, sink core.Sink) (engine.Run, error) {
 	run, err := e.h.Start(ctx, req, sink)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start run: %w", err)
@@ -42,8 +42,11 @@ type processRun struct {
 func (r *processRun) Send(core.UserInput) error { return engine.ErrUnsupported }
 func (r *processRun) SetEffort(string) error    { return engine.ErrUnsupported }
 func (r *processRun) SetModel(string) error     { return engine.ErrUnsupported }
-func (r *processRun) Interrupt()                { r.run.Interrupt() }
-func (r *processRun) Kill()                     { r.run.Kill() }
+func (r *processRun) SetServiceTier(string) error {
+	return engine.ErrUnsupported
+}
+func (r *processRun) Interrupt() { r.run.Interrupt() }
+func (r *processRun) Kill()      { r.run.Kill() }
 
 func (r *processRun) Wait() (core.Result, error) {
 	result, err := r.run.Wait()

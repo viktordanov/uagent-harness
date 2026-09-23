@@ -188,7 +188,11 @@ func statusLine(s state.State, w int) string {
 func footerLine(s state.State, w int) string {
 	if !s.Details {
 		var parts []string
-		for _, p := range []string{s.Settings.Model, s.Settings.Effort, home(s.Settings.Workspace)} {
+		fast := ""
+		if s.Settings.ServiceTier != "" {
+			fast = "fast"
+		}
+		for _, p := range []string{s.Settings.Model, s.Settings.Effort, fast, home(s.Settings.Workspace)} {
 			if p != "" {
 				parts = append(parts, p)
 			}

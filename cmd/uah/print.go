@@ -31,8 +31,12 @@ func (p *printer) print(event core.Event) {
 		if e.Resumed {
 			resumed = " (resumed)"
 		}
-		fmt.Fprintf(p.w, "uah · session %s%s · %s/%s · effort %s · %s\n",
-			short(e.ID), resumed, e.Settings.Provider, modelLabel(e.Settings.Model), e.Settings.Effort, e.Settings.Workspace)
+		fast := ""
+		if e.Settings.ServiceTier != "" {
+			fast = " · fast"
+		}
+		fmt.Fprintf(p.w, "uah · session %s%s · %s/%s · effort %s%s · %s engine · %s\n",
+			short(e.ID), resumed, e.Settings.Provider, modelLabel(e.Settings.Model), e.Settings.Effort, fast, e.Engine, e.Settings.Workspace)
 	case session.InstructionsLoaded:
 		note := ""
 		if e.Truncated {

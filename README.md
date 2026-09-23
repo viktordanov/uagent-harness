@@ -3,7 +3,7 @@
 The general-purpose harness built on [uagent](https://github.com/viktordanov/uagent), the wrapper around unreal-agent-runner.
 uagent runs one task with safety guards. This repository adds what long-lived, interactive work needs: sessions with a message queue and steering, an embedded engine for live model, effort, and fast-mode changes, instruction files, configuration, hooks, and a terminal UI.
 
-Status: milestone M4: sessions, instructions, configuration, and the TUI, on the process engine. The embedded engine (live steering, live `/effort` and `/model`, `/fast`) comes next.
+Status: milestone M5: sessions, instructions, configuration, the TUI, and the embedded engine. Hooks (M6) come next.
 
 ## Use it
 
@@ -12,12 +12,16 @@ go install github.com/viktordanov/uagent-harness/cmd/uah@latest
 
 uah                                                        # the TUI: a live session in the current directory
 uah -C ~/code/proj "Fix the failing test in pkg/foo"       # the TUI, starting with a prompt
+uah resume                                                 # pick a session of this directory to resume (--all: any directory)
+uah resume --last                                          # resume this directory's most recent session
 uah --session 3f2a                                         # the TUI, resuming a session with its transcript
+uah --fast                                                 # priority processing (openai and openai-codex)
 
 uah run -C ~/code/proj "Fix the failing test in pkg/foo"   # a session: progress on stderr, answers on stdout
-uah sessions                                               # sessions, most recent first
+uah sessions                                               # this directory's sessions, most recent first (--all: every directory)
 uah sessions show 3f2a                                     # a transcript, by ID or unique prefix
 uah run --session 3f2a "Now update the README"             # resume with the session's model, effort, and workspace
+uah run --last -m gpt-6-luna "And the changelog"           # resume this directory's latest session with another model
 printf 'first\nsecond\n' | uah run --stdin                  # each line is a message; lines queue while the agent works
 uah run --stream "..."                                     # JSONL: uagent's run events plus session events
 ```
@@ -29,7 +33,7 @@ The default view is compact, like Codex: your messages, one line per command (`â
 | Key | Action |
 | --- | --- |
 | enter | Send. While the agent works, the message queues and goes out when the run ends |
-| ctrl+enter (or alt+enter) | Send now: on the process engine this interrupts the run and restarts it with the queue and the message |
+| ctrl+enter (or alt+enter) | Send now: on the embedded engine the running agent reads it before its next model request; on the process engine the run restarts with the queue and the message |
 | shift+enter (or ctrl+j) | New line |
 | esc esc | Interrupt the run; queued messages stay |
 | â†‘ on an empty composer | Take the last queued message back to edit it |
@@ -40,11 +44,20 @@ The default view is compact, like Codex: your messages, one line per command (`â
 | pgup / pgdn | Scroll the transcript |
 | ctrl+c | Clear the composer; on an empty composer, quit (twice while a run is live) |
 
-Commands: `/model <id>`, `/effort <level>`, `/resume [id]`, `/new`, `/stop`, `/status`, `/details`, `/reasoning`, `/help`, `/quit`. `/fast` needs the embedded engine.
+Commands: `/model <id>`, `/effort <level>`, `/resume [id]`, `/new`, `/stop`, `/status`, `/details`, `/reasoning`, `/help`, `/quit`. `/model`, `/effort`, and `/fast` apply from the next model request on the embedded engine, and from the next run on the process engine. `/fast` needs the embedded engine and the openai or openai-codex provider.
 Tool calls keep their place in the transcript, so a command that finishes after later turns updates its original row. Diagnostics go to `<state-dir>/logs/uah-tui.log`.
 
 `uah run` takes the same backend, guard, and state flags as uagent (`--provider`, `-m`, `-e`, `-t`, `-C`, `--state-dir`, `--runner`, `--max-disk`, `--allow-dotenv`); `uah run --help` lists them.
 A flag wins over the environment (`UNREAL_HARNESS_LLM_*`, `UAGENT_*`), which wins over the resumed session's settings and the defaults. Sessions and run records live in uagent's state directory, so `uagent` and `uah` share them.
+
+### Engines
+
+`uah` runs the agent in one of two ways, chosen with `--engine`, `UAH_ENGINE`, or `engine` in the configuration:
+
+- **embedded** (the default): the runner's own packages (unreal-agent v0.1.1) run inside `uah`, wired as the runner wires them. Messages, effort, model, and `--fast` reach a running agent. An interrupt is a hard stop through the runner's inbox, so the session file records the stopped tools. No `unreal-agent-runner` binary is needed.
+- **process**: `uah` spawns `unreal-agent-runner` through uagent. The runner reads its request once, so messages sent while it works wait for the next run.
+
+Both engines share uagent's guards, session lock, and run records, and write the same session files, so a session can move between them. The workspace `.env` is never loaded by the embedded engine.
 
 ### Instructions
 
@@ -65,6 +78,8 @@ model = "gpt-6-sol"
 effort = "high"
 timeout = "30m"
 max_disk = "5G"
+engine = "embedded"   # or "process"
+fast = false          # priority processing
 
 [instructions]
 enabled = true
@@ -91,7 +106,10 @@ Design:
 
 ## Development
 
-Go 1.27.1 or later is required. Tests run the real process engine against uagent's fake runner and captured fixtures, so they need no model or tokens.
+Go 1.27.1 or later is required. Tests need no model or tokens:
+
+- The process engine runs against uagent's fake runner and captured fixtures.
+- The embedded engine runs against `testing/fakellm`, a scripted Responses API. One test drives the real `unreal-agent-runner` (built from go.mod's version) and the embedded engine with the same script, and requires the same events and session items. `go test -short` skips it.
 
 ```sh
 go run ./cmd/uah --version   # build and run uah

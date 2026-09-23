@@ -77,7 +77,11 @@ func (s *State) onEvent(ev core.Event) {
 		if e.Applied == session.AppliedLive {
 			when = "now"
 		}
-		s.notice("info", fmt.Sprintf("%s/%s · effort %s, applies %s", e.Settings.Provider, e.Settings.Model, e.Settings.Effort, when))
+		fast := ""
+		if e.Settings.ServiceTier != "" {
+			fast = " · fast"
+		}
+		s.notice("info", fmt.Sprintf("%s/%s · effort %s%s, applies %s", e.Settings.Provider, e.Settings.Model, e.Settings.Effort, fast, when))
 	case session.Idle:
 		s.Busy, s.Live = false, nil
 	case session.Notice:

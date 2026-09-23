@@ -22,7 +22,33 @@ var (
 	buildOnce sync.Once
 	buildPath string
 	errBuild  error
+
+	runnerOnce sync.Once
+	runnerPath string
+	errRunner  error
 )
+
+// RealRunner builds unreal-agent-runner at the version in go.mod once per
+// test binary and returns its path.
+func RealRunner(tb testing.TB) string {
+	tb.Helper()
+	runnerOnce.Do(func() {
+		dir, err := os.MkdirTemp("", "uah-runner") //nolint:usetesting // shared by every test in the binary
+		if err != nil {
+			errRunner = err
+
+			return
+		}
+		runnerPath = filepath.Join(dir, "unreal-agent-runner")
+		build := exec.CommandContext(context.Background(), "go", "build", "-o", runnerPath, "github.com/unreallabsai/unreal-agent/cmd/unreal-agent-runner")
+		if out, err := build.CombinedOutput(); err != nil {
+			errRunner = fmt.Errorf("build unreal-agent-runner: %w\n%s", err, out)
+		}
+	})
+	require.NoError(tb, errRunner)
+
+	return runnerPath
+}
 
 // FakeRunner builds uagent's fake runner once per test binary and returns its path.
 func FakeRunner(tb testing.TB) string {
