@@ -75,6 +75,14 @@ func sessionEventDTO(event core.Event) (any, bool) {
 			Engine   string      `json:"engine"`
 			Settings settingsDTO `json:"settings"`
 		}{header("session_opened", e.At), e.ID, e.Resumed, e.Engine, toSettingsDTO(e.Settings)}, true
+	case session.InstructionsLoaded:
+		return struct {
+			sessionHeader
+
+			Files     []string `json:"files"`
+			Bytes     int      `json:"bytes"`
+			Truncated bool     `json:"truncated"`
+		}{header("instructions_loaded", e.At), e.Files, e.Bytes, e.Truncated}, true
 	case session.InputQueued:
 		return struct {
 			sessionHeader

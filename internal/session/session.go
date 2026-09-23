@@ -41,6 +41,8 @@ type Options struct {
 	// Resumed marks an ID that already has runs, for SessionOpened.
 	Resumed  bool
 	Settings Settings
+	// Instructions, when set, is emitted after SessionOpened.
+	Instructions *InstructionsLoaded
 }
 
 // Session is safe to use from any goroutine. All state lives on one internal
@@ -83,6 +85,11 @@ func Open(ctx context.Context, eng engine.Engine, opts Options) (*Session, error
 		settings: opts.Settings, state: StateIdle, sent: map[string]bool{},
 	}
 	s.out <- SessionOpened{At: time.Now(), ID: id, Resumed: opts.Resumed, Engine: eng.Name(), Settings: opts.Settings}
+	if opts.Instructions != nil {
+		loaded := *opts.Instructions
+		loaded.At = time.Now()
+		s.out <- loaded
+	}
 	go s.loop()
 
 	return s, nil

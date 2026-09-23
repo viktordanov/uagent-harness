@@ -15,7 +15,9 @@ import (
 
 	"github.com/viktordanov/uagent/harness"
 
+	"github.com/viktordanov/uagent-harness/internal/config"
 	"github.com/viktordanov/uagent-harness/internal/engine/process"
+	"github.com/viktordanov/uagent-harness/internal/instructions"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
 
@@ -70,6 +72,11 @@ func sessionFlags() []cli.Flag {
 			},
 		},
 		&cli.BoolFlag{Name: "allow-dotenv", Usage: "run even if the workspace .env sets risky variables"},
+		&cli.StringFlag{
+			Name: "config", Usage: "user configuration file", Value: config.UserFile(),
+			Sources: cli.EnvVars("UAGENT_CONFIG"), TakesFile: true,
+		},
+		&cli.BoolFlag{Name: "no-instructions", Usage: "do not load AGENTS.md or CLAUDE.md files"},
 		&cli.StringFlag{Name: "log-level", Usage: "diagnostic log level: debug, info, warn, error", Value: "warn", Validator: oneOfMap("log-level", logLevels)},
 	}
 }
@@ -98,9 +105,19 @@ func resolveSetup(cmd *cli.Command, logOutput *os.File) (setup, error) {
 		resumed, opts.ID, opts.Resumed = info, info.ID, true
 	}
 
+	workspace, err := filepath.Abs(pick(cmd, "workspace", resumed.Workspace, "", "."))
+	if err != nil {
+		return setup{}, fmt.Errorf("failed to resolve workspace: %w", err)
+	}
+	cfg, _, err := config.Load(cmd.String("config"), workspace)
+	if err != nil {
+		return setup{}, cli.Exit(err.Error(), exitUsage)
+	}
+
 	settings := session.Settings{
-		Provider:    pick(cmd, "provider", resumed.Provider, codexProvider),
-		Effort:      pick(cmd, "effort", resumed.Effort, defaultEffort),
+		Provider:    pick(cmd, "provider", resumed.Provider, cfg.Provider, codexProvider),
+		Effort:      pick(cmd, "effort", resumed.Effort, cfg.Effort, defaultEffort),
+		Workspace:   workspace,
 		BaseURL:     cmd.String("base-url"),
 		Timeout:     cmd.Duration("timeout"),
 		AllowDotenv: cmd.Bool("allow-dotenv"),
@@ -110,15 +127,25 @@ func resolveSetup(cmd *cli.Command, logOutput *os.File) (setup, error) {
 		modelDefault = defaultCodexModel
 	}
 	if cmd.String("provider") == "" || settings.Provider == resumed.Provider {
-		settings.Model = pick(cmd, "model", resumed.Model, modelDefault)
+		settings.Model = pick(cmd, "model", resumed.Model, cfg.Model, modelDefault)
 	} else {
-		settings.Model = pick(cmd, "model", "", modelDefault)
+		settings.Model = pick(cmd, "model", "", "", modelDefault)
 	}
-	workspace, err := filepath.Abs(pick(cmd, "workspace", resumed.Workspace, "."))
-	if err != nil {
-		return setup{}, fmt.Errorf("failed to resolve workspace: %w", err)
+	if !cmd.IsSet("timeout") {
+		if d, ok, err := cfg.TimeoutValue(); err != nil {
+			return setup{}, cli.Exit(err.Error(), exitUsage)
+		} else if ok {
+			settings.Timeout = d
+		}
 	}
-	settings.Workspace = workspace
+	if !cmd.Bool("no-instructions") && cfg.InstructionsEnabled() {
+		loaded, prompt, err := loadInstructions(workspace, cfg.Instructions.MaxBytes)
+		if err != nil {
+			return setup{}, err
+		}
+		settings.SystemPrompt = prompt
+		opts.Instructions = loaded
+	}
 	if err := settings.Validate(); err != nil {
 		return setup{}, cli.Exit(err.Error(), exitUsage)
 	}
@@ -128,25 +155,66 @@ func resolveSetup(cmd *cli.Command, logOutput *os.File) (setup, error) {
 	if err != nil {
 		return setup{}, cli.Exit(err.Error(), exitUsage)
 	}
-	maxDisk, _ := parseSize(cmd.String("max-disk")) // validated by the flag
+	maxDiskText := cmd.String("max-disk")
+	if !cmd.IsSet("max-disk") && cfg.MaxDisk != "" {
+		maxDiskText = cfg.MaxDisk
+	}
+	maxDisk, err := parseSize(maxDiskText)
+	if err != nil {
+		return setup{}, cli.Exit("max_disk: "+err.Error(), exitUsage)
+	}
 	logger := slog.New(slog.NewTextHandler(logOutput, &slog.HandlerOptions{Level: logLevels[cmd.String("log-level")]}))
 	eng := process.New(harness.Config{RunnerPath: runner, StateDir: stateDir, MaxDisk: maxDisk, Logger: logger})
 
 	return setup{stateDir: stateDir, engine: eng, options: opts}, nil
 }
 
-// pick returns the flag value when it was set to something (by flag or
-// environment; an empty variable counts as unset), then the resumed
-// session's value, then the default.
-func pick(cmd *cli.Command, flag, resumed, fallback string) string {
+// pick returns the first value that is set: the flag (by flag or
+// environment; an empty variable counts as unset), the resumed session's
+// value, the configuration file's value, then the default.
+func pick(cmd *cli.Command, flag, resumed, configured, fallback string) string {
 	if v := cmd.String(flag); cmd.IsSet(flag) && v != "" {
 		return v
 	}
-	if resumed != "" {
-		return resumed
+	for _, v := range []string{resumed, configured} {
+		if v != "" {
+			return v
+		}
 	}
 
 	return fallback
+}
+
+// loadInstructions discovers and assembles instruction files, returning the
+// event to report and the host prompt ("" when there are none).
+func loadInstructions(workspace string, maxBytes int) (*session.InstructionsLoaded, string, error) {
+	codexHome := os.Getenv("CODEX_HOME")
+	if codexHome == "" {
+		if home, err := os.UserHomeDir(); err == nil {
+			codexHome = filepath.Join(home, ".codex")
+		}
+	}
+	userFiles := []string{filepath.Join(config.Dir(), "AGENTS.md")}
+	if codexHome != "" {
+		userFiles = append(userFiles, filepath.Join(codexHome, "AGENTS.md"))
+	}
+	files, err := instructions.Discover(workspace, userFiles)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to find instructions: %w", err)
+	}
+	if len(files) == 0 {
+		return nil, "", nil
+	}
+	text, used, truncated, err := instructions.Assemble(files, maxBytes)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to read instructions: %w", err)
+	}
+	paths := make([]string, 0, len(used))
+	for _, f := range used {
+		paths = append(paths, f.Path)
+	}
+
+	return &session.InstructionsLoaded{Files: paths, Bytes: len(text), Truncated: truncated}, instructions.HostPrompt(text), nil
 }
 
 // resolveSession finds a session by exact ID or unique prefix.

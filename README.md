@@ -3,7 +3,7 @@
 The general-purpose harness built on [uagent](https://github.com/viktordanov/uagent), the wrapper around unreal-agent-runner.
 uagent runs one task with safety guards. This repository adds what long-lived, interactive work needs: sessions with a message queue and steering, an embedded engine for live model, effort, and fast-mode changes, instruction files, configuration, hooks, and a terminal UI.
 
-Status: milestone M2 (sessions on the process engine). The TUI arrives in M4.
+Status: milestone M3 (sessions, instructions, and configuration on the process engine). The TUI arrives in M4.
 
 ## Use it
 
@@ -20,6 +20,37 @@ uah run --stream "..."                                     # JSONL: uagent's run
 
 `uah run` takes the same backend, guard, and state flags as uagent (`--provider`, `-m`, `-e`, `-t`, `-C`, `--state-dir`, `--runner`, `--max-disk`, `--allow-dotenv`); `uah run --help` lists them.
 A flag wins over the environment (`UNREAL_HARNESS_LLM_*`, `UAGENT_*`), which wins over the resumed session's settings and the defaults. Sessions and run records live in uagent's state directory, so `uagent` and `uah` share them.
+
+### Instructions
+
+The runner reads no instruction files, so `uah` builds them into the runner's system prompt, after the runner's own default text:
+
+1. The user file: `~/.config/uagent/AGENTS.md`, or else `~/.codex/AGENTS.md`.
+2. One file per directory from the repository root down to the workspace: `AGENTS.override.md`, else `AGENTS.md`, else `CLAUDE.md`.
+
+Later files are more specific. The total stops at 32 KiB. `--no-instructions` turns this off, and the loaded files are reported as `instructions_loaded`.
+
+### Configuration
+
+`~/.config/uagent/config.toml` (or `$XDG_CONFIG_HOME/uagent/config.toml`, or `--config`) sets defaults below flags, the environment, and a resumed session:
+
+```toml
+provider = "openai-codex"
+model = "gpt-6-sol"
+effort = "high"
+timeout = "30m"
+max_disk = "5G"
+
+[instructions]
+enabled = true
+max_bytes = 32768
+
+# A workspace's .uagent/config.toml applies only when trusted here.
+[projects."/Users/me/code/proj"]
+trusted = true
+```
+
+Unknown keys are errors, so a typo fails loudly instead of being ignored.
 
 Design:
 

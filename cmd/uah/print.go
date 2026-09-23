@@ -33,6 +33,12 @@ func (p *printer) print(event core.Event) {
 		}
 		fmt.Fprintf(p.w, "uah · session %s%s · %s/%s · effort %s · %s\n",
 			short(e.ID), resumed, e.Settings.Provider, modelLabel(e.Settings.Model), e.Settings.Effort, e.Settings.Workspace)
+	case session.InstructionsLoaded:
+		note := ""
+		if e.Truncated {
+			note = ", cut at the size limit"
+		}
+		p.say(fmt.Sprintf("instructions: %s (%s bytes%s)", strings.Join(e.Files, ", "), commas(int64(e.Bytes)), note))
 	case session.InputQueued:
 		suffix := ""
 		if p.running {
