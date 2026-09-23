@@ -30,9 +30,17 @@ func Screen(s state.State, c *Cache, f Frame) (string, int) {
 	if s.Mode == state.ModePicker {
 		return picker(s, f), -1
 	}
-	top := []string{headerLine(s, f.Width)}
+	var top []string
+	if s.Details {
+		top = append(top, headerLine(s, f.Width))
+	}
 	panel := panelLines(s, f)
-	bottom := make([]string, 0, len(panel)+f.ComposerHeight+2)
+	bottom := make([]string, 0, len(panel)+f.ComposerHeight+3)
+	if !s.Details {
+		if line := statusLine(s, f.Width); line != "" {
+			bottom = append(bottom, line)
+		}
+	}
 	bottom = append(bottom, panel...)
 	bottom = append(bottom, dim.Render(strings.Repeat("─", f.Width)))
 	composerTop := len(bottom)
@@ -61,7 +69,7 @@ func transcript(s state.State, c *Cache, w, height int) []string {
 	var rev [][]string
 	count := 0
 	for i := len(s.Items) - 1; i >= 0 && count < need; i-- {
-		lines := c.lines(s.Items[i], w, s.Now, s.ShowReasoning)
+		lines := c.lines(s.Items[i], w, s.Now, view{reasoning: s.ShowReasoning, details: s.Details})
 		if len(lines) == 0 {
 			continue
 		}
@@ -131,20 +139,71 @@ func panelLines(s state.State, f Frame) []string {
 	if len(s.Queue) == 0 {
 		return nil
 	}
-	out := []string{dim.Render(ansi.Truncate("queued · sent when the agent is ready · ctrl+enter sends now · ↑ edits the last", f.Width, "…"))}
+	var out []string
+	if s.Details {
+		out = append(out, dim.Render(ansi.Truncate("queued · sent when the agent is ready · ctrl+enter sends now · ↑ edits the last", f.Width, "…")))
+	}
 	for i, q := range s.Queue {
 		if i == 3 {
 			out = append(out, dim.Render(fmt.Sprintf("  … %d more", len(s.Queue)-3)))
 
 			break
 		}
-		out = append(out, ansi.Truncate(fmt.Sprintf("  %d. %s", i+1, oneLine(q.Text)), f.Width, "…"))
+		if s.Details {
+			out = append(out, ansi.Truncate(fmt.Sprintf("  %d. %s", i+1, oneLine(q.Text)), f.Width, "…"))
+		} else {
+			out = append(out, dim.Render(ansi.Truncate("  ↳ queued: ", f.Width, ""))+ansi.Truncate(oneLine(q.Text), max(f.Width-12, 8), "…"))
+		}
+	}
+	if !s.Details {
+		out = append(out, dim.Render("    ctrl+enter sends now · ↑ edits"))
 	}
 
 	return out
 }
 
+// statusLine is the compact view's activity line above the composer.
+func statusLine(s state.State, w int) string {
+	var text string
+	switch {
+	case s.Status != "":
+		return warn.Render(ansi.Truncate(s.Status, w, "…"))
+	case s.SessionID == "":
+		text = spin(s.Now) + " Opening the session"
+	case s.Live != nil && !s.Live.TurnSince.IsZero():
+		text = fmt.Sprintf("%s Thinking %s · esc to interrupt", spin(s.Now), clock(s.Now.Sub(s.Live.Started)))
+	case s.Live != nil && s.Live.Tools > 0:
+		text = fmt.Sprintf("%s Running %s %s · esc to interrupt", spin(s.Now), plural(s.Live.Tools, "command"), clock(s.Now.Sub(s.Live.Started)))
+	case s.Live != nil:
+		text = fmt.Sprintf("%s Working %s · esc to interrupt", spin(s.Now), clock(s.Now.Sub(s.Live.Started)))
+	case s.Busy:
+		text = spin(s.Now) + " Starting"
+	default:
+		return ""
+	}
+
+	return tool.Render(ansi.Truncate(text, w, "…"))
+}
+
 func footerLine(s state.State, w int) string {
+	if !s.Details {
+		var parts []string
+		for _, p := range []string{s.Settings.Model, s.Settings.Effort, home(s.Settings.Workspace)} {
+			if p != "" {
+				parts = append(parts, p)
+			}
+		}
+		if len(s.Queue) > 0 {
+			parts = append(parts, plural(len(s.Queue), "queued message"))
+		}
+		left := " " + strings.Join(parts, " · ")
+		hint := "ctrl+t details · / commands "
+		if gap := w - ansi.StringWidth(left) - ansi.StringWidth(hint); gap > 0 {
+			left += strings.Repeat(" ", gap) + hint
+		}
+
+		return dim.Render(ansi.Truncate(left, w, ""))
+	}
 	if s.Status != "" {
 		return warn.Render(ansi.Truncate(" "+s.Status, w, "…"))
 	}

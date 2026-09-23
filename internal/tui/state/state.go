@@ -75,9 +75,12 @@ type State struct {
 	Totals Totals
 
 	ShowReasoning bool
-	Scroll        int // lines scrolled up from the bottom
-	Picker        Picker
-	Now           time.Time
+	// Details shows turns, run dividers, and token totals; the default is a
+	// compact, Codex-like view.
+	Details bool
+	Scroll  int // lines scrolled up from the bottom
+	Picker  Picker
+	Now     time.Time
 
 	// Status is a transient hint in the footer, such as a pending confirmation.
 	Status      string
@@ -106,6 +109,8 @@ type (
 	EditLastQueued struct{}
 	// ToggleReasoning shows or hides reasoning summaries.
 	ToggleReasoning struct{}
+	// ToggleDetails switches between the compact and the detailed view.
+	ToggleDetails struct{}
 	// ScrollBy scrolls the transcript; positive is up.
 	ScrollBy struct{ Lines int }
 	// ScrollToBottom follows new output again.

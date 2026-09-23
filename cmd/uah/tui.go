@@ -54,6 +54,7 @@ func openTUI(ctx context.Context, cmd *cli.Command, launch tuiLaunch) error {
 		Cwd:         cwd,
 		Picker:      launch.picker,
 		AllSessions: launch.all,
+		Details:     st.config.TUI.Details,
 		Open: func(ctx context.Context, id string) (*session.Session, []session.LoadedRun, error) {
 			setup, err := setupFor(cmd, logFile, id)
 			if err != nil {

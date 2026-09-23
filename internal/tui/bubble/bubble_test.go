@@ -128,14 +128,19 @@ func (d *driver) waitQuit() {
 
 func TestTUI_SendAMessageAndQuit(t *testing.T) {
 	d := start(t, deps(t, "simple.jsonl"))
-	assert.Contains(t, d.view(), "opening…")
+	assert.Contains(t, d.view(), "Opening the session")
 
 	d.typeText("hi there") // typed before the session opens: it is held, not lost
 	d.key(tea.KeyEnter, 0)
-	d.waitFor("● answer")
-	d.waitFor("hello")
-	d.waitFor("1 run ·")
+	d.waitFor("● hello")
 	assert.Contains(t, d.view(), "› hi there")
+	assert.NotContains(t, d.view(), "1 run ·", "the compact view hides totals")
+
+	d.key('t', tea.ModCtrl)
+	d.waitFor("1 run ·")
+	d.waitFor("● answer")
+	d.key('t', tea.ModCtrl)
+	d.until("the compact view again", func() bool { return !strings.Contains(d.view(), "1 run ·") })
 
 	d.typeText("/quit")
 	d.key(tea.KeyEnter, 0)
@@ -157,7 +162,7 @@ func TestTUI_CommandsAndPrompt(t *testing.T) {
 	d.typeText("/effort low")
 	d.key(tea.KeyEnter, 0)
 	d.waitFor("effort low, applies from the next run")
-	assert.Contains(t, d.view(), "· low ·", "the header shows the new effort")
+	assert.Contains(t, d.view(), "· low ·", "the footer shows the new effort")
 
 	d.typeText("/nope")
 	d.key(tea.KeyEnter, 0)
@@ -175,15 +180,18 @@ func TestTUI_ResumeFromThePicker(t *testing.T) {
 
 	d.typeText("/new")
 	d.key(tea.KeyEnter, 0)
-	d.waitFor("0 runs")
-	assert.NotContains(t, d.view(), "remember this")
+	d.until("a new, empty session", func() bool {
+		v := d.view()
+
+		return !strings.Contains(v, "remember this") && !strings.Contains(v, "hello")
+	})
 
 	d.key('s', tea.ModCtrl)
 	d.waitFor("Resume a session")
 	d.typeText("remember")
 	d.key(tea.KeyEnter, 0)
 	d.waitFor("› remember this")
-	d.waitFor("● answer")
+	d.waitFor("● hello")
 
 	d.key('c', tea.ModCtrl)
 	d.waitQuit()
@@ -194,26 +202,26 @@ func TestTUI_QueueInterruptAndEdit(t *testing.T) {
 	t.Setenv("FAKERUNNER_HANG", "1") // the run keeps a tool running until interrupted
 	deps.Prompt = "start the long job"
 	d := start(t, deps)
-	d.waitFor("● running")
-	d.waitFor("sleep 300")
+	d.waitFor("esc to interrupt")
+	d.waitFor("Running sleep 300")
 
 	d.typeText("then update the README")
 	d.key(tea.KeyEnter, 0)
-	d.waitFor("1. then update the README")
+	d.waitFor("↳ queued: then update the README")
 
 	d.key(tea.KeyEscape, 0)
 	d.waitFor("press esc again to interrupt")
 	d.key(tea.KeyEscape, 0)
-	d.waitFor("· interrupted ·")
-	d.waitFor("idle")
-	assert.Contains(t, d.view(), "1. then update the README", "an interrupt keeps the queue")
-	assert.Contains(t, d.view(), "■ Bash", "the unfinished tool is shown as stopped")
+	d.waitFor("■ interrupted")
+	d.until("idle", func() bool { return !strings.Contains(d.view(), "esc to interrupt") })
+	assert.Contains(t, d.view(), "↳ queued: then update the README", "an interrupt keeps the queue")
+	assert.Contains(t, d.view(), "stopped", "the unfinished tool is shown as stopped")
 
 	d.key(tea.KeyUp, 0)
 	d.until("the queued message back in the composer", func() bool {
 		v := d.view()
 
-		return strings.Contains(v, "› then update the README") && !strings.Contains(v, "1. then update the README")
+		return strings.Contains(v, "› then update the README") && !strings.Contains(v, "queued: then update the README")
 	})
 
 	d.key('c', tea.ModCtrl) // clears the draft

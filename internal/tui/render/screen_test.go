@@ -94,6 +94,7 @@ func finishedRun(t *testing.T) state.State {
 func TestScreens(t *testing.T) {
 	t.Run("finished run", func(t *testing.T) {
 		golden(t, "finished", screen(finishedRun(t), ""))
+		golden(t, "finished-details", screen(apply(finishedRun(t), state.ToggleDetails{}), ""))
 	})
 
 	t.Run("live run with a queue", func(t *testing.T) {
@@ -116,6 +117,7 @@ func TestScreens(t *testing.T) {
 			state.Tick{Now: now},
 		)
 		golden(t, "live", screen(s, ""))
+		golden(t, "live-details", screen(apply(s, state.ToggleDetails{}), ""))
 	})
 
 	t.Run("command completion", func(t *testing.T) {

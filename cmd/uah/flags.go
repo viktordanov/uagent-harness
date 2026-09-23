@@ -87,6 +87,7 @@ type setup struct {
 	stateDir string
 	engine   *process.Engine
 	options  session.Options
+	config   config.Config
 }
 
 // resolveSetup combines flags, the environment, the resumed session (from
@@ -172,7 +173,7 @@ func setupFor(cmd *cli.Command, logOutput io.Writer, ref string) (setup, error) 
 	logger := slog.New(slog.NewTextHandler(logOutput, &slog.HandlerOptions{Level: logLevels[cmd.String("log-level")]}))
 	eng := process.New(harness.Config{RunnerPath: runner, StateDir: stateDir, MaxDisk: maxDisk, Logger: logger})
 
-	return setup{stateDir: stateDir, engine: eng, options: opts}, nil
+	return setup{stateDir: stateDir, engine: eng, options: opts, config: cfg}, nil
 }
 
 // pick returns the first value that is set: the flag (by flag or

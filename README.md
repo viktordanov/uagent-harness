@@ -24,6 +24,8 @@ uah run --stream "..."                                     # JSONL: uagent's run
 
 ### The TUI
 
+The default view is compact, like Codex: your messages, one line per command (`• Ran go test ./...`), and the answers. ctrl+t (or `/details`) switches to the detailed view with the header, run dividers, turns with token counts, and session totals; `[tui] details = true` starts there.
+
 | Key | Action |
 | --- | --- |
 | enter | Send. While the agent works, the message queues and goes out when the run ends |
@@ -33,11 +35,12 @@ uah run --stream "..."                                     # JSONL: uagent's run
 | ↑ on an empty composer | Take the last queued message back to edit it |
 | alt+, / alt+. | Lower or raise the effort for the next run |
 | ctrl+s, ctrl+n | Session picker, new session |
+| ctrl+t | Compact or detailed view |
 | ctrl+r | Show or hide reasoning summaries |
 | pgup / pgdn | Scroll the transcript |
 | ctrl+c | Clear the composer; on an empty composer, quit (twice while a run is live) |
 
-Commands: `/model <id>`, `/effort <level>`, `/resume [id]`, `/new`, `/stop`, `/status`, `/reasoning`, `/help`, `/quit`. `/fast` needs the embedded engine.
+Commands: `/model <id>`, `/effort <level>`, `/resume [id]`, `/new`, `/stop`, `/status`, `/details`, `/reasoning`, `/help`, `/quit`. `/fast` needs the embedded engine.
 Tool calls keep their place in the transcript, so a command that finishes after later turns updates its original row. Diagnostics go to `<state-dir>/logs/uah-tui.log`.
 
 `uah run` takes the same backend, guard, and state flags as uagent (`--provider`, `-m`, `-e`, `-t`, `-C`, `--state-dir`, `--runner`, `--max-disk`, `--allow-dotenv`); `uah run --help` lists them.
@@ -67,6 +70,9 @@ max_disk = "5G"
 enabled = true
 max_bytes = 32768
 
+[tui]
+details = false   # start in the detailed view
+
 # A workspace's .uagent/config.toml applies only when trusted here.
 [projects."/Users/me/code/proj"]
 trusted = true
@@ -79,7 +85,8 @@ Design:
 1. [Harness design](docs/design/harness.md): what the runner provides, what the harness adds, the two engines, and the accepted scope.
 2. [TUI design](docs/design/tui.md): the framework choice, architecture, screens, keys, and commands.
 3. [Implementation spec](docs/design/implementation.md): the packages and files in both repositories, types, milestones, and tests.
-4. [TUI framework benchmark](bench/tui/README.md): the measurements behind choosing Bubble Tea v2 (a separate Go module).
+4. [State storage](docs/design/state.md): what is stored where today, and the plan for a rebuildable SQLite index.
+5. [TUI framework benchmark](bench/tui/README.md): the measurements behind choosing Bubble Tea v2 (a separate Go module).
 
 ## Development
 

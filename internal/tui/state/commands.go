@@ -30,6 +30,7 @@ func Commands() []Command {
 		{Name: "stop", Help: "interrupt the live run; queued messages stay", WhileBusy: true, run: func(*State, string) []Effect { return []Effect{EffInterrupt{}} }},
 		{Name: "status", Help: "session, settings, and totals", WhileBusy: true, run: cmdStatus},
 		{Name: "reasoning", Help: "show or hide reasoning summaries", WhileBusy: true, run: func(s *State, _ string) []Effect { s.ShowReasoning = !s.ShowReasoning; return nil }},
+		{Name: "details", Help: "show or hide turns, run dividers, and token totals", WhileBusy: true, run: func(s *State, _ string) []Effect { s.Details = !s.Details; return nil }},
 		{Name: "help", Help: "commands and keys", WhileBusy: true, run: cmdHelp},
 		{Name: "quit", Aliases: []string{"exit"}, Help: "close the session and exit", WhileBusy: true, run: func(s *State, _ string) []Effect {
 			s.Quitting, s.Status = true, "stopping…"
@@ -160,7 +161,7 @@ func cmdHelp(s *State, _ string) []Effect {
 		fmt.Fprintf(&b, "%-18s %s\n", name, c.Help)
 	}
 	b.WriteString("\nenter send (queues while the agent works) · ctrl+enter or alt+enter send now · shift+enter or ctrl+j new line\n")
-	b.WriteString("esc esc interrupt · ↑ edit the last queued message · alt+, alt+. effort · ctrl+s sessions · ctrl+n new · ctrl+r reasoning · pgup/pgdn scroll · ctrl+c ctrl+c quit")
+	b.WriteString("esc esc interrupt · ↑ edit the last queued message · alt+, alt+. effort · ctrl+s sessions · ctrl+n new · ctrl+t details · ctrl+r reasoning · pgup/pgdn scroll · ctrl+c ctrl+c quit")
 	s.notice("info", b.String())
 
 	return nil

@@ -41,6 +41,8 @@ type Deps struct {
 	Picker bool
 	// AllSessions starts the picker showing every directory.
 	AllSessions bool
+	// Details starts in the detailed view: turns, run dividers, and tokens.
+	Details bool
 	// Now is the clock (default time.Now).
 	Now func() time.Time
 }
@@ -85,8 +87,11 @@ func New(ctx context.Context, deps Deps) Model {
 		deps.Now = time.Now
 	}
 
+	st := state.New(deps.Now())
+	st.Details = deps.Details
+
 	return Model{
-		ctx: ctx, deps: deps, st: state.New(deps.Now()),
+		ctx: ctx, deps: deps, st: st,
 		cache: render.NewCache(), composer: newComposer(),
 	}
 }
