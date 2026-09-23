@@ -2,6 +2,7 @@ package session
 
 import (
 	"fmt"
+	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -122,4 +123,36 @@ func Load(stateDir, id string) ([]LoadedRun, error) {
 	}
 
 	return runs, nil
+}
+
+// SameDir reports whether two paths name the same directory after making
+// them absolute, cleaning them, and resolving symlinks, the way Codex matches
+// a session's working directory.
+func SameDir(a, b string) bool {
+	return normalizeDir(a) == normalizeDir(b)
+}
+
+// InDir keeps the sessions whose workspace is dir.
+func InDir(infos []Info, dir string) []Info {
+	want := normalizeDir(dir)
+	var out []Info
+	for _, in := range infos {
+		if in.Workspace != "" && normalizeDir(in.Workspace) == want {
+			out = append(out, in)
+		}
+	}
+
+	return out
+}
+
+func normalizeDir(p string) string {
+	abs, err := filepath.Abs(p)
+	if err != nil {
+		abs = p
+	}
+	if resolved, err := filepath.EvalSymlinks(abs); err == nil {
+		abs = resolved
+	}
+
+	return filepath.Clean(abs)
 }

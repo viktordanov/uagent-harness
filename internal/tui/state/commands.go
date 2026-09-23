@@ -128,7 +128,7 @@ func cmdResume(s *State, args string) []Effect {
 	if args == "" {
 		return []Effect{EffLoadSessions{}}
 	}
-	for _, info := range s.Picker.Sessions {
+	for _, info := range s.Picker.Sessions { // IDs are global, as in Codex
 		if strings.HasPrefix(info.ID, args) {
 			return []Effect{EffOpenSession{ID: info.ID}}
 		}

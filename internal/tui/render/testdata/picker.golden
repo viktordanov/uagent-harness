@@ -1,6 +1,5 @@
- Resume a session · filter: ▏
+ Resume a session · this directory · tab: all · filter: ▏
  3f2a1b2c  12m ago    3 runs  ok          gpt-6-sol    Fix the failing test in pkg/foo
- 9b8c7d6e  2h ago     1 runs  interrupted gpt-6-sol    Summarize this project
 
 
 
@@ -21,4 +20,5 @@
 
 
 
- type to filter · ↑↓ choose · enter resume · esc back
+
+ type to filter · ↑↓ choose · enter resume · tab this directory/all · esc back

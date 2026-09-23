@@ -28,6 +28,8 @@ func runCommand() *cli.Command {
 		&cli.BoolFlag{Name: "stream", Usage: "write JSONL events (runs and session) to stdout instead of answers"},
 		&cli.BoolFlag{Name: "quiet", Aliases: []string{"q"}, Usage: "no progress on stderr"},
 		&cli.BoolFlag{Name: "verbose", Usage: "also show reasoning summaries"},
+		&cli.BoolFlag{Name: "last", Usage: "continue this directory's most recent session"},
+		&cli.BoolFlag{Name: flagAll, Usage: "with --last: the most recent session in any directory"},
 	)
 
 	return &cli.Command{
@@ -37,7 +39,7 @@ func runCommand() *cli.Command {
 		Description: "Sends the prompt, prints progress on stderr and each answer on stdout, and exits when\n" +
 			"the session is idle. With --stdin, each further line of stdin is another message:\n" +
 			"it starts a run when the agent is idle and queues while it works.\n" +
-			"Resume a session with --session <id or prefix>; see uah sessions.",
+			"Resume a session with --session <id or prefix>, or --last for this directory's most recent.",
 		Flags:        flags,
 		OnUsageError: onUsageError,
 		Action:       runAction,
@@ -50,7 +52,15 @@ func runAction(ctx context.Context, cmd *cli.Command) error {
 	if prompt == "" && !followStdin {
 		return cli.Exit("no prompt: pass one as an argument, or use --stdin", exitUsage)
 	}
-	st, err := resolveSetup(cmd, os.Stderr)
+	ref := cmd.String("session")
+	if cmd.Bool("last") {
+		info, err := latestSession(cmd)
+		if err != nil {
+			return err
+		}
+		ref = info.ID
+	}
+	st, err := setupFor(cmd, os.Stderr, ref)
 	if err != nil {
 		return err
 	}

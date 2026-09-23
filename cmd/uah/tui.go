@@ -16,10 +16,25 @@ import (
 // tuiAction is the default action: open the terminal UI, optionally with a
 // first prompt.
 func tuiAction(ctx context.Context, cmd *cli.Command) error {
+	return openTUI(ctx, cmd, tuiLaunch{
+		sessionRef: cmd.String("session"),
+		prompt:     strings.TrimSpace(strings.Join(cmd.Args().Slice(), " ")),
+	})
+}
+
+// tuiLaunch says what the TUI shows first.
+type tuiLaunch struct {
+	sessionRef string // a session to resume, by ID or unique prefix
+	prompt     string
+	picker     bool // start in the session picker
+	all        bool // the picker shows every directory
+}
+
+func openTUI(ctx context.Context, cmd *cli.Command, launch tuiLaunch) error {
 	if !isTerminal(os.Stdin) || !isTerminal(os.Stdout) {
 		return cli.Exit("the TUI needs a terminal; for scripts and pipes use uah run", exitUsage)
 	}
-	st, err := resolveSetup(cmd, os.Stderr) // validates flags before the screen takes over
+	st, err := setupFor(cmd, os.Stderr, launch.sessionRef) // validates flags before the screen takes over
 	if err != nil {
 		return err
 	}
@@ -28,10 +43,17 @@ func tuiAction(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 	defer logFile.Close()
+	cwd, err := currentDir(cmd)
+	if err != nil {
+		return err
+	}
 
 	deps := bubble.Deps{
-		SessionID: st.options.ID,
-		Prompt:    strings.TrimSpace(strings.Join(cmd.Args().Slice(), " ")),
+		SessionID:   st.options.ID,
+		Prompt:      launch.prompt,
+		Cwd:         cwd,
+		Picker:      launch.picker,
+		AllSessions: launch.all,
 		Open: func(ctx context.Context, id string) (*session.Session, []session.LoadedRun, error) {
 			setup, err := setupFor(cmd, logFile, id)
 			if err != nil {
@@ -60,6 +82,21 @@ func tuiAction(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	return nil
+}
+
+// currentDir is the directory sessions are scoped to: --workspace when given,
+// otherwise the working directory.
+func currentDir(cmd *cli.Command) (string, error) {
+	dir := "."
+	if w := cmd.String("workspace"); w != "" {
+		dir = w
+	}
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve the current directory: %w", err)
+	}
+
+	return abs, nil
 }
 
 // openTUILog opens the diagnostic log; the screen belongs to the TUI.

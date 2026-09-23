@@ -46,9 +46,12 @@ type Totals struct {
 	ToolBusy    time.Duration
 }
 
-// Picker is the session list.
+// Picker is the session list. Like Codex, it shows the sessions of the
+// current directory unless All is set.
 type Picker struct {
-	Sessions []session.Info
+	Local    []session.Info // sessions whose workspace is the current directory
+	Sessions []session.Info // every session
+	All      bool
 	Filter   string
 	Selected int
 }
@@ -118,8 +121,15 @@ type (
 		SessionID string
 		Runs      []session.LoadedRun
 	}
-	// SessionsLoaded fills the picker.
-	SessionsLoaded struct{ Sessions []session.Info }
+	// SessionsLoaded fills the picker. Local holds the current directory's
+	// sessions; All shows every session from the start.
+	SessionsLoaded struct {
+		Sessions []session.Info
+		Local    []session.Info
+		All      bool
+	}
+	// PickerToggleAll switches between this directory and all sessions.
+	PickerToggleAll struct{}
 	// PickerMove moves the picker selection.
 	PickerMove struct{ Delta int }
 	// PickerType edits the picker filter; Backspace is Text "\b".
@@ -132,13 +142,17 @@ type (
 	Failed struct{ Err error }
 )
 
-// Filtered returns the picker sessions that match the filter.
+// Filtered returns the picker sessions in scope that match the filter.
 func (p Picker) Filtered() []session.Info {
+	list := p.Local
+	if p.All {
+		list = p.Sessions
+	}
 	if p.Filter == "" {
-		return p.Sessions
+		return list
 	}
 	var out []session.Info
-	for _, s := range p.Sessions {
+	for _, s := range list {
 		if containsFold(s.ID, p.Filter) || containsFold(s.FirstPrompt, p.Filter) || containsFold(s.Model, p.Filter) {
 			out = append(out, s)
 		}

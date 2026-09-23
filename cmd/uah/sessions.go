@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/tabwriter"
 	"time"
 
@@ -24,11 +25,13 @@ func sessionsCommand() *cli.Command {
 		Value: defaultStateDir(), Sources: cli.EnvVars("UAGENT_STATE_DIR"), TakesFile: true,
 	}
 	jsonFlag := &cli.BoolFlag{Name: "json", Usage: "print JSON"}
+	all := &cli.BoolFlag{Name: flagAll, Usage: "list sessions from every directory"}
+	workspace := &cli.StringFlag{Name: "workspace", Aliases: []string{"C"}, Usage: "list this directory's sessions", DefaultText: "the current directory", TakesFile: true}
 
 	return &cli.Command{
 		Name:         "sessions",
-		Usage:        "list sessions, most recent first",
-		Flags:        []cli.Flag{stateDir, jsonFlag},
+		Usage:        "list this directory's sessions, most recent first (--all for every directory)",
+		Flags:        []cli.Flag{stateDir, jsonFlag, all, workspace},
 		OnUsageError: onUsageError,
 		Action:       listSessions,
 		Commands: []*cli.Command{{
@@ -51,18 +54,38 @@ func listSessions(_ context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
+	cwd, err := currentDir(cmd)
+	if err != nil {
+		return err
+	}
+	showAll := cmd.Bool(flagAll)
+	if !showAll {
+		infos = session.InDir(infos, cwd)
+	}
 	if cmd.Bool("json") {
 		return writeJSON(os.Stdout, infos)
 	}
 	if len(infos) == 0 {
-		fmt.Fprintln(os.Stderr, "no sessions in "+stateDir)
+		if showAll {
+			fmt.Fprintln(os.Stderr, "no sessions in "+stateDir)
+		} else {
+			fmt.Fprintln(os.Stderr, "no sessions in "+cwd+" (--all lists every directory)")
+		}
 
 		return nil
 	}
 	tw := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(tw, "SESSION\tACTIVE\tRUNS\tSTATUS\tMODEL\tFIRST PROMPT")
+	if showAll {
+		fmt.Fprintln(tw, "SESSION\tACTIVE\tRUNS\tSTATUS\tMODEL\tDIRECTORY\tFIRST PROMPT")
+	} else {
+		fmt.Fprintln(tw, "SESSION\tACTIVE\tRUNS\tSTATUS\tMODEL\tFIRST PROMPT")
+	}
 	for _, in := range infos {
-		fmt.Fprintf(tw, "%s\t%s\t%d\t%s\t%s\t%s\n", short(in.ID), ago(in.LastActivity), in.Runs, in.Status, modelLabel(in.Model), oneLine(in.FirstPrompt, 60))
+		dir := ""
+		if showAll {
+			dir = homeShort(in.Workspace) + "\t"
+		}
+		fmt.Fprintf(tw, "%s\t%s\t%d\t%s\t%s\t%s%s\n", short(in.ID), ago(in.LastActivity), in.Runs, in.Status, modelLabel(in.Model), dir, oneLine(in.FirstPrompt, 60))
 	}
 
 	return tw.Flush()
@@ -156,6 +179,15 @@ func writeJSON(w io.Writer, v any) error {
 	}
 
 	return nil
+}
+
+// homeShort writes paths under the home directory with ~.
+func homeShort(path string) string {
+	if h, err := os.UserHomeDir(); err == nil && strings.HasPrefix(path, h) {
+		return "~" + strings.TrimPrefix(path, h)
+	}
+
+	return path
 }
 
 // ago formats a time as a short relative age.

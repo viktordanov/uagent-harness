@@ -35,6 +35,12 @@ type Deps struct {
 	SessionID string
 	// Prompt, when set, is sent once the first session is open.
 	Prompt string
+	// Cwd scopes the picker to sessions of this directory, as Codex does.
+	Cwd string
+	// Picker opens the session picker first instead of a session.
+	Picker bool
+	// AllSessions starts the picker showing every directory.
+	AllSessions bool
 	// Now is the clock (default time.Now).
 	Now func() time.Time
 }
@@ -115,6 +121,10 @@ func Run(ctx context.Context, deps Deps, opts ...tea.ProgramOption) error {
 }
 
 func (m Model) Init() tea.Cmd {
+	if m.deps.Picker {
+		return m.run(state.EffLoadSessions{})
+	}
+
 	return m.open(m.deps.SessionID)
 }
 

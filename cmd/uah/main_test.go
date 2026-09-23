@@ -169,7 +169,17 @@ func TestRunAndSessions(t *testing.T) {
 	assert.Contains(t, first.stderr, "› first question")
 	assert.Contains(t, first.stderr, "run ok")
 
-	list := uahWith(t, env, "", "sessions")
+	elsewhere := uahWith(t, env, "", "sessions")
+	require.Equal(t, 0, elsewhere.code, elsewhere.stderr)
+	assert.Empty(t, elsewhere.stdout, "sessions are scoped to the current directory, as in Codex")
+	assert.Contains(t, elsewhere.stderr, "--all lists every directory")
+
+	all := uahWith(t, env, "", "sessions", "--all")
+	require.Equal(t, 0, all.code, all.stderr)
+	assert.Contains(t, all.stdout, "DIRECTORY")
+	assert.Contains(t, all.stdout, "first question")
+
+	list := uahWith(t, env, "", "sessions", "-C", e.Workspace)
 	require.Equal(t, 0, list.code, list.stderr)
 	lines := strings.Split(strings.TrimSpace(list.stdout), "\n")
 	require.Len(t, lines, 2, list.stdout)
@@ -177,7 +187,7 @@ func TestRunAndSessions(t *testing.T) {
 	assert.Contains(t, lines[1], "first question")
 
 	env = append(env, "FAKERUNNER_FIXTURE="+fixtures.Path("parallel.jsonl"))
-	more := uahWith(t, env, "second\nthird\n", "run", "--session", id, "--stdin")
+	more := uahWith(t, env, "second\nthird\n", "run", "-C", e.Workspace, "--last", "--stdin")
 	require.Equal(t, 0, more.code, more.stderr)
 	assert.Contains(t, more.stdout, "A; B")
 	assert.Contains(t, more.stderr, "(resumed)")
@@ -188,6 +198,14 @@ func TestRunAndSessions(t *testing.T) {
 	assert.Contains(t, show.stdout, "✓ hello")
 	assert.Contains(t, show.stdout, "› second")
 	assert.Contains(t, show.stdout, "✓ A; B")
+
+	noneHere := uahWith(t, env, "", "run", "--last", "hi")
+	assert.Equal(t, 2, noneHere.code, "no session in this directory")
+	assert.Contains(t, noneHere.stderr, "no session to resume")
+
+	resume := uahWith(t, env, "", "resume", id)
+	assert.Equal(t, 2, resume.code)
+	assert.Contains(t, resume.stderr, "needs a terminal")
 
 	missing := uahWith(t, env, "", "sessions", "show", "zzzz")
 	assert.Equal(t, 2, missing.code)

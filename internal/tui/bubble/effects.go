@@ -58,8 +58,12 @@ func (m Model) run(e state.Effect) tea.Cmd {
 			if err != nil {
 				return fail(err)
 			}
+			local := infos
+			if m.deps.Cwd != "" {
+				local = session.InDir(infos, m.deps.Cwd)
+			}
 
-			return state.SessionsLoaded{Sessions: infos}
+			return state.SessionsLoaded{Sessions: infos, Local: local, All: m.deps.AllSessions || m.deps.Cwd == ""}
 		}
 	case state.EffOpenSession:
 		return m.switchTo(e.ID)
