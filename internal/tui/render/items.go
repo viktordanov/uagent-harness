@@ -19,28 +19,39 @@ type Cache struct {
 }
 
 type cacheEntry struct {
-	version, width int
-	reasoning      bool
-	lines          []string
+	version, width     int
+	reasoning, details bool
+	lines              []string
 }
 
 func NewCache() *Cache { return &Cache{entries: map[string]cacheEntry{}} }
 
+// view is how items are drawn: the compact default or the detailed view.
+type view struct {
+	reasoning, details bool
+}
+
 // lines returns an item's lines, from the cache when the item is not live.
-func (c *Cache) lines(it state.Item, width int, now time.Time, reasoning bool) []string {
+func (c *Cache) lines(it state.Item, width int, now time.Time, v view) []string {
 	if it.Live() {
-		return itemLines(it, width, now, reasoning)
+		return itemLines(it, width, now, v)
 	}
-	if e, ok := c.entries[it.Key]; ok && e.version == it.Version && e.width == width && e.reasoning == reasoning {
+	if e, ok := c.entries[it.Key]; ok && e.version == it.Version && e.width == width && e.reasoning == v.reasoning && e.details == v.details {
 		return e.lines
 	}
-	lines := itemLines(it, width, now, reasoning)
-	c.entries[it.Key] = cacheEntry{version: it.Version, width: width, reasoning: reasoning, lines: lines}
+	lines := itemLines(it, width, now, v)
+	c.entries[it.Key] = cacheEntry{version: it.Version, width: width, reasoning: v.reasoning, details: v.details, lines: lines}
 
 	return lines
 }
 
-func itemLines(it state.Item, w int, now time.Time, reasoning bool) []string {
+func itemLines(it state.Item, w int, now time.Time, v view) []string {
+	if !v.details {
+		if lines, ok := compactLines(it, w, now); ok {
+			return lines
+		}
+	}
+	reasoning := v.reasoning
 	switch it.Kind {
 	case state.KindUser:
 		suffix := ""
@@ -100,6 +111,67 @@ func itemLines(it state.Item, w int, now time.Time, reasoning bool) []string {
 	}
 
 	return nil
+}
+
+// compactLines draws an item in the compact, Codex-like view. ok is false for
+// kinds drawn the same in both views.
+func compactLines(it state.Item, w int, now time.Time) ([]string, bool) {
+	switch it.Kind {
+	case state.KindRun:
+		switch it.Status {
+		case core.StatusOK, core.StatusRunning:
+			return nil, true
+		case core.StatusInterrupted:
+			return []string{warn.Render("  ■ interrupted")}, true
+		case core.StatusTimeout, core.StatusDiskLimit, core.StatusFailed:
+		}
+
+		return []string{bad.Render(fmt.Sprintf("  ✗ run ended: %s", it.Status))}, true
+	case state.KindTurn:
+		return nil, true
+	case state.KindTool:
+		return []string{compactTool(it, w, now)}, true
+	case state.KindAssistant:
+		bullet := "• "
+		if it.Final {
+			bullet = answer.Render("● ")
+			return append([]string{""}, wrapPrefixed(it.Text, w, bullet, "  ")...), true
+		}
+
+		return wrapPrefixed(it.Text, w, bullet, "  "), true
+	case state.KindUser, state.KindReasoning, state.KindNotice:
+	}
+
+	return nil, false
+}
+
+// compactTool draws a tool call as one Codex-like line: "• Ran <command>".
+func compactTool(it state.Item, w int, now time.Time) string {
+	verb := it.Name
+	if it.Name == "Bash" {
+		verb = "Ran"
+	}
+	var mark, suffix string
+	switch it.Tool {
+	case state.ToolCalled, state.ToolRunning:
+		mark, suffix = tool.Render(spin(now)), dim.Render("  "+clock(now.Sub(it.Started)))
+		if it.Name == "Bash" {
+			verb = "Running"
+		}
+	case state.ToolOK:
+		mark = dim.Render("•")
+		if it.Duration >= time.Second {
+			suffix = dim.Render("  " + secs(it.Duration))
+		}
+	case state.ToolFailed:
+		mark, suffix = bad.Render("•"), bad.Render("  "+it.Detail)
+	case state.ToolStopped:
+		mark, suffix = warn.Render("■"), warn.Render("  stopped")
+	}
+	head := fmt.Sprintf("%s %s ", mark, bold.Render(verb))
+	room := w - ansi.StringWidth(head) - ansi.StringWidth(suffix)
+
+	return head + ansi.Truncate(oneLine(it.Label), max(room, 8), "…") + suffix
 }
 
 func runRule(it state.Item, w int, now time.Time) string {

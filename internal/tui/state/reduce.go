@@ -239,6 +239,8 @@ func (s *State) onIntent(ev any) (State, []Effect) {
 		return *s, []Effect{EffWithdraw(last)}
 	case ToggleReasoning:
 		s.ShowReasoning = !s.ShowReasoning
+	case ToggleDetails:
+		s.Details = !s.Details
 	case ScrollBy:
 		s.Scroll = max(0, s.Scroll+e.Lines)
 	case ScrollToBottom:

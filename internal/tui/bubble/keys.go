@@ -57,6 +57,8 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.dispatch(state.Submit{Text: "/new"})
 	case "ctrl+r":
 		return m.dispatch(state.ToggleReasoning{})
+	case "ctrl+t":
+		return m.dispatch(state.ToggleDetails{})
 	}
 	var cmd tea.Cmd
 	m.composer, cmd = m.composer.Update(msg)

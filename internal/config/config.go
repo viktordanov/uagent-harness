@@ -22,6 +22,7 @@ type Config struct {
 	MaxDisk  string `toml:"max_disk"`
 
 	Instructions Instructions `toml:"instructions"`
+	TUI          TUI          `toml:"tui"`
 
 	// Projects are keyed by absolute workspace path.
 	Projects map[string]Project `toml:"projects"`
@@ -32,6 +33,12 @@ type Instructions struct {
 	// Enabled defaults to true.
 	Enabled  *bool `toml:"enabled"`
 	MaxBytes int   `toml:"max_bytes"`
+}
+
+// TUI configures the terminal UI.
+type TUI struct {
+	// Details starts in the detailed view (ctrl+t toggles it).
+	Details bool `toml:"details"`
 }
 
 // Project is per-workspace configuration from the user file.
