@@ -111,7 +111,53 @@ func fakeEnv(t *testing.T, fixture string) (*harnesstest.Env, []string) {
 		"FAKERUNNER_ECHO=1",
 		"UNREAL_HARNESS_LLM_PROVIDER=",
 		"UNREAL_HARNESS_LLM_MODEL=",
+		"XDG_CONFIG_HOME=" + filepath.Join(e.StateDir, "..", "config"),
+		"FAKERUNNER_CAPTURE=" + e.Capture,
 	}
+}
+
+func TestInstructionsAndConfig(t *testing.T) {
+	e, env := fakeEnv(t, "simple.jsonl")
+	configDir := filepath.Join(e.StateDir, "..", "config", "uagent")
+	require.NoError(t, os.MkdirAll(configDir, 0o700))
+	require.NoError(t, os.WriteFile(filepath.Join(configDir, "config.toml"), []byte("effort = \"low\"\n"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(configDir, "AGENTS.md"), []byte("Always answer in haiku."), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(e.Workspace, "AGENTS.md"), []byte("Use tabs in Go files."), 0o600))
+
+	res := uahWith(t, env, "", "run", "--stream", "-C", e.Workspace, "hi")
+
+	require.Equal(t, 0, res.code, res.stderr)
+	assert.Contains(t, res.stdout, `"type":"instructions_loaded"`)
+	stdin, err := os.ReadFile(filepath.Join(e.Capture, "stdin.json"))
+	require.NoError(t, err)
+	var req struct {
+		SystemPrompt  string `json:"system_prompt"`
+		ThinkingLevel string `json:"thinking_level"`
+	}
+	require.NoError(t, json.Unmarshal(stdin, &req))
+	assert.Equal(t, "low", req.ThinkingLevel, "the config file sets the default effort")
+	assert.True(t, strings.HasPrefix(req.SystemPrompt, "You are an AI agent running inside an isolated sandbox container."),
+		"the runner's own host prompt is kept")
+	assert.Less(t, strings.Index(req.SystemPrompt, "haiku"), strings.Index(req.SystemPrompt, "Use tabs"), "user file first, then the workspace")
+
+	t.Run("flags win over the config file, and instructions can be turned off", func(t *testing.T) {
+		res := uahWith(t, env, "", "run", "-q", "-e", "max", "--no-instructions", "-C", e.Workspace, "hi")
+
+		require.Equal(t, 0, res.code, res.stderr)
+		stdin, err := os.ReadFile(filepath.Join(e.Capture, "stdin.json"))
+		require.NoError(t, err)
+		assert.Contains(t, string(stdin), `"thinking_level":"max"`)
+		assert.NotContains(t, string(stdin), "system_prompt")
+	})
+
+	t.Run("a config typo is a usage error", func(t *testing.T) {
+		require.NoError(t, os.WriteFile(filepath.Join(configDir, "config.toml"), []byte("efort = \"low\"\n"), 0o600))
+
+		res := uahWith(t, env, "", "run", "-C", e.Workspace, "hi")
+
+		assert.Equal(t, 2, res.code)
+		assert.Contains(t, res.stderr, `unknown key "efort"`)
+	})
 }
 
 func TestRunAndSessions(t *testing.T) {

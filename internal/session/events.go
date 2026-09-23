@@ -17,6 +17,15 @@ type SessionOpened struct {
 	Settings Settings
 }
 
+// InstructionsLoaded lists the instruction files in the host prompt. It
+// follows SessionOpened when instructions were loaded.
+type InstructionsLoaded struct {
+	At        time.Time
+	Files     []string
+	Bytes     int
+	Truncated bool
+}
+
 // InputQueued means the session accepted a message.
 type InputQueued struct {
 	At    time.Time
@@ -76,12 +85,13 @@ type Notice struct {
 	Message string
 }
 
-func (e SessionOpened) OccurredAt() time.Time   { return e.At }
-func (e InputQueued) OccurredAt() time.Time     { return e.At }
-func (e InputSent) OccurredAt() time.Time       { return e.At }
-func (e InputDelivered) OccurredAt() time.Time  { return e.At }
-func (e InputFailed) OccurredAt() time.Time     { return e.At }
-func (e InputWithdrawn) OccurredAt() time.Time  { return e.At }
-func (e SettingsChanged) OccurredAt() time.Time { return e.At }
-func (e Idle) OccurredAt() time.Time            { return e.At }
-func (e Notice) OccurredAt() time.Time          { return e.At }
+func (e SessionOpened) OccurredAt() time.Time      { return e.At }
+func (e InstructionsLoaded) OccurredAt() time.Time { return e.At }
+func (e InputQueued) OccurredAt() time.Time        { return e.At }
+func (e InputSent) OccurredAt() time.Time          { return e.At }
+func (e InputDelivered) OccurredAt() time.Time     { return e.At }
+func (e InputFailed) OccurredAt() time.Time        { return e.At }
+func (e InputWithdrawn) OccurredAt() time.Time     { return e.At }
+func (e SettingsChanged) OccurredAt() time.Time    { return e.At }
+func (e Idle) OccurredAt() time.Time               { return e.At }
+func (e Notice) OccurredAt() time.Time             { return e.At }
