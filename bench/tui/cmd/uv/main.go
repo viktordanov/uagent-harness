@@ -7,12 +7,11 @@ import (
 	"image/color"
 	"os"
 	"time"
+	"tuibench/internal/sim"
 
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/ultraviolet/screen"
 	"github.com/charmbracelet/x/ansi"
-
-	"tuibench/internal/sim"
 )
 
 type evMsg sim.Event

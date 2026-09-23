@@ -11,10 +11,9 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"tuibench/internal/sim"
 
 	"github.com/awesome-gocui/gocui"
-
-	"tuibench/internal/sim"
 )
 
 var tagANSI = map[sim.Kind]string{

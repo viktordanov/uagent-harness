@@ -4,10 +4,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"tuibench/internal/sim"
 
 	"github.com/gdamore/tcell/v2"
-
-	"tuibench/internal/sim"
 )
 
 // tcell v2's SimulationScreen gives a headless cell grid (tcell v3 removed it).

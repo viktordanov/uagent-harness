@@ -5,11 +5,10 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
+	"tuibench/internal/sim"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
-
-	"tuibench/internal/sim"
 )
 
 var tagColor = map[sim.Kind]string{

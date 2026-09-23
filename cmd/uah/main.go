@@ -38,8 +38,13 @@ func newApp() *cli.Command {
 		// Errors are printed once, by main, with the right exit code.
 		ExitErrHandler: func(context.Context, *cli.Command, error) {},
 		OnUsageError:   onUsageError,
-		Action:         tuiAction,
-		Commands:       []*cli.Command{runCommand(), sessionsCommand()},
+		ArgsUsage:      "[prompt]",
+		Description: "Without a command, uah opens the terminal UI: a live session you can steer.\n" +
+			"enter sends (queueing while the agent works), ctrl+enter sends now, esc esc interrupts,\n" +
+			"/help lists commands. Resume with --session <id or prefix>, or ctrl+s inside.",
+		Flags:    sessionFlags(),
+		Action:   tuiAction,
+		Commands: []*cli.Command{runCommand(), sessionsCommand()},
 	}
 }
 
@@ -61,11 +66,6 @@ func exitCode(err error) int {
 
 func onUsageError(_ context.Context, _ *cli.Command, err error, _ bool) error {
 	return cli.Exit(fmt.Sprintf("%v (see --help)", err), exitUsage)
-}
-
-// notImplemented is the error of a command that a later milestone delivers.
-func notImplemented(what, milestone string) error {
-	return cli.Exit(fmt.Sprintf("%s: not implemented yet (milestone %s)", what, milestone), exitFailed)
 }
 
 func buildVersion() string {

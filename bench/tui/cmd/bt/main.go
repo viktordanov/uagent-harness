@@ -12,12 +12,11 @@ import (
 	"os"
 	"strings"
 	"time"
+	"tuibench/internal/sim"
 
 	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-
-	"tuibench/internal/sim"
 )
 
 var (
@@ -32,9 +31,11 @@ var (
 	stStatus = lipgloss.NewStyle().Foreground(lipgloss.Color("0")).Background(lipgloss.Color("#87afff"))
 )
 
-type evMsg sim.Event
-type batchMsg []sim.Event
-type quitMsg struct{}
+type (
+	evMsg    sim.Event
+	batchMsg []sim.Event
+	quitMsg  struct{}
+)
 
 type model struct {
 	cfg    sim.Config

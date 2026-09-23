@@ -3,12 +3,16 @@
 The general-purpose harness built on [uagent](https://github.com/viktordanov/uagent), the wrapper around unreal-agent-runner.
 uagent runs one task with safety guards. This repository adds what long-lived, interactive work needs: sessions with a message queue and steering, an embedded engine for live model, effort, and fast-mode changes, instruction files, configuration, hooks, and a terminal UI.
 
-Status: milestone M3 (sessions, instructions, and configuration on the process engine). The TUI arrives in M4.
+Status: milestone M4: sessions, instructions, configuration, and the TUI, on the process engine. The embedded engine (live steering, live `/effort` and `/model`, `/fast`) comes next.
 
 ## Use it
 
 ```sh
 go install github.com/viktordanov/uagent-harness/cmd/uah@latest
+
+uah                                                        # the TUI: a live session in the current directory
+uah -C ~/code/proj "Fix the failing test in pkg/foo"       # the TUI, starting with a prompt
+uah --session 3f2a                                         # the TUI, resuming a session with its transcript
 
 uah run -C ~/code/proj "Fix the failing test in pkg/foo"   # a session: progress on stderr, answers on stdout
 uah sessions                                               # sessions, most recent first
@@ -17,6 +21,24 @@ uah run --session 3f2a "Now update the README"             # resume with the ses
 printf 'first\nsecond\n' | uah run --stdin                  # each line is a message; lines queue while the agent works
 uah run --stream "..."                                     # JSONL: uagent's run events plus session events
 ```
+
+### The TUI
+
+| Key | Action |
+| --- | --- |
+| enter | Send. While the agent works, the message queues and goes out when the run ends |
+| ctrl+enter (or alt+enter) | Send now: on the process engine this interrupts the run and restarts it with the queue and the message |
+| shift+enter (or ctrl+j) | New line |
+| esc esc | Interrupt the run; queued messages stay |
+| ↑ on an empty composer | Take the last queued message back to edit it |
+| alt+, / alt+. | Lower or raise the effort for the next run |
+| ctrl+s, ctrl+n | Session picker, new session |
+| ctrl+r | Show or hide reasoning summaries |
+| pgup / pgdn | Scroll the transcript |
+| ctrl+c | Clear the composer; on an empty composer, quit (twice while a run is live) |
+
+Commands: `/model <id>`, `/effort <level>`, `/resume [id]`, `/new`, `/stop`, `/status`, `/reasoning`, `/help`, `/quit`. `/fast` needs the embedded engine.
+Tool calls keep their place in the transcript, so a command that finishes after later turns updates its original row. Diagnostics go to `<state-dir>/logs/uah-tui.log`.
 
 `uah run` takes the same backend, guard, and state flags as uagent (`--provider`, `-m`, `-e`, `-t`, `-C`, `--state-dir`, `--runner`, `--max-disk`, `--allow-dotenv`); `uah run --help` lists them.
 A flag wins over the environment (`UNREAL_HARNESS_LLM_*`, `UAGENT_*`), which wins over the resumed session's settings and the defaults. Sessions and run records live in uagent's state directory, so `uagent` and `uah` share them.

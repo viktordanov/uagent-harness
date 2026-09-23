@@ -97,6 +97,7 @@ func minOf(a []result) float64 {
 	}
 	return m
 }
+
 func maxOf(a []result) float64 {
 	m := a[0].FirstFullMs
 	for _, r := range a {

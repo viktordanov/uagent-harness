@@ -5,14 +5,13 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"tuibench/internal/sim"
 
 	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/charmbracelet/x/exp/golden"
 	"github.com/charmbracelet/x/exp/teatest/v2"
-
-	"tuibench/internal/sim"
 )
 
 func newModel(n int) model {
