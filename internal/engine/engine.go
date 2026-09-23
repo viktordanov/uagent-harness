@@ -1,0 +1,47 @@
+// Package engine abstracts how the harness drives unreal-agent-runner. The
+// process engine spawns the runner through uagent; the embedded engine (a
+// later milestone) runs the runner's packages in process.
+package engine
+
+import (
+	"context"
+	"errors"
+
+	"github.com/viktordanov/uagent/core"
+)
+
+// ErrUnsupported means the engine cannot do this while a run is live.
+var ErrUnsupported = errors.New("not supported by this engine while a run is live")
+
+// Capabilities says what an engine can change while a run is live.
+type Capabilities struct {
+	LiveInput   bool
+	LiveEffort  bool
+	LiveModel   bool
+	ServiceTier bool
+}
+
+// Engine starts runs.
+type Engine interface {
+	Name() string
+	Capabilities() Capabilities
+	// Start begins a run. The sink receives RunStarted first and RunFinished
+	// last once Start succeeds, from one goroutine at a time.
+	Start(ctx context.Context, req core.Request, sink core.Sink) (Run, error)
+}
+
+// Run is a started run.
+type Run interface {
+	// Send delivers a message to the live run (ErrUnsupported without LiveInput).
+	Send(input core.UserInput) error
+	// SetEffort changes the effort for the next model request (ErrUnsupported without LiveEffort).
+	SetEffort(effort string) error
+	// SetModel changes the model for the next model request (ErrUnsupported without LiveModel).
+	SetModel(model string) error
+	// Interrupt stops the run gracefully.
+	Interrupt()
+	// Kill stops the run at once.
+	Kill()
+	// Wait blocks until the run ends.
+	Wait() (core.Result, error)
+}
