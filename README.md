@@ -86,7 +86,8 @@ Design:
 2. [TUI design](docs/design/tui.md): the framework choice, architecture, screens, keys, and commands.
 3. [Implementation spec](docs/design/implementation.md): the packages and files in both repositories, types, milestones, and tests.
 4. [State storage](docs/design/state.md): what is stored where today, and the plan for a rebuildable SQLite index.
-5. [TUI framework benchmark](bench/tui/README.md): the measurements behind choosing Bubble Tea v2 (a separate Go module).
+5. [Sandboxing and approvals](docs/design/sandbox-research.md): how Codex sandboxes and approves commands, bubblewrap, and options for uah (research, not decided).
+6. [TUI framework benchmark](bench/tui/README.md): the measurements behind choosing Bubble Tea v2 (a separate Go module).
 
 ## Development
 
