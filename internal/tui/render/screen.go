@@ -163,16 +163,28 @@ func footerLine(s state.State, w int) string {
 }
 
 func picker(s state.State, f Frame) string {
-	lines := []string{header.Render(ansi.Truncate(fmt.Sprintf(" Resume a session · filter: %s▏", s.Picker.Filter)+strings.Repeat(" ", f.Width), f.Width, ""))}
+	scope := "this directory · tab: all"
+	if s.Picker.All {
+		scope = "all directories · tab: this directory"
+	}
+	lines := []string{header.Render(ansi.Truncate(fmt.Sprintf(" Resume a session · %s · filter: %s▏", scope, s.Picker.Filter)+strings.Repeat(" ", f.Width), f.Width, ""))}
 	list := s.Picker.Filtered()
 	if len(list) == 0 {
-		lines = append(lines, "", dim.Render("  no sessions match"))
+		empty := "  no sessions match"
+		if !s.Picker.All && s.Picker.Filter == "" {
+			empty = "  no sessions in this directory · tab shows all · esc starts a new one"
+		}
+		lines = append(lines, "", dim.Render(empty))
 	}
 	room := f.Height - 3
 	start := max(0, min(s.Picker.Selected-room/2, len(list)-room))
 	for i := start; i < len(list) && i < start+room; i++ {
 		in := list[i]
-		row := fmt.Sprintf(" %s  %-9s %2d runs  %-11s %-12s %s", short(in.ID), age(s.Now, in.LastActivity), in.Runs, in.Status, in.Model, oneLine(in.FirstPrompt))
+		row := fmt.Sprintf(" %s  %-9s %7s  %-11s %-12s ", short(in.ID), age(s.Now, in.LastActivity), plural(in.Runs, "run"), in.Status, in.Model)
+		if s.Picker.All {
+			row += fmt.Sprintf("%-24s ", ansi.Truncate(home(in.Workspace), 24, "…"))
+		}
+		row += oneLine(in.FirstPrompt)
 		row = ansi.Truncate(row, f.Width, "…")
 		if i == s.Picker.Selected {
 			row = selected.Render(row + strings.Repeat(" ", max(f.Width-ansi.StringWidth(row), 0)))
@@ -182,7 +194,7 @@ func picker(s state.State, f Frame) string {
 	for len(lines) < f.Height-1 {
 		lines = append(lines, "")
 	}
-	lines = append(lines, dim.Render(" type to filter · ↑↓ choose · enter resume · esc back"))
+	lines = append(lines, dim.Render(" type to filter · ↑↓ choose · enter resume · tab this directory/all · esc back"))
 
 	return strings.Join(lines, "\n")
 }

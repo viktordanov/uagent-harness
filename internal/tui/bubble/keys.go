@@ -72,10 +72,18 @@ func (m Model) onPickerKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.dispatch(state.PickerMove{Delta: 1})
 	case "enter":
 		return m.dispatch(state.PickerChoose{})
-	case "esc", "ctrl+c":
+	case "ctrl+c":
+		if m.st.SessionID == "" {
+			return m.dispatch(state.Quit{}) // the startup picker: quit, as Codex does
+		}
+
+		return m.dispatch(state.PickerCancel{})
+	case "esc":
 		return m.dispatch(state.PickerCancel{})
 	case "backspace":
 		return m.dispatch(state.PickerType{Text: "\b"})
+	case "tab":
+		return m.dispatch(state.PickerToggleAll{})
 	}
 	if msg.Text != "" {
 		return m.dispatch(state.PickerType{Text: msg.Text})

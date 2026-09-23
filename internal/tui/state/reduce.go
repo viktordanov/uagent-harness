@@ -248,7 +248,9 @@ func (s *State) onIntent(ev any) (State, []Effect) {
 	case OpenPicker:
 		return *s, []Effect{EffLoadSessions{}}
 	case SessionsLoaded:
-		s.Mode, s.Picker = ModePicker, Picker{Sessions: e.Sessions}
+		s.Mode, s.Picker = ModePicker, Picker{Sessions: e.Sessions, Local: e.Local, All: e.All}
+	case PickerToggleAll:
+		s.Picker.All, s.Picker.Selected = !s.Picker.All, 0
 	case PickerMove:
 		n := len(s.Picker.Filtered())
 		if n > 0 {
@@ -276,6 +278,9 @@ func (s *State) onIntent(ev any) (State, []Effect) {
 		return *s, []Effect{EffOpenSession{ID: list[s.Picker.Selected].ID}}
 	case PickerCancel:
 		s.Mode = ModeChat
+		if s.SessionID == "" {
+			return *s, []Effect{EffOpenSession{}} // nothing chosen at startup: start a new session
+		}
 	case HistoryLoaded:
 		s.loadHistory(e)
 	case Failed:

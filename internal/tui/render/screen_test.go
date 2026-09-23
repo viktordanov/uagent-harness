@@ -123,11 +123,13 @@ func TestScreens(t *testing.T) {
 	})
 
 	t.Run("session picker", func(t *testing.T) {
-		s := apply(base(), state.SessionsLoaded{Sessions: []session.Info{
-			{ID: "3f2a1b2c-aaaa", FirstPrompt: "Fix the failing test in pkg/foo", Runs: 3, Status: core.StatusOK, Model: "gpt-6-sol", LastActivity: t0.Add(-12 * time.Minute)},
-			{ID: "9b8c7d6e-bbbb", FirstPrompt: "Summarize this project", Runs: 1, Status: core.StatusInterrupted, Model: "gpt-6-sol", LastActivity: t0.Add(-2 * time.Hour)},
-		}}, state.PickerMove{Delta: 1})
+		infos := []session.Info{
+			{ID: "3f2a1b2c-aaaa", FirstPrompt: "Fix the failing test in pkg/foo", Runs: 3, Status: core.StatusOK, Model: "gpt-6-sol", Workspace: "/workspace/proj", LastActivity: t0.Add(-12 * time.Minute)},
+			{ID: "9b8c7d6e-bbbb", FirstPrompt: "Summarize this project", Runs: 1, Status: core.StatusInterrupted, Model: "gpt-6-sol", Workspace: "/workspace/other", LastActivity: t0.Add(-2 * time.Hour)},
+		}
+		s := apply(base(), state.SessionsLoaded{Sessions: infos, Local: infos[:1]})
 		golden(t, "picker", screen(s, ""))
+		golden(t, "picker-all", screen(apply(s, state.PickerToggleAll{}, state.PickerMove{Delta: 1}), ""))
 	})
 }
 

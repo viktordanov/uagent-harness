@@ -263,8 +263,11 @@ func TestReduce_HistoryAndSessions(t *testing.T) {
 
 	t.Run("picker filters and chooses", func(t *testing.T) {
 		infos := []session.Info{{ID: "aaaa1111", FirstPrompt: "fix the build"}, {ID: "bbbb2222", FirstPrompt: "write docs"}}
-		p, _ := apply(s, state.SessionsLoaded{Sessions: infos})
+		p, _ := apply(s, state.SessionsLoaded{Sessions: infos, Local: infos[:1]})
 		assert.Equal(t, state.ModePicker, p.Mode)
+		assert.Len(t, p.Picker.Filtered(), 1, "this directory's sessions first, as in Codex")
+		p, _ = apply(p, state.PickerToggleAll{})
+		assert.Len(t, p.Picker.Filtered(), 2, "tab shows every directory")
 		p, _ = apply(p, state.PickerType{Text: "d"}, state.PickerType{Text: "o"}, state.PickerType{Text: "c"})
 		assert.Len(t, p.Picker.Filtered(), 1)
 		p, effects := apply(p, state.PickerChoose{})
@@ -285,4 +288,13 @@ func withEffort(e string) session.Settings {
 	s.Effort = e
 
 	return s
+}
+
+func TestReduce_StartupPicker(t *testing.T) {
+	s, _ := apply(state.New(t0), state.SessionsLoaded{})
+
+	s, effects := apply(s, state.PickerCancel{})
+
+	assert.Equal(t, state.ModeChat, s.Mode)
+	assert.Equal(t, []state.Effect{state.EffOpenSession{}}, effects, "leaving the startup picker starts a new session")
 }
