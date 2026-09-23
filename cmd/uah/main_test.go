@@ -92,10 +92,10 @@ func TestUnknownFlag(t *testing.T) {
 	assert.Contains(t, res.stderr, "no-such-flag")
 }
 
-func TestTUINotImplementedYet(t *testing.T) {
+func TestTUINeedsATerminal(t *testing.T) {
 	res := uah(t)
-	assert.Equal(t, 1, res.code)
-	assert.Contains(t, res.stderr, "not implemented yet")
+	assert.Equal(t, 2, res.code)
+	assert.Contains(t, res.stderr, "use uah run")
 }
 
 // fakeEnv points uah at the fake runner replaying fixture, in a fresh state dir.

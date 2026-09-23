@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -88,16 +89,21 @@ type setup struct {
 	options  session.Options
 }
 
-// resolveSetup combines flags, the environment, the resumed session, and
-// defaults, in that order of precedence.
-func resolveSetup(cmd *cli.Command, logOutput *os.File) (setup, error) {
+// resolveSetup combines flags, the environment, the resumed session (from
+// --session), the configuration file, and defaults, in that order.
+func resolveSetup(cmd *cli.Command, logOutput io.Writer) (setup, error) {
+	return setupFor(cmd, logOutput, cmd.String("session"))
+}
+
+// setupFor is resolveSetup for the session ref ("" starts a new session).
+func setupFor(cmd *cli.Command, logOutput io.Writer, ref string) (setup, error) {
 	stateDir, err := filepath.Abs(cmd.String("state-dir"))
 	if err != nil {
 		return setup{}, fmt.Errorf("failed to resolve state dir: %w", err)
 	}
 	var resumed session.Info
 	opts := session.Options{}
-	if ref := cmd.String("session"); ref != "" {
+	if ref != "" {
 		info, err := resolveSession(stateDir, ref)
 		if err != nil {
 			return setup{}, err

@@ -5,11 +5,10 @@ import (
 	"fmt"
 	"os"
 	"time"
+	"tuibench/internal/sim"
 
 	"github.com/gdamore/tcell/v3"
 	"github.com/gdamore/tcell/v3/color"
-
-	"tuibench/internal/sim"
 )
 
 var (

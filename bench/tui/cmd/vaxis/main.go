@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"os"
 	"time"
+	"tuibench/internal/sim"
 
 	"go.rockorager.dev/vaxis"
-
-	"tuibench/internal/sim"
 )
 
 type evMsg sim.Event

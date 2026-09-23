@@ -1,0 +1,158 @@
+// Package state is the TUI's model and reducer. It has no terminal or
+// framework code: Reduce folds events and user intents into State and returns
+// effects for the shell to run, so any renderer can drive it and plain tests
+// can check it.
+package state
+
+import (
+	"time"
+
+	"github.com/viktordanov/uagent/core"
+
+	"github.com/viktordanov/uagent-harness/internal/engine"
+	"github.com/viktordanov/uagent-harness/internal/session"
+)
+
+// Mode is the screen being shown.
+type Mode int
+
+const (
+	ModeChat Mode = iota
+	ModePicker
+)
+
+// Queued is a message waiting for the agent.
+type Queued struct {
+	ID   string
+	Text string
+}
+
+// Live is the run in progress.
+type Live struct {
+	RunID     string
+	Started   time.Time
+	TurnSince time.Time // zero when the model is not generating
+	Tools     int       // tools running now
+}
+
+// Totals add up the session's finished runs.
+type Totals struct {
+	Runs        int
+	Turns       int
+	ToolCalls   int
+	MaxParallel int
+	Tokens      core.Tokens
+	Overlap     time.Duration
+	ToolBusy    time.Duration
+}
+
+// Picker is the session list.
+type Picker struct {
+	Sessions []session.Info
+	Filter   string
+	Selected int
+}
+
+// State is everything the TUI shows.
+type State struct {
+	Mode      Mode
+	SessionID string
+	Resumed   bool
+	Engine    string
+	Caps      engine.Capabilities
+	Settings  session.Settings
+	Files     []string // instruction files in the prompt
+
+	Items []Item
+	index map[string]int
+
+	Queue  []Queued
+	Live   *Live
+	Busy   bool // from a message sent until the session is idle
+	Totals Totals
+
+	ShowReasoning bool
+	Scroll        int // lines scrolled up from the bottom
+	Picker        Picker
+	Now           time.Time
+
+	// Status is a transient hint in the footer, such as a pending confirmation.
+	Status      string
+	escArmed    time.Time
+	quitArmed   time.Time
+	Quitting    bool
+	nextNoticeN int
+}
+
+// New returns an empty state.
+func New(now time.Time) State {
+	return State{index: map[string]int{}, Now: now}
+}
+
+// Intents are what the user asks for, translated from keys by the shell.
+type (
+	// Submit is Enter with the composer text; text starting with "/" is a command.
+	Submit struct{ Text string }
+	// Steer is Ctrl+Enter with the composer text.
+	Steer struct{ Text string }
+	// Esc is the Escape key; twice while busy interrupts.
+	Esc struct{}
+	// Quit is Ctrl+C with an empty composer; twice while busy quits.
+	Quit struct{}
+	// EditLastQueued is Up on an empty composer.
+	EditLastQueued struct{}
+	// ToggleReasoning shows or hides reasoning summaries.
+	ToggleReasoning struct{}
+	// ScrollBy scrolls the transcript; positive is up.
+	ScrollBy struct{ Lines int }
+	// ScrollToBottom follows new output again.
+	ScrollToBottom struct{}
+	// StepEffort lowers (-1) or raises (+1) the effort.
+	StepEffort struct{ Delta int }
+	// OpenPicker loads the session list.
+	OpenPicker struct{}
+	// Tick advances the clock for timers and spinners.
+	Tick struct{ Now time.Time }
+	// HistoryLoaded fills the transcript of a resumed session before it opens.
+	HistoryLoaded struct {
+		SessionID string
+		Runs      []session.LoadedRun
+	}
+	// SessionsLoaded fills the picker.
+	SessionsLoaded struct{ Sessions []session.Info }
+	// PickerMove moves the picker selection.
+	PickerMove struct{ Delta int }
+	// PickerType edits the picker filter; Backspace is Text "\b".
+	PickerType struct{ Text string }
+	// PickerChoose opens the selected session.
+	PickerChoose struct{}
+	// PickerCancel closes the picker.
+	PickerCancel struct{}
+	// Failed reports an effect that failed.
+	Failed struct{ Err error }
+)
+
+// Filtered returns the picker sessions that match the filter.
+func (p Picker) Filtered() []session.Info {
+	if p.Filter == "" {
+		return p.Sessions
+	}
+	var out []session.Info
+	for _, s := range p.Sessions {
+		if containsFold(s.ID, p.Filter) || containsFold(s.FirstPrompt, p.Filter) || containsFold(s.Model, p.Filter) {
+			out = append(out, s)
+		}
+	}
+
+	return out
+}
+
+// Item returns the item with key, if any.
+func (s State) Item(key string) (Item, bool) {
+	i, ok := s.index[key]
+	if !ok {
+		return Item{}, false
+	}
+
+	return s.Items[i], true
+}

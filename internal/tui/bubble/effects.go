@@ -1,0 +1,103 @@
+package bubble
+
+import (
+	"errors"
+	"fmt"
+
+	tea "charm.land/bubbletea/v2"
+
+	"github.com/viktordanov/uagent-harness/internal/session"
+	"github.com/viktordanov/uagent-harness/internal/tui/state"
+)
+
+var errNoSession = errors.New("no session is open")
+
+// run turns an effect into a command that does its I/O off the update loop.
+func (m Model) run(e state.Effect) tea.Cmd {
+	sess := m.sess
+	fail := func(err error) tea.Msg { return state.Failed{Err: err} }
+	withSession := func(fn func(*session.Session) error) tea.Cmd {
+		return func() tea.Msg {
+			if sess == nil {
+				return fail(errNoSession)
+			}
+			if err := fn(sess); err != nil {
+				return fail(err)
+			}
+
+			return nil
+		}
+	}
+	switch e := e.(type) {
+	case state.EffSubmit:
+		return withSession(func(s *session.Session) error { _, err := s.Submit(e.Text); return err })
+	case state.EffSteer:
+		return withSession(func(s *session.Session) error { _, err := s.SteerNow(e.Text); return err })
+	case state.EffInterrupt:
+		return withSession(func(s *session.Session) error { return s.Interrupt() })
+	case state.EffSetSettings:
+		return withSession(func(s *session.Session) error { _, err := s.SetSettings(e.Settings); return err })
+	case state.EffWithdraw:
+		return func() tea.Msg {
+			if sess == nil {
+				return fail(errNoSession)
+			}
+			ok, err := sess.Withdraw(e.ID)
+			if err != nil {
+				return fail(err)
+			}
+			if !ok {
+				return nil // already sent
+			}
+
+			return withdrawnMsg{text: e.Text}
+		}
+	case state.EffLoadSessions:
+		return func() tea.Msg {
+			infos, err := m.deps.Sessions()
+			if err != nil {
+				return fail(err)
+			}
+
+			return state.SessionsLoaded{Sessions: infos}
+		}
+	case state.EffOpenSession:
+		return m.switchTo(e.ID)
+	case state.EffQuit:
+		return func() tea.Msg {
+			if sess != nil {
+				_ = sess.Close()
+			}
+
+			return quitMsg{}
+		}
+	}
+
+	return nil
+}
+
+// open opens a session and reports it with its history.
+func (m Model) open(id string) tea.Cmd {
+	return func() tea.Msg {
+		s, history, err := m.deps.Open(m.ctx, id)
+		if err != nil {
+			return state.Failed{Err: fmt.Errorf("failed to open session: %w", err)}
+		}
+
+		return openedMsg{sess: s, history: history}
+	}
+}
+
+// switchTo closes the current session and opens another.
+func (m Model) switchTo(id string) tea.Cmd {
+	sess := m.sess
+	next := m.open(id)
+
+	return func() tea.Msg {
+		if sess != nil {
+			_ = sess.Close()
+		}
+
+		return next()
+	}
+}
