@@ -33,7 +33,7 @@ func newFakeEngine(caps engine.Capabilities) *fakeEngine {
 func (e *fakeEngine) Name() string                      { return "fake" }
 func (e *fakeEngine) Capabilities() engine.Capabilities { return e.caps }
 
-func (e *fakeEngine) Start(_ context.Context, req core.Request, sink core.Sink) (engine.Run, error) {
+func (e *fakeEngine) Start(_ context.Context, req core.Request, _ engine.Options, sink core.Sink) (engine.Run, error) {
 	if e.startErr != nil {
 		return nil, e.startErr
 	}
@@ -60,6 +60,9 @@ type fakeRun struct {
 	result core.Result
 	sent   []core.UserInput
 	effort string
+	// unread accepts live messages without ever reading them, like a run
+	// that went idle just as they arrived.
+	unread bool
 }
 
 func (r *fakeRun) wait() {
@@ -76,7 +79,9 @@ func (r *fakeRun) Send(in core.UserInput) error {
 		return engine.ErrUnsupported
 	}
 	r.sent = append(r.sent, in)
-	r.sink(core.UserMessage{At: time.Now(), ID: in.ID, Text: in.Text})
+	if !r.unread {
+		r.sink(core.UserMessage{At: time.Now(), ID: in.ID, Text: in.Text})
+	}
 
 	return nil
 }
@@ -90,9 +95,10 @@ func (r *fakeRun) SetEffort(e string) error {
 	return nil
 }
 
-func (r *fakeRun) SetModel(string) error { return engine.ErrUnsupported }
-func (r *fakeRun) Interrupt()            { r.finish(core.StatusInterrupted) }
-func (r *fakeRun) Kill()                 { r.finish(core.StatusInterrupted) }
+func (r *fakeRun) SetModel(string) error       { return engine.ErrUnsupported }
+func (r *fakeRun) SetServiceTier(string) error { return engine.ErrUnsupported }
+func (r *fakeRun) Interrupt()                  { r.finish(core.StatusInterrupted) }
+func (r *fakeRun) Kill()                       { r.finish(core.StatusInterrupted) }
 
 func (r *fakeRun) Wait() (core.Result, error) {
 	<-r.done
@@ -397,4 +403,30 @@ func TestSession_CloseInterruptsTheLiveRun(t *testing.T) {
 	}
 	_, err = h.s.Submit("after close")
 	require.ErrorIs(t, err, session.ErrClosed)
+}
+
+func TestSession_RequeuesLiveMessagesTheRunNeverRead(t *testing.T) {
+	h := newHarness(t, engine.Capabilities{LiveInput: true})
+	_, err := h.s.Submit("first")
+	require.NoError(t, err)
+	run := <-h.eng.started
+	run.unread = true
+	steer, err := h.s.SteerNow("also this")
+	require.NoError(t, err)
+	h.until(isType[session.InputSent])
+	run.finish(core.StatusOK)
+
+	next := <-h.eng.started
+	require.Len(t, next.req.Messages, 1)
+	assert.Equal(t, steer.ID, next.req.Messages[0].ID, "the next run carries the unread message")
+	h.until(func(e core.Event) bool {
+		d, ok := e.(session.InputDelivered)
+
+		return ok && d.ID == steer.ID
+	})
+	next.finish(core.StatusOK)
+	h.until(isType[session.Idle])
+	for _, e := range h.events {
+		assert.NotEqual(t, "session.InputFailed", fmt.Sprintf("%T", e))
+	}
 }

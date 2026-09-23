@@ -17,6 +17,8 @@ import (
 	"github.com/viktordanov/uagent/harness"
 
 	"github.com/viktordanov/uagent-harness/internal/config"
+	"github.com/viktordanov/uagent-harness/internal/engine"
+	"github.com/viktordanov/uagent-harness/internal/engine/embedded"
 	"github.com/viktordanov/uagent-harness/internal/engine/process"
 	"github.com/viktordanov/uagent-harness/internal/instructions"
 	"github.com/viktordanov/uagent-harness/internal/session"
@@ -26,7 +28,12 @@ const (
 	codexProvider     = "openai-codex"
 	defaultCodexModel = "gpt-6-sol"
 	defaultEffort     = "high"
+
+	engineEmbedded = "embedded"
+	engineProcess  = "process"
 )
+
+var engines = []string{engineEmbedded, engineProcess}
 
 var logLevels = map[string]slog.Level{"debug": slog.LevelDebug, "info": slog.LevelInfo, "warn": slog.LevelWarn, "error": slog.LevelError}
 
@@ -57,7 +64,12 @@ func sessionFlags() []cli.Flag {
 			Value: harness.DefaultStateDir(), Sources: cli.EnvVars("UAGENT_STATE_DIR"), TakesFile: true,
 		},
 		&cli.StringFlag{
-			Name: "runner", Usage: "path to unreal-agent-runner", DefaultText: "~/.local/bin, then PATH",
+			Name: "engine", Usage: "embedded (the runner's packages in process: live steering, effort, model, and /fast) or process (spawn unreal-agent-runner)",
+			DefaultText: engineEmbedded, Sources: cli.EnvVars("UAH_ENGINE"), Validator: oneOf("engine", engines),
+		},
+		&cli.BoolFlag{Name: "fast", Usage: "priority processing (service_tier priority; embedded engine, openai and openai-codex)"},
+		&cli.StringFlag{
+			Name: "runner", Usage: "path to unreal-agent-runner, for the process engine", DefaultText: "~/.local/bin, then PATH",
 			Sources: cli.EnvVars("UAGENT_RUNNER"), TakesFile: true,
 		},
 		&cli.StringFlag{
@@ -85,7 +97,7 @@ func sessionFlags() []cli.Flag {
 // setup is everything needed to open a session.
 type setup struct {
 	stateDir string
-	engine   *process.Engine
+	engine   engine.Engine
 	options  session.Options
 	config   config.Config
 }
@@ -153,15 +165,14 @@ func setupFor(cmd *cli.Command, logOutput io.Writer, ref string) (setup, error) 
 		settings.SystemPrompt = prompt
 		opts.Instructions = loaded
 	}
+	if cmd.Bool("fast") || (!cmd.IsSet("fast") && cfg.Fast) {
+		settings.ServiceTier = "priority"
+	}
 	if err := settings.Validate(); err != nil {
 		return setup{}, cli.Exit(err.Error(), exitUsage)
 	}
 	opts.Settings = settings
 
-	runner, err := harness.FindRunner(cmd.String("runner"))
-	if err != nil {
-		return setup{}, cli.Exit(err.Error(), exitUsage)
-	}
 	maxDiskText := cmd.String("max-disk")
 	if !cmd.IsSet("max-disk") && cfg.MaxDisk != "" {
 		maxDiskText = cfg.MaxDisk
@@ -171,7 +182,26 @@ func setupFor(cmd *cli.Command, logOutput io.Writer, ref string) (setup, error) 
 		return setup{}, cli.Exit("max_disk: "+err.Error(), exitUsage)
 	}
 	logger := slog.New(slog.NewTextHandler(logOutput, &slog.HandlerOptions{Level: logLevels[cmd.String("log-level")]}))
-	eng := process.New(harness.Config{RunnerPath: runner, StateDir: stateDir, MaxDisk: maxDisk, Logger: logger})
+	var eng engine.Engine
+	switch pick(cmd, "engine", "", cfg.Engine, engineEmbedded) {
+	case engineProcess:
+		if settings.ServiceTier != "" {
+			return setup{}, cli.Exit("--fast needs the embedded engine", exitUsage)
+		}
+		runner, err := harness.FindRunner(cmd.String("runner"))
+		if err != nil {
+			return setup{}, cli.Exit(err.Error(), exitUsage)
+		}
+		eng = process.New(harness.Config{RunnerPath: runner, StateDir: stateDir, MaxDisk: maxDisk, Logger: logger})
+	case engineEmbedded:
+		emb := embedded.New(embedded.Config{StateDir: stateDir, MaxDisk: maxDisk, Logger: logger, Provider: settings.Provider})
+		if settings.ServiceTier != "" && !emb.Capabilities().ServiceTier {
+			return setup{}, cli.Exit("--fast needs the openai or openai-codex provider", exitUsage)
+		}
+		eng = emb
+	default:
+		return setup{}, cli.Exit("invalid engine "+cfg.Engine+" (want embedded or process)", exitUsage)
+	}
 
 	return setup{stateDir: stateDir, engine: eng, options: opts, config: cfg}, nil
 }

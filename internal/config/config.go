@@ -20,6 +20,10 @@ type Config struct {
 	Effort   string `toml:"effort"`
 	Timeout  string `toml:"timeout"`
 	MaxDisk  string `toml:"max_disk"`
+	// Engine is "embedded" (the default) or "process".
+	Engine string `toml:"engine"`
+	// Fast asks for priority processing on the embedded engine.
+	Fast bool `toml:"fast"`
 
 	Instructions Instructions `toml:"instructions"`
 	TUI          TUI          `toml:"tui"`

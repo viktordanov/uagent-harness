@@ -58,10 +58,13 @@ type Session struct {
 	done chan struct{}
 
 	// Owned by the loop goroutine.
-	settings             Settings
-	state                State
-	queue                []core.UserInput
-	sent                 map[string]bool
+	settings Settings
+	state    State
+	queue    []core.UserInput
+	sent     map[string]bool
+	// live are messages sent into a running run, in order; the ones it had
+	// not read when it ended go out again with the next run.
+	live                 []core.UserInput
 	run                  engine.Run
 	restartAfterStop     bool
 	interruptWhenStarted bool
@@ -289,6 +292,7 @@ func (s *Session) onSubmit(c cmdSubmit) core.UserInput {
 		if c.steer && s.caps.LiveInput {
 			if err := s.run.Send(input); err == nil {
 				s.markSent([]core.UserInput{input})
+				s.live = append(s.live, input)
 
 				return input
 			}
@@ -322,9 +326,12 @@ func (s *Session) onSettings(next Settings) Applied {
 		if next.Model != prev.Model {
 			live = live && s.run.SetModel(next.Model) == nil
 		}
-		onlyLiveFields := next.ServiceTier == prev.ServiceTier && next.Provider == prev.Provider &&
-			next.Workspace == prev.Workspace && next.BaseURL == prev.BaseURL
-		if live && onlyLiveFields && (next.Effort != prev.Effort || next.Model != prev.Model) {
+		if next.ServiceTier != prev.ServiceTier {
+			live = live && s.run.SetServiceTier(next.ServiceTier) == nil
+		}
+		onlyLiveFields := next.Provider == prev.Provider && next.Workspace == prev.Workspace && next.BaseURL == prev.BaseURL
+		changed := next.Effort != prev.Effort || next.Model != prev.Model || next.ServiceTier != prev.ServiceTier
+		if live && onlyLiveFields && changed {
 			applied = AppliedLive
 		}
 	}
@@ -349,9 +356,10 @@ func (s *Session) startRun(inputs []core.UserInput) {
 	s.state = StateStarting
 	s.markSent(inputs)
 	req := s.settings.request(s.id, inputs)
+	tier := s.settings.ServiceTier
 	sink := func(e core.Event) { s.in <- evRun{event: e} }
 	go func() {
-		run, err := s.eng.Start(s.ctx, req, sink)
+		run, err := s.eng.Start(s.ctx, req, engine.Options{ServiceTier: tier}, sink)
 		s.in <- evStarted{run: run, err: err, inputs: inputs}
 	}()
 }
@@ -415,6 +423,11 @@ func (s *Session) onEnded(m evEnded) bool {
 	if m.err != nil {
 		s.emit(Notice{At: time.Now(), Level: "error", Message: m.err.Error()})
 	}
+	userStopped := s.state == StateStopping && !s.restartAfterStop
+	if s.closeReply == nil {
+		s.requeueUnread(userStopped)
+	}
+	s.live = nil
 	if len(s.sent) > 0 {
 		ids := make([]string, 0, len(s.sent))
 		for id := range s.sent {
@@ -429,7 +442,6 @@ func (s *Session) onEnded(m evEnded) bool {
 
 		return true
 	}
-	userStopped := s.state == StateStopping && !s.restartAfterStop
 	s.state = StateIdle
 	s.restartAfterStop = false
 	if len(s.queue) > 0 && !userStopped {
@@ -442,6 +454,24 @@ func (s *Session) onEnded(m evEnded) bool {
 	s.emit(Idle{At: time.Now()})
 
 	return false
+}
+
+// requeueUnread puts messages sent into the run that it never read back at
+// the front of the queue. After a user stop they show as queued again.
+func (s *Session) requeueUnread(userStopped bool) {
+	var unread []core.UserInput
+	for _, in := range s.live {
+		if s.sent[in.ID] {
+			delete(s.sent, in.ID)
+			unread = append(unread, in)
+		}
+	}
+	s.queue = slices.Concat(unread, s.queue)
+	if userStopped {
+		for _, in := range unread {
+			s.emit(InputQueued{At: time.Now(), Input: in})
+		}
+	}
 }
 
 func (s *Session) finishClose(err error) {

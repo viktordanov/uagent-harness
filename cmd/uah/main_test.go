@@ -16,6 +16,7 @@ import (
 
 	"github.com/viktordanov/uagent/testing/fixtures"
 
+	"github.com/viktordanov/uagent-harness/testing/fakellm"
 	"github.com/viktordanov/uagent-harness/testing/harnesstest"
 )
 
@@ -105,6 +106,7 @@ func fakeEnv(t *testing.T, fixture string) (*harnesstest.Env, []string) {
 
 	return e, []string{
 		"UAGENT_RUNNER=" + harnesstest.FakeRunner(t),
+		"UAH_ENGINE=process",
 		"UAGENT_STATE_DIR=" + e.StateDir,
 		"CODEX_HOME=" + e.CodexHome,
 		"FAKERUNNER_FIXTURE=" + fixtures.Path(fixture),
@@ -256,4 +258,29 @@ func TestRunFailures(t *testing.T) {
 		res := uahWith(t, env, "", "run", "-e", "huge", "hi")
 		assert.Equal(t, 2, res.code)
 	})
+}
+
+// TestRunEmbedded runs `uah run` on the embedded engine against the fake
+// model, with --stdin messages and --fast.
+func TestRunEmbedded(t *testing.T) {
+	e := harnesstest.NewEnv(t)
+	llm := fakellm.New(t, fakellm.Reply{Text: "Looking.", Commands: []string{"echo hi"}}, fakellm.Reply{Text: "first answer"}, fakellm.Reply{Text: "second answer"})
+	env := []string{
+		"UAH_ENGINE=embedded",
+		"UAGENT_STATE_DIR=" + e.StateDir,
+		"OPENAI_API_KEY=test-key",
+		"UNREAL_HARNESS_LLM_PROVIDER=",
+		"UNREAL_HARNESS_LLM_MODEL=",
+		"XDG_CONFIG_HOME=" + filepath.Join(e.StateDir, "..", "config"),
+	}
+
+	res := uahWith(t, env, "and a follow-up\n", "run", "--stdin", "--fast", "--provider", "openai", "-m", "gpt-test",
+		"--base-url", llm.URL, "-C", e.Workspace, "first question")
+
+	require.Equal(t, 0, res.code, res.stderr)
+	assert.Equal(t, "first answer\nsecond answer\n", res.stdout)
+	reqs := llm.Requests()
+	require.Len(t, reqs, 3)
+	assert.Equal(t, "priority", reqs[0].ServiceTier)
+	assert.Equal(t, []string{"first question", "and a follow-up"}, reqs[2].UserTexts)
 }

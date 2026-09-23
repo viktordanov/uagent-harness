@@ -111,7 +111,7 @@ func cmdEffort(s *State, args string) []Effect {
 
 func cmdFast(s *State, _ string) []Effect {
 	if !s.Caps.ServiceTier {
-		s.notice("warning", "/fast needs the embedded engine, which the harness does not have yet")
+		s.notice("warning", "/fast needs the embedded engine and the openai or openai-codex provider")
 
 		return nil
 	}

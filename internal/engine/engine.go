@@ -1,6 +1,6 @@
 // Package engine abstracts how the harness drives unreal-agent-runner. The
-// process engine spawns the runner through uagent; the embedded engine (a
-// later milestone) runs the runner's packages in process.
+// process engine spawns the runner through uagent; the embedded engine runs
+// the runner's packages in process, so messages and settings reach a live run.
 package engine
 
 import (
@@ -27,7 +27,13 @@ type Engine interface {
 	Capabilities() Capabilities
 	// Start begins a run. The sink receives RunStarted first and RunFinished
 	// last once Start succeeds, from one goroutine at a time.
-	Start(ctx context.Context, req core.Request, sink core.Sink) (Run, error)
+	Start(ctx context.Context, req core.Request, opts Options, sink core.Sink) (Run, error)
+}
+
+// Options are run settings that core.Request does not carry.
+type Options struct {
+	// ServiceTier is "" or "priority" (needs Capabilities.ServiceTier).
+	ServiceTier string
 }
 
 // Run is a started run.
@@ -38,6 +44,8 @@ type Run interface {
 	SetEffort(effort string) error
 	// SetModel changes the model for the next model request (ErrUnsupported without LiveModel).
 	SetModel(model string) error
+	// SetServiceTier changes the tier for the next model request (ErrUnsupported without ServiceTier).
+	SetServiceTier(tier string) error
 	// Interrupt stops the run gracefully.
 	Interrupt()
 	// Kill stops the run at once.
