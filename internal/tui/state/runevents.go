@@ -5,6 +5,7 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
+	"github.com/viktordanov/uagent-harness/internal/images"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
 
@@ -25,7 +26,7 @@ func (s *State) onRunEvent(ev core.Event) { //nolint:gocyclo // a dispatch switc
 			return
 		}
 		if !s.update("msg:"+e.ID, func(it *Item) { it.Input = InputDelivered }) {
-			s.put(Item{Kind: KindUser, Key: "msg:" + e.ID, Text: e.Text, Input: InputDelivered})
+			s.put(Item{Kind: KindUser, Key: "msg:" + e.ID, Text: images.Display(e.Text), Input: InputDelivered})
 		}
 	case core.TurnStarted:
 		if s.Live != nil {

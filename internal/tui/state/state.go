@@ -11,6 +11,7 @@ import (
 
 	"github.com/viktordanov/uagent-harness/internal/compaction"
 	"github.com/viktordanov/uagent-harness/internal/engine"
+	"github.com/viktordanov/uagent-harness/internal/images"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
 
@@ -105,6 +106,9 @@ type State struct {
 	Config *ConfigPanel
 	// Mouse reports the mouse to the TUI, so the wheel scrolls.
 	Mouse bool
+	// Attached are the images pasted into the composer, in order; each
+	// placeholder in the draft names one (see images.go).
+	Attached []images.Image
 
 	// Status is a transient hint in the footer, such as a pending confirmation.
 	Status      string

@@ -10,6 +10,8 @@ import (
 
 	"github.com/urfave/cli/v3"
 
+	"github.com/viktordanov/uagent-harness/internal/images"
+	"github.com/viktordanov/uagent-harness/internal/images/clipboard"
 	"github.com/viktordanov/uagent-harness/internal/models"
 	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/internal/store"
@@ -62,6 +64,8 @@ func openTUI(ctx context.Context, cmd *cli.Command, launch tuiLaunch) error {
 		Version:     buildVersion(),
 		Config:      tuiConfig(cmd),
 		SaveConfig:  tuiSaveConfig(ctx, cmd),
+		Images:      &images.Store{Dir: images.DirIn(st.StateDir)},
+		Clipboard:   clipboard.System(),
 		Open: func(ctx context.Context, id string) (*session.Session, []session.LoadedRun, error) {
 			setup, err := setupFor(ctx, cmd, logFile, id)
 			if err != nil {

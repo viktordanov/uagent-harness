@@ -4,7 +4,7 @@
 The terminal UI is three packages: a pure reducer (`state`), a pure renderer (`render`), and a thin Bubble Tea v2 shell (`bubble`) that does all I/O.
 
 <!-- memoria:export id="summary" -->
-The TUI is a pure reducer from session events and user intents to state and effects, a pure renderer from state to screen lines, and a thin Bubble Tea v2 shell that turns keys into intents and runs the effects against the session. Keys never change meaning: enter queues while the agent works, ctrl+enter sends now, and esc esc interrupts.
+The TUI is a pure reducer from session events and user intents to state and effects, a pure renderer from state to screen lines, and a thin Bubble Tea v2 shell that turns keys into intents and runs the effects against the session. Keys never change meaning: enter queues while the agent works, ctrl+enter sends now, esc esc interrupts, and ctrl+v pastes an image.
 <!-- /memoria:export -->
 
 The layout, screens, and framework choice are recorded in the [TUI design](../../docs/design/tui.md); the benchmark behind Bubble Tea v2 is in [bench/tui](../../bench/tui/README.md).
@@ -17,8 +17,9 @@ The layout, screens, and framework choice are recorded in the [TUI design](../..
 6. [/config](#config)
 7. [The agent view](#the-agent-view)
 8. [The look](#the-look)
-9. [Extending the TUI](#extending-the-tui)
-10. [Tests](#tests)
+9. [Images](#images)
+10. [Extending the TUI](#extending-the-tui)
+11. [Tests](#tests)
 <!-- /memoria:section -->
 
 <!-- memoria:section id="packages" files="state/state.go state/reduce.go state/effects.go render/screen.go render/items.go bubble/model.go bubble/effects.go bubble/keys.go" -->
@@ -30,7 +31,7 @@ The layout, screens, and framework choice are recorded in the [TUI design](../..
 | `render` | Draws `State` into lines with lipgloss: `Screen(state, cache, frame)` returns the frame and the composer's row | Import Bubble Tea. It gets the composer's rendered view in `Frame` |
 | `bubble` | The Bubble Tea `Model`: maps keys to intents, runs effects as `tea.Cmd`s, batches session events, owns the composer textarea, and draws frames with `render` | Hold UI state of its own beyond the composer, the window size, and the open session |
 
-When the program ends, `bubble.Run` returns an `Exit` (the open session and its token totals), and `cmd/uah` prints Codex's exit summary from it: the token usage and "To continue this session, run: uah resume <id>", only for a session that ran. Because `state` and `render` have no framework code, a different terminal library would replace only `bubble`. `cmd/uah/tui.go` builds `bubble.Deps` (how to open a session, list sessions, and count activity) and calls `bubble.Run`.
+When the program ends, `bubble.Run` returns an `Exit` (the open session and its token totals), and `cmd/uah` prints Codex's exit summary from it: the token usage and "To continue this session, run: uah resume <id>", only for a session that ran. Because `state` and `render` have no framework code, a different terminal library would replace only `bubble`. `cmd/uah/tui.go` builds `bubble.Deps` (how to open a session, list sessions, count activity, store pasted images, and read the clipboard) and calls `bubble.Run`.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="flow" files="bubble/model.go bubble/effects.go bubble/keys.go state/reduce.go state/effects.go render/screen.go render/items.go" -->
@@ -95,6 +96,8 @@ The compact view draws one line per tool call, as Codex does; the detailed view 
 | ctrl+r | Show or hide reasoning summaries |
 | ↑ on the composer's first row and ↓ on its last (always, for a one-line prompt), the mouse wheel, shift+↑ / shift+↓, pgup / pgdn | Scroll the transcript; end returns to the bottom. The TUI leaves the mouse to the terminal, so text selects as usual and the wheel arrives as ↑ and ↓. `[tui] mouse = true` reports the mouse instead: the wheel then scrolls directly, and selecting needs Option (iTerm2, Terminal) or Shift (most others) |
 | ctrl+c | Clear the composer; on an empty composer, quit (twice while a run is live) |
+| ctrl+v, alt+v | Paste the clipboard's image as `[Image #N]` at the cursor, on macOS and Linux, as Codex and Claude Code do. A clipboard without an image pastes its text. See [Images](#images) |
+| backspace after `[Image #N]` | Delete the whole placeholder and its image |
 
 The approval overlay replaces the composer keys while it is open:
 
@@ -201,6 +204,20 @@ The compact view is shaped like Codex's, in amber. The choices came from the sty
 A `Theme` holds every color: the accent, dim text, the band, the breath's shades, the code colors, the diff tints (Codex's dark tints in `Amber`, GitHub's light ones in `AmberLight`), and the colors `/context` tells its categories apart with. `Amber` is for dark terminals and `AmberLight` for light ones. The shell asks the terminal for its background at start (`tea.RequestBackgroundColor`); `ThemeFor` picks the theme and tints the band from that background, as Codex tints its message background, and the shell makes a new render cache for it (`NewCache(theme)`). The cache holds the theme's `Styles`, and every drawing function is a method of `Styles`, so there is no shared styling state: two caches draw two themes side by side, and render tests can run in parallel. A new theme is a new `Theme` value. Text is never colored by the theme, so it keeps the terminal's own foreground.
 <!-- /memoria:section -->
 
+<!-- memoria:section id="images" files="state/images.go bubble/images.go bubble/keys.go bubble/model.go state/menu.go" -->
+## Images
+
+The composer takes images as Codex's does; the [images design](../../docs/design/images.md) has the research and the reasons.
+
+1. ctrl+v or alt+v (`PasteImage`) runs `EffPasteImage`: the shell reads the clipboard through `Deps.Clipboard` (`internal/images/clipboard`: osascript on macOS, wl-paste or xclip on Linux) and stores the image through `Deps.Images` (`internal/images.Store`), off the update loop. A clipboard without an image falls back to the textarea's text paste.
+2. A bracketed paste that is one image file's path (quoted, shell-escaped, `file://`, or `~/`), which is also what a terminal pastes for a dropped file, becomes `AttachFile`; choosing an image file after `@` does the same in place of its path (`acceptImage`).
+3. `ImageAttached` adds the image to `State.Attached` with the next label, and `EffInsertText` puts `[Image #N] ` at the cursor. `ImageFailed` shows a warning and pastes the text it came from.
+4. `DraftChanged` drops the images whose placeholder is gone. Backspace at the end of a placeholder first deletes the rest of it (`eatPlaceholder`), so one key removes it. Numbers are not reused within a draft and not renumbered.
+5. Submit and steer join the draft's images to the message as tag lines (`images.Join`). The transcript, the queue, and a resumed session show the text without them (`images.Display`), and ↑ takes a queued message back with its images (`DraftRestored`).
+
+When the engine lacks `Images` (the process engine), a pasted image or path shows the capability table's notice, and a path stays text.
+<!-- /memoria:section -->
+
 <!-- memoria:section id="extending" files="state/commands.go state/contextview.go state/effects.go state/items.go render/contextview.go render/items.go bubble/effects.go bubble/model.go" -->
 ## Extending the TUI
 
@@ -223,7 +240,7 @@ To add an item kind, follow `KindContext`:
 To add a key, map it to an intent in `bubble/keys.go` and handle the intent in `state.Reduce`. Keep the existing keys' meanings.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="tests" files="state/reduce_test.go state/menu_test.go state/contextview_test.go state/mode_test.go render/screen_test.go render/contextview_test.go render/mode_test.go bubble/bubble_test.go bubble/approval_test.go bubble/mode_test.go state/config_test.go bubble/config_test.go render/diff_test.go" -->
+<!-- memoria:section id="tests" files="state/images_test.go bubble/images_test.go state/reduce_test.go state/menu_test.go state/contextview_test.go state/mode_test.go render/screen_test.go render/contextview_test.go render/mode_test.go bubble/bubble_test.go bubble/approval_test.go bubble/mode_test.go state/config_test.go bubble/config_test.go render/diff_test.go" -->
 ## Tests
 
 | Test | Pins |
@@ -233,5 +250,6 @@ To add a key, map it to an intent in `bubble/keys.go` and handle the intent in `
 | `bubble/bubble_test.go` | The shell end to end, with real sessions on the process engine and uagent's fake runner: sending, commands, the picker, queue and interrupt, scrolling, and the menu |
 | `bubble/approval_test.go` | Approving and declining an escalation, with real sessions on the embedded engine and `testing/fakellm` |
 | `state/mode_test.go`, `render/mode_test.go`, `bubble/mode_test.go` | shift+tab's cycle, the mode notice, the footer and header in each mode, and shift+tab through a real session |
+| `state/images_test.go`, `bubble/images_test.go` | Images: placeholders and their numbers, removal by deleting the placeholder or with one backspace, what a message sends, the transcript with placeholders live and resumed, pasted and dropped paths, `@` image files, the process engine's notice, and a real embedded session whose model request carries the image, with a fake clipboard |
 | `state/config_test.go`, `bubble/config_test.go` | `/config`: the rows and sources, toggles, cycles, typed values, what applies live, the warning when another source wins, and a real user file saved with its comments kept, with a change that would stop a session from starting undone |
 <!-- /memoria:section -->
