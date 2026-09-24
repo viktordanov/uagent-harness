@@ -36,6 +36,14 @@ Status: `todo`, `doing`, `done`, `cut` (with a reason).
 | 10 | Configuration reference and `uah config` | main session | 2, 5 | done |
 | 11 | `uah doctor`, content-based hook trust, crash-recovery test | C | 5 | done |
 | 12 | Subagents: research and plan | any free lane | — | done (built) |
+| 13 | `/context` like Claude Code | main session | 4 | done |
+| 14 | Shell completion: bash, zsh, fish | main session | — | done |
+| 15 | Module READMEs; root README as getting started, config surface, common tasks | main session + docs lane | 16–18 | doing |
+| 16 | Compaction validated for production | lane v-compaction | 4 | done |
+| 17 | Subagents validated for production; children identical to the main agent except their nested session ID | lane v-subagents | 12 | doing |
+| 18 | MCP validated for production; `/mcp` view and OAuth login; `uah mcp` | lane v-mcp | 5 | doing |
+| 19 | The chosen TUI look | main session | 17, 18 | todo |
+| 20 | Diff rendering like Codex and Claude Code | any free lane | 19 | todo |
 
 Order of starting: 1 alone (it touches everything). Then lanes A (2), B (4), C (5) in parallel. D (6, 7) starts when a lane frees up. 9 and 10 come after their dependencies merge.
 
@@ -104,6 +112,37 @@ Order of starting: 1 alone (it touches everything). Then lanes A (2), B (4), C (
 ### 12. Subagents: research and plan
 
 - In: how Codex and Claude Code run subagents (spawning, context, tools, results, limits); what the runner allows; a plan doc with the default choices. Build only if everything above is done.
+
+### 13–18. Second round
+
+- 13: `/context` breaks the last request into system prompt, instruction files, skills, tools, MCP tools, and the conversation, on a 10×10 grid, as Claude Code does.
+- 14: `uah completion bash|zsh|fish|pwsh`, with flag values and session IDs.
+- 15: each module documents itself next to its code; the root README gets you started, shows the whole configuration surface, and does common tasks as steps, linking the module READMEs.
+- 16–18: each is checked against Codex and Claude Code, fixed where it falls short, and documented in its module README. For 17, a subagent is the same as the main agent in every way (instructions, skills, sandbox, approvals, rules, auto-review, hooks, MCP, compaction, `/context`, provider settings) and built by the same code; only its session ID, nested under its parent, differs, with approvals routed through the parent and the depth limit on spawning.
+
+### 19. The chosen TUI look
+
+Picked on the style swatchbook (rounds 1–3):
+
+- The terminal's own background everywhere; only your messages and the composer get a background band.
+- Amber accents, `#ffc014` (a step from `#ffb000` toward `#ffd100`), on a dark terminal; a light-terminal variant with dark amber ink.
+- Your messages: `λ ` then the text, on the band. The composer also starts with `λ`.
+- Tool lines as a dim labeled column (`RAN  4.1s  go test ./...`, `READ`, `RUN` live in amber), from the Paper and Ink look.
+- Code blocks on a background band, with syntax colors in the amber family.
+- Subagents as a tree: `AGENT Ada  0:42`, and under it `└ ⠹ Read internal/…` with the child's current tool.
+- The working line: a pulsing `λ` and `Working (12s • esc to interrupt)`, as Codex's. The λ animation needs its own small design pass (frames, pacing, how it looks at rest) before it is built.
+- A finished turn ends with `12:14 PM · worked 1m 12s`: Codex's time and Claude Code's duration on one line.
+- Codex's box banner at the top (`λ uah (version)`, model with `/model to change`, directory), no tip.
+- Codex's footer: model, effort, directory, context left.
+
+Build it as a theme in `internal/tui/render` (styles in one place), so another theme is a new value, not new code.
+
+### 20. Diff rendering like Codex and Claude Code
+
+- File edits show as a diff under the tool line: Codex's `• Edited path (+3 -1)` header, then the changed hunks with line numbers, added lines green and removed lines red, context dim; long diffs fold with "+N lines (ctrl+t to view)".
+- Claude Code's details worth taking: line numbers in a gutter, the whole line tinted rather than only the text, and word-level highlighting inside a changed line.
+- The same diff in `uah sessions show` (plain text with `+`/`-`) and in the detailed view unfolded.
+- Source: the runner's edit and apply_patch tool results; where a tool gives no diff, compute it from the before and after content.
 
 ## Later
 
