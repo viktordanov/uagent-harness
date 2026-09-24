@@ -260,7 +260,6 @@ func TestAgents_NotifyTheParentWhenAChildEnds(t *testing.T) {
 	ev.finished()
 	close(gate)
 	ev.agentState(engine.AgentCompleted)
-	time.Sleep(100 * time.Millisecond) // a run the notification started would have asked the model by now
 	parentRequests := func() int {
 		n := 0
 		for _, r := range e.llm.Requests() {
@@ -271,11 +270,10 @@ func TestAgents_NotifyTheParentWhenAChildEnds(t *testing.T) {
 
 		return n
 	}
-	assert.Equal(t, 2, parentRequests(), "the notification starts no run")
-
 	_, err = s.Submit("what did it say?")
 	require.NoError(t, err)
 	ev.finished()
+	assert.Equal(t, 3, parentRequests(), "the notification started no run of its own; it went with the next message")
 	var last fakellm.Request
 	for _, r := range e.llm.Requests() {
 		if !isChild(r) {

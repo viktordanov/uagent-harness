@@ -42,6 +42,7 @@ Optional interfaces are the seams the session probes with a type assertion:
 | --- | --- | --- |
 | `MCPLister` | `/mcp`: each MCP server's state and tools | embedded |
 | `ContextReporter` | `/context`: the breakdown of the session's last model request | embedded |
+| `Forgetter` | The session calls `Forget` when it closes, so per-session state (the auto-review transcript, the last request for `/context`, a pending fork, a cache key) does not outlive it | embedded |
 | `io.Closer` | The session closes the engine with itself, stopping MCP servers and subagents | embedded |
 | `Subagents` | The agent tools: `Attach` returns the tools to offer a run, `ToolNames` every name it answers, `Call` runs one, `Interrupt` stops a parent's children. The engine knows no tool name, schema, or result; [internal/agents](../agents/README.md) implements it | `internal/agents` |
 | `Forker` | `Fork` copies a parent's history into a new child session for `spawn_agent`'s `fork_context`; `SetCacheKey` gives a session another prompt cache key (every subagent uses its root session's) | embedded |

@@ -128,6 +128,15 @@ func newComposer() textarea.Model {
 	return ta
 }
 
+// onBackground picks the theme for the terminal's background.
+func (m Model) onBackground(msg tea.BackgroundColorMsg) Model {
+	render.SetTheme(render.ThemeFor(msg.Color))
+	m.composer.SetStyles(composerStyles())
+	m.cache = render.NewCache()
+
+	return m
+}
+
 // composerStyles draw the composer in the theme: the λ in the accent, and
 // no backgrounds of its own, since the screen puts it on the band.
 func composerStyles() textarea.Styles {
@@ -171,11 +180,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		return m, nil
 	case tea.BackgroundColorMsg:
-		render.SetTheme(render.ThemeFor(msg.Color))
-		m.composer.SetStyles(composerStyles())
-		m.cache = render.NewCache()
-
-		return m, nil
+		return m.onBackground(msg), nil
 	case tea.MouseWheelMsg:
 		return m.onWheel(msg)
 	case tea.KeyPressMsg:
@@ -202,10 +207,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case openedMsg:
 		return m.onOpened(msg)
-	case agentOpenedMsg:
-		return m.onAgentOpened(msg)
-	case agentEventsMsg:
-		return m.onAgentEvents(msg)
+	case agentOpenedMsg, agentEventsMsg, agentWatchEndedMsg:
+		return m.onAgentMsg(msg)
 	case withdrawnMsg:
 		m.composer.SetValue(msg.text)
 		m.composer.CursorEnd()

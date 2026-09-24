@@ -94,6 +94,16 @@ type Engine struct {
 	forks, cacheKeys sync.Map
 }
 
+// Forget drops what the engine kept for a session that closed: the
+// auto-reviewer's transcript, the last request for /context, and a fork or
+// cache key it may have (engine.Forgetter).
+func (e *Engine) Forget(sessionID string) {
+	e.transcripts.Delete(sessionID)
+	e.forks.Delete(sessionID)
+	e.cacheKeys.Delete(sessionID)
+	e.last.forget(sessionID)
+}
+
 func New(cfg Config) *Engine {
 	if cfg.Getenv == nil {
 		cfg.Getenv = os.Getenv
