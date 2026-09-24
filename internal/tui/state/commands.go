@@ -29,6 +29,7 @@ func Commands() []Command {
 		{Name: "new", Aliases: []string{"clear"}, Help: "start a new session", run: func(*State, string) []Effect { return []Effect{EffOpenSession{}} }},
 		{Name: "stop", Help: "interrupt the live run; queued messages stay", WhileBusy: true, run: func(*State, string) []Effect { return []Effect{EffInterrupt{}} }},
 		{Name: "status", Help: "session, settings, and totals", WhileBusy: true, run: cmdStatus},
+		{Name: "mcp", Help: "MCP servers, their state, and their tools", WhileBusy: true, run: cmdMCP},
 		{Name: "sandbox", Help: "what commands may do: the sandbox mode (set it with --sandbox or sandbox_mode)", WhileBusy: true, run: cmdSandbox},
 		{Name: "reasoning", Help: "show or hide reasoning summaries", WhileBusy: true, run: func(s *State, _ string) []Effect { s.ShowReasoning = !s.ShowReasoning; return nil }},
 		{Name: "details", Help: "show or hide turns, run dividers, and token totals", WhileBusy: true, run: func(s *State, _ string) []Effect { s.Details = !s.Details; return nil }},

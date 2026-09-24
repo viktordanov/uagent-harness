@@ -16,12 +16,13 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
+	"github.com/viktordanov/uagent-harness/internal/mcp"
 	"github.com/viktordanov/uagent-harness/internal/sandbox"
 )
 
 // tools builds the registry the coordinator runs: Bash, ViewImage, and
-// workspace skills, as the runner registers them, with PreToolUse hooks
-// around them. Its static definitions are the tools the model is offered,
+// workspace skills, as the runner registers them, and MCP tools, with
+// PreToolUse hooks around them. Its static definitions are the tools the model is offered,
 // so a tool added or changed here reaches both.
 func (w *wiring) tools(ctx context.Context, req core.Request, sessionID session.ID) (tool.Registry, error) {
 	translators, err := w.translators(req, sessionID) //nolint:contextcheck // on Linux, the sandbox probes bwrap once per process, with its own timeout
@@ -39,6 +40,11 @@ func (w *wiring) tools(ctx context.Context, req core.Request, sessionID session.
 	for _, err := range skillErrs {
 		_, _ = fmt.Fprintf(w.l.Stderr, "skill error> %s\n", err)
 	}
+	mcpTools, err := w.mcpTools(ctx)
+	if err != nil {
+		return nil, err
+	}
+	registry = withMCP(registry, mcpTools, req.DisallowedTools)
 	req.SessionID = string(sessionID)
 
 	return withPreToolUse(ctx, registry, w.e.cfg.Hooks, req, w.l.SessionsDir), nil
@@ -75,6 +81,26 @@ func (w *wiring) translators(req core.Request, sessionID session.ID) (tool.Stati
 	}
 
 	return tool.StaticTranslators{Bash: run, ViewImage: viewimage.New(viewimage.Config{Directory: req.Workspace})}, nil
+}
+
+// mcpTools starts the MCP servers on the first run and returns their
+// tools; a server that fails to start is reported and left out.
+func (w *wiring) mcpTools(ctx context.Context) ([]mcp.Tool, error) {
+	m := w.e.cfg.MCP
+	if m == nil {
+		return nil, nil
+	}
+	tools, err := m.Tools(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to start MCP servers: %w", err)
+	}
+	for _, s := range m.Status() { //nolint:contextcheck // started above; servers outlive the run
+		if s.State == mcp.StateFailed {
+			_, _ = fmt.Fprintf(w.l.Stderr, "mcp> %s: %s\n", s.Name, s.Error)
+		}
+	}
+
+	return tools, nil
 }
 
 // policy is the configured sandbox policy for the request's workspace.

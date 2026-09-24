@@ -109,7 +109,7 @@ func TestCrashingServer(t *testing.T) {
 	require.Eventually(t, func() bool { return m.Status()[0].State == mcp.StateFailed }, 5*time.Second, 20*time.Millisecond)
 	assert.Contains(t, m.Status()[0].Error, "the server stopped")
 	_, err = m.Call(context.Background(), "s", "echo", nil)
-	require.ErrorContains(t, err, "the MCP server s is failed")
+	require.ErrorContains(t, err, "the MCP server s failed: the server stopped")
 }
 
 func TestStartupFailures(t *testing.T) {
