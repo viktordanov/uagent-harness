@@ -21,6 +21,7 @@ import (
 	"github.com/viktordanov/uagent/core"
 	"github.com/viktordanov/uagent/harness"
 
+	"github.com/viktordanov/uagent-harness/internal/approval"
 	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/instructions"
 )
@@ -38,7 +39,7 @@ type backend struct{ e *Engine }
 // inbox, context builder, and coordinator. It never loads the workspace .env.
 func (b backend) Start(ctx context.Context, l harness.Launch) (harness.Process, error) {
 	opts, _ := ctx.Value(optionsKey{}).(engine.Options)
-	w := &wiring{e: b.e, l: l, getenv: b.e.cfg.Getenv}
+	w := &wiring{e: b.e, l: l, getenv: b.e.cfg.Getenv, ask: opts.Ask}
 	a, err := w.start(ctx, opts)
 	if err != nil {
 		w.cleanup()
@@ -57,6 +58,7 @@ type wiring struct {
 	e       *Engine
 	l       harness.Launch
 	getenv  func(string) string
+	ask     approval.Ask
 	closers []func() error
 }
 

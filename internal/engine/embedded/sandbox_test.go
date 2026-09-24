@@ -20,7 +20,7 @@ import (
 
 // TestEmbedded_Sandbox runs real commands in the workspace-write sandbox:
 // writes inside the workspace work, writes elsewhere and to .git fail with a
-// hint, and escalations are refused with a reason.
+// hint, and escalations are denied with a reason in a headless session.
 func TestEmbedded_Sandbox(t *testing.T) {
 	ws := t.TempDir()
 	policy := sandbox.Policy{Mode: sandbox.WorkspaceWrite, Workspace: ws}
@@ -61,7 +61,7 @@ func TestEmbedded_Sandbox(t *testing.T) {
 	assert.Contains(t, reqs[0].Tools["Bash"], "sandbox_permissions", "the model is offered escalation")
 	outputs := strings.Join(reqs[len(reqs)-1].ToolOutputs, "\n---\n")
 	assert.Equal(t, 2, strings.Count(outputs, "sandbox likely blocked this"), outputs)
-	assert.Contains(t, outputs, "not run: running outside the workspace-write sandbox needs the user's approval")
+	assert.Contains(t, outputs, "no user can approve it in this headless run")
 }
 
 func userCache(t *testing.T) string {
