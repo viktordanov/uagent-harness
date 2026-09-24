@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"syscall"
@@ -36,13 +37,18 @@ func TestCrashRecovery(t *testing.T) {
 		"XDG_CONFIG_HOME=" + filepath.Join(e.StateDir, "..", "config"),
 		"UAH_ENGINE=", "UNREAL_HARNESS_LLM_PROVIDER=", "UNREAL_HARNESS_LLM_MODEL=",
 	}
-	args := []string{"run", "-q", "--provider", "openai", "--model", "gpt-test", "--base-url", llm.URL, "-C", e.Workspace}
+	// No sandbox: under bwrap's PID namespace, $$ would not be the host's PID.
+	args := []string{"run", "-q", "--provider", "openai", "--model", "gpt-test", "--base-url", llm.URL, "-C", e.Workspace, "--sandbox", "danger-full-access"}
 
 	first := exec.Command(uahBin, append(args, "start a long command")...)
 	first.Env = append(os.Environ(), env...)
 	require.NoError(t, first.Start())
 	pid := waitPID(t, filepath.Join(e.Workspace, "sleep.pid"))
 	t.Cleanup(func() { _ = syscall.Kill(pid, syscall.SIGKILL) })
+	// Crash once the runner has recorded the tool's process group. A crash
+	// before that leaves nothing that says which process to kill; the
+	// runner then reports "process start was not recorded".
+	waitRecorded(t, e.StateDir)
 	require.NoError(t, first.Process.Kill())
 	_ = first.Wait()
 	assert.True(t, alive(pid), "the crash leaves the tool running")
@@ -83,6 +89,23 @@ func waitPID(t *testing.T, path string) int {
 	t.Fatal("the tool never started")
 
 	return 0
+}
+
+// waitRecorded waits for the session file to record a process group.
+func waitRecorded(t *testing.T, stateDir string) {
+	t.Helper()
+	recorded := regexp.MustCompile(`"ProcessGroupID":[1-9]`)
+	deadline := time.Now().Add(30 * time.Second)
+	for time.Now().Before(deadline) {
+		files, _ := filepath.Glob(filepath.Join(stateDir, "sessions", "*.session.jsonl"))
+		for _, f := range files {
+			if data, err := os.ReadFile(f); err == nil && recorded.Match(data) {
+				return
+			}
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatal("the tool's process group was never recorded")
 }
 
 func alive(pid int) bool {
