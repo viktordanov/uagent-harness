@@ -15,20 +15,28 @@ import (
 	"testing"
 )
 
-// Reply is one model response: Bash calls, then a message. A reply with
-// commands is a tool turn; the message is the final answer otherwise.
+// Reply is one model response: tool calls, then a message. A reply with
+// calls is a tool turn; the message is the final answer otherwise.
 type Reply struct {
 	Text     string
 	Commands []string
 	// Escalated are Bash calls that ask to run outside the sandbox, with
 	// sandbox_permissions "require_escalated" and a justification.
 	Escalated []string
+	// Calls are function calls to any tool, after the Bash calls.
+	Calls []Call
 	// Gate, when set, holds the response until it is closed or the request
 	// is canceled, so a test can act while the model is "thinking".
 	Gate <-chan struct{}
 	// InputTokens, when set, is the usage the response reports as input
 	// tokens (default 100 per request so far).
 	InputTokens int
+}
+
+// Call is a function call to a tool by name, with JSON arguments.
+type Call struct {
+	Name string
+	Args string
 }
 
 // Request is what the harness sent, reduced to what tests check.
@@ -44,6 +52,8 @@ type Request struct {
 	ToolOutputs []string
 	// CallIDs are the tool calls in the input, in order.
 	CallIDs []string
+	// ToolImages are the image URLs in the tool results, in order.
+	ToolImages []string
 	// Tools are the offered tools' parameter schemas as JSON, by name.
 	Tools map[string]string
 }
@@ -171,19 +181,24 @@ func response(n int, reply Reply) responseBody {
 	for _, cmd := range reply.Escalated {
 		calls = append(calls, bashArgs{Command: cmd, Permissions: "require_escalated", Justification: "it needs the network"})
 	}
-	for i, call := range calls {
+	named := make([]Call, 0, len(calls)+len(reply.Calls))
+	for _, call := range calls {
 		args, err := json.Marshal(call)
 		if err != nil {
 			panic(err) // a struct of strings always encodes
 		}
+		named = append(named, Call{Name: "Bash", Args: string(args)})
+	}
+	named = append(named, reply.Calls...)
+	for i, call := range named {
 		output = append(output, outputItem{
 			ID: fmt.Sprintf("fc-%d-%d", n, i), Type: "function_call", Status: completed,
-			CallID: fmt.Sprintf("call-%d-%d", n, i), Name: "Bash", Arguments: string(args),
+			CallID: fmt.Sprintf("call-%d-%d", n, i), Name: call.Name, Arguments: call.Args,
 		})
 	}
 	if reply.Text != "" {
 		phase := "final_answer"
-		if len(calls) > 0 {
+		if len(named) > 0 {
 			phase = "commentary"
 		}
 		output = append(output, outputItem{
@@ -230,6 +245,7 @@ func parseRequest(body []byte) Request {
 	for _, in := range raw.Input {
 		if in.Type == "function_call_output" {
 			req.ToolOutputs = append(req.ToolOutputs, strings.Join(texts(in.Output), ""))
+			req.ToolImages = append(req.ToolImages, images(in.Output)...)
 
 			continue
 		}
@@ -247,6 +263,22 @@ func parseRequest(body []byte) Request {
 	}
 
 	return req
+}
+
+// images reads the image URLs in content parts.
+func images(content json.RawMessage) []string {
+	var parts []struct {
+		ImageURL string `json:"image_url"`
+	}
+	_ = json.Unmarshal(content, &parts)
+	var out []string
+	for _, p := range parts {
+		if p.ImageURL != "" {
+			out = append(out, p.ImageURL)
+		}
+	}
+
+	return out
 }
 
 // texts reads message content: a string, or parts with text.

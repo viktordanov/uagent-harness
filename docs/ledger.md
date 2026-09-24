@@ -28,7 +28,7 @@ Status: `todo`, `doing`, `done`, `cut` (with a reason).
 | 2 | Sandbox phase 2: approvals, rules, configured approvals | A | 1 | doing |
 | 3 | Sandbox phase 3: auto-review and the one-shot model call | A | 2 | doing |
 | 4 | Compaction, Codex's way, and the context meter | B | 1 | done |
-| 5 | MCP | C | 1 | doing |
+| 5 | MCP | C | 1 | done |
 | 6 | Session storage index and the `/status` activity heatmap | D | 1 | done |
 | 7 | `/` menu and `@` mentions | D | 1 | done |
 | 8 | AGENTS.md and skills parity with Codex | B | 4 | done |
@@ -120,3 +120,4 @@ One line per merge or decision: time, item, what landed, commit.
 - 04:44 · 8 · AGENTS.md discovery with Codex keys (project_doc_fallback_filenames, none by default so CLAUDE.md is opt-in; project_root_markers; project_doc_max_bytes; blank files skipped); skills from Codex places (.agents/skills up to the project root, $CODEX_HOME/skills, ~/.config/uagent/skills) through the runner's SkillUse. The owner's config keeps CLAUDE.md via the fallback key.
 - 04:45 · 4 · Merged lane/compaction: internal/llmcall (one-shot model call, reused by item 3), internal/compaction (Codex prompt and window table), an adapter in front of the switcher that keeps every user message verbatim and replaces the rest with a summary, persisted in sessions/<id>.compaction.jsonl; /compact, auto_compact_percent (90), model_context_window, the "N% context left" meter. The runner's own TurnCompaction is never produced by v0.1.1, so it was not usable (docs/design/compaction.md).
 - 04:47 · 9 (part) · PreCompact hook: runs before each compaction with the session and trigger; a block stops it. Remaining for 9: PermissionRequest (after item 2), MCP names already reach tool hooks (lane C).
+- 04:50 · 5 · Merged lane/mcp: internal/mcp on the official Go SDK (stdio and streamable HTTP), [mcp_servers.<name>] in Codex's format, tools as mcp__server__tool running as the runner's remote jobs (never blocking the coordinator), approval_mode per tool (prompt/writes refused until wired to the approver), /mcp. Also fixed the flaky picker test (wait for idle before /new).

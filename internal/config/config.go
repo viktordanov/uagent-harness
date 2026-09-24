@@ -14,6 +14,7 @@ import (
 	"github.com/BurntSushi/toml"
 
 	"github.com/viktordanov/uagent-harness/internal/hooks"
+	"github.com/viktordanov/uagent-harness/internal/mcp"
 )
 
 // Config holds defaults below flags, the environment, and a resumed session.
@@ -51,6 +52,8 @@ type Config struct {
 	TUI                         TUI       `toml:"tui"`
 	// Hooks are keyed by event name: [[hooks.PreToolUse]].
 	Hooks map[string][]Hook `toml:"hooks"`
+	// MCPServers are keyed by server name, in Codex's format.
+	MCPServers map[string]mcp.ServerConfig `toml:"mcp_servers"`
 
 	// Projects are keyed by absolute workspace path.
 	Projects map[string]Project `toml:"projects"`
@@ -247,7 +250,8 @@ func tagHooks(byEvent map[string][]Hook, source hooks.Source) {
 	}
 }
 
-// merge returns base with every value set in over replacing it. Hooks add up.
+// merge returns base with every value set in over replacing it. Hooks add
+// up; an MCP server replaces the one of the same name whole.
 func merge(base, over Config) Config {
 	set := func(dst *string, v string) {
 		if v != "" {
@@ -289,6 +293,12 @@ func merge(base, over Config) Config {
 			base.Hooks = map[string][]Hook{}
 		}
 		base.Hooks[event] = append(base.Hooks[event], list...)
+	}
+	for name, server := range over.MCPServers {
+		if base.MCPServers == nil {
+			base.MCPServers = map[string]mcp.ServerConfig{}
+		}
+		base.MCPServers[name] = server
 	}
 	if over.Instructions.Enabled != nil {
 		base.Instructions.Enabled = over.Instructions.Enabled
