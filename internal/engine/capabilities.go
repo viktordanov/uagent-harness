@@ -41,6 +41,9 @@ type Capabilities struct {
 	// ContextUsage means /context can break down the last request
 	// (ContextReporter).
 	ContextUsage bool
+	// Images means an image pasted into the prompt reaches the model with
+	// the message (internal/images).
+	Images bool
 }
 
 // Feature is something a session can use that not every engine runs.
@@ -64,6 +67,7 @@ const (
 	FeatureApplyPatch      Feature = "apply_patch"
 	FeatureCodexSkills     Feature = "Codex skills"
 	FeatureContextUsage    Feature = "/context"
+	FeatureImages          Feature = "pasted images"
 )
 
 // Requirement is one row of the capability table: a feature, whether an
@@ -101,6 +105,7 @@ var Table = []Requirement{
 	{FeatureApplyPatch, func(c Capabilities) bool { return c.ApplyPatch }, "the model edits files with commands"},
 	{FeatureCodexSkills, func(c Capabilities) bool { return c.CodexSkills }, "only the runner's .harness/skills load"},
 	{FeatureContextUsage, func(c Capabilities) bool { return c.ContextUsage }, "it is not available"},
+	{FeatureImages, func(c Capabilities) bool { return c.Images }, "an image cannot be attached to a message; the model can still open an image file with its ViewImage tool"},
 }
 
 // Lacks is every row of the table the capabilities do not run, in table

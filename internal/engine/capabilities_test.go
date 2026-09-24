@@ -23,10 +23,19 @@ func TestCapabilities_Table(t *testing.T) {
 
 	all := engine.Capabilities{
 		LiveInput: true, LiveEffort: true, LiveModel: true, ServiceTier: true, Compaction: true, LiveMode: true, Rules: true,
-		Approvals: true, ToolHooks: true, MCP: true, Subagents: true, ApplyPatch: true, CodexSkills: true, ContextUsage: true,
+		Approvals: true, ToolHooks: true, MCP: true, Subagents: true, ApplyPatch: true, CodexSkills: true, ContextUsage: true, Images: true,
 	}
 	assert.Empty(t, all.Lacks())
 	assert.Empty(t, all.Summary())
 	all.LiveMode = false
 	assert.Equal(t, "live settings", all.Summary(), "live settings need effort, model, and mode")
+
+	var images engine.Requirement
+	for _, r := range (engine.Capabilities{}).Lacks() {
+		if r.Feature == engine.FeatureImages {
+			images = r
+		}
+	}
+	assert.Equal(t, "pasted images: not supported by the process engine (an image cannot be attached to a message; "+
+		"the model can still open an image file with its ViewImage tool); use the embedded engine", images.Notice("process"))
 }
