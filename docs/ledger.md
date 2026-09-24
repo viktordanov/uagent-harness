@@ -10,8 +10,8 @@ Asked for by the owner after item 28; these come first.
 
 | # | Item | Lane | Status |
 | --- | --- | --- | --- |
-| 29 | MCP approvals from the CLI and the prompt; the guard hook becomes `forbid` rules | lane approvals | doing |
-| 30 | The auto-review prompt (and the compaction prompt) customizable, with a CLI that writes the defaults into the config folder as a starting point | lane approvals | doing |
+| 29 | MCP approvals from the CLI and the prompt; the guard hook becomes `forbid` rules | lane approvals | done |
+| 30 | The auto-review prompt (and the compaction prompt) customizable, with a CLI that writes the defaults into the config folder as a starting point | lane approvals | done |
 | 31 | Custom agents as Markdown files with front matter, as Claude Code and Codex have them; subagents never start subagents | lane agents3 | doing |
 | 32 | A real probe that forking a subagent reuses the provider's prompt cache | lane agents3 | doing |
 | 33 | The process engine made solid, with the behavior both engines share in one place | lane process | doing |
@@ -21,11 +21,13 @@ Asked for by the owner after item 28; these come first.
 - `uah mcp add <name> … --approve` sets `default_tools_approval_mode = "approve"` for the new server; `uah mcp approve <name> [tool] [--mode approve|prompt|writes|auto]` changes it later, through the comment-keeping editor (`internal/config/tomledit`).
 - The approval prompt for an MCP call gets "Yes, and always allow this tool", which saves `tools.<tool>.approval_mode = "approve"` for that server in the user file, as "don't ask again" saves a rule for a command.
 - This repository's `.uagent/config.toml` replaces the example guard hook with `[approvals] forbid` rules (the sandbox and the rules already cover what it blocked); the hook stays as an example in the hooks README only.
+- Built: `uah mcp add --approve`, `uah mcp approve`, and "Yes, and don't ask again for this tool" (`a`), after Codex's "Allow and don't ask me again". Open, default taken: the approval is saved in the file that configures the server (the trusted project file when it has it, else the user file), as Codex does, because a user-file entry for a project server would be dropped by the merge.
 
 ### 30. Prompts you can customize
 
 - The auto-reviewer's prompt, from a file (`[review] prompt_file`, or Codex's key if it has one), falling back to the built-in one.
 - A CLI that writes the built-in prompts into the config folder as a starting point (for example `uah prompts init` writing `~/.config/uagent/prompts/review.md` and `compact.md`, and printing the keys that use them), so customizing starts from the real defaults. Compaction already reads `compact_prompt` and `experimental_compact_prompt_file`; the CLI covers it too.
+- Built: `[review] policy_file`, `uah prompts init [--force]`, and `uah prompts show compact|review`. Open, default taken: Codex's key is `[auto_review] policy` (inline text that replaces only the policy inside the fixed template), so the file replaces the policy too, and the key is named after it; the framing and the output contract stay fixed because the verdict parser depends on them. Codex has no command that writes its built-in prompts out (its `/init` writes AGENTS.md), so the CLI stays this small.
 
 ### 31. Custom agents as Markdown
 
