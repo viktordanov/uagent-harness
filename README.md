@@ -6,26 +6,28 @@
 `uah` is a terminal coding agent built on [uagent](https://github.com/viktordanov/uagent), the wrapper around unreal-agent-runner. It works like Codex, with a TUI and a headless `uah run`.
 
 > [!NOTE]
-> This project's documentation is maintained with [Memoria](https://github.com/viktordanov/rs-memoria). Each README is tied to the code it describes, and CI fails when that code changes and nobody has reviewed the README. The docs get the same review as the code.
+> This project's documentation is maintained with [Memoria](https://github.com/viktordanov/rs-memoria). Each README is tied to the code it describes, and CI fails when that code changes and nobody has reviewed the README.
+
+---
 
 ## Features
 
-| Feature | What you get |
+| Feature | Notes |
 | --- | --- |
-| [Sessions](#resume-work) | Every session saved and searchable; `uah resume`, and the resume command printed when you quit |
-| [Usage](#see-your-plans-usage) | Your ChatGPT plan's limits in `/usage`, `/status`, and the footer; token usage on quit |
-| [Subagents](#delegate-to-subagents) | Parallel children with Codex's tools, `fork_context`, per-agent models, and a live view of each |
-| [Agent files](#delegate-to-subagents) | Kinds of subagents in Markdown with front matter (Claude Code's) or TOML (Codex's) |
-| [Instructions and skills](#give-the-agent-instructions) | `AGENTS.md` and `SKILL.md` found as Codex finds them; `CLAUDE.md` as an opt-in |
-| [MCP](#add-an-mcp-server) | Stdio and HTTP servers in Codex's format, OAuth logins, and per-tool approvals |
-| [Sandboxing](#switch-the-permission-mode) | Seatbelt on macOS and bubblewrap on Linux, in read-only, workspace, auto, and full-access modes |
-| [Approvals](#let-a-command-run-without-asking) | Prompts you answer, command rules, "don't ask again", and an auto-reviewer in auto mode |
-| [Compaction](#keep-a-long-session-going) | Automatic and `/compact`, with a configurable model and prompt; `/clear` and `/context` |
-| [Images](#paste-an-image) | Paste a screenshot with ctrl+v, or drop an image file |
-| [Shell mode](#run-a-command-yourself) | `!` runs your own command; the agent sees its output with your next message |
+| [Sessions](#resume-a-session) | Saved, searchable, resumable; quitting prints the resume command |
+| [Usage limits](#usage-limits) | ChatGPT plan limits in `/usage`, `/status`, and the footer |
+| [Subagents](#subagents-and-agent-files) | Codex's tools, run in parallel, with `fork_context` and a view per agent |
+| [Agent files](#subagents-and-agent-files) | Markdown with front matter, as in Claude Code, or TOML, as in Codex |
+| [AGENTS.md and skills](#agentsmd-and-skills) | Found as Codex finds them; `CLAUDE.md` if you opt in |
+| [MCP](#mcp-setup) | Stdio and HTTP servers, OAuth, per-tool approvals |
+| [Sandbox](#permission-modes) | Seatbelt on macOS, bubblewrap on Linux |
+| [Approvals](#command-rules) | Read-only, workspace, auto, and full-access modes; command rules; an auto-reviewer |
+| [Compaction](#compaction-and-clear) | Automatic or `/compact`, with its own model and prompt; `/clear`, `/context` |
+| [Images](#images) | Paste with ctrl+v, or drop a file |
+| [Shell mode](#shell-mode) | `!` runs a command yourself; the agent sees the output |
 | [File edits](#file-edits-and-diffs) | Codex's `apply_patch`, shown as diffs |
-| [Hooks](#run-a-command-at-an-event) | Claude Code's hook contract, with trust for project hooks |
-| [Customization](#configuration) | Every key in TOML, `/config` in the TUI, and your own review and compaction prompts |
+| [Hooks](#hook-setup) | Claude Code's hook format |
+| [Configuration](#configuration) | TOML, `/config` in the TUI, and your own prompts |
 
 More is planned: the [ledger](docs/ledger.md) tracks what is built and what is next.
 
@@ -35,6 +37,8 @@ More is planned: the [ledger](docs/ledger.md) tracks what is built and what is n
 4. [How it works](#how-it-works)
 5. [Development](#development)
 <!-- /memoria:section -->
+
+---
 
 <!-- memoria:section id="usage" files="cmd/uah/main.go cmd/uah/models.go cmd/uah/run.go cmd/uah/resume.go cmd/uah/sessions.go cmd/uah/tui.go cmd/uah/tuiconfig.go cmd/uah/print.go cmd/uah/completion.go cmd/uah/doctor.go internal/app/doctor.go internal/app/doctorchecks.go cmd/uah/flags.go cmd/uah/prompts.go internal/images/images.go internal/images/store.go internal/images/paths.go internal/images/clipboard/clipboard.go internal/images/clipboard/macos.go internal/images/clipboard/linux.go internal/app/usershell.go internal/usershell/usershell.go internal/usershell/record.go internal/usershell/capture.go cmd/uah/usage.go internal/app/planusage.go" -->
 ## Get started
@@ -74,9 +78,11 @@ The keys to know in the TUI:
 
 Text selects with the mouse as in any terminal, and the wheel scrolls, also while you type a prompt. The [TUI README](internal/tui/README.md) lists every key and command.
 
+---
+
 ## Common tasks
 
-### Resume work
+### Resume a session
 
 ```sh
 uah resume              # pick one of this directory's sessions (--all: any directory)
@@ -86,7 +92,7 @@ uah --session 3f2a      # a session by ID or unique prefix
 
 When you quit the TUI, it prints the session's token usage and the command that continues it (`uah resume <id>`), as Codex does. In the TUI, ctrl+s opens the picker and ctrl+n starts a new session. The picker hides sessions from `uah run` and subagents, as Codex hides `codex exec` sessions.
 
-### Run without the TUI
+### Headless mode
 
 `uah run` prints progress on stderr and each answer on stdout, and exits when the agent is idle.
 
@@ -99,7 +105,7 @@ uah run --stream "..."                           # JSONL events for scripts
 
 It exits 0 when the run succeeds, 1 when it fails, 3 at the disk limit, 124 on a timeout, and 130 on an interrupt. Nobody can answer an approval headless, so commands that need one are declined with a reason. `uah run --help` lists the flags.
 
-### Find an old session
+### Search old sessions
 
 ```sh
 uah sessions                           # this directory's sessions, newest first (--all: every directory)
@@ -107,7 +113,7 @@ uah sessions --search "flaky parser"   # sessions whose prompts or answers conta
 uah sessions show 3f2a                 # the transcript (--json)
 ```
 
-### Paste an image
+### Images
 
 1. Copy an image, or a screenshot, and press ctrl+v (or alt+v) in the TUI on macOS or Linux. `[Image #1]` appears at the cursor.
 2. Or paste or drop an image file on the terminal, or choose one after `@`. The path becomes `[Image #N]`.
@@ -115,14 +121,14 @@ uah sessions show 3f2a                 # the transcript (--json)
 
 To remove an image, delete its placeholder: one backspace at its end removes it all. On Linux, uah reads the clipboard with `wl-paste` (Wayland) or `xclip` (X11); install one of them. Images larger than 2000 pixels on a side are scaled down. Images need the embedded engine; see the [images design](docs/design/images.md).
 
-### Change the model or effort
+### Model and effort
 
 - For this session: `/model gpt-6-luna` or `/effort low` in the TUI, or alt+, and alt+. to lower or raise the effort. On the embedded engine it applies from the next model request, even mid-run.
 - At start: `uah -m gpt-6-luna -e medium`, and `--fast` for priority processing.
 - For every session: `model` and `effort` in the [configuration](#configuration).
 - See what the provider offers: `uah models` (`--json`, `--refresh`), `/model ` then tab in the TUI, or tab after `-m`. A model the provider does not list is refused with the nearest names ("gpt-luna-6 is not available on openai-codex; did you mean gpt-6-luna?").
 
-### See your plan's usage
+### Usage limits
 
 With the default provider, `openai-codex`, uah shows how much of your ChatGPT plan's usage is left, as Codex does:
 
@@ -138,10 +144,10 @@ uah usage --json   # the same for scripts
 
 Windows are named by their length (5h, daily, weekly), because a plan can have only a weekly window. uah reads the usage when you ask and after each run, never on a timer. Other providers have no usage to show.
 
-### Let a command run without asking
+### Command rules
 
 1. When uah asks, answer `s` ("Yes, and don't ask again"). It saves a rule for the command's prefix.
-2. Or press shift+tab until the footer says `auto mode`: the auto-reviewer then approves or declines each escalation, and you are not asked. See [Switch the permission mode](#switch-the-permission-mode).
+2. Or press shift+tab until the footer says `auto mode`: the auto-reviewer then approves or declines each escalation, and you are not asked. See [Switch the permission mode](#permission-modes).
 3. Or list prefixes in the configuration:
 
    ```toml
@@ -152,7 +158,7 @@ Windows are named by their length (5h, daily, weekly), because a plan can have o
 
 The [approvals README](internal/approval/README.md) gives the order in which rules, the sandbox, the auto-reviewer, hooks, and you decide.
 
-### Switch the permission mode
+### Permission modes
 
 Press shift+tab in the TUI. It cycles three modes, and the footer shows the current one:
 
@@ -167,7 +173,7 @@ Press shift+tab in the TUI. It cycles three modes, and the footer shows the curr
 - To start in a mode, set `permission_mode` in the [configuration](#configuration). `--sandbox read-only` or `--sandbox workspace-write` also picks a mode for one session.
 - Full access (no sandbox) is not in the cycle. Set it with `--sandbox danger-full-access` or `permission_mode = "full-access"`; shift+tab then moves to read only.
 
-### Run a command yourself
+### Shell mode
 
 1. Type `!` in the empty composer. The λ becomes `!`, and the footer says `! shell mode`.
 2. Type the command, such as `go test ./...`, and press enter. It runs in the workspace at once, also while the agent works, and its output streams into the transcript with the exit status.
@@ -179,7 +185,7 @@ Press shift+tab in the TUI. It cycles three modes, and the footer shows the curr
 
 The [shell mode design](docs/design/shell-mode.md) compares Codex and Claude Code.
 
-### Add an MCP server
+### MCP setup
 
 ```sh
 uah mcp add docs -- npx -y @example/docs-mcp            # a stdio server (--env KEY=VALUE)
@@ -201,11 +207,11 @@ uah mcp approve docs                                    # print the current mode
 
 When the TUI asks about an MCP call, answer `a` ("Yes, and don't ask again for this tool"). It saves `approval_mode = "approve"` for the tool, and the session stops asking at once.
 
-### Give the agent instructions
+### AGENTS.md and skills
 
 Put them in `AGENTS.md` at the repository root or in any directory below it, as for Codex. To read `CLAUDE.md` too, set `project_doc_fallback_filenames = ["CLAUDE.md"]`. Skills go in `.agents/skills/<name>/SKILL.md`. `/context` shows how much of the context window they take.
 
-### Delegate to subagents
+### Subagents and agent files
 
 Ask for it, for example "use two subagents to review the TUI and the store in parallel". The agent starts them with Codex's tools; each shows in the transcript as `AGENT <name>` with what it is doing, and `/agents` lists them. Subagents never start subagents of their own. To define a kind of subagent, add a Markdown file with front matter, as for Claude Code (`.claude/agents/*.md` files work as they are), to `~/.config/uagent/agents/`, or to `.uagent/agents/` in a trusted project:
 
@@ -227,11 +233,11 @@ A subagent runs on the parent's provider. Ask for another model or effort ("use 
 
 To watch a subagent, type `/agents <name>` or press alt+← and alt+→: the TUI shows its transcript, and what you type goes to it. When a subagent finishes or is interrupted, the main agent is told with your next message, as in Codex. `uah sessions show subagent-1a2b3c4d` prints a finished one's transcript.
 
-### Keep a long session going
+### Compaction and `/clear`
 
 uah compacts automatically at 90% of the context window. `/compact` compacts now, and `/compact keep the failing test names` tells the summary what to focus on. `/context` shows what fills the window. The summary model, its prompt, and when compaction starts are [configurable](docs/configuration.md#compaction). `/clear` starts the agent fresh in the same session: its next request carries nothing from before, while the session keeps its history. `/new` starts a new session.
 
-### Customize the prompts
+### Custom prompts
 
 ```sh
 uah prompts init           # writes ~/.config/uagent/prompts/review.md and compact.md
@@ -240,7 +246,7 @@ uah prompts show review    # prints a built-in prompt
 
 `uah prompts init` starts from the built-in auto-review policy and compaction prompt, and prints the lines to add to your user file: `[review] policy_file` and `experimental_compact_prompt_file`. Edit the files; each new session reads them. It overwrites existing files only with `--force`.
 
-### Run a command at an event
+### Hook setup
 
 Add a hook, for example a notification when the agent is idle:
 
@@ -251,14 +257,16 @@ command = "osascript -e 'display notification \"uah is idle\"'"
 
 Hooks in a project's `.uagent/config.toml` run only after `uah hooks trust`; `uah hooks` lists them and whether each runs.
 
-### Change settings
+### The `/config` panel
 
 Type `/config` in the TUI. It lists the basic settings (compaction, the model and effort, fast mode, the permission mode, the details view, and the mouse) with each value and its source. ↑↓ choose, enter or space changes, esc closes. Each change is saved to your user file, keeping its comments, and applies to the running session where it can; compaction settings apply from the next session. A flag or a trusted project file that sets the same key still wins, and `/config` says so.
 
-### See what is configured
+### Inspect the configuration
 
 `uah config` shows each setting's value and where it came from. `uah doctor` checks that everything works.
 <!-- /memoria:section -->
+
+---
 
 <!-- memoria:section id="configuration" files="internal/config/config.go cmd/uah/flags.go cmd/uah/config.go internal/app/resolve.go internal/app/setup.go internal/app/explain.go internal/app/explain_files.go internal/app/compaction.go internal/app/configedit.go internal/config/edit.go .uagent/config.toml" -->
 ## Configuration
@@ -272,7 +280,7 @@ Two TOML files:
 
 A flag wins over the environment, which wins over a resumed session's settings (its provider, model, effort, fast mode, and permission mode), then the project file, the user file, and the defaults. Unknown keys are errors, so a typo fails loudly. The names say `uagent` because uah shares uagent's directories.
 
-`/config` in the TUI changes the basic settings in the user file (see [Change settings](#change-settings)). Every key, by group. The [configuration reference](docs/configuration.md) gives each one's type, default, flag, and merge rule, and the environment variables.
+`/config` in the TUI changes the basic settings in the user file (see [Change settings](#the-config-panel)). Every key, by group. The [configuration reference](docs/configuration.md) gives each one's type, default, flag, and merge rule, and the environment variables.
 
 | Group | Keys |
 | --- | --- |
@@ -308,6 +316,8 @@ trusted = true   # apply this workspace's .uagent/config.toml
 
 This repository's own [.uagent/config.toml](.uagent/config.toml) is a working project file: its `[approvals] forbid` rules keep the agent from `rm -rf /`, force pushes, and `git reset --hard`.
 <!-- /memoria:section -->
+
+---
 
 ## How it works
 
@@ -452,6 +462,8 @@ The usage package reads the ChatGPT subscription's rate limits for the openai-co
 `app.Setup` builds one reader per session, next to the model catalog, and the TUI gets it through `bubble.Deps`. `uah usage`, `/status`, the footer, the warnings, and `uah doctor` read through it. Read more: [plan usage](internal/usage/README.md), and the [design](docs/design/usage.md).
 <!-- /memoria:section -->
 
+---
+
 <!-- memoria:section id="development" files=".github/workflows/ci.yml .golangci.yml testing/fakellm/fakellm.go testing/harnesstest/harnesstest.go" -->
 ## Development
 
@@ -473,6 +485,8 @@ The configuration reference, design records for the harness, the TUI, state stor
 
 `bench/tui` is a separate Go module with the benchmark behind choosing Bubble Tea v2.
 <!-- /memoria:section -->
+
+---
 
 <!-- memoria:section id="credits" files="LICENSE NOTICE THIRD_PARTY_NOTICES.md" -->
 ## License and acknowledgements
