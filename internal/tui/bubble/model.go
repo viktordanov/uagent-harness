@@ -53,6 +53,11 @@ type Deps struct {
 	// Mouse reports the mouse, so the wheel scrolls; off, the terminal
 	// selects text and its wheel sends ↑ and ↓.
 	Mouse bool
+	// Config loads the effective configuration for /config: the user file
+	// and each key's value and source (optional). SaveConfig writes one key
+	// to the user file, keeping its comments; a nil value removes it.
+	Config     func(ctx context.Context) state.ConfigLoaded
+	SaveConfig func(key string, value any) error
 	// Version is uah's version, for the banner.
 	Version string
 	// Now is the clock (default time.Now).
@@ -104,7 +109,7 @@ func New(ctx context.Context, deps Deps) Model {
 	}
 
 	st := state.New(deps.Now())
-	st.Details = deps.Details
+	st.Details, st.Mouse = deps.Details, deps.Mouse
 
 	return Model{
 		ctx: ctx, deps: deps, st: st,
@@ -220,7 +225,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.sess = nil
 
 		return m, tea.Quit
-	case state.Failed, state.SessionsLoaded, state.ActivityLoaded, state.FilesLoaded, state.MCPListed, state.ContextShown:
+	case state.Failed, state.SessionsLoaded, state.ActivityLoaded, state.FilesLoaded, state.MCPListed, state.ContextShown,
+		state.ModelsLoaded, state.ConfigLoaded, state.ConfigSaved:
 		return m.dispatch(msg)
 	}
 	var cmd tea.Cmd
@@ -307,7 +313,7 @@ func (m Model) View() tea.View {
 	// selecting text needs the terminal's modifier (Option in iTerm2 and
 	// Terminal, Shift in most others). Without it, which is the default, the
 	// terminal selects text and turns the wheel into ↑ and ↓ (keys.go).
-	if m.deps.Mouse {
+	if m.st.Mouse {
 		v.MouseMode = tea.MouseModeCellMotion
 	}
 	v.WindowTitle = "uah"
