@@ -9,6 +9,9 @@ uah is a pure core with well-organized infrastructure around it, not layered DDD
 | `internal/instructions` | AGENTS.md discovery and the host prompt, following Codex. |
 | `internal/config` | TOML configuration: the user file and trusted project files. |
 | `internal/hooks` | Hook contract, execution, and the trust store. |
+| `internal/sandbox` | Sandbox policies and the sandboxing shell: Seatbelt on macOS, bubblewrap on Linux. |
+| `internal/rules` | Codex's `.rules` files (Starlark `prefix_rule`) and command splitting for matching. |
+| `internal/approval` | The approver: rules and the approval policy decide whether a command runs sandboxed, unsandboxed, or not, and ask the user through the session. |
 | `internal/tui/state` | The pure TUI model: a reducer from events and intents to state and effects. No I/O. |
 | `internal/tui/render` | Pure drawing of state to lines, with a per-item cache. |
 | `internal/tui/bubble` | The Bubble Tea shell: keys to intents, effects to commands, and frames. |

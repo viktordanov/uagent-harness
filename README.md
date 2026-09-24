@@ -96,9 +96,39 @@ Commands run in the operating system's sandbox, as in Codex: Seatbelt (`sandbox-
 | `read-only` | Read any file; write nothing; no network |
 | `danger-full-access` | Anything your user can: no sandbox |
 
-On the embedded engine the model can ask to run a command outside the sandbox (`sandbox_permissions: "require_escalated"` with a `justification`). This version refuses those requests with a reason; approvals, rules, and auto-review come next ([plan](docs/design/sandbox.md)). When a command fails in a way that looks like the sandbox blocked it, the model is told so. On the process engine, the runner's `SHELL` is a script that sandboxes each command. Where no sandbox is available, uah says so and runs commands without one. On Linux, a protected name that does not exist yet (such as `.git` in a workspace that is not a repository root) is not protected, because bubblewrap can only cover existing paths; macOS protects it either way.
+When a command fails in a way that looks like the sandbox blocked it, the model is told so and can ask to run it outside the sandbox ([approvals](#approvals-and-rules)). On the process engine, the runner's `SHELL` is a script that sandboxes each command; it cannot ask. Where no sandbox is available, uah says so; on the embedded engine each command then asks for approval unless a rule allows it, and on the process engine commands run without one. On Linux, a protected name that does not exist yet (such as `.git` in a workspace that is not a repository root) is not protected, because bubblewrap can only cover existing paths; macOS protects it either way.
 
 Commands get the whole environment, as in Codex. `[shell_environment_policy]` narrows it with Codex's keys: `inherit` (`all`, `core`, `none`), `ignore_default_excludes = false` to drop names matching `*KEY*`, `*SECRET*`, `*TOKEN*`, `exclude` and `include_only` patterns, and `set`. `/sandbox` in the TUI shows the mode; the detailed view's header always does.
+
+<!-- /memoria:section -->
+
+<!-- memoria:section id="approvals" files="internal/approval/approval.go internal/approval/prefix.go internal/rules/rules.go internal/rules/parse.go internal/rules/shell.go internal/rules/load.go internal/engine/embedded/sandboxtool.go internal/session/approvals.go internal/tui/state/approval.go internal/tui/render/approval.go internal/app/approvals.go" -->
+### Approvals and rules
+
+On the embedded engine, the model can ask to run a command outside the sandbox (`sandbox_permissions: "require_escalated"` with a `justification`), as in Codex (checked against rust-v0.156.1). The approval policy (`--ask`, `UAH_ASK`, or `approval_policy`) decides who answers:
+
+| Policy | An escalation, or a command a `prompt` rule matches |
+| --- | --- |
+| `on-request` (default) | The TUI asks: "Yes, proceed" (`y`), "Yes, and don't ask again for commands that start with `<prefix>`" (`s`, when uah can propose a prefix), or "No, and tell the agent what to do differently" (`n` or esc). `uah run` has no one to ask and denies |
+| `never` | Denied |
+
+A denied command is not run, and the model gets the reason. The agent waits while the prompt is open; an interrupt declines it. An approved escalation runs outside the sandbox, with the network.
+
+Command rules are Codex's `.rules` files, Starlark `prefix_rule` calls, read from `~/.config/uagent/rules/*.rules` and, for a trusted workspace, `<workspace>/.uagent/rules/*.rules`:
+
+```python
+prefix_rule(
+    pattern = ["git", ["push", "fetch"]],         # words; a list is alternatives
+    decision = "prompt",                           # allow (default), prompt, forbidden
+    justification = "Pushing changes the remote",  # shown when asking or forbidding
+    match = ["git push origin"],                   # examples, checked when the file loads
+    not_match = ["git status"],
+)
+```
+
+A rule matches when its pattern is a prefix of the command's words. A command such as `a && b | c` is split into its simple commands; the strictest decision wins (`forbidden`, then `prompt`, then `allow`), and `allow` needs every part allowed. A command with redirects, variables, substitutions, or control flow matches no rule. `allow` runs the command outside the sandbox without asking; `forbidden` never runs it and tells the model the justification. "Don't ask again" appends `prefix_rule(pattern=[...], decision="allow")` to `~/.config/uagent/rules/default.rules` and applies it at once. It proposes the model's `prefix_rule` suggestion, or else the whole command, but never a bare shell, interpreter, `git`, `rm`, `sudo`, or `env` (Codex's list).
+
+For simple cases, `[approvals]` in `config.toml` lists command prefixes: `allow` runs them outside the sandbox without asking, and `forbid` never runs them. A trusted project file adds to the user file's lists, and its `writable_roots` add to the user's (relative roots are in the workspace).
 
 <!-- /memoria:section -->
 
@@ -138,7 +168,7 @@ Two files, both TOML:
 | File | Scope | Applies when |
 | --- | --- | --- |
 | `~/.config/uagent/config.toml` (or `$XDG_CONFIG_HOME/uagent/config.toml`, or `--config`) | Every workspace | Always |
-| `<workspace>/.uagent/config.toml` | One workspace; overrides the user file, and its hooks add to the user file's | The user file lists the workspace under `[projects]` with `trusted = true`. Its hooks also need `uah hooks trust` |
+| `<workspace>/.uagent/config.toml` | One workspace; overrides the user file, and its hooks, `writable_roots`, and `[approvals]` lists add to the user file's | The user file lists the workspace under `[projects]` with `trusted = true`. Its hooks also need `uah hooks trust` |
 
 Flags win over the environment, which wins over a resumed session's settings, then the project file, the user file, and the defaults. The names say `uagent` because uah shares uagent's directories. This repository's own [.uagent/config.toml](.uagent/config.toml) and [guard hook](.uagent/hooks/guard.sh) are a working example of a project file. A user file:
 
@@ -151,6 +181,7 @@ max_disk = "5G"
 engine = "embedded"   # or "process"
 fast = false          # priority processing
 sandbox_mode = "workspace-write"   # read-only, workspace-write, danger-full-access
+approval_policy = "on-request"     # or never
 
 [instructions]
 enabled = true
@@ -159,6 +190,10 @@ max_bytes = 32768
 [sandbox_workspace_write]
 network_access = false
 writable_roots = ["~/Library/Caches/go-build"]   # ~ is home; relative paths are in the workspace
+
+[approvals]
+allow = ["go test", "git status"]   # command prefixes that run outside the sandbox without asking
+forbid = ["git push --force"]       # command prefixes that never run
 
 [shell_environment_policy]
 inherit = "all"                   # all, core, none
