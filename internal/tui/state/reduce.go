@@ -8,6 +8,7 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
+	"github.com/viktordanov/uagent-harness/internal/images"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
 
@@ -67,6 +68,9 @@ func Reduce(s State, ev any) (State, []Effect) {
 
 		return s, nil
 	}
+	if effects, ok := s.onImages(ev); ok {
+		return s, effects
+	}
 	if effects, ok := s.onConfig(ev); ok {
 		return s, effects
 	}
@@ -99,7 +103,7 @@ func (s *State) onEvent(ev core.Event) {
 			}
 			q := s.Queue[i]
 			s.Queue = slices.Delete(s.Queue, i, i+1)
-			s.put(Item{Kind: KindUser, Key: "msg:" + q.ID, Text: q.Text, Input: InputSent})
+			s.put(Item{Kind: KindUser, Key: "msg:" + q.ID, Text: images.Display(q.Text), Input: InputSent})
 		}
 	case session.InputDelivered:
 		s.update("msg:"+e.ID, func(it *Item) { it.Input = InputDelivered })
@@ -195,7 +199,7 @@ func (s *State) onIntent(ev any) (State, []Effect) { //nolint:gocyclo // a dispa
 		}
 		s.Scroll = 0
 
-		return *s, []Effect{EffSubmit{Text: text}}
+		return *s, []Effect{EffSubmit{Text: s.withImages(text)}}
 	case Steer:
 		text := strings.TrimSpace(e.Text)
 		if text == "" || strings.HasPrefix(text, "/") {
@@ -203,7 +207,7 @@ func (s *State) onIntent(ev any) (State, []Effect) { //nolint:gocyclo // a dispa
 		}
 		s.Scroll = 0
 
-		return *s, []Effect{EffSteer{Text: text}}
+		return *s, []Effect{EffSteer{Text: s.withImages(text)}}
 	case Esc:
 		if !s.Busy && !s.ShellRunning() {
 			return *s, nil

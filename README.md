@@ -12,7 +12,7 @@
 The [ledger](docs/ledger.md) tracks what is built and what is next.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="usage" files="cmd/uah/main.go cmd/uah/models.go cmd/uah/run.go cmd/uah/resume.go cmd/uah/sessions.go cmd/uah/tui.go cmd/uah/tuiconfig.go cmd/uah/print.go cmd/uah/completion.go cmd/uah/doctor.go internal/app/doctor.go internal/app/doctorchecks.go cmd/uah/flags.go cmd/uah/prompts.go internal/app/usershell.go internal/usershell/usershell.go internal/usershell/record.go internal/usershell/capture.go" -->
+<!-- memoria:section id="usage" files="cmd/uah/main.go cmd/uah/models.go cmd/uah/run.go cmd/uah/resume.go cmd/uah/sessions.go cmd/uah/tui.go cmd/uah/tuiconfig.go cmd/uah/print.go cmd/uah/completion.go cmd/uah/doctor.go internal/app/doctor.go internal/app/doctorchecks.go cmd/uah/flags.go cmd/uah/prompts.go internal/images/images.go internal/images/store.go internal/images/paths.go internal/images/clipboard/clipboard.go internal/images/clipboard/macos.go internal/images/clipboard/linux.go internal/app/usershell.go internal/usershell/usershell.go internal/usershell/record.go internal/usershell/capture.go" -->
 ## Get started
 
 1. Install it (Go 1.27.1 or later):
@@ -82,6 +82,14 @@ uah sessions                           # this directory's sessions, newest first
 uah sessions --search "flaky parser"   # sessions whose prompts or answers contain the words
 uah sessions show 3f2a                 # the transcript (--json)
 ```
+
+### Paste an image
+
+1. Copy an image, or a screenshot, and press ctrl+v (or alt+v) in the TUI on macOS or Linux. `[Image #1]` appears at the cursor.
+2. Or paste or drop an image file on the terminal, or choose one after `@`. The path becomes `[Image #N]`.
+3. Write your message around the placeholders and press enter. The images go to the model with the message.
+
+To remove an image, delete its placeholder: one backspace at its end removes it all. On Linux, uah reads the clipboard with `wl-paste` (Wayland) or `xclip` (X11); install one of them. Images larger than 2000 pixels on a side are scaled down. Images need the embedded engine; see the [images design](docs/design/images.md).
 
 ### Change the model or effort
 
@@ -279,7 +287,7 @@ A session owns its settings, a message queue, at most one live run, pending appr
 <!-- /memoria:import -->
 
 <!-- memoria:import src="internal/tui/README.md#summary" -->
-The TUI is a pure reducer from session events and user intents to state and effects, a pure renderer from state to screen lines, and a thin Bubble Tea v2 shell that turns keys into intents and runs the effects against the session. Keys never change meaning: enter queues while the agent works, ctrl+enter sends now, and esc esc interrupts.
+The TUI is a pure reducer from session events and user intents to state and effects, a pure renderer from state to screen lines, and a thin Bubble Tea v2 shell that turns keys into intents and runs the effects against the session. Keys never change meaning: enter queues while the agent works, ctrl+enter sends now, esc esc interrupts, and ctrl+v pastes an image.
 <!-- /memoria:import -->
 
 Read more: [sessions](internal/session/README.md), [the session index](internal/store/README.md), and [the TUI](internal/tui/README.md) with its look. Diagnostics go to `<state-dir>/logs/uah-tui.log`.
@@ -292,7 +300,7 @@ Read more: [sessions](internal/session/README.md), [the session index](internal/
 An engine starts runs of unreal-agent-runner for a session: the embedded engine (the default) runs the runner's packages inside uah, so messages, model, effort, fast mode, and the permission mode reach a live run, and the process engine spawns the runner binary through uagent. Both keep uagent's guards, session lock, and run records, apply the command rules, and write the same session files, so a session can move between them; one capability table says what the process engine does not run, and the session, `uah doctor`, and `/status` report it from there.
 <!-- /memoria:import -->
 
-`embedded` is the default; choose with `--engine` or `engine`. The process engine sandboxes every command and applies the `allow` and `forbidden` command rules in the shell it gives the runner, but it has no live input, approvals, compaction, PreToolUse hooks, MCP servers, subagents, or `apply_patch`. A session on it shows one notice for each such feature the configuration uses, `uah doctor` warns about them in its `engine` check, and `/status` lists what the engine runs without. The [engine README](internal/engine/README.md#what-each-engine-supports) has the capability table and where each behavior lives.
+`embedded` is the default; choose with `--engine` or `engine`. The process engine sandboxes every command and applies the `allow` and `forbidden` command rules in the shell it gives the runner, but it has no live input, approvals, compaction, PreToolUse hooks, MCP servers, subagents, `apply_patch`, or pasted images. A session on it shows one notice for each such feature the configuration uses, `uah doctor` warns about them in its `engine` check, and `/status` lists what the engine runs without. The [engine README](internal/engine/README.md#what-each-engine-supports) has the capability table and where each behavior lives.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="patch" files="cmd/uah/sessions.go" -->
@@ -414,7 +422,7 @@ golangci-lint run ./...      # lint (golangci-lint v2.13.2)
 CI runs the build, the race tests, and the linter on each push; the linter also fails on a function above 20 cyclomatic complexity, a backstop for the rule of about 15. Design records, the architecture rules, and the documentation procedure are in [docs](docs/README.md):
 
 <!-- memoria:import src="docs/README.md#summary" -->
-The configuration reference, design records for the harness, the TUI, state storage, sandboxing, compaction, MCP, and subagents, plus the architecture rules and documentation procedure for uagent-harness.
+The configuration reference, design records for the harness, the TUI, state storage, sandboxing, compaction, MCP, subagents, and pasted images, plus the architecture rules and documentation procedure for uagent-harness.
 <!-- /memoria:import -->
 
 `bench/tui` is a separate Go module with the benchmark behind choosing Bubble Tea v2.

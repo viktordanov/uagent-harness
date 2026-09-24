@@ -24,7 +24,7 @@ The choice comes from `--engine`, `UAH_ENGINE`, or `engine` in the [configuratio
 
 `engine.Engine` has three methods: `Name`, `Capabilities`, and `Start(ctx, request, options, sink) (Run, error)`. The sink receives `RunStarted` first and `RunFinished` last, from one goroutine at a time. A `Run` takes messages and settings while it is live (`Send`, `SetEffort`, `SetModel`, `SetServiceTier`, `SetMode`, `Compact`, `Clear`), stops (`Interrupt`, `Kill`), and ends (`Wait`). A method the engine cannot serve returns `ErrUnsupported`, and the session then applies the change from the next run.
 
-`Capabilities` says what reaches a live run (`LiveInput`, `LiveEffort`, `LiveModel`, `ServiceTier`, `LiveMode`) and which features the engine runs at all (`Compaction`, `Rules`, `Approvals`, `ToolHooks`, `MCP`, `Subagents`, `ApplyPatch`, `CodexSkills`, `ContextUsage`). The session, the TUI, and `uah doctor` read them; none of them checks the engine's name. [What each engine supports](#what-each-engine-supports) turns them into the capability table.
+`Capabilities` says what reaches a live run (`LiveInput`, `LiveEffort`, `LiveModel`, `ServiceTier`, `LiveMode`) and which features the engine runs at all (`Compaction`, `Rules`, `Approvals`, `ToolHooks`, `MCP`, `Subagents`, `ApplyPatch`, `CodexSkills`, `ContextUsage`, `Images`). The session, the TUI, and `uah doctor` read them; none of them checks the engine's name. [What each engine supports](#what-each-engine-supports) turns them into the capability table.
 
 `engine.Options` carries what `core.Request` does not:
 
@@ -77,6 +77,7 @@ Features that are on by default, such as live input or subagents, get no notice;
 | Codex's `apply_patch` and its diffs | `ApplyPatch` | On openai and openai-codex models | No |
 | Codex skills (`.agents/skills`, `~/.config/uagent/skills`, `$CODEX_HOME/skills`) | `CodexSkills` | Yes | Only the runner's `.harness/skills` |
 | `/context` | `ContextUsage` | Yes | No |
+| Images pasted into the prompt | `Images` | Sent to the model with the message | The TUI shows the notice and keeps a pasted path as text; the model can still open an image file with ViewImage |
 | An interrupt | | A hard stop through the runner's inbox; the session file records the stopped tools | uagent interrupts the runner process |
 | `unreal-agent-runner` binary | | Not needed | Required |
 
@@ -134,7 +135,7 @@ The runner (v0.1.1) runs every Bash command as `$SHELL -c <command>` (`harness/o
 The rules see the same command string as on the embedded engine, so they are as strong there as here: they match the command's words, not what a script it runs does. Without rules, `$SHELL` is the sandboxing script, with no gate. That script cannot ask for more access. `process.NewSandboxed` keeps one harness per sandbox mode, built on first use, and each run uses its permission mode's (`Options.Mode`). `process.Capabilities(rules)` is the process engine's capabilities: only `Rules`, when the shells have a gate.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="embedded" files="embedded/engine.go embedded/wiring.go embedded/agent.go embedded/adapter.go embedded/client.go embedded/providers.go codexauth/codexauth.go embedded/store.go embedded/observer.go embedded/tools.go embedded/sandboxtool.go embedded/sandboxschema.go embedded/skills.go embedded/pretooluse.go embedded/autoreview.go embedded/compact.go embedded/context.go embedded/fork.go embedded/mode.go embedded/patchtool.go" -->
+<!-- memoria:section id="embedded" files="embedded/engine.go embedded/wiring.go embedded/agent.go embedded/adapter.go embedded/client.go embedded/providers.go codexauth/codexauth.go embedded/store.go embedded/observer.go embedded/tools.go embedded/sandboxtool.go embedded/sandboxschema.go embedded/skills.go embedded/pretooluse.go embedded/autoreview.go embedded/compact.go embedded/context.go embedded/fork.go embedded/mode.go embedded/patchtool.go embedded/images.go" -->
 ## The embedded engine
 
 The embedded engine is a uagent `harness.Backend`. uagent still owns the run: the guards, the session lock, the run record, and the output stream. The backend (`wiring.go`) reproduces unreal-agent-runner v0.1.1's `Run` (`cmd/internal/agentrunner/run.go`) in the same order:
@@ -161,8 +162,9 @@ The coordinator calls one `llm.Adapter`. Two adapters sit in front of the provid
 | --- | --- | --- |
 | `compactor` | `compact.go` | Decides when to compact (`/compact`, or the context in use reaching the automatic limit of `Config.Compaction`), runs the compaction as a job under the run's context with the configured summary model, effort, and prompt, and rewrites every request with the session's latest compaction. An automatic compaction that leaves the context above the limit reports `Compacted.Warning` and stops automatic compaction for the run. The rewrite, the summary call, and the log live in [internal/compaction](../compaction/README.md) |
 | `switcher` | `adapter.go` | Applies the live model to each request, Bash's definition for the live permission mode, and routes to the priority client when fast mode is on, so `/model`, `/fast`, and shift+tab apply from the next request. It records each session's last request for `/context` (`context.go`) |
+| `switcher.images` | `images.go` | Gives the model the images pasted into user messages. The runner's `llm.Message` holds text only (v0.1.1), so each request is rewritten: a message loses its `<uah-image …/>` tag lines, and each image follows it as a `ViewImage` call and its result with the image's data URL from `<state>/images`, the one image input the runner's Responses encoder sends. The call IDs follow the item's place, so the prompt cache still matches; a missing file becomes an error text. See the [images design](../../docs/design/images.md) |
 
-`switcher.direct()` is the same client without the live model override, for one-shot calls that choose their own model: the auto-reviewer and the compaction summary. The switcher also replaces the prompt cache key when the session has another (`SetCacheKey`).
+`switcher.direct()` is the same client without the live model override, for one-shot calls that choose their own model: the auto-reviewer and the compaction summary. It adds pasted images too, so a summary sees them. The switcher also replaces the prompt cache key when the session has another (`SetCacheKey`).
 
 ### Forked sessions
 
@@ -217,7 +219,7 @@ A job that had already started before the run stopped fails with "interrupted" w
 The runner stays unchanged: uah reproduces its wiring instead of patching it, and the equivalence test below keeps the two in step.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="tests" files="capabilities_test.go process/process_test.go process/gate_test.go process/shellgate/gate_test.go embedded/embedded_test.go embedded/approval_test.go embedded/compact_test.go embedded/compact_settings_test.go embedded/context_test.go embedded/mcp_test.go embedded/mcpjobs_internal_test.go embedded/sandbox_test.go embedded/mode_test.go" -->
+<!-- memoria:section id="tests" files="capabilities_test.go process/process_test.go process/gate_test.go process/shellgate/gate_test.go embedded/embedded_test.go embedded/approval_test.go embedded/compact_test.go embedded/compact_settings_test.go embedded/context_test.go embedded/mcp_test.go embedded/mcpjobs_internal_test.go embedded/sandbox_test.go embedded/mode_test.go embedded/images_test.go" -->
 ## Tests
 
 The embedded tests, and the process tests with the real runner, run against `testing/fakellm`, a scripted Responses API, and need no tokens.
@@ -234,4 +236,5 @@ The embedded tests, and the process tests with the real runner, run against `tes
 | `mode_test.go` | Permission modes: a live switch to read only makes the next write fail in the sandbox and the next request describe it; Auto mode lets the reviewer allow or decline without asking, also once its breaker opens |
 | `compact_test.go`, `compact_settings_test.go`, `clear_test.go`, `context_test.go` | Manual and automatic compaction, the configured summary model, prompt, focus, token limit, and kept-message cap, the stop when compacting cannot get under the limit, `/clear` in the same session, resume after both, the PreCompact hook, and `/context` |
 | `mcp_test.go`, `mcpjobs_internal_test.go` | MCP tools, crashes, interrupts, approvals, and jobs that are not repeated |
+| `images_test.go` | A message with pasted images: the model gets the text without tags and each image as a ViewImage result with its data URL, a missing image as an error text, and later requests carry the image again |
 <!-- /memoria:section -->

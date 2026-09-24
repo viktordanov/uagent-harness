@@ -11,6 +11,7 @@ import (
 
 	"github.com/viktordanov/uagent-harness/internal/compaction"
 	"github.com/viktordanov/uagent-harness/internal/engine"
+	"github.com/viktordanov/uagent-harness/internal/images"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
 
@@ -106,6 +107,9 @@ type State struct {
 	// Shell is shell mode: enter runs the composer's line as a command
 	// (shell.go).
 	Shell bool
+	// Attached are the images pasted into the composer, in order; each
+	// placeholder in the draft names one (see images.go).
+	Attached []images.Image
 
 	// Status is a transient hint in the footer, such as a pending confirmation.
 	Status      string

@@ -16,10 +16,11 @@ Asked for by the owner after item 28; these come first.
 | 32 | A real probe that forking a subagent reuses the provider's prompt cache | lane agents3 | done (partial reuse on openai-codex; see docs/design/subagents.md) |
 | 33 | The process engine made solid, with the behavior both engines share in one place | lane process | done |
 | 34 | On quit, print how to resume the session, as Codex does | main session | done |
-| 35 | Research spike: Codex subscription usage (rate limits) on the openai-codex backend, isolated from the rest | lane usage | doing |
+| 35 | Research spike: Codex subscription usage (rate limits) on the openai-codex backend, isolated from the rest | lane usage | done (spike; see [docs/design/usage.md](design/usage.md)) |
 | 36 | The composer's λ on its first row only | main session | done |
-| 37 | Paste images into the prompt, as Codex and Claude Code do (ctrl+v on macOS; the Linux key to be found); first check what the runner and uagent allow | lane images | doing |
+| 37 | Paste images into the prompt, as Codex and Claude Code do (ctrl+v on macOS; the Linux key to be found); first check what the runner and uagent allow | lane images | done (embedded engine; the image goes as a ViewImage result, since the runner's user message is text only; see docs/design/images.md) |
 | 38 | `!` shell mode in the composer: run a command yourself, and its result joins the conversation | lane shell | done |
+| 39 | Show the subscription's usage, as designed in item 35 (the owner accepted the defaults) | lane usage2 | doing |
 
 ### 34. The resume hint on quit
 
@@ -32,6 +33,8 @@ A research spike on how Codex reads the ChatGPT subscription's usage and rate li
 ### 37. Pasting images
 
 Codex and Claude Code let you paste an image from the clipboard into the prompt (ctrl+v on macOS, where cmd+v pastes text) and attach image files, and send it to the model with the message. First: how both do it (the keys on macOS and Linux, how they read the clipboard, how the image shows in the composer, what they send), and whether unreal-agent-runner and uagent can carry an image in a user message at all (the runner's inbox, `core.UserInput`, the session store, the Responses request). Then the plan, and the build if nothing upstream blocks it; a change the runner would need is written down, not made, since the runner stays unchanged.
+
+- Built: ctrl+v and alt+v paste the clipboard's image on macOS (osascript) and Linux (wl-paste or xclip), as Codex's ctrl+v and alt+v; a pasted or dropped image path and an `@` image file attach too. `[Image #N]` placeholders show in the composer, one backspace removes one with its image, and the transcript shows them live and resumed. The image is stored in `<state>/images` and travels with the message as a tag line through the session, the engine, and the runner's inbox. The runner cannot put an image in a user message (`llm.Message` is text only, the context builder decodes only a string), so the embedded engine sends each image as a `ViewImage` call and result after the message; a probe on openai-codex confirmed the provider takes it. The process engine states the gap through the capability table. Open, defaults taken: the upstream runner change (image parts in `llm.Message`, a structured inbox payload, `input_image` in the Responses encoder) is written down, not made; no renumbering after a delete; no Windows or WSL clipboard reader; no store cleanup. See [the images design](design/images.md).
 
 ### 38. `!` shell mode
 
@@ -46,6 +49,10 @@ Typing `!` at the start of an empty composer switches it to shell mode: the λ b
   - The command runs outside the sandbox and the rules, as in Codex and Claude Code. `user_shell_sandbox = true` runs it in the permission mode's sandbox, and a `forbid` rule refuses it.
   - The record waits in memory for the next message, so quitting first loses it.
   - Claude Code's reply to the output (`respondToBashCommands`), its Ctrl+B background, and its `!` completion are not built.
+
+### 39. Subscription usage
+
+Build docs/design/usage.md's recommended design with its defaults, which the owner accepted: read the openai-codex plan's usage from `/wham/usage` (read-only, uah's own identity, on demand and after each run, cached for 60 s, no polling); `uah usage` (`--json`); `/status` rows with each window's percent left and reset time; the tightest window in the footer beside the context meter; warnings at 75, 90, and 95% used; "try again at …" when a run hits the limit; a `usage` check in `uah doctor`. Other providers say usage is not available.
 
 ### 29. MCP approvals
 
