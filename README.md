@@ -407,3 +407,11 @@ The configuration reference, design records for the harness, the TUI, state stor
 
 `bench/tui` is a separate Go module with the benchmark behind choosing Bubble Tea v2.
 <!-- /memoria:section -->
+
+<!-- memoria:section id="credits" files="LICENSE NOTICE THIRD_PARTY_NOTICES.md" -->
+## License and acknowledgements
+
+uah is licensed under the [Apache License, Version 2.0](LICENSE).
+
+uah owes its shape to [OpenAI Codex](https://github.com/openai/codex). Its configuration format, sandbox profiles, approval rules, auto-review, compaction, `apply_patch`, MCP handling, and subagent tools follow Codex closely, and some of its code and prompts are adapted from Codex's (Apache License 2.0, Copyright 2025 OpenAI). It runs on [unreal-agent](https://github.com/unreallabsai/unreal-agent) through [uagent](https://github.com/viktordanov/uagent), and borrows ideas from [Claude Code](https://code.claude.com) (hooks, `/context`, Markdown agents, permission modes). [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) lists every adapted file and its license.
+<!-- /memoria:section -->
