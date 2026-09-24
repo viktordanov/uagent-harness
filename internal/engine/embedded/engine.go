@@ -15,6 +15,7 @@ import (
 	"github.com/viktordanov/uagent/core"
 	"github.com/viktordanov/uagent/harness"
 
+	"github.com/viktordanov/uagent-harness/internal/approval"
 	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/hooks"
 	"github.com/viktordanov/uagent-harness/internal/sandbox"
@@ -46,6 +47,10 @@ type Config struct {
 	// Env is which environment variables commands get (the zero value is
 	// all of them). It applies when Sandbox is set.
 	Env sandbox.EnvPolicy
+	// Approver decides how each command runs when Sandbox is set: the
+	// rules and the approval policy. Nil applies no rules and asks for
+	// escalations.
+	Approver *approval.Approver
 }
 
 // Engine runs the agent in process.
@@ -60,6 +65,9 @@ func New(cfg Config) *Engine {
 	}
 	if cfg.Providers == nil {
 		cfg.Providers = DefaultProviders()
+	}
+	if cfg.Approver == nil {
+		cfg.Approver = approval.New(approval.Config{})
 	}
 	e := &Engine{cfg: cfg}
 	e.h = harness.New(harness.Config{

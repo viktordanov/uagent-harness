@@ -1,14 +1,20 @@
 package embedded
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"maps"
+	"io"
 
 	"github.com/unreallabsai/unreal-agent/harness/llm"
 	"github.com/unreallabsai/unreal-agent/harness/operation"
 	"github.com/unreallabsai/unreal-agent/harness/tool"
+	"github.com/unreallabsai/unreal-agent/harness/tool/bash"
 
+	"github.com/viktordanov/uagent/core"
+
+	"github.com/viktordanov/uagent-harness/internal/approval"
 	"github.com/viktordanov/uagent-harness/internal/sandbox"
 )
 
@@ -16,44 +22,109 @@ import (
 const (
 	argSandboxPermissions = "sandbox_permissions"
 	argJustification      = "justification"
+	argPrefixRule         = "prefix_rule"
 	permEscalated         = "require_escalated"
 )
 
-// sandboxedBash is the runner's Bash translator running commands through a
-// sandboxing shell. The runner's translator reads only its own arguments,
-// so the escalation arguments pass through it untouched.
+// sandboxedBash is the runner's Bash translator with the approver in front:
+// each command runs through the sandboxing shell, through the real shell
+// when a rule or the user allows it outside the sandbox, or not at all. The
+// runner's translator reads only its own arguments, so the escalation
+// arguments pass through it untouched.
 type sandboxedBash struct {
+	// Translator runs commands in the sandbox; it is the unsandboxed one
+	// when there is no sandbox.
 	tool.Translator
 
-	mode sandbox.Mode
+	unsandboxed tool.Translator
+	// sandboxShell is the sandboxing shell, empty without a sandbox.
+	sandboxShell string
+	mode         sandbox.Mode
+	approver     *approval.Approver
+	ask          approval.Ask
+	// ctx is the run's context, which bounds a wait for the user.
+	ctx  context.Context
+	cwd  string
+	warn io.Writer
 }
 
-// Translate refuses escalations: this version of uah cannot ask for
-// approval yet, so the model hears why and can work within the sandbox.
-func (b sandboxedBash) Translate(ctx tool.Context, call llm.ToolCall) tool.CallStatus {
-	var args struct {
-		Permissions   string `json:"sandbox_permissions"`
-		Justification string `json:"justification"`
+// sandboxedBash builds the Bash translator for the configured sandbox. The
+// unsandboxed shell still applies the environment policy. Without a
+// sandbox on this system, every command no rule allows asks first.
+func (w *wiring) sandboxedBash(req core.Request, opsDir, realShell string) (tool.Translator, error) {
+	p := w.policy(req, w.e.cfg.Sandbox.Mode)
+	newBash := func(shell string) tool.Translator {
+		return bash.New(bash.Config{Shell: shell, Directory: req.Workspace, BaseDirectory: opsDir})
 	}
-	_ = json.Unmarshal([]byte(call.Arguments), &args) // the runner's translator reports malformed arguments
-	if args.Permissions == permEscalated {
-		return tool.CallStatus{Error: fmt.Sprintf(
-			"not run: running outside the %s sandbox needs the user's approval, which this version of uah cannot ask for. "+
-				"Work within the sandbox, or tell the user the command and why it needs more access (%q).",
-			b.mode, args.Justification)}
+	full := p
+	full.Mode = sandbox.FullAccess
+	plain, err := sandbox.Shell(w.e.cfg.SandboxDir, full, w.e.cfg.Env, realShell)
+	if err != nil {
+		return nil, err
+	}
+	b := sandboxedBash{
+		unsandboxed: newBash(plain), mode: p.Mode, approver: w.e.cfg.Approver, ask: w.ask,
+		ctx: context.Background(), cwd: req.Workspace, warn: w.l.Stderr,
+	}
+	b.Translator = b.unsandboxed
+	if p.Mode == sandbox.FullAccess {
+		return b, nil
+	}
+	shell, err := sandbox.Shell(w.e.cfg.SandboxDir, p, w.e.cfg.Env, realShell)
+	switch {
+	case errors.Is(err, sandbox.ErrUnavailable):
+		_, _ = fmt.Fprintf(w.l.Stderr, "embedded: %v; each command asks for approval unless a rule allows it\n", err)
+	case err != nil:
+		return nil, err
+	default:
+		b.Translator, b.sandboxShell = newBash(shell), shell
 	}
 
-	return b.Translator.Translate(ctx, call)
+	return b, nil
+}
+
+// canEscalate reports whether the model can ask to leave a sandbox.
+func (b sandboxedBash) canEscalate() bool { return b.sandboxShell != "" }
+
+// Translate asks the approver how the command runs.
+func (b sandboxedBash) Translate(ctx tool.Context, call llm.ToolCall) tool.CallStatus {
+	var args struct {
+		Command       string   `json:"command"`
+		Permissions   string   `json:"sandbox_permissions"`
+		Justification string   `json:"justification"`
+		PrefixRule    []string `json:"prefix_rule"`
+	}
+	if err := json.Unmarshal([]byte(call.Arguments), &args); err != nil || args.Command == "" {
+		return b.Translator.Translate(ctx, call) // the runner's translator reports bad arguments
+	}
+	d := b.approver.Decide(b.ctx, approval.Request{
+		Command: args.Command, Cwd: b.cwd, Justification: args.Justification, PrefixRule: args.PrefixRule,
+		Escalated: args.Permissions == permEscalated && b.canEscalate(),
+		NoSandbox: !b.canEscalate() && b.mode != sandbox.FullAccess,
+	}, b.ask)
+	if d.Run != approval.Deny && d.Reason != "" {
+		_, _ = fmt.Fprintf(b.warn, "embedded: %s\n", d.Reason)
+	}
+	switch d.Run {
+	case approval.Unsandboxed:
+		return b.unsandboxed.Translate(ctx, call)
+	case approval.Sandboxed:
+		return b.Translator.Translate(ctx, call)
+	case approval.Deny:
+	}
+
+	return tool.CallStatus{Error: d.Reason}
 }
 
 // TranslateResult adds a hint when the sandbox likely blocked the command.
 func (b sandboxedBash) TranslateResult(callID string, status tool.CallStatus, ops []operation.Operation) (llm.ToolResult, error) {
 	result, err := b.Translator.TranslateResult(callID, status, ops)
-	if err != nil || len(ops) != 1 {
+	if err != nil || len(ops) != 1 || b.sandboxShell == "" {
 		return result, err //nolint:wrapcheck // the coordinator wraps tool errors
 	}
 	state, derr := operation.DecodeShellState(ops[0])
-	if derr != nil || state.Result == nil || !sandbox.Denied(state.Result.ExitCode, state.Result.Out+"\n"+state.Result.Err) {
+	if derr != nil || state.Input.Shell != b.sandboxShell || state.Result == nil ||
+		!sandbox.Denied(state.Result.ExitCode, state.Result.Out+"\n"+state.Result.Err) {
 		return result, nil
 	}
 	result.Output = append(result.Output, llm.ToolResultOutput{Kind: llm.ToolResultText, Value: fmt.Sprintf(
@@ -61,62 +132,4 @@ func (b sandboxedBash) TranslateResult(callID string, status tool.CallStatus, op
 		b.mode, argSandboxPermissions, permEscalated, argJustification)})
 
 	return result, nil
-}
-
-// sandboxRegistry offers the model Bash with the escalation arguments and a
-// description of the sandbox.
-type sandboxRegistry struct {
-	tool.Registry
-
-	policy sandbox.Policy
-}
-
-func (r sandboxRegistry) StaticDefinitions() []tool.Definition {
-	defs := r.Registry.StaticDefinitions()
-	for i, d := range defs {
-		if d.Tool.Name == tool.BashName {
-			defs[i].Tool = bashWithEscalation(d.Tool, r.policy)
-		}
-	}
-
-	return defs
-}
-
-func bashWithEscalation(t llm.Tool, p sandbox.Policy) llm.Tool {
-	params := maps.Clone(t.Parameters)
-	props, _ := params["properties"].(map[string]any)
-	props = maps.Clone(props)
-	props[argSandboxPermissions] = map[string]any{
-		"type": "string",
-		"enum": []any{"use_default", permEscalated},
-		"description": "use_default runs the command in the sandbox. require_escalated asks the user to run it outside the sandbox; " +
-			"use it only when the command needs access the sandbox blocks, and explain why in justification.",
-	}
-	props[argJustification] = map[string]any{
-		"type":        "string",
-		"description": "With require_escalated: one sentence the user reads to approve the command, such as why it needs the network.",
-	}
-	params["properties"] = props
-	t.Parameters = params
-	t.Description += " " + sandboxNote(p)
-
-	return t
-}
-
-// sandboxNote tells the model what its commands may do.
-func sandboxNote(p sandbox.Policy) string {
-	network := "no network access"
-	if p.Network {
-		network = "network access"
-	}
-	switch p.Mode {
-	case sandbox.ReadOnly:
-		return "Commands run in a read-only sandbox: they can read files but write nothing, with " + network + "."
-	case sandbox.WorkspaceWrite:
-		return "Commands run in a sandbox: they can read any file, write only the workspace and temporary directories " +
-			"(.git, .uagent, .agents, and .codex stay read-only), and have " + network + "."
-	case sandbox.FullAccess:
-	}
-
-	return ""
 }

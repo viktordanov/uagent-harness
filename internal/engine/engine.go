@@ -8,6 +8,8 @@ import (
 	"errors"
 
 	"github.com/viktordanov/uagent/core"
+
+	"github.com/viktordanov/uagent-harness/internal/approval"
 )
 
 // ErrUnsupported means the engine cannot do this while a run is live.
@@ -34,6 +36,9 @@ type Engine interface {
 type Options struct {
 	// ServiceTier is "" or "priority" (needs Capabilities.ServiceTier).
 	ServiceTier string
+	// Ask asks the user to approve a command; nil means no one can, as in
+	// a headless run. Only the embedded engine asks.
+	Ask approval.Ask
 }
 
 // Run is a started run.
