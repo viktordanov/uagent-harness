@@ -127,8 +127,8 @@ func TestTrust(t *testing.T) {
 	require.NoError(t, trust.Allow("/ws", "exit 2"))
 	reloaded, err := hooks.LoadTrust(path)
 	require.NoError(t, err)
-	assert.True(t, reloaded.Trusted("exit 2"))
-	assert.False(t, reloaded.Trusted("exit 2 "), "a changed command needs approval again")
+	assert.True(t, reloaded.Trusted("/ws", "exit 2"))
+	assert.False(t, reloaded.Trusted("/ws", "exit 2 "), "a changed command needs approval again")
 	assert.True(t, r.Run(context.Background(), hooks.Input{Event: hooks.Stop}).Block)
 }
 

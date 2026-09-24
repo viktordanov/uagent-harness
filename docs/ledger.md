@@ -34,7 +34,7 @@ Status: `todo`, `doing`, `done`, `cut` (with a reason).
 | 8 | AGENTS.md and skills parity with Codex | B | 4 | done |
 | 9 | Hooks for the new features | main session | 2, 4, 5 | done |
 | 10 | Configuration reference and `uah config` | main session | 2, 5 | done |
-| 11 | `uah doctor`, content-based hook trust, crash-recovery test | C | 5 | doing |
+| 11 | `uah doctor`, content-based hook trust, crash-recovery test | C | 5 | done |
 | 12 | Subagents: research and plan | any free lane | — | done |
 
 Order of starting: 1 alone (it touches everything). Then lanes A (2), B (4), C (5) in parallel. D (6, 7) starts when a lane frees up. 9 and 10 come after their dependencies merge.
@@ -128,3 +128,4 @@ One line per merge or decision: time, item, what landed, commit.
 - 05:05 · quality · After the merges: split config merge (merge.go), approval Decide, hooks Decision.add, the TUI menu keys, and moved onRunEvent out of reduce.go (408 → 350 lines). Remaining functions above 15 are the documented dispatch switches.
 - 05:06 · 12 · Building subagents (lane/subagents) in parallel with 10 and 11, the last items above it, to use the free lane.
 - 05:13 · 10 · Merged lane/config-ref: docs/configuration.md (every key, type, default, files, merge rule, precedence; a reflection test fails when a key is missing), `uah config` with each value's source (app.Explain beside Resolve). Fixed on merge: config merging no longer changes the user file's maps or slices (it doubled hooks when merged twice); a --provider flag equal to the configured provider keeps the configured model; the invalid-engine error names the bad value.
+- 05:16 · 11 · Merged lane/doctor: `uah doctor` (config, settings, runner, workspace, credentials incl. the real client construction, a real sandbox run, instructions, hooks, MCP startup, state), hook trust that also hashes a local script the command runs, and a crash-recovery test (SIGKILL uah mid-tool, resume) that found orphaned tools surviving a crash — fixed on the embedded engine by killing recorded live groups before resuming.

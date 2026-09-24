@@ -26,7 +26,8 @@ func hooksCommand() *cli.Command {
 		Usage: "list the hooks that apply to a workspace",
 		Description: "Hooks come from [[hooks.<Event>]] entries in the user configuration and, for trusted\n" +
 			"workspaces, in <workspace>/.uagent/config.toml. Project hooks run only after `uah hooks trust`\n" +
-			"records their exact commands; a changed command needs trust again.",
+			"records their exact commands, and the content of a local script a command runs;\n" +
+			"a changed command or script needs trust again.",
 		Flags:        flags,
 		OnUsageError: onUsageError,
 		Action:       listHooks,
@@ -83,14 +84,24 @@ func listHooks(_ context.Context, cmd *cli.Command) error {
 	tw := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(tw, "EVENT\tMATCHER\tSOURCE\tSTATE\tCOMMAND")
 	for _, h := range list {
-		state := "runs"
-		if !runner.Trusted(h) {
-			state = "untrusted"
-		}
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n", h.Event, h.Matcher, h.Source, state, oneLine(h.Command, 80))
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n", h.Event, h.Matcher, h.Source, trustLabel(runner, h), oneLine(h.Command, 80))
 	}
 
 	return tw.Flush()
+}
+
+// trustLabel is a hook's STATE column.
+func trustLabel(runner *hooks.Runner, h hooks.Hook) string {
+	switch ok, why := runner.TrustState(h); {
+	case ok:
+		return "runs"
+	case why == hooks.ReasonScriptChanged:
+		return "untrusted (the script changed)"
+	case why == hooks.ReasonScriptNew:
+		return "untrusted (script not recorded)"
+	default:
+		return "untrusted"
+	}
 }
 
 func trustHooks(_ context.Context, cmd *cli.Command) error {

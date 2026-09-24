@@ -81,7 +81,8 @@ type Env struct {
 	Capture   string
 }
 
-// NewEnv creates the directories and a Codex token valid for a day.
+// NewEnv creates the directories and a Codex token valid for a day, with
+// an account ID, so both uagent's preflight and the Codex client accept it.
 func NewEnv(tb testing.TB) *Env {
 	tb.Helper()
 	root := tb.TempDir()
@@ -94,7 +95,8 @@ func NewEnv(tb testing.TB) *Env {
 	for _, dir := range []string{e.Workspace, e.CodexHome, e.Capture} {
 		require.NoError(tb, os.MkdirAll(dir, 0o700))
 	}
-	claims := `{"exp":` + strconv.FormatInt(time.Now().Add(24*time.Hour).Unix(), 10) + `}`
+	claims := `{"exp":` + strconv.FormatInt(time.Now().Add(24*time.Hour).Unix(), 10) +
+		`,"https://api.openai.com/auth":{"chatgpt_account_id":"acct-test"}}`
 	auth := `{"tokens":{"access_token":"x.` + base64.RawURLEncoding.EncodeToString([]byte(claims)) + `.y"}}`
 	require.NoError(tb, os.WriteFile(filepath.Join(e.CodexHome, "auth.json"), []byte(auth), 0o600))
 

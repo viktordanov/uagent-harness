@@ -26,7 +26,7 @@ func sessionsCommand() *cli.Command {
 		Name: "state-dir", Usage: "sessions, logs, and run records",
 		Value: defaultStateDir(), Sources: cli.EnvVars("UAGENT_STATE_DIR"), TakesFile: true,
 	}
-	jsonFlag := &cli.BoolFlag{Name: "json", Usage: "print JSON"}
+	jsonFlag := &cli.BoolFlag{Name: flagJSON, Usage: "print JSON"}
 	all := &cli.BoolFlag{Name: flagAll, Usage: "list sessions from every directory"}
 	search := &cli.StringFlag{Name: "search", Usage: "only sessions whose prompts or answers contain these words (any directory)"}
 	workspace := &cli.StringFlag{Name: flagWorkspace, Aliases: []string{"C"}, Usage: "list this directory's sessions", DefaultText: "the current directory", TakesFile: true}
@@ -68,7 +68,7 @@ func listSessions(ctx context.Context, cmd *cli.Command) error {
 	if !showAll {
 		infos = session.InDir(infos, cwd)
 	}
-	if cmd.Bool("json") {
+	if cmd.Bool(flagJSON) {
 		return writeJSON(os.Stdout, infos)
 	}
 	if len(infos) == 0 {
@@ -117,7 +117,7 @@ func showSession(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	if cmd.Bool("json") {
+	if cmd.Bool(flagJSON) {
 		return writeJSON(os.Stdout, struct {
 			Session session.Info `json:"session"`
 			Runs    []runView    `json:"runs"`
