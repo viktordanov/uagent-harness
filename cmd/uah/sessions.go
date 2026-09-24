@@ -16,6 +16,7 @@ import (
 	"github.com/viktordanov/uagent/core"
 
 	"github.com/viktordanov/uagent-harness/internal/app"
+	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/internal/store"
 )
@@ -181,6 +182,8 @@ func printTranscript(w io.Writer, info session.Info, runs []session.LoadedRun) {
 				}
 			case core.RunnerError:
 				fmt.Fprintf(w, "error: %s\n", m.Message)
+			case engine.Compacted:
+				fmt.Fprintf(w, "⋯ context compacted (%s, %d-char summary)\n", m.Trigger, len(m.Summary))
 			}
 		}
 	}

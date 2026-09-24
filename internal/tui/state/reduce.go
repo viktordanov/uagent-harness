@@ -148,7 +148,9 @@ func (s *State) loadHistory(h HistoryLoaded) {
 		res := run.Record.Result
 		s.onRunEvent(core.RunStarted{At: res.StartedAt, RunID: res.Request.RunID, SessionID: res.Request.SessionID})
 		for _, e := range run.Events {
-			s.onRunEvent(e)
+			if !s.onEngineEvent(e) {
+				s.onRunEvent(e)
+			}
 		}
 		if run.Record.Complete {
 			s.onRunEvent(core.RunFinished{At: res.StartedAt.Add(res.Wall), Result: res})
