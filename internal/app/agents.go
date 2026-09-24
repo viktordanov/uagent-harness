@@ -48,22 +48,31 @@ func pickAgents(c config.Agents) (Agents, error) {
 }
 
 // newAgents builds the subagent manager with the user's and, in a trusted
-// workspace, the project's role files; it is nil when agents are off or
-// the engine is the process engine, which cannot run them.
-// Role file warnings become notices.
+// workspace, the project's role files; it is nil on the process engine,
+// which cannot run subagents. With agents off it offers no tools but still
+// answers a resumed session's past calls. Role file warnings become
+// notices.
 func newAgents(r Resolved, cfg config.Config, workspace, stateDir string, opts *session.Options) *agents.Manager {
-	if !r.Agents.Enabled || r.Agents.MaxDepth == 0 || r.Engine != EngineEmbedded {
+	if r.Engine != EngineEmbedded {
 		return nil
 	}
-	dirs := []string{config.AgentsDir()}
-	if cfg.Projects[workspace].Trusted {
-		dirs = append(dirs, config.ProjectAgentsDir(workspace))
+	depth := r.Agents.MaxDepth
+	if !r.Agents.Enabled {
+		depth = 0
 	}
-	roles, warnings := agents.LoadRoles(dirs...)
-	opts.Notices = append(opts.Notices, warnings...)
+	var roles []agents.Role
+	if depth > 0 {
+		dirs := []string{config.AgentsDir()}
+		if cfg.Projects[workspace].Trusted {
+			dirs = append(dirs, config.ProjectAgentsDir(workspace))
+		}
+		var warnings []string
+		roles, warnings = agents.LoadRoles(dirs...)
+		opts.Notices = append(opts.Notices, warnings...)
+	}
 
 	return agents.New(agents.Config{
-		MaxThreads: r.Agents.MaxThreads, MaxDepth: r.Agents.MaxDepth, Model: r.Agents.Model, Effort: r.Agents.Effort,
-		Roles: roles, SessionsDir: filepath.Join(stateDir, "sessions"), Base: r.Settings,
+		MaxThreads: r.Agents.MaxThreads, MaxDepth: depth, Model: r.Agents.Model, Effort: r.Agents.Effort,
+		Roles: roles, SessionsDir: filepath.Join(stateDir, "sessions"), Base: r.Settings, Hooks: opts.Hooks,
 	})
 }

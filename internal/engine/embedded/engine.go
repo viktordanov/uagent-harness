@@ -71,9 +71,9 @@ type Config struct {
 	// rules and the approval policy. Nil applies no rules and asks for
 	// escalations.
 	Approver *approval.Approver
-	// Subagents, when set, offers the agent tools (spawn_agent, send_input,
-	// wait, close_agent) to sessions it lets spawn; the engine closes it
-	// when it is an io.Closer.
+	// Subagents, when set, offers its tools to the runs it attaches and
+	// hears when the user interrupts a run; the engine closes it when it is
+	// an io.Closer.
 	Subagents engine.Subagents
 }
 
@@ -81,8 +81,9 @@ type Config struct {
 type Engine struct {
 	cfg Config
 	h   *harness.Harness
-	// transcript feeds the auto-reviewer across the session's runs.
-	transcript *transcript
+	// transcripts feed the auto-reviewer across a session's runs, by
+	// session ID, so a subagent's review sees its own session.
+	transcripts sync.Map
 }
 
 func New(cfg Config) *Engine {
@@ -95,7 +96,7 @@ func New(cfg Config) *Engine {
 	if cfg.Approver == nil {
 		cfg.Approver = approval.New(approval.Config{})
 	}
-	e := &Engine{cfg: cfg, transcript: newTranscript()}
+	e := &Engine{cfg: cfg}
 	e.h = harness.New(harness.Config{
 		Backend: backend{e}, StateDir: cfg.StateDir, MaxDisk: cfg.MaxDisk, Logger: cfg.Logger, Getenv: cfg.Getenv,
 	})
@@ -144,7 +145,7 @@ type (
 )
 
 func (e *Engine) Start(ctx context.Context, req core.Request, opts engine.Options, sink core.Sink) (engine.Run, error) {
-	ls := &lockedSink{sink: sink, tap: e.transcript.observe}
+	ls := &lockedSink{sink: sink, tap: e.transcript(req.SessionID).observe}
 	r, err := e.h.Start(context.WithValue(ctx, startKey{}, startValue{opts: opts, emit: ls.emit}), req, ls.emit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start run: %w", err)
@@ -156,7 +157,14 @@ func (e *Engine) Start(ctx context.Context, req core.Request, opts engine.Option
 		return nil, fmt.Errorf("unexpected process %T", r.Process())
 	}
 
-	return &run{run: r, agent: a}, nil
+	return &run{run: r, agent: a, subagents: e.cfg.Subagents, sessionID: req.SessionID}, nil
+}
+
+// transcript is the session's auto-review transcript.
+func (e *Engine) transcript(sessionID string) *transcript {
+	t, _ := e.transcripts.LoadOrStore(sessionID, newTranscript())
+
+	return t.(*transcript) //nolint:forcetypeassert // the map holds only transcripts
 }
 
 func (e *Engine) provider(name string) (Provider, error) {
@@ -171,8 +179,10 @@ func (e *Engine) provider(name string) (Provider, error) {
 
 // run is a live embedded run.
 type run struct {
-	run   *harness.Run
-	agent *agent
+	run       *harness.Run
+	agent     *agent
+	subagents engine.Subagents
+	sessionID string
 }
 
 func (r *run) Send(in core.UserInput) error     { return r.agent.Send(in) }
@@ -180,8 +190,16 @@ func (r *run) SetEffort(effort string) error    { return r.agent.SetEffort(effor
 func (r *run) SetModel(model string) error      { return r.agent.SetModel(model) }
 func (r *run) SetServiceTier(tier string) error { return r.agent.SetServiceTier(tier) }
 func (r *run) Compact() error                   { return r.agent.Compact() }
-func (r *run) Interrupt()                       { r.run.Interrupt() }
-func (r *run) Kill()                            { r.run.Kill() }
+
+// Interrupt stops the run and its session's subagents' live runs, as the
+// user expects of an interrupt.
+func (r *run) Interrupt() {
+	if r.subagents != nil {
+		r.subagents.Interrupt(r.sessionID)
+	}
+	r.run.Interrupt()
+}
+func (r *run) Kill() { r.run.Kill() }
 
 func (r *run) Wait() (core.Result, error) {
 	result, err := r.run.Wait()

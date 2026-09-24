@@ -1,18 +1,14 @@
 package agents
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"slices"
 	"strings"
 	"sync"
-	"time"
 
-	"github.com/google/uuid"
-
-	"github.com/viktordanov/uagent-harness/internal/approval"
 	"github.com/viktordanov/uagent-harness/internal/engine"
+	"github.com/viktordanov/uagent-harness/internal/hooks"
 	"github.com/viktordanov/uagent-harness/internal/instructions"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
@@ -27,17 +23,22 @@ const (
 type Config struct {
 	// MaxThreads is how many children a session tree keeps open at once.
 	MaxThreads int
-	// MaxDepth is how deep children nest: 1 means children cannot spawn.
+	// MaxDepth is how deep children nest: 1 means children cannot spawn,
+	// and 0 offers no tools at all (subagents are off), while past calls
+	// still get an answer.
 	MaxDepth int
 	// Model and Effort are the configured defaults for children.
 	Model  string
 	Effort string
 	Roles  []Role
-	// SessionsDir holds the children's sidecars.
+	// SessionsDir holds the children's sidecars and records.
 	SessionsDir string
 	// Base carries what a run's request does not: the service tier, the
 	// sandbox mode for display, and the context window.
 	Base session.Settings
+	// Hooks, when set, runs SubagentStop hooks when a child finishes, and
+	// the children's PostToolUse hooks.
+	Hooks *hooks.Runner
 }
 
 // Manager implements engine.Subagents. Children are ordinary sessions on the
@@ -51,6 +52,8 @@ type Manager struct {
 	children map[string]*child
 	// changed is closed and replaced whenever a child's status changes.
 	changed chan struct{}
+	// emitMu keeps a child's updates in the order their states were taken.
+	emitMu sync.Mutex
 }
 
 // New returns a manager; Bind gives it the engine children run on.
@@ -58,6 +61,7 @@ func New(cfg Config) *Manager {
 	if cfg.MaxThreads <= 0 {
 		cfg.MaxThreads = DefaultMaxThreads
 	}
+
 	return &Manager{
 		cfg:     cfg,
 		parents: map[string]engine.AgentParent{}, children: map[string]*child{}, changed: make(chan struct{}),
@@ -75,21 +79,18 @@ func (m *Manager) Bind(eng engine.Engine) {
 // shared MCP servers running.
 type childEngine struct{ engine.Engine }
 
-func (m *Manager) Attach(p engine.AgentParent) bool {
+// Attach records the parent's run and offers the tools when the session
+// may spawn: its depth is below MaxDepth.
+func (m *Manager) Attach(p engine.AgentParent) []engine.AgentTool {
 	m.mu.Lock()
-	defer m.mu.Unlock()
 	m.parents[p.SessionID] = p
-
-	return m.depth(p.SessionID) < m.cfg.MaxDepth
-}
-
-func (m *Manager) Roles() []engine.AgentRole {
-	out := make([]engine.AgentRole, 0, len(m.cfg.Roles))
-	for _, r := range m.cfg.Roles {
-		out = append(out, engine.AgentRole{Name: r.Name, Description: r.Description})
+	offer := m.depth(p.SessionID) < m.cfg.MaxDepth
+	m.mu.Unlock()
+	if !offer {
+		return nil
 	}
 
-	return out
+	return m.definitions()
 }
 
 // depth is how many ancestors a session has, from the live children and
@@ -121,62 +122,19 @@ func (m *Manager) root(id string) string {
 	return id
 }
 
-func (m *Manager) Spawn(_ context.Context, parentID string, req engine.SpawnRequest) (engine.AgentRef, error) {
-	c, parent, err := m.reserve(parentID, req.AgentType)
-	if err != nil {
-		return engine.AgentRef{}, err
-	}
-	role, _ := m.role(req.AgentType)
-	// Children outlive the call that spawned them; Close stops them.
-	s, err := session.Open(context.Background(), m.eng, session.Options{ //nolint:contextcheck // children outlive the spawning call
-		ID: c.id, Settings: m.settings(parent, role, req), SessionsDir: m.cfg.SessionsDir,
-		Source: session.SourceSubagent, Parent: parentID, Ask: m.askFor(parentID, c.nickname),
-	})
-	if err != nil {
-		m.mu.Lock()
-		delete(m.children, c.id)
-		m.mu.Unlock()
-
-		return engine.AgentRef{}, fmt.Errorf("failed to start the agent: %w", err)
-	}
-	m.mu.Lock()
-	c.s = s
-	m.mu.Unlock()
-	go m.watch(c)
-	if err := m.submit(c, req.Message); err != nil {
-		return engine.AgentRef{}, err
+// openIn counts the open children in root's tree. It holds m.mu.
+func (m *Manager) openIn(root string) int {
+	n := 0
+	for id, c := range m.children {
+		if !c.closed && m.root(id) == root {
+			n++
+		}
 	}
 
-	return engine.AgentRef{ID: c.id, Nickname: c.nickname}, nil
+	return n
 }
 
-// reserve checks the parent, the role, and the limit, and registers a new
-// child without a session.
-func (m *Manager) reserve(parentID, agentType string) (*child, engine.AgentParent, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	parent, ok := m.parents[parentID]
-	if !ok || m.eng == nil {
-		return nil, parent, errors.New("subagents are not available in this session")
-	}
-	role, err := m.role(agentType)
-	if err != nil {
-		return nil, parent, err
-	}
-	if open := m.openIn(m.root(parentID)); open >= m.cfg.MaxThreads {
-		return nil, parent, fmt.Errorf("agent limit reached: %d agents are open; close one with close_agent first", open)
-	}
-	c := &child{
-		id: uuid.NewString(), parent: parentID, role: role.Name, nickname: m.nickname(parentID, role),
-		started: time.Now(), status: engine.AgentStatus{State: engine.AgentRunning},
-	}
-	m.children[c.id] = c
-
-	return c, parent, nil
-}
-
-// role finds an agent type; "" and "default" are the default agent. It
-// holds m.mu.
+// role finds an agent type; "" and "default" are the default agent.
 func (m *Manager) role(name string) (Role, error) {
 	if name == "" || name == "default" {
 		return Role{}, nil
@@ -194,27 +152,15 @@ func (m *Manager) role(name string) (Role, error) {
 	return m.cfg.Roles[i], nil
 }
 
-// openIn counts the open children in root's tree. It holds m.mu.
-func (m *Manager) openIn(root string) int {
-	n := 0
-	for id, c := range m.children {
-		if !c.closed && m.root(id) == root {
-			n++
-		}
-	}
-
-	return n
-}
-
 // settings are a child's: the parent run's, then the configured defaults,
 // the role's, and the call's model and effort, and the role's instructions
 // after the host prompt.
-func (m *Manager) settings(p engine.AgentParent, role Role, req engine.SpawnRequest) session.Settings {
+func (m *Manager) settings(p engine.AgentParent, role Role, model, effort string) session.Settings {
 	r := p.Request
 	s := m.cfg.Base
 	s.Provider, s.Workspace, s.BaseURL, s.Timeout, s.AllowDotenv = r.Provider, r.Workspace, r.BaseURL, r.Timeout, r.AllowDotenv
-	s.Model = first(req.Model, role.Model, m.cfg.Model, r.Model)
-	s.Effort = first(req.Effort, role.Effort, m.cfg.Effort, r.Effort)
+	s.Model = first(model, role.Model, m.cfg.Model, r.Model)
+	s.Effort = first(effort, role.Effort, m.cfg.Effort, r.Effort)
 	s.SystemPrompt = r.SystemPrompt
 	if role.DeveloperInstructions != "" {
 		s.SystemPrompt = first(s.SystemPrompt, instructions.RunnerHostPrompt) + "\n\n" + strings.TrimSpace(role.DeveloperInstructions)
@@ -223,20 +169,64 @@ func (m *Manager) settings(p engine.AgentParent, role Role, req engine.SpawnRequ
 	return s
 }
 
-// askFor asks a child's approvals through its parent's current run, with
-// the child's nickname in the justification.
-func (m *Manager) askFor(parentID, nickname string) approval.Ask {
-	return func(ctx context.Context, p approval.Prompt) approval.Answer {
-		m.mu.Lock()
-		ask := m.parents[parentID].Ask
-		m.mu.Unlock()
-		if ask == nil {
-			return approval.DeclineBecause("no one can approve commands of agent " + nickname + " in this run")
+// subtree is c and its open descendants, parents first. It holds m.mu.
+func (m *Manager) subtree(c *child) []*child {
+	out := []*child{c}
+	for i := 0; i < len(out); i++ {
+		for _, k := range m.children {
+			if k.parent == out[i].id && !k.closed {
+				out = append(out, k)
+			}
 		}
-		p.Justification = strings.TrimSpace("agent " + nickname + ": " + p.Justification)
-
-		return ask(ctx, p)
 	}
+
+	return out
+}
+
+// Interrupt stops the live runs of the parent's children and their own
+// children. They stay open: send_input starts them again.
+func (m *Manager) Interrupt(parentID string) {
+	m.mu.Lock()
+	var stop []*child
+	for _, c := range m.children {
+		if c.parent == parentID && !c.closed {
+			stop = append(stop, m.subtree(c)...)
+		}
+	}
+	for _, c := range stop {
+		c.cancelAsks()
+	}
+	m.mu.Unlock()
+	for _, c := range stop {
+		if s := c.session(m); s != nil {
+			go func() { _ = s.Interrupt() }() // never wait on a child's loop from the parent's
+		}
+	}
+}
+
+// Close closes every child; the engine calls it when a session on it
+// closes. The manager stays usable for the engine's next session.
+func (m *Manager) Close() error {
+	m.mu.Lock()
+	var open []*child
+	for _, c := range m.children {
+		if !c.closed {
+			c.closed = true
+			c.cancelAsks()
+			open = append(open, c)
+		}
+	}
+	m.mu.Unlock()
+	var errs []error
+	for _, c := range open {
+		if s := c.session(m); s != nil {
+			if err := s.Close(); err != nil && !errors.Is(err, session.ErrClosed) {
+				errs = append(errs, fmt.Errorf("failed to close agent %s: %w", c.nickname, err))
+			}
+		}
+	}
+
+	return errors.Join(errs...)
 }
 
 func first(values ...string) string {
