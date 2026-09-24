@@ -93,7 +93,7 @@ The tools are Codex's v1 set (rust-v0.156.1), with its parameters, results, and 
 <!-- memoria:section id="approvals" files="ask.go" -->
 ## Approvals
 
-A child's session has no user of its own. Its `session.Options.Ask` asks through the parent session's `engine.Options.AskAnytime`, with `agent <nickname>:` before the justification. The child's own run applies the auto-reviewer first, on the child's own transcript; what it leaves to the user reaches the parent session and its PermissionRequest hooks.
+A child's session has no user of its own. Its `session.Options.Ask` asks through the parent session's `engine.Options.AskAnytime`, with `agent <nickname>:` before the justification. The child's own run applies the auto-reviewer first when it is on (auto mode, or `approvals_reviewer = "auto_review"`), on the child's own transcript; what is left to the user reaches the parent session and its PermissionRequest hooks.
 
 Such a prompt stays open after the parent's run ends, and a child can ask while the parent is idle. It ends when the user answers, when the child is interrupted or closed (each child has a context for its prompts that these cancel), or when the parent session closes. With no one to ask, as in `uah run`, the child is declined with a reason. A role's `approve` list answers first, before the child's auto-reviewer (see [Markdown agents](#markdown-agents)).
 <!-- /memoria:section -->

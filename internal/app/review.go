@@ -16,7 +16,9 @@ import (
 // codex-auto-review on openai-codex and to the session model elsewhere, at
 // low effort, with Codex's 90s timeout.
 func pickReview(cfg config.Config, s session.Settings) (string, review.Config, error) {
-	who := first(cfg.ApprovalsReviewer, review.ReviewerAuto)
+	// The user answers unless the config asks for the reviewer; Auto mode
+	// uses the reviewer whatever this says (approval.Mode).
+	who := first(cfg.ApprovalsReviewer, review.ReviewerUser)
 	if who != review.ReviewerAuto && who != review.ReviewerUser {
 		return "", review.Config{}, usage(fmt.Errorf("invalid approvals_reviewer %q (want auto_review or user)", who))
 	}

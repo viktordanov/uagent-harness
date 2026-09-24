@@ -319,7 +319,7 @@ func TestResolve(t *testing.T) {
 				},
 				Engine: app.EngineEmbedded, MaxDisk: 5 << 30, Instructions: true,
 				Sandbox: sandbox.Policy{Mode: sandbox.WorkspaceWrite}, Compaction: compaction.Settings{Percent: 90}, Approval: approval.OnRequest,
-				ApprovalsReviewer: review.ReviewerAuto,
+				ApprovalsReviewer: review.ReviewerUser,
 				Review:            review.Config{Model: review.CodexModel, Effort: llm.ReasoningEffortLow, Timeout: review.DefaultTimeout},
 				Agents:            app.Agents{Enabled: true, MaxThreads: 4, MaxDepth: 1},
 			}

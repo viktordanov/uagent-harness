@@ -353,7 +353,7 @@ Read more: [sandbox](internal/sandbox/README.md).
 ### Approvals, rules, and auto-review
 
 <!-- memoria:import src="internal/approval/README.md#summary" -->
-On the embedded engine, each command runs in the sandbox unless a rule or an approval says otherwise: a command rule can allow, forbid, or ask; the model can ask to run a command outside the sandbox; and an escalation goes to the auto-reviewer, then PermissionRequest hooks, then the user. The permission mode, which shift+tab cycles, picks the sandbox and whether the auto-reviewer decides alone. The defaults are Codex's: workspace-write, on-request, and auto-review.
+On the embedded engine, each command runs in the sandbox unless a rule or an approval says otherwise: a command rule can allow, forbid, or ask; the model can ask to run a command outside the sandbox; and an escalation goes to PermissionRequest hooks, then you. The permission mode, which shift+tab cycles, picks the sandbox and who answers: you in read-only and workspace, the auto-reviewer alone in auto. The defaults are Codex's: workspace-write, on-request, and the user as reviewer (Codex's "Ask for approval").
 <!-- /memoria:import -->
 
 Read more: [approvals](internal/approval/README.md), [rules](internal/rules/README.md), and [auto-review](internal/review/README.md).

@@ -21,6 +21,7 @@ Asked for by the owner after item 28; these come first.
 | 37 | Paste images into the prompt, as Codex and Claude Code do (ctrl+v on macOS; the Linux key to be found); first check what the runner and uagent allow | lane images | done (embedded engine; the image goes as a ViewImage result, since the runner's user message is text only; see docs/design/images.md) |
 | 38 | `!` shell mode in the composer: run a command yourself, and its result joins the conversation | lane shell | done |
 | 39 | Show the subscription's usage, as designed in item 35 (the owner accepted the defaults) | lane usage2 | done |
+| 40 | Who answers an approval follows the permission mode: you in read-only and workspace, the auto-reviewer in auto (`approvals_reviewer` now defaults to `user`) | main session | done |
 
 ### 34. The resume hint on quit
 

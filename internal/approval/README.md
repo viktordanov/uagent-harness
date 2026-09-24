@@ -4,7 +4,7 @@
 The approver decides how a command runs: in the sandbox, outside it, or not at all. It applies the command rules and the approval policy and, when a command needs approval, asks through an `Ask` function that the engine and the session build. This README describes the whole permission pipeline on the embedded engine, from the sandbox to the user.
 
 <!-- memoria:export id="summary" -->
-On the embedded engine, each command runs in the sandbox unless a rule or an approval says otherwise: a command rule can allow, forbid, or ask; the model can ask to run a command outside the sandbox; and an escalation goes to the auto-reviewer, then PermissionRequest hooks, then the user. The permission mode, which shift+tab cycles, picks the sandbox and whether the auto-reviewer decides alone. The defaults are Codex's: workspace-write, on-request, and auto-review.
+On the embedded engine, each command runs in the sandbox unless a rule or an approval says otherwise: a command rule can allow, forbid, or ask; the model can ask to run a command outside the sandbox; and an escalation goes to PermissionRequest hooks, then you. The permission mode, which shift+tab cycles, picks the sandbox and who answers: you in read-only and workspace, the auto-reviewer alone in auto. The defaults are Codex's: workspace-write, on-request, and the user as reviewer (Codex's "Ask for approval").
 <!-- /memoria:export -->
 
 The pipeline follows Codex (checked against rust-v0.156.1). The decisions are recorded in the [sandbox plan](../../docs/design/sandbox.md), and the keys are in the [configuration reference](../../docs/configuration.md#sandbox-and-approvals).
@@ -61,8 +61,8 @@ A permission mode (`Mode`) is a sandbox mode and who decides what needs approval
 
 | Mode | Sandbox | Escalations and `prompt` rules | Codex | Claude Code |
 | --- | --- | --- | --- | --- |
-| `read-only` | `read-only` | Ask: the auto-reviewer first, then hooks and the user | `read-only` preset ("Read Only"), on-request | `plan` is the nearest: it reads and does not change files |
-| `workspace` (default) | `workspace-write` | Ask: the auto-reviewer first, then hooks and the user | `auto` preset ("Default") with `approvals_reviewer = user` ("Ask for approval") | `default` |
+| `read-only` | `read-only` | Ask: PermissionRequest hooks, then you (the auto-reviewer first only with `approvals_reviewer = "auto_review"`) | `read-only` preset ("Read Only"), on-request | `plan` is the nearest: it reads and does not change files |
+| `workspace` (default) | `workspace-write` | Ask: PermissionRequest hooks, then you (the auto-reviewer first only with `approvals_reviewer = "auto_review"`) | `auto` preset ("Default") with `approvals_reviewer = user` ("Ask for approval") | `default` |
 | `auto` | `workspace-write` | The auto-reviewer decides; the user is not asked. A decline reaches the model with the reviewer's reason | `auto` preset with `approvals_reviewer = auto_review` ("Approve for me") | `auto`: a classifier model approves or blocks each action, and a block goes back to Claude with the reason |
 | `full-access` | none | No escalations; `prompt` rules ask | `full-access` preset ("Full Access"), approval never | `bypassPermissions` |
 
@@ -86,7 +86,7 @@ A change reaches a live run on the embedded engine from its next command and mod
 | `network_access` | false | The same |
 | Protected paths | `.git`, `.uagent`, `.agents`, `.codex` | `.git`, `.agents`, `.codex` |
 | `approval_policy` | `on-request` (`on-failure` is accepted as `on-request`) | The same |
-| `approvals_reviewer` | `auto_review` | Opt-in `auto_review` |
+| `approvals_reviewer` | `user` (auto mode uses the reviewer) | `user`; `auto_review` with "Approve for me" |
 | Review model | `codex-auto-review` on openai-codex, else the session's model; low effort; 90 s timeout | `codex-auto-review` |
 | Circuit breaker | 3 denials in a row, or 10 in the last 50 reviews, until the next user message | The same, except that a failed review counts as a denial in uah |
 | Environment | The whole environment | The same |
