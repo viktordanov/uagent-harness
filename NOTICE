@@ -1,0 +1,11 @@
+uah (github.com/viktordanov/uagent-harness)
+Copyright 2026 Viktor Danov
+
+This product is licensed under the Apache License, Version 2.0 (LICENSE).
+
+It includes code and prompt text adapted from OpenAI Codex
+(https://github.com/openai/codex), Copyright 2025 OpenAI, licensed under
+the Apache License, Version 2.0, and code adapted from unreal-agent
+(https://github.com/unreallabsai/unreal-agent), Copyright (c) 2026 Unreal
+Labs, licensed under the MIT License. THIRD_PARTY_NOTICES.md lists the
+files and carries the licenses.
