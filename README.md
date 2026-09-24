@@ -1,17 +1,39 @@
 <!-- memoria:section id="overview" files="cmd/uah/main.go go.mod" -->
 # uah
 
-<p align="center"><img src="docs/assets/uah.png" alt="The uah TUI: a flaky test found and fixed with a diff, then two subagents reviewing in parallel" width="760"></p>
+<p align="center"><img src="docs/assets/uah.png" alt="The uah TUI: a flaky test found and fixed with a diff, then two subagents reviewing in parallel" width="900"></p>
 
-`uah` is a terminal coding agent built on [uagent](https://github.com/viktordanov/uagent), the wrapper around unreal-agent-runner. It works like Codex: a TUI and a headless `uah run`, sessions you can resume, AGENTS.md and skills, a sandbox with approvals and auto-review, MCP servers, subagents, compaction, and hooks.
+`uah` is a terminal coding agent built on [uagent](https://github.com/viktordanov/uagent), the wrapper around unreal-agent-runner. It works like Codex, with a TUI and a headless `uah run`.
+
+> [!NOTE]
+> This project's documentation is maintained with [Memoria](https://github.com/viktordanov/rs-memoria). Each README is tied to the code it describes, and CI fails when that code changes and nobody has reviewed the README. The docs get the same review as the code.
+
+## Features
+
+| Feature | What you get |
+| --- | --- |
+| [Sessions](#resume-work) | Every session saved and searchable; `uah resume`, and the resume command printed when you quit |
+| [Usage](#see-your-plans-usage) | Your ChatGPT plan's limits in `/usage`, `/status`, and the footer; token usage on quit |
+| [Subagents](#delegate-to-subagents) | Parallel children with Codex's tools, `fork_context`, per-agent models, and a live view of each |
+| [Agent files](#delegate-to-subagents) | Kinds of subagents in Markdown with front matter (Claude Code's) or TOML (Codex's) |
+| [Instructions and skills](#give-the-agent-instructions) | `AGENTS.md` and `SKILL.md` found as Codex finds them; `CLAUDE.md` as an opt-in |
+| [MCP](#add-an-mcp-server) | Stdio and HTTP servers in Codex's format, OAuth logins, and per-tool approvals |
+| [Sandboxing](#switch-the-permission-mode) | Seatbelt on macOS and bubblewrap on Linux, in read-only, workspace, auto, and full-access modes |
+| [Approvals](#let-a-command-run-without-asking) | Prompts you answer, command rules, "don't ask again", and an auto-reviewer in auto mode |
+| [Compaction](#keep-a-long-session-going) | Automatic and `/compact`, with a configurable model and prompt; `/clear` and `/context` |
+| [Images](#paste-an-image) | Paste a screenshot with ctrl+v, or drop an image file |
+| [Shell mode](#run-a-command-yourself) | `!` runs your own command; the agent sees its output with your next message |
+| [File edits](#file-edits-and-diffs) | Codex's `apply_patch`, shown as diffs |
+| [Hooks](#run-a-command-at-an-event) | Claude Code's hook contract, with trust for project hooks |
+| [Customization](#configuration) | Every key in TOML, `/config` in the TUI, and your own review and compaction prompts |
+
+More is planned: the [ledger](docs/ledger.md) tracks what is built and what is next.
 
 1. [Get started](#get-started)
 2. [Common tasks](#common-tasks)
 3. [Configuration](#configuration)
 4. [How it works](#how-it-works)
 5. [Development](#development)
-
-The [ledger](docs/ledger.md) tracks what is built and what is next.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="usage" files="cmd/uah/main.go cmd/uah/models.go cmd/uah/run.go cmd/uah/resume.go cmd/uah/sessions.go cmd/uah/tui.go cmd/uah/tuiconfig.go cmd/uah/print.go cmd/uah/completion.go cmd/uah/doctor.go internal/app/doctor.go internal/app/doctorchecks.go cmd/uah/flags.go cmd/uah/prompts.go internal/images/images.go internal/images/store.go internal/images/paths.go internal/images/clipboard/clipboard.go internal/images/clipboard/macos.go internal/images/clipboard/linux.go internal/app/usershell.go internal/usershell/usershell.go internal/usershell/record.go internal/usershell/capture.go cmd/uah/usage.go internal/app/planusage.go" -->
@@ -201,15 +223,9 @@ Review only; do not edit files. List each finding with its file and line.
 
 The body is the subagent's instructions. `tools` limits the tools it is offered (Claude Code's `Edit` and `Write` are `apply_patch`; omit `tools` for all of them). `approve` lists commands and MCP tools it runs without asking, within the session's permission mode: read only stays read only, and a `forbid` rule still wins. Codex's TOML role files (`reviewer.toml`) work too. See [agent files](docs/configuration.md#subagents).
 
-Each subagent runs on the parent's provider. To give one another model, effort, or fast mode:
+A subagent runs on the parent's provider. Ask for another model or effort ("use a subagent on gpt-6-luna with low effort"), set `model`, `effort`, and `fast: true` in its agent file, or set defaults in `[agents]`; see [agent files](docs/configuration.md#subagents). Ask for a forked subagent ("fork a subagent to write the tests for what we just discussed") to hand it the conversation so far through `fork_context`.
 
-- **Model and effort for one task.** Ask for it ("use a subagent on gpt-6-luna with low effort"). The agent passes `model` and `reasoning_effort` to `spawn_agent`. On openai-codex, a model outside Codex's catalog fails at once, with the models to choose from.
-- **Model, effort, and fast mode for a kind of subagent.** Set `model`, `effort`, and `fast: true` in its agent file (`model`, `model_reasoning_effort`, and `service_tier = "priority"` in a TOML role file); fast mode then applies to that kind only. See [agent files](docs/configuration.md#subagents).
-- **Defaults for every subagent.** Set `default_subagent_model` and `default_subagent_reasoning_effort` in `[agents]`. Fast mode for every subagent follows the parent: `/fast` in the session turns it on for the children it starts.
-
-To hand a subagent the conversation so far, ask for a forked subagent ("fork a subagent to write the tests for what we just discussed"): `spawn_agent` with `fork_context` starts it from a copy of the parent's history, so it needs no exploring again, and its first request starts with the parent's last one, which lets the provider reuse its prompt cache.
-
-To watch a subagent work, type `/agents <name>` (tab completes the names): the TUI shows its transcript as it works, and a message you type there goes to it. alt+← and alt+→ switch between the main agent and the subagents, as in Codex (alt+b and alt+f on an empty prompt in terminals that send those), esc esc interrupts the agent you are viewing, and ctrl+enter steers it. When a subagent finishes or is interrupted, the main agent is told with your next message, as in Codex; one it is waiting for returns at once. The main agent keeps running meanwhile. `uah sessions` lists subagents under their parent as `subagent-1a2b3c4d`, and `uah sessions show subagent-1a2b3c4d` prints one's transcript.
+To watch a subagent, type `/agents <name>` or press alt+← and alt+→: the TUI shows its transcript, and what you type goes to it. When a subagent finishes or is interrupted, the main agent is told with your next message, as in Codex. `uah sessions show subagent-1a2b3c4d` prints a finished one's transcript.
 
 ### Keep a long session going
 
@@ -237,7 +253,7 @@ Hooks in a project's `.uagent/config.toml` run only after `uah hooks trust`; `ua
 
 ### Change settings
 
-Type `/config` in the TUI. It lists auto-compact and its token limit, the compaction model, the default model and effort, fast mode, the permission mode, the details view, and the mouse, each with its value and where the value comes from. ↑↓ choose a setting; enter or space changes it (toggles, cycles, or opens a value to type); ←→ cycle back and forth; esc closes. Each change is saved at once to your user file, keeping its comments. The model, effort, fast mode, and permission mode also change the running session, the details view and the mouse change at once, and the compaction settings apply to sessions opened afterwards (`/new`, `/resume`). A flag or a trusted project file that sets the same key still wins; `/config` says so.
+Type `/config` in the TUI. It lists the basic settings (compaction, the model and effort, fast mode, the permission mode, the details view, and the mouse) with each value and its source. ↑↓ choose, enter or space changes, esc closes. Each change is saved to your user file, keeping its comments, and applies to the running session where it can; compaction settings apply from the next session. A flag or a trusted project file that sets the same key still wins, and `/config` says so.
 
 ### See what is configured
 
@@ -447,7 +463,7 @@ go test -race ./...          # unit and end-to-end tests
 golangci-lint run ./...      # lint (golangci-lint v2.13.2)
 ```
 
-The title image is [docs/assets/title.html](docs/assets/title.html), drawn in the TUI's colors and captured with headless Chrome: `chrome --headless=new --force-device-scale-factor=2 --default-background-color=00000000 --window-size=940,1400 --screenshot=uah.png title.html`, then `magick uah.png -trim +repage uah.png`.
+The title image is [docs/assets/title.html](docs/assets/title.html), drawn in the TUI's colors and captured with headless Chrome: `chrome --headless=new --force-device-scale-factor=2 --default-background-color=00000000 --window-size=1130,1400 --screenshot=uah.png title.html`, then `magick uah.png -trim +repage uah.png`.
 
 CI runs the build, the race tests, and the linter on each push; the linter also fails on a function above 20 cyclomatic complexity, a backstop for the rule of about 15. Design records, the architecture rules, and the documentation procedure are in [docs](docs/README.md):
 
