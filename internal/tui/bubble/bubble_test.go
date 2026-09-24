@@ -105,6 +105,12 @@ func (d *driver) typeText(s string) {
 
 func (d *driver) key(code rune, mod tea.KeyMod) { d.send(tea.KeyPressMsg{Code: code, Mod: mod}) }
 
+// waitIdle waits until no run is live: the status line is gone.
+func (d *driver) waitIdle() {
+	d.t.Helper()
+	d.until("idle", func() bool { return !strings.Contains(d.view(), "esc to interrupt") })
+}
+
 // until processes messages until check passes.
 func (d *driver) until(what string, check func() bool) {
 	d.t.Helper()
@@ -180,6 +186,7 @@ func TestTUI_ResumeFromThePicker(t *testing.T) {
 	deps.Prompt = "remember this"
 	d := start(t, deps)
 	d.waitFor("hello")
+	d.waitIdle() // /new waits while a run is live
 
 	d.typeText("/new")
 	d.key(tea.KeyEnter, 0)
