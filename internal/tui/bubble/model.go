@@ -15,6 +15,7 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
+	"github.com/viktordanov/uagent-harness/internal/compaction"
 	"github.com/viktordanov/uagent-harness/internal/models"
 	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/internal/tui/render"
@@ -60,6 +61,9 @@ type Deps struct {
 	SaveConfig func(key string, value any) error
 	// Version is uah's version, for the banner.
 	Version string
+	// Windows finds a model's context window in the model catalog, for the
+	// footer's context meter (nil: the default window).
+	Windows compaction.WindowLookup
 	// Now is the clock (default time.Now).
 	Now func() time.Time
 }
@@ -109,7 +113,7 @@ func New(ctx context.Context, deps Deps) Model {
 	}
 
 	st := state.New(deps.Now())
-	st.Details, st.Mouse = deps.Details, deps.Mouse
+	st.Details, st.Mouse, st.Windows = deps.Details, deps.Mouse, deps.Windows
 
 	return Model{
 		ctx: ctx, deps: deps, st: st,

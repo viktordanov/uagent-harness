@@ -1,7 +1,5 @@
 package compaction
 
-import "github.com/viktordanov/uagent-harness/internal/models"
-
 // DefaultContextWindow is the window of a model the table does not know, as
 // Codex assumes for unknown models.
 const DefaultContextWindow = 272_000
@@ -13,15 +11,23 @@ const DefaultAutoPercent = 90
 // prompt and tools), so a fresh session shows 100% left.
 const baselineTokens = 12_000
 
+// WindowLookup finds a model's context window in a model catalog: the
+// provider's list, cached, or the bundled one (internal/models' Manager.Window).
+// ok is false when the catalog does not know the model.
+type WindowLookup func(model string) (window int64, ok bool)
+
 // ContextWindow is the model's context window in tokens: override
-// (model_context_window) when it is positive, else the model catalog's value
-// (the provider's list, cached, or bundled), else DefaultContextWindow. Everything that needs a window calls this.
-func ContextWindow(model string, override int64) int64 {
+// (model_context_window) when it is positive, else the catalog's value
+// through lookup (nil: none), else DefaultContextWindow. Everything that
+// needs a window calls this; the caller passes the catalog it has.
+func ContextWindow(model string, override int64, lookup WindowLookup) int64 {
 	if override > 0 {
 		return override
 	}
-	if w, ok := models.Window(model); ok {
-		return w
+	if lookup != nil {
+		if w, ok := lookup(model); ok {
+			return w
+		}
 	}
 
 	return DefaultContextWindow

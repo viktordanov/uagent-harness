@@ -212,27 +212,24 @@ func TestValidate(t *testing.T) {
 
 	down := modelstest.Manager(t, models.ProviderCodex, modelstest.Source{Err: errors.New("offline")})
 	require.NoError(t, down.Validate(ctx, models.ProviderCodex, "gpt-7"), "the bundled list never rejects a model")
-
-	models.SetDefault(m)
-	t.Cleanup(func() { models.SetDefault(nil) })
-	require.ErrorIs(t, models.Validate(ctx, models.ProviderCodex, "gpt-luna-6"), models.ErrUnavailable)
+	require.ErrorIs(t, many.Validate(ctx, models.ProviderCodex, "gpt-luna-6"), models.ErrUnavailable)
 }
 
 func TestWindow(t *testing.T) {
 	m := modelstest.Manager(t, models.ProviderOpenRouter, modelstest.Source{Models: []models.Model{{ID: "moonshot/kimi", ContextWindow: 131072}}})
-	models.SetDefault(m)
-	t.Cleanup(func() { models.SetDefault(nil) })
-
-	_, ok := models.Window("moonshot/kimi")
+	_, ok := m.Window("moonshot/kimi")
 	assert.False(t, ok, "nothing loaded yet")
 	m.Catalog(context.Background(), models.ProviderOpenRouter, models.Online)
-	w, ok := models.Window("moonshot/kimi")
+	w, ok := m.Window("moonshot/kimi")
 	assert.True(t, ok)
 	assert.Equal(t, int64(131072), w)
-	w, _ = models.Window("gpt-daybreak-red-latest")
+	w, _ = m.Window("gpt-daybreak-red-latest")
 	assert.Equal(t, int64(372000), w, "the bundled catalog when the provider's lacks it")
-	w, _ = models.Window("openai/gpt-5.5-2026-01-01")
+	w, _ = m.Window("openai/gpt-5.5-2026-01-01")
 	assert.Equal(t, int64(272000), w, "a namespaced, dated ID takes its base model's metadata, as in Codex")
+	w, ok = models.BundledWindow("gpt-daybreak-red-latest")
+	assert.True(t, ok)
+	assert.Equal(t, int64(372000), w, "the shipped catalog alone, for uah config")
 }
 
 func TestApplyPatch(t *testing.T) {

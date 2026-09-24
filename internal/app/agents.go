@@ -53,7 +53,7 @@ func pickAgents(c config.Agents) (Agents, error) {
 // which cannot run subagents. With agents off it offers no tools but still
 // answers a resumed session's past calls. Role file warnings become
 // notices.
-func newAgents(r Resolved, cfg config.Config, workspace string, opts *session.Options) *agents.Manager {
+func newAgents(r Resolved, cfg config.Config, workspace string, opts *session.Options, catalog *models.Manager) *agents.Manager {
 	if r.Engine != EngineEmbedded {
 		return nil
 	}
@@ -75,7 +75,7 @@ func newAgents(r Resolved, cfg config.Config, workspace string, opts *session.Op
 	// spawn_agent checks a model against the provider's live list, as Codex
 	// checks it against its catalog; children run on the root's provider.
 	provider := r.Settings.Provider
-	validate := func(ctx context.Context, model string) error { return models.Validate(ctx, provider, model) }
+	validate := func(ctx context.Context, model string) error { return catalog.Validate(ctx, provider, model) }
 
 	return agents.New(agents.Config{
 		MaxThreads: r.Agents.MaxThreads, MaxDepth: depth, Model: r.Agents.Model, Effort: r.Agents.Effort,

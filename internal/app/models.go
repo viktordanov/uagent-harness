@@ -19,13 +19,6 @@ func NewModels(stateDir string, s session.Settings, getenv func(string) string) 
 	})
 }
 
-// useModels makes the catalog the process default (for context windows and
-// subagent validation) and loads it from the cache, without the network.
-func useModels(ctx context.Context, m *models.Manager) {
-	models.SetDefault(m)
-	m.Catalog(ctx, m.Provider(), models.Offline)
-}
-
 // checkModels asks the provider for its list, as a session would, and
 // checks that the configured model is in it. An unknown model is a warning:
 // the provider decides.

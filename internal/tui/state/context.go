@@ -15,7 +15,7 @@ func (s State) ContextLeft() (percent int, ok bool) {
 	if s.ContextUsed <= 0 {
 		return 0, false
 	}
-	window := compaction.ContextWindow(s.Settings.Model, s.Settings.ContextWindow)
+	window := compaction.ContextWindow(s.Settings.Model, s.Settings.ContextWindow, s.Windows)
 
 	return compaction.PercentLeft(s.ContextUsed, window), true
 }

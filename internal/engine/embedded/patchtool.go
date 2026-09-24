@@ -60,9 +60,9 @@ func (r patchRegistry) Resolve(name string) (tool.Translator, bool) {
 }
 
 // offersPatch reports whether the run's model gets apply_patch: as its
-// catalog says (models.ApplyPatch), unless the request disallows it.
-func offersPatch(req core.Request) bool {
-	return models.ApplyPatch(req.Provider, req.Model) && !slices.Contains(req.DisallowedTools, patch.ToolName)
+// catalog says (Manager.ApplyPatch), unless the request disallows it.
+func offersPatch(catalog *models.Manager, req core.Request) bool {
+	return catalog.ApplyPatch(req.Provider, req.Model) && !slices.Contains(req.DisallowedTools, patch.ToolName)
 }
 
 // patchGate builds the run's gate: the sandbox policy of the run's

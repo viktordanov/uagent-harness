@@ -46,7 +46,9 @@ type compactor struct {
 	// before runs as each compaction starts; an error cancels it. It is where
 	// a PreCompact hook attaches.
 	before func(context.Context, compaction.Trigger) error
-	window int64 // the configured window; 0 uses the model table
+	window int64 // the configured window; 0 uses the model catalog
+	// windows finds a model's window in the model catalog.
+	windows compaction.WindowLookup
 	// settings are the automatic limit, the summary model and prompt, and
 	// the cap on kept user messages.
 	settings compaction.Settings
@@ -189,7 +191,7 @@ type compactionAsk struct {
 // autoLimit is the tokens in use at which automatic compaction starts for
 // the current model; 0 means never.
 func (c *compactor) autoLimit() int64 {
-	return c.settings.Limit(compaction.ContextWindow(c.next.currentModel(), c.window))
+	return c.settings.Limit(compaction.ContextWindow(c.next.currentModel(), c.window, c.windows))
 }
 
 // run summarizes the history as the model would see it, records the
@@ -272,7 +274,7 @@ func (c *compactor) compact(ctx context.Context, req llm.Request, opts llm.Reque
 	if err != nil {
 		return compaction.Record{}, err
 	}
-	window := compaction.ContextWindow(c.next.currentModel(), c.window)
+	window := compaction.ContextWindow(c.next.currentModel(), c.window, c.windows)
 	rec.Keep, rec.Focus = c.settings.KeepFor(window), strings.TrimSpace(ask.focus)
 	// What a /clear dropped stays dropped.
 	c.mu.Lock()
@@ -321,9 +323,9 @@ func (c *compactor) localSummary(effort llm.ReasoningEffort, cacheKey, focus str
 	if c.settings.Effort != "" {
 		effort = c.settings.Effort
 	}
-	window := compaction.ContextWindow(c.next.currentModel(), c.window)
+	window := compaction.ContextWindow(c.next.currentModel(), c.window, c.windows)
 	if c.settings.Model != "" && c.settings.Model != c.next.currentModel() {
-		window = compaction.ContextWindow(c.settings.Model, 0)
+		window = compaction.ContextWindow(c.settings.Model, 0, c.windows)
 	}
 
 	return func(ctx context.Context, view []llm.Item) (string, error) {

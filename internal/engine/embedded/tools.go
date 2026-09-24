@@ -52,7 +52,7 @@ func (w *wiring) tools(ctx context.Context, req core.Request, sessionID session.
 	}
 	never := w.e.cfg.Approver != nil && w.e.cfg.Approver.Policy() == approval.Never
 	registry = withMCP(registry, mcpTools, req.DisallowedTools, mcpGate{ctx: ctx, ask: w.ask, never: never})
-	registry = withPatch(registry, offersPatch(req), w.patchGate(ctx, req))
+	registry = withPatch(registry, offersPatch(w.e.models, req), w.patchGate(ctx, req))
 	req.SessionID = string(sessionID)
 	registry = w.withAgents(registry, req)
 
