@@ -68,7 +68,7 @@ func (s *State) onEvent(ev core.Event) {
 				s.Queue = slices.DeleteFunc(s.Queue, func(q Queued) bool { return q.ID == id })
 			}
 		}
-		s.notice("error", "not delivered: "+e.Reason)
+		s.notice(session.LevelError, "not delivered: "+e.Reason)
 	case session.InputWithdrawn:
 		s.Queue = slices.DeleteFunc(s.Queue, func(q Queued) bool { return q.ID == e.ID })
 	case session.SettingsChanged:
@@ -81,15 +81,15 @@ func (s *State) onEvent(ev core.Event) {
 		if e.Settings.ServiceTier != "" {
 			fast = " · fast"
 		}
-		s.notice("info", fmt.Sprintf("%s/%s · effort %s%s, applies %s", e.Settings.Provider, e.Settings.Model, e.Settings.Effort, fast, when))
+		s.notice(session.LevelInfo, fmt.Sprintf("%s/%s · effort %s%s, applies %s", e.Settings.Provider, e.Settings.Model, e.Settings.Effort, fast, when))
 	case session.HookRan:
 		switch e.Outcome {
 		case "ok":
 			s.notice(LevelDebug, fmt.Sprintf("hook %s · %s · %s", e.Event, e.Command, e.Duration.Round(time.Millisecond)))
 		case "blocked":
-			s.notice("warning", fmt.Sprintf("%s hook blocked: %s", e.Event, e.Reason))
+			s.notice(session.LevelWarning, fmt.Sprintf("%s hook blocked: %s", e.Event, e.Reason))
 		default:
-			s.notice("warning", fmt.Sprintf("%s hook %s: %s", e.Event, e.Outcome, e.Reason))
+			s.notice(session.LevelWarning, fmt.Sprintf("%s hook %s: %s", e.Event, e.Outcome, e.Reason))
 		}
 	case session.Idle:
 		s.Busy, s.Live = false, nil
@@ -106,7 +106,7 @@ func (s *State) onRunEvent(ev core.Event) {
 		s.Live = &Live{RunID: e.RunID, Started: e.At}
 		s.put(Item{Kind: KindRun, Key: "run:" + e.RunID, RunID: e.RunID, Status: core.StatusRunning, Started: e.At})
 	case core.PreflightWarning:
-		s.notice("warning", e.Message)
+		s.notice(session.LevelWarning, e.Message)
 	case core.UserMessage:
 		// The runner's echo delivers a message this session sent; any other
 		// message comes from history or another client.
@@ -126,7 +126,7 @@ func (s *State) onRunEvent(ev core.Event) {
 			it.Pending, it.In, it.Out, it.Duration = false, e.Usage.InputTokens, e.Usage.OutputTokens, e.Duration
 		})
 		if e.Failure != "" {
-			s.notice("error", "model failure: "+e.Failure)
+			s.notice(session.LevelError, "model failure: "+e.Failure)
 		}
 	case core.ToolCalled:
 		s.put(Item{Kind: KindTool, Key: "call:" + e.CallID, Name: e.Name, Label: e.Label, Tool: ToolCalled, Started: e.At})
@@ -151,7 +151,7 @@ func (s *State) onRunEvent(ev core.Event) {
 	case core.ReasoningSummary:
 		s.put(Item{Kind: KindReasoning, Key: s.nextKey("reason"), Text: e.Text})
 	case core.RunnerError:
-		s.notice("error", e.Message)
+		s.notice(session.LevelError, e.Message)
 	case core.RunFinished:
 		s.finishRun(e.Result)
 	}
@@ -299,7 +299,7 @@ func (s *State) onIntent(ev any) (State, []Effect) {
 	case HistoryLoaded:
 		s.loadHistory(e)
 	case Failed:
-		s.notice("error", e.Err.Error())
+		s.notice(session.LevelError, e.Err.Error())
 		s.Quitting = false
 	}
 
