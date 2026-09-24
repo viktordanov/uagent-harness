@@ -35,14 +35,14 @@ func newFakeEngine(caps engine.Capabilities) *fakeEngine {
 func (e *fakeEngine) Name() string                      { return "fake" }
 func (e *fakeEngine) Capabilities() engine.Capabilities { return e.caps }
 
-func (e *fakeEngine) Start(_ context.Context, req core.Request, _ engine.Options, sink core.Sink) (engine.Run, error) {
+func (e *fakeEngine) Start(_ context.Context, req core.Request, opts engine.Options, sink core.Sink) (engine.Run, error) {
 	if e.gate != nil {
 		<-e.gate
 	}
 	if e.startErr != nil {
 		return nil, e.startErr
 	}
-	r := &fakeRun{req: req, sink: sink, caps: e.caps, end: make(chan core.Status, 1), done: make(chan struct{})}
+	r := &fakeRun{req: req, opts: opts, sink: sink, caps: e.caps, end: make(chan core.Status, 1), done: make(chan struct{})}
 	sink(core.RunStarted{At: time.Now(), RunID: fmt.Sprintf("run-%d", len(e.started)), SessionID: req.SessionID})
 	if !e.noEcho {
 		for _, m := range req.Messages {
@@ -57,6 +57,7 @@ func (e *fakeEngine) Start(_ context.Context, req core.Request, _ engine.Options
 
 type fakeRun struct {
 	req    core.Request
+	opts   engine.Options
 	sink   core.Sink
 	caps   engine.Capabilities
 	end    chan core.Status
@@ -102,6 +103,7 @@ func (r *fakeRun) SetEffort(e string) error {
 
 func (r *fakeRun) SetModel(string) error       { return engine.ErrUnsupported }
 func (r *fakeRun) SetServiceTier(string) error { return engine.ErrUnsupported }
+func (r *fakeRun) Compact() error              { return engine.ErrUnsupported }
 func (r *fakeRun) Interrupt()                  { r.finish(core.StatusInterrupted) }
 func (r *fakeRun) Kill()                       { r.finish(core.StatusInterrupted) }
 

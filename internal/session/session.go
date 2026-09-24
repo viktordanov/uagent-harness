@@ -81,7 +81,9 @@ type Session struct {
 	restartAfterStop     bool
 	interruptWhenStarted bool
 	closeReply           chan error
-	hooks                hookState
+	// compactPending is a /compact the engine has not started yet.
+	compactPending bool
+	hooks          hookState
 }
 
 // Open starts a session. Its first event is SessionOpened.

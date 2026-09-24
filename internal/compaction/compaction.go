@@ -71,10 +71,22 @@ func Hash(items []llm.Item) (string, error) {
 	return hex.EncodeToString(sum.Sum(nil)), nil
 }
 
-// NewRecord covers all of input after its system message.
+// Coverable is how many items after input's system message a compaction
+// covers: all of them except the user messages at the end, which are new
+// input that goes after the summary, as Codex compacts before recording it.
+func Coverable(input []llm.Item) int {
+	n := len(input) - 1
+	for n > 0 && IsUserMessage(input[n]) {
+		n--
+	}
+
+	return max(n, 0)
+}
+
+// NewRecord covers the Coverable items of input with the summary.
 func NewRecord(input []llm.Item, summary string, trigger Trigger, model string, at time.Time) (Record, error) {
-	covered := max(len(input)-1, 0)
-	hash, err := Hash(input[min(1, len(input)):])
+	covered := Coverable(input)
+	hash, err := Hash(input[min(1, len(input)) : 1+covered])
 	if err != nil {
 		return Record{}, err
 	}

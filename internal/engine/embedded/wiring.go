@@ -37,9 +37,9 @@ type backend struct{ e *Engine }
 // Start reproduces the runner's Run: provider client, session store, tools,
 // inbox, context builder, and coordinator. It never loads the workspace .env.
 func (b backend) Start(ctx context.Context, l harness.Launch) (harness.Process, error) {
-	opts, _ := ctx.Value(optionsKey{}).(engine.Options)
-	w := &wiring{e: b.e, l: l, getenv: b.e.cfg.Getenv}
-	a, err := w.start(ctx, opts)
+	start, _ := ctx.Value(startKey{}).(startValue)
+	w := &wiring{e: b.e, l: l, getenv: b.e.cfg.Getenv, emit: start.emit}
+	a, err := w.start(ctx, start.opts)
 	if err != nil {
 		w.cleanup()
 		_ = l.Stdout.Close()
@@ -57,6 +57,7 @@ type wiring struct {
 	e       *Engine
 	l       harness.Launch
 	getenv  func(string) string
+	emit    func(core.Event)
 	closers []func() error
 }
 
@@ -94,10 +95,15 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 		return nil, err
 	}
 	operations := operation.NewLocalOperationManager(runCtx)
+	comp, err := w.compactor(ctx, s, sw, opts.Compact)
+	if err != nil {
+		return nil, err
+	}
 	a, err := newAgent(runCtx, cancel, sw, s.restored, req.Effort, messages)
 	if err != nil {
 		return nil, err
 	}
+	a.compactor = comp
 
 	builder := newContextBuilder(registry, model, req)
 	obs := &observer{sessionID: s.id, out: io.MultiWriter(s.log, w.l.Stdout), cancel: cancel}
@@ -109,13 +115,37 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 		Restored:              s.restored,
 		Sessions:              s.store,
 		ContextBuilder:        builder,
-		LLM:                   sw,
+		LLM:                   comp,
 		Tools:                 registry,
 		Operations:            operations,
 	})
 	w.launch(runCtx, a, coord, obs, func() { s.store.RemoveObserver(observerID) })
 
 	return a, nil
+}
+
+// compactor wraps the switcher with the session's compactions and seeds the
+// context in use from the session's last response.
+func (w *wiring) compactor(ctx context.Context, s runStore, sw *switcher, compactFirst bool) (*compactor, error) {
+	log := newCompactionLog(w.l.SessionsDir, s.id)
+	rec, err := log.last()
+	if err != nil {
+		return nil, err
+	}
+	used, err := lastUsage(ctx, s.store, s.id)
+	if err != nil {
+		return nil, err
+	}
+	emit := w.emit
+	if emit == nil {
+		emit = func(core.Event) {}
+	}
+	cfg := w.e.cfg
+
+	return &compactor{
+		next: sw, log: log, emit: emit, before: cfg.BeforeCompact, window: cfg.ContextWindow, percent: cfg.AutoCompactPercent,
+		record: rec, pending: compactFirst, used: used,
+	}, nil
 }
 
 // newAgent opens the inbox and submits the initial settings and messages.

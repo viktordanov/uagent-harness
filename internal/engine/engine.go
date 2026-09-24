@@ -19,6 +19,9 @@ type Capabilities struct {
 	LiveEffort  bool
 	LiveModel   bool
 	ServiceTier bool
+	// Compaction means the engine can compact the context (Run.Compact and
+	// Options.Compact).
+	Compaction bool
 }
 
 // Engine starts runs.
@@ -34,6 +37,9 @@ type Engine interface {
 type Options struct {
 	// ServiceTier is "" or "priority" (needs Capabilities.ServiceTier).
 	ServiceTier string
+	// Compact compacts the context before the run's first model request
+	// (needs Capabilities.Compaction).
+	Compact bool
 }
 
 // Run is a started run.
@@ -46,6 +52,9 @@ type Run interface {
 	SetModel(model string) error
 	// SetServiceTier changes the tier for the next model request (ErrUnsupported without ServiceTier).
 	SetServiceTier(tier string) error
+	// Compact compacts the context before the next model request
+	// (ErrUnsupported without Compaction).
+	Compact() error
 	// Interrupt stops the run gracefully.
 	Interrupt()
 	// Kill stops the run at once.
