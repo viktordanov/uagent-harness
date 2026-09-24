@@ -109,8 +109,8 @@ Order of starting: 1 alone (it touches everything). Then lanes A (2), B (4), C (
 
 Ideas that come up while working go here, not into the items.
 
-- Subagents: `resume_agent` for children of an earlier process; `SubagentStop` hook; per-child tool lines in the detailed view; interrupting the parent stops its children; a child's approval while the parent is idle is declined today.
-- Auto-review: Codex sends only the transcript delta per review and lets the reviewer run read-only commands; uah sends the whole trimmed context each time. The openai API-key provider reviews with the session model (Codex uses gpt-5.6-luna). The engine's transcript mixes children's events into the parent's.
+- Subagents: stopping a child while the parent is idle; Codex's v2 tools, `items`, and `fork_context`; Codex's completion notification into the parent's history (see docs/design/subagents.md, Validation).
+- Auto-review: Codex sends only the transcript delta per review and lets the reviewer run read-only commands; uah sends the whole trimmed context each time. The openai API-key provider reviews with the session model (Codex uses gpt-5.6-luna).
 - Approvals: "No, and tell the agent what to do" has no text field; no per-session cache of approved commands; the process engine ignores rules and approvals.
 - MCP: resources, prompts, OAuth, restarting a crashed server.
 - Compaction: Codex's 20,000-token cap on kept user messages is not applied; compaction events are not in `events.jsonl` or `uah run --stream`.

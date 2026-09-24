@@ -13,7 +13,7 @@ uah is a pure core with well-organized infrastructure around it, not layered DDD
 | `internal/sandbox` | Sandbox policies and the sandboxing shell: Seatbelt on macOS, bubblewrap on Linux. |
 | `internal/rules` | Codex's `.rules` files (Starlark `prefix_rule`) and command splitting for matching. |
 | `internal/approval` | The approver: rules and the approval policy decide whether a command runs sandboxed, unsandboxed, or not, and ask the user through the session. |
-| `internal/agents` | Subagents: child sessions on the parent's engine behind the embedded engine's agent tools, their limits, depth, and approvals through the parent, and Codex role files. |
+| `internal/agents` | Subagents behind the `engine.Subagents` seam: Codex's v1 tools, child sessions on the parent's engine, their limits, depth, approvals through the parent, SubagentStop hooks, resume, and Codex role files. The embedded engine only offers the tools and runs their calls; see the package README. |
 | `internal/review` | The auto-reviewer: one model call over `internal/llmcall` judges an action that needs approval, with Codex's prompt, a fail-closed verdict, and a circuit breaker. No engine wiring. |
 | `internal/tui/state` | The pure TUI model: a reducer from events and intents to state and effects. No I/O. |
 | `internal/tui/render` | Pure drawing of state to lines, with a per-item cache. |

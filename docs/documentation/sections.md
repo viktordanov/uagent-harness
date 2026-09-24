@@ -13,6 +13,7 @@ Section IDs identify a concern within a README. Keep the ID stable when a headin
 | `hooks` | Hook events, contract, and trust |
 | `mcp` | MCP servers: configuration, tools, and results |
 | `subagents` | Subagent tools, `[agents]` keys, and role files |
+| `seam`, `lifecycle`, `tools`, `events`, `resume`, `limits`, `roles`, `extending` | The subagent package's README: its contract with the engine, a child's lifecycle, the tools, events and hooks, resume, limits, roles, and how to extend it |
 | `configuration` | Configuration files and precedence |
 | `development` | Building, testing, linting, and CI |
 
