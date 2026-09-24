@@ -12,6 +12,8 @@ import (
 	"strings"
 
 	"github.com/unreallabsai/unreal-agent/harness/llm"
+
+	"github.com/viktordanov/uagent-harness/internal/compaction"
 )
 
 // Category names, in the order /context lists them.
@@ -109,8 +111,8 @@ func Analyze(req llm.Request, reported, window int64, autoPercent int, files []s
 		}
 	}
 	u.Used, u.Estimated = scale(u.Categories, reported)
-	if autoPercent > 0 && window > 0 {
-		u.Buffer = window * int64(100-autoPercent) / 100
+	if limit := compaction.AutoLimit(window, autoPercent); limit > 0 {
+		u.Buffer = window - limit
 	}
 
 	return u

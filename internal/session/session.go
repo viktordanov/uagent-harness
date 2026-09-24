@@ -219,6 +219,9 @@ func (s *Session) ContextUsage() (contextusage.Usage, bool) {
 // servers.
 func (s *Session) Close() error {
 	err := s.close()
+	if f, ok := s.eng.(engine.Forgetter); ok {
+		f.Forget(s.id)
+	}
 	if c, ok := s.eng.(io.Closer); ok {
 		if cerr := c.Close(); cerr != nil && err == nil {
 			err = fmt.Errorf("failed to close the engine: %w", cerr)

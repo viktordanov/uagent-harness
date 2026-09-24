@@ -18,6 +18,9 @@ import (
 type AgentView struct {
 	ID, Nickname string
 	St           *State
+	// Gen changes each time a view opens, since a rebuilt transcript
+	// reuses item keys: the renderer keys its cache on it.
+	Gen int
 }
 
 // Messages and intents of the agent view.
@@ -74,8 +77,8 @@ func cmdAgents(s *State, args string) []Effect {
 
 		return nil
 	}
-	for _, it := range s.Items {
-		if it.Kind != KindAgent || (!strings.EqualFold(it.Name, args) && !strings.HasPrefix(it.Text, args)) {
+	for _, it := range s.Agents() {
+		if !strings.EqualFold(it.Name, args) && !strings.HasPrefix(it.Text, args) {
 			continue
 		}
 		if !working(it) {
@@ -94,8 +97,8 @@ func cmdAgents(s *State, args string) []Effect {
 // agentNames are the nicknames /agents completes.
 func (s State) agentNames() []string {
 	var names []string
-	for _, it := range s.Items {
-		if it.Kind == KindAgent && working(it) {
+	for _, it := range s.Agents() {
+		if working(it) {
 			names = append(names, it.Name)
 		}
 	}
@@ -114,7 +117,8 @@ func (s *State) openAgentView(e AgentViewOpened) {
 	for _, ev := range e.Events {
 		st, _ = Reduce(st, ev)
 	}
-	s.View = &AgentView{ID: e.ID, Nickname: e.Nickname, St: &st}
+	s.viewGen++
+	s.View = &AgentView{ID: e.ID, Nickname: e.Nickname, St: &st, Gen: s.viewGen}
 }
 
 // onAgentView handles what the agent view takes over while it is open:
@@ -181,8 +185,8 @@ func (s *State) switchAgent(delta int) []Effect {
 	// Only working agents are stops; a finished one's answer is in the
 	// main transcript, and uah sessions show prints its whole run.
 	ids := []string{""}
-	for _, it := range s.Items {
-		if it.Kind == KindAgent && working(it) {
+	for _, it := range s.Agents() {
+		if working(it) {
 			ids = append(ids, it.Text)
 		}
 	}
@@ -225,13 +229,7 @@ func (v *AgentView) esc(now time.Time) []Effect {
 // AgentsRunning reports whether any subagent is working, so the clock keeps
 // ticking for their spinners while the main agent is idle.
 func (s State) AgentsRunning() bool {
-	for _, it := range s.Items {
-		if it.Kind == KindAgent && working(it) {
-			return true
-		}
-	}
-
-	return false
+	return slices.ContainsFunc(s.Agents(), working)
 }
 
 // working reports whether a subagent can be viewed: it is running or
@@ -239,3 +237,19 @@ func (s State) AgentsRunning() bool {
 func working(it Item) bool {
 	return it.Detail == engine.AgentRunning || it.Detail == engine.AgentPendingInit
 }
+
+// Agents are the session's subagents' items, in the order they started.
+func (s State) Agents() []Item {
+	out := make([]Item, 0, len(s.agentIDs))
+	for _, id := range s.agentIDs {
+		if i, ok := s.index["agent:"+id]; ok {
+			out = append(out, s.Items[i])
+		}
+	}
+
+	return out
+}
+
+// Working reports whether a subagent is running or about to: the ones the
+// bottom of the screen shows and alt+arrows visit.
+func Working(it Item) bool { return working(it) }

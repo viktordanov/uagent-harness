@@ -1,7 +1,6 @@
 package render
 
 import (
-	"encoding/json"
 	"fmt"
 	"slices"
 	"strings"
@@ -120,7 +119,7 @@ func compactTool(it state.Item, w int, now time.Time) string {
 		head = dim.Render("  " + pad(label) + pad(when) + " ")
 	}
 	room := max(w-ansi.StringWidth(head)-ansi.StringWidth(tail), 8)
-	text := ansi.Truncate(toolText(it.Label), room, "…")
+	text := ansi.Truncate(oneLine(untab(it.Label)), room, "…")
 	if live {
 		return head + text
 	}
@@ -159,21 +158,10 @@ func toolLabel(name string) string {
 	return name[:min(len(name), labelWidth-1)]
 }
 
-// toolText is what a tool line shows after its label: the label the runner
-// gave, except that arguments of one string field show as that string
-// (`{"name":"i-have-adhd"}` is i-have-adhd).
-func toolText(label string) string {
-	var args map[string]any
-	if json.Unmarshal([]byte(label), &args) == nil && len(args) == 1 {
-		for _, v := range args {
-			if s, ok := v.(string); ok {
-				return s
-			}
-		}
-	}
-
-	return oneLine(label)
-}
+// untab expands tabs to four spaces: width math counts a tab as nothing,
+// while the terminal moves to its next stop, so a tabbed line would spill
+// past its band or its width.
+func untab(s string) string { return strings.ReplaceAll(s, "\t", "    ") }
 
 // agentLines draws a subagent as a tree: "  AGENT Ada  0:42", and under a
 // running one what it is doing now.
@@ -230,8 +218,8 @@ func agentDoing(it state.Item) string {
 // screen, with a blank line above each.
 func activeAgents(s state.State, w int) []string {
 	var out []string
-	for _, it := range s.Items {
-		if it.Kind == state.KindAgent && it.Detail == engine.AgentRunning {
+	for _, it := range s.Agents() {
+		if state.Working(it) {
 			out = append(out, "")
 			out = append(out, agentLines(it, w, s.Now)...)
 		}
