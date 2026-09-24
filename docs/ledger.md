@@ -26,7 +26,7 @@ Status: `todo`, `doing`, `done`, `cut` (with a reason).
 |---|---|---|---|---|
 | 1 | Quality pass | main session | — | done |
 | 2 | Sandbox phase 2: approvals, rules, configured approvals | A | 1 | done |
-| 3 | Sandbox phase 3: auto-review and the one-shot model call | A | 2 | doing |
+| 3 | Sandbox phase 3: auto-review and the one-shot model call | A | 2 | done |
 | 4 | Compaction, Codex's way, and the context meter | B | 1 | done |
 | 5 | MCP | C | 1 | done |
 | 6 | Session storage index and the `/status` activity heatmap | D | 1 | done |
@@ -123,3 +123,4 @@ One line per merge or decision: time, item, what landed, commit.
 - 04:50 · 5 · Merged lane/mcp: internal/mcp on the official Go SDK (stdio and streamable HTTP), [mcp_servers.<name>] in Codex's format, tools as mcp__server__tool running as the runner's remote jobs (never blocking the coordinator), approval_mode per tool (prompt/writes refused until wired to the approver), /mcp. Also fixed the flaky picker test (wait for idle before /new).
 - 04:52 · 2 · Merged lane/approvals: internal/rules (Codex prefix_rule via go.starlark.net, commands split with mvdan.cc/sh), internal/approval (on-request/never, forbidden > prompt > allow, "don't ask again" writes default.rules), session ApprovalRequested/Resolved and Resolve, the Codex-style TUI overlay, [approvals] allow/forbid, approval_policy, --ask; escalated commands run unsandboxed after approval; headless denies with a reason.
 - 04:57 · 9 · PermissionRequest hook (answers approvals, also headless); MCP approval_mode wired to the approver prompt with Codex's annotation rule for auto; MCP names reach PreToolUse/PostToolUse (lane C). Item 9 complete with PreCompact.
+- 05:01 · 3 · Merged lane/review (internal/review: Codex's review prompt, strict JSON verdicts, fail-closed, breaker; approvals_reviewer and [review] config; real probe: codex-auto-review accepted, ~3.5K input tokens, 5.7 s) and wired it: the embedded engine reviews before the session asks, on the session's own client; AutoReviewed events in the TUI and uah run; approval.DeclineBecause carries the reviewer's reason to the model.

@@ -13,8 +13,10 @@ import (
 	"github.com/viktordanov/uagent/core"
 
 	"github.com/viktordanov/uagent-harness/internal/approval"
+	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/engine/embedded"
 	"github.com/viktordanov/uagent-harness/internal/hooks"
+	"github.com/viktordanov/uagent-harness/internal/review"
 	"github.com/viktordanov/uagent-harness/internal/rules"
 	"github.com/viktordanov/uagent-harness/internal/sandbox"
 	"github.com/viktordanov/uagent-harness/internal/session"
@@ -36,6 +38,7 @@ type approvalOpts struct {
 	rules       string
 	interactive bool
 	hooks       []hooks.Hook
+	autoReview  bool
 }
 
 // newApprovalEnv opens the session; replies gets the outside directory.
@@ -57,7 +60,8 @@ func newApprovalEnv(t *testing.T, o approvalOpts, replies func(outside string) [
 	eng := embedded.New(embedded.Config{
 		StateDir: e.StateDir, Provider: "openai", Getenv: e.getenv,
 		Sandbox: &policy, SandboxDir: filepath.Join(e.StateDir, "sandbox"),
-		Approver: approval.New(approval.Config{Policy: o.policy, Rules: parsed, RulesFile: e.rulesFile}),
+		Approver:   approval.New(approval.Config{Policy: o.policy, Rules: parsed, RulesFile: e.rulesFile}),
+		AutoReview: o.autoReview, Review: review.Config{Model: "gpt-test"},
 	})
 	var runner *hooks.Runner
 	if len(o.hooks) > 0 {
@@ -237,6 +241,44 @@ func TestEmbedded_PermissionRequestHook(t *testing.T) {
 			} else {
 				assert.NoFileExists(t, filepath.Join(e.outside, "x.txt"))
 			}
+		})
+	}
+}
+
+// TestEmbedded_AutoReview puts the reviewer before the user: allow runs the
+// escalation, deny refuses it with the reviewer's reason; the user is not
+// asked either way.
+func TestEmbedded_AutoReview(t *testing.T) {
+	for _, tc := range []struct {
+		verdict string
+		ran     bool
+		output  string
+	}{
+		{`{"risk_level":"low","user_authorization":"high","outcome":"allow","rationale":"The user asked for it."}`, true, ""},
+		{`{"risk_level":"high","user_authorization":"unknown","outcome":"deny","rationale":"Writes outside the project."}`, false, "the auto-reviewer denied this (high risk): Writes outside the project."},
+	} {
+		t.Run(tc.verdict[:40], func(t *testing.T) {
+			e := newApprovalEnv(t, approvalOpts{interactive: true, autoReview: true}, func(outside string) []fakellm.Reply {
+				return []fakellm.Reply{
+					{Escalated: []string{"touch " + filepath.Join(outside, "x.txt")}},
+					{Text: tc.verdict},
+					{Text: "done"},
+				}
+			})
+			e.run(t)
+			assert.Equal(t, core.StatusOK, e.ev.finished().Status)
+			assert.Zero(t, countKind[session.ApprovalRequested](e.ev.all), "the user was not asked")
+			assert.Equal(t, 1, countKind[engine.AutoReviewed](e.ev.all))
+			if tc.ran {
+				assert.FileExists(t, filepath.Join(e.outside, "x.txt"))
+			} else {
+				assert.NoFileExists(t, filepath.Join(e.outside, "x.txt"))
+				reqs := e.llm.Requests()
+				assert.Contains(t, strings.Join(reqs[len(reqs)-1].ToolOutputs, "\n"), tc.output)
+			}
+			review := e.llm.Requests()[1]
+			assert.Empty(t, review.Tools, "the review call offers no tools")
+			assert.Contains(t, strings.Join(review.UserTexts, "\n"), "touch ", "the reviewer sees the action")
 		})
 	}
 }

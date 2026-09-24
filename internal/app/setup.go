@@ -21,6 +21,7 @@ import (
 	"github.com/viktordanov/uagent-harness/internal/hooks"
 	"github.com/viktordanov/uagent-harness/internal/instructions"
 	"github.com/viktordanov/uagent-harness/internal/mcp"
+	"github.com/viktordanov/uagent-harness/internal/review"
 	"github.com/viktordanov/uagent-harness/internal/sandbox"
 	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/internal/store"
@@ -143,6 +144,7 @@ func newEngine(r Resolved, runnerPath, stateDir string, logger *slog.Logger, ser
 	emb := embedded.New(embedded.Config{
 		StateDir: stateDir, MaxDisk: r.MaxDisk, Logger: logger, Provider: r.Settings.Provider, Hooks: opts.Hooks,
 		Sandbox: &r.Sandbox, SandboxDir: sandboxDir, Env: r.Env, MCP: servers, Approver: approver,
+		AutoReview: r.ApprovalsReviewer == review.ReviewerAuto, Review: r.Review,
 		AutoCompactPercent: r.AutoCompactPercent, ContextWindow: r.Settings.ContextWindow,
 		BeforeCompact: preCompactHook(opts.Hooks, r.Settings),
 	})

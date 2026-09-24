@@ -45,6 +45,8 @@ func (s *State) onEngineEvent(ev core.Event) bool {
 		s.ContextUsed = 0
 		s.notice(session.LevelInfo, "Context compacted; your messages stay as written")
 		s.notice(LevelDebug, "summary: "+e.Summary)
+	case engine.AutoReviewed:
+		s.onAutoReviewed(e)
 	default:
 		return false
 	}

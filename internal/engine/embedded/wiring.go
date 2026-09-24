@@ -84,6 +84,9 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 		return nil, err
 	}
 	w.closers = append(w.closers, sw.Close)
+	if w.e.cfg.AutoReview {
+		w.ask = w.reviewedAsk(sw, req)
+	}
 	s, err := w.openStore(ctx, req.SessionID)
 	if err != nil {
 		return nil, err

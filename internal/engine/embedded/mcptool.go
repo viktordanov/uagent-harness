@@ -150,7 +150,10 @@ func (g mcpGate) check(t mcp.Tool, args string) string {
 		return "not run: " + why + ", and no one can approve it in this run. Tell the user what you wanted to do with it."
 	}
 	answer := g.ask(g.ctx, approval.Prompt{Command: t.Name + " " + args, Justification: t.Description})
-	if answer == approval.Decline {
+	if reason, ok := answer.DeclineReason(); ok {
+		return "not run: " + reason
+	}
+	if !answer.Approved() {
 		return "not run: the user declined the MCP tool " + t.Name + ". Ask the user how to proceed."
 	}
 

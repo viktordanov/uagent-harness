@@ -102,6 +102,8 @@ func (p *printer) print(event core.Event) {
 		} else {
 			p.say(fmt.Sprintf("context compacted (%d-char summary)", len(e.Summary)))
 		}
+	case engine.AutoReviewed:
+		p.say(fmt.Sprintf("auto-review: %s (%s risk) %s — %s", e.Outcome, e.Risk, oneLine(e.Command, 80), e.Reason))
 	case core.RunFinished:
 		p.running = false
 		r := e.Result

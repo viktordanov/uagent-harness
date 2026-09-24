@@ -119,7 +119,7 @@ Commands get the whole environment, as in Codex. `[shell_environment_policy]` na
 
 <!-- /memoria:section -->
 
-<!-- memoria:section id="approvals" files="internal/approval/approval.go internal/approval/prefix.go internal/rules/rules.go internal/rules/parse.go internal/rules/shell.go internal/rules/load.go internal/engine/embedded/sandboxtool.go internal/session/approvals.go internal/tui/state/approval.go internal/tui/render/approval.go internal/app/approvals.go" -->
+<!-- memoria:section id="approvals" files="internal/approval/approval.go internal/approval/prefix.go internal/rules/rules.go internal/rules/parse.go internal/rules/shell.go internal/rules/load.go internal/engine/embedded/sandboxtool.go internal/session/approvals.go internal/tui/state/approval.go internal/tui/render/approval.go internal/app/approvals.go internal/review/review.go internal/engine/embedded/autoreview.go internal/app/review.go" -->
 ### Approvals and rules
 
 On the embedded engine, the model can ask to run a command outside the sandbox (`sandbox_permissions: "require_escalated"` with a `justification`), as in Codex (checked against rust-v0.156.1). The approval policy (`--ask`, `UAH_ASK`, or `approval_policy`) decides who answers:
@@ -130,6 +130,8 @@ On the embedded engine, the model can ask to run a command outside the sandbox (
 | `never` | Denied |
 
 A denied command is not run, and the model gets the reason. The agent waits while the prompt is open; an interrupt declines it. An approved escalation runs outside the sandbox, with the network.
+
+Before anyone is asked, the auto-reviewer judges the action, as Codex's `approvals_reviewer = "auto_review"` does (the default; `"user"` turns it off). It is one model call with the user's messages as trusted context, the latest tool calls without their output as untrusted context, and Codex's review policy: `codex-auto-review` at low effort on openai-codex (a real probe used about 3,500 input tokens and 6 seconds), the session's model at low effort elsewhere; `[review] model`, `effort`, and `timeout` override it. It allows or denies with a reason shown in the TUI ("auto-approved (low risk): …"); a failed review denies. After three denials in a row it steps aside and the user (or a PermissionRequest hook) decides until the next user message. The same applies to MCP calls that need approval, and in `uah run`, where the reviewer can approve without a user.
 
 Command rules are Codex's `.rules` files, Starlark `prefix_rule` calls, read from `~/.config/uagent/rules/*.rules` and, for a trusted workspace, `<workspace>/.uagent/rules/*.rules`:
 
@@ -230,6 +232,7 @@ project_doc_fallback_filenames = ["CLAUDE.md"]   # Codex's key: also read CLAUDE
 auto_compact_percent = 90          # compact at this share of the context window; 0 turns it off
 model_context_window = 272000      # tokens; overrides the model table
 approval_policy = "on-request"     # or never
+approvals_reviewer = "auto_review" # or user: skip the auto-reviewer
 
 [instructions]
 enabled = true

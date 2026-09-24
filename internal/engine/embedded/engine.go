@@ -21,6 +21,7 @@ import (
 	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/hooks"
 	"github.com/viktordanov/uagent-harness/internal/mcp"
+	"github.com/viktordanov/uagent-harness/internal/review"
 	"github.com/viktordanov/uagent-harness/internal/sandbox"
 )
 
@@ -60,6 +61,11 @@ type Config struct {
 	BeforeCompact func(ctx context.Context, sessionID string, trigger compaction.Trigger) error
 	// MCP, when set, offers its servers' tools; the engine closes it.
 	MCP *mcp.Manager
+	// AutoReview puts the auto-reviewer in front of the user for actions
+	// that need approval (approvals_reviewer = "auto_review"), with Review's
+	// model, effort, and timeout.
+	AutoReview bool
+	Review     review.Config
 	// Approver decides how each command runs when Sandbox is set: the
 	// rules and the approval policy. Nil applies no rules and asks for
 	// escalations.
@@ -70,6 +76,8 @@ type Config struct {
 type Engine struct {
 	cfg Config
 	h   *harness.Harness
+	// transcript feeds the auto-reviewer across the session's runs.
+	transcript *transcript
 }
 
 func New(cfg Config) *Engine {
@@ -82,7 +90,7 @@ func New(cfg Config) *Engine {
 	if cfg.Approver == nil {
 		cfg.Approver = approval.New(approval.Config{})
 	}
-	e := &Engine{cfg: cfg}
+	e := &Engine{cfg: cfg, transcript: newTranscript()}
 	e.h = harness.New(harness.Config{
 		Backend: backend{e}, StateDir: cfg.StateDir, MaxDisk: cfg.MaxDisk, Logger: cfg.Logger, Getenv: cfg.Getenv,
 	})
@@ -126,7 +134,7 @@ type (
 )
 
 func (e *Engine) Start(ctx context.Context, req core.Request, opts engine.Options, sink core.Sink) (engine.Run, error) {
-	ls := &lockedSink{sink: sink}
+	ls := &lockedSink{sink: sink, tap: e.transcript.observe}
 	r, err := e.h.Start(context.WithValue(ctx, startKey{}, startValue{opts: opts, emit: ls.emit}), req, ls.emit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start run: %w", err)
@@ -179,6 +187,7 @@ func (r *run) Wait() (core.Result, error) {
 type lockedSink struct {
 	mu       sync.Mutex
 	sink     core.Sink
+	tap      func(core.Event) // sees every event first
 	finished bool
 }
 
@@ -190,6 +199,9 @@ func (s *lockedSink) emit(e core.Event) {
 	}
 	if _, ok := e.(core.RunFinished); ok {
 		s.finished = true
+	}
+	if s.tap != nil {
+		s.tap(e)
 	}
 	s.sink(e)
 }
