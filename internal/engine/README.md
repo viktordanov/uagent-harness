@@ -30,7 +30,7 @@ The choice comes from `--engine`, `UAH_ENGINE`, or `engine` in the [configuratio
 | Field | Meaning |
 | --- | --- |
 | `ServiceTier` | `""` or `"priority"` |
-| `Compact` | Compact before the run's first model request (a `/compact` sent while idle) |
+| `Compact`, `CompactFocus` | Compact before the run's first model request (a `/compact` sent while idle), the summary focused on `CompactFocus` when set (`/compact <focus>`) |
 | `Clear` | Drop the context before the run's first model request (a `/clear` sent while idle) |
 | `Ask` | How the run asks the user to approve an action. Nil means no one can answer, as in `uah run` |
 | `Notify` | Adds an engine event to the session's stream, also after the run ended, such as a subagent's progress |
@@ -103,7 +103,7 @@ The coordinator calls one `llm.Adapter`. Two adapters sit in front of the provid
 
 | Adapter | File | Does |
 | --- | --- | --- |
-| `compactor` | `compact.go` | Decides when to compact (`/compact`, or the context in use reaching `auto_compact_percent` of the window), runs the compaction as a job under the run's context, and rewrites every request with the session's latest compaction. The rewrite, the summary call, and the log live in [internal/compaction](../compaction/README.md) |
+| `compactor` | `compact.go` | Decides when to compact (`/compact`, or the context in use reaching the automatic limit of `Config.Compaction`), runs the compaction as a job under the run's context with the configured summary model, effort, and prompt, and rewrites every request with the session's latest compaction. An automatic compaction that leaves the context above the limit reports `Compacted.Warning` and stops automatic compaction for the run. The rewrite, the summary call, and the log live in [internal/compaction](../compaction/README.md) |
 | `switcher` | `adapter.go` | Applies the live model to each request and routes to the priority client when fast mode is on, so `/model` and `/fast` apply from the next request. It records each session's last request for `/context` (`context.go`) |
 
 `switcher.direct()` is the same client without the live model override, for one-shot calls that choose their own model: the auto-reviewer and the compaction summary. The switcher also replaces the prompt cache key when the session has another (`SetCacheKey`).
@@ -156,7 +156,7 @@ A job that had already started before the run stopped fails with "interrupted" w
 The runner stays unchanged: uah reproduces its wiring instead of patching it, and the equivalence test below keeps the two in step.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="tests" files="embedded/embedded_test.go embedded/approval_test.go embedded/compact_test.go embedded/context_test.go embedded/mcp_test.go embedded/mcpjobs_internal_test.go embedded/sandbox_test.go" -->
+<!-- memoria:section id="tests" files="embedded/embedded_test.go embedded/approval_test.go embedded/compact_test.go embedded/compact_settings_test.go embedded/context_test.go embedded/mcp_test.go embedded/mcpjobs_internal_test.go embedded/sandbox_test.go" -->
 ## Tests
 
 The embedded tests run against `testing/fakellm`, a scripted Responses API, and need no tokens.
@@ -166,6 +166,6 @@ The embedded tests run against `testing/fakellm`, a scripted Responses API, and 
 | `TestEmbedded_MatchesTheRunner` | The real `unreal-agent-runner` (built from go.mod's version) and the embedded engine get the same script and must produce the same events and session items. `go test -short` skips it |
 | `TestEmbedded_SteersALiveRun`, `TestEmbedded_ChangesSettingsLive`, `TestEmbedded_InterruptThenContinue`, `TestEmbedded_ResumesAProcessSession` | Live input, live settings, interrupts, and moving a session between engines |
 | `approval_test.go`, `sandbox_test.go` | Escalation, rules, "don't ask again", headless denial, PermissionRequest hooks, auto-review, and the sandbox |
-| `compact_test.go`, `clear_test.go`, `context_test.go` | Manual and automatic compaction, `/clear` in the same session, resume after both, the PreCompact hook, and `/context` |
+| `compact_test.go`, `compact_settings_test.go`, `clear_test.go`, `context_test.go` | Manual and automatic compaction, the configured summary model, prompt, focus, token limit, and kept-message cap, the stop when compacting cannot get under the limit, `/clear` in the same session, resume after both, the PreCompact hook, and `/context` |
 | `mcp_test.go`, `mcpjobs_internal_test.go` | MCP tools, crashes, interrupts, approvals, and jobs that are not repeated |
 <!-- /memoria:section -->
