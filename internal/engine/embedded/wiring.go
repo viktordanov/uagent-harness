@@ -92,11 +92,11 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 		return nil, err
 	}
 	w.closers = append(w.closers, sw.Close)
-	sw.seen = w.e.last.recorder(req.SessionID)
+	sw.seen, sw.cacheKey = w.e.last.recorder(req.SessionID), w.e.cacheKey(req.SessionID)
 	if w.e.cfg.AutoReview {
 		w.ask = w.reviewedAsk(sw, req)
 	}
-	s, err := w.openStore(ctx, req.SessionID)
+	s, err := w.openStore(ctx, req, messages)
 	if err != nil {
 		return nil, err
 	}

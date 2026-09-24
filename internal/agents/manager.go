@@ -105,11 +105,13 @@ func (e childEngine) ContextUsage(sessionID string) (contextusage.Usage, bool) {
 }
 
 // Attach records the parent's run and offers the tools when the session
-// may spawn: its depth is below MaxDepth.
+// may spawn: its depth is below MaxDepth. A forked child is offered them at
+// any depth, as its parent was, so its requests keep its parent's prefix;
+// its spawn calls are refused at the limit, as Codex refuses them.
 func (m *Manager) Attach(p engine.AgentParent) []engine.AgentTool {
 	m.mu.Lock()
 	m.parents[p.SessionID] = p
-	offer := m.depth(p.SessionID) < m.cfg.MaxDepth
+	offer := m.cfg.MaxDepth > 0 && (m.depth(p.SessionID) < m.cfg.MaxDepth || m.forked(p.SessionID))
 	m.mu.Unlock()
 	if !offer {
 		return nil
@@ -121,6 +123,22 @@ func (m *Manager) Attach(p engine.AgentParent) []engine.AgentTool {
 // depth is how many ancestors a session has, from the live children and
 // then the sidecars, so a resumed child keeps its depth. It holds m.mu.
 func (m *Manager) depth(id string) int {
+	n, _ := m.lineage(id)
+
+	return n
+}
+
+// treeRoot is the top session of id's tree. It holds m.mu.
+func (m *Manager) treeRoot(id string) string {
+	_, root := m.lineage(id)
+
+	return root
+}
+
+// lineage walks up from id to the top of its tree, through the live
+// children and then the sidecars, and returns how many steps it took and
+// where it ended. It holds m.mu.
+func (m *Manager) lineage(id string) (int, string) {
 	n := 0
 	for range 32 {
 		parent := ""
@@ -135,7 +153,18 @@ func (m *Manager) depth(id string) int {
 		n, id = n+1, parent
 	}
 
-	return n
+	return n, id
+}
+
+// forked reports whether a session is a child started with fork_context,
+// from the live children and then the agent records. It holds m.mu.
+func (m *Manager) forked(id string) bool {
+	if c, ok := m.children[id]; ok {
+		return c.forked
+	}
+	rec, err := readRecord(m.tmpl.SessionsDir, id)
+
+	return err == nil && rec.Fork
 }
 
 // root is the top session of id's tree. It holds m.mu.
@@ -161,12 +190,12 @@ func (m *Manager) openIn(root string) int {
 
 // role finds an agent type; "" and "default" are the default agent.
 func (m *Manager) role(name string) (Role, error) {
-	if name == "" || name == "default" {
+	if name == "" || name == defaultRole {
 		return Role{}, nil
 	}
 	i := slices.IndexFunc(m.cfg.Roles, func(r Role) bool { return r.Name == name })
 	if i < 0 {
-		names := []string{"default"}
+		names := []string{defaultRole}
 		for _, r := range m.cfg.Roles {
 			names = append(names, r.Name)
 		}
@@ -187,6 +216,9 @@ func (m *Manager) childOptions(p engine.AgentParent, c *child, role Role, rec re
 	opts := m.tmpl
 	opts.ID, opts.Resumed, opts.Source, opts.Parent = c.id, resumed, session.SourceSubagent, c.parent
 	opts.Ask, opts.Hooks = m.askFor(c), opts.Hooks.Clone()
+	if rec.Fork { // the parent's request already carries its role's settings
+		role = Role{Name: role.Name, NicknameCandidates: role.NicknameCandidates}
+	}
 	s := opts.Settings.WithRequest(p.Request)
 	s.ServiceTier = m.serviceTier(p.ServiceTier, role)
 	s.Model = first(rec.Model, role.Model, m.cfg.Model, s.Model)

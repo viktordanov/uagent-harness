@@ -89,6 +89,9 @@ type Engine struct {
 	transcripts sync.Map
 	// last are each session's latest model request, for /context.
 	last lastRequests
+	// forks are the forked sessions whose first run has not started;
+	// cacheKeys are the sessions whose prompt cache key is not their ID.
+	forks, cacheKeys sync.Map
 }
 
 func New(cfg Config) *Engine {
