@@ -82,6 +82,8 @@ Every key may be set in the user file and in a trusted project file, except `[pr
 | `approval_policy` | string | `on-request` | `--ask`, `UAH_ASK` | override | Who answers an escalation or a `prompt` rule: `on-request` asks the user (headless runs deny), `never` denies. In a file, Codex's `on-failure` means `on-request` |
 | `approvals_reviewer` | string | `auto_review` | none | override | `auto_review` lets the auto-reviewer judge before anyone is asked; `user` skips it |
 
+The process engine applies `allow` and `forbidden` rules too, in the shell the runner runs each command with, but it cannot ask: a `prompt` rule refuses the command with the reason a headless run gives, nothing escalates, and `auto` is the `workspace` sandbox without the auto-reviewer.
+
 The permission modes:
 
 | Mode | Sandbox | Escalations and `prompt` rules |
@@ -92,6 +94,8 @@ The permission modes:
 | `full-access` | none (`danger-full-access`) | No escalations; `prompt` rules ask as in `workspace`. Only a flag or a file sets it; shift+tab moves from it to `read-only` |
 
 `approval_policy = "never"` still denies whatever needs approval, in every mode. The embedded engine applies a mode change to a live run from its next command and model request; the process engine applies it from the next run.
+
+On the process engine, each configured feature it does not run (MCP servers, PreToolUse, PermissionRequest, or PreCompact hooks, `prompt` rules, `auto` mode, `[agents] enabled = true`, compaction keys, and Codex skills) gets one notice when the session opens and a warning in `uah doctor`'s `engine` check; the [engine README](../internal/engine/README.md#what-each-engine-supports) has the table.
 
 `[sandbox_workspace_write]` configures the `workspace-write` mode:
 

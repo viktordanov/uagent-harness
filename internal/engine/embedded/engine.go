@@ -160,7 +160,10 @@ func (e *Engine) Close() error {
 func (e *Engine) Capabilities() engine.Capabilities {
 	p, err := e.provider(e.cfg.Provider)
 
-	return engine.Capabilities{LiveInput: true, LiveEffort: true, LiveModel: true, ServiceTier: err == nil && p.Priority, Compaction: true, LiveMode: true}
+	return engine.Capabilities{
+		LiveInput: true, LiveEffort: true, LiveModel: true, ServiceTier: err == nil && p.Priority, Compaction: true, LiveMode: true,
+		Rules: true, Approvals: true, ToolHooks: true, MCP: true, Subagents: true, ApplyPatch: true, CodexSkills: true, ContextUsage: true,
+	}
 }
 
 // startKey carries a run's options and event sink to the backend.

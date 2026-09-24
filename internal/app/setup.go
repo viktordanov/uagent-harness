@@ -10,15 +10,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/viktordanov/uagent/harness"
-
 	"github.com/viktordanov/uagent-harness/internal/agents"
 	"github.com/viktordanov/uagent-harness/internal/approval"
 	"github.com/viktordanov/uagent-harness/internal/compaction"
 	"github.com/viktordanov/uagent-harness/internal/config"
 	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/engine/embedded"
-	"github.com/viktordanov/uagent-harness/internal/engine/process"
 	"github.com/viktordanov/uagent-harness/internal/hooks"
 	"github.com/viktordanov/uagent-harness/internal/instructions"
 	"github.com/viktordanov/uagent-harness/internal/mcp"
@@ -97,7 +94,8 @@ func Setup(ctx context.Context, in Inputs, logOutput io.Writer) (Result, error) 
 		return Result{}, err
 	}
 	subagents := newAgents(r, cfg, in.Workspace, &opts, catalog)
-	eng, err := newEngine(r, in.Runner, stateDir, logger, parts{servers: servers, approver: approver, subagents: subagents, models: catalog}, &opts) //nolint:contextcheck // on Linux, the sandbox probes bwrap once per process, with its own timeout
+	opts.Uses = usedFeatures(r, cfg, in.Workspace, approver.Rules())
+	eng, err := newEngine(r, in.Runner, stateDir, logger, parts{servers: servers, approver: approver, subagents: subagents, models: catalog, gate: in.Gate}, &opts) //nolint:contextcheck // on Linux, the sandbox probes bwrap once per process, with its own timeout
 	if err != nil {
 		return Result{}, err
 	}
@@ -137,46 +135,15 @@ type parts struct {
 	approver  *approval.Approver
 	subagents *agents.Manager
 	models    *models.Manager
+	// gate is the executable that applies the command rules on the
+	// process engine (Inputs.Gate).
+	gate string
 }
 
 func newEngine(r Resolved, runnerPath, stateDir string, logger *slog.Logger, p parts, opts *session.Options) (engine.Engine, error) {
 	sandboxDir := filepath.Join(stateDir, "sandbox")
 	if r.Engine == EngineProcess {
-		runner, err := harness.FindRunner(runnerPath)
-		if err != nil {
-			return nil, usage(err)
-		}
-		if opts.Hooks.Has(hooks.PreToolUse, "") {
-			opts.Notices = append(opts.Notices, "PreToolUse hooks need the embedded engine; they do not run on the process engine")
-		}
-		if p.servers != nil {
-			opts.Notices = append(opts.Notices, "MCP servers need the embedded engine; they do not start on the process engine")
-		}
-		// The runner runs each command with $SHELL, so a sandboxing shell
-		// sandboxes every command without changing the runner; each
-		// permission mode's sandbox gets its own.
-		unavailable := false
-		eng, err := process.NewSandboxed(r.Sandbox.Mode, func(mode sandbox.Mode) (harness.Config, error) {
-			p := r.Sandbox
-			p.Mode = mode
-			shell, err := sandbox.Shell(sandboxDir, p, r.Env, RealShell())
-			if errors.Is(err, sandbox.ErrUnavailable) {
-				unavailable, shell = true, RealShell()
-			} else if err != nil {
-				return harness.Config{}, err //nolint:wrapcheck // Shell's errors name the file
-			}
-			backend := harness.RunnerBackend{Path: runner, Env: []string{"SHELL=" + shell}}
-
-			return harness.Config{Backend: backend, StateDir: stateDir, MaxDisk: r.MaxDisk, Logger: logger}, nil
-		})
-		if err != nil {
-			return nil, err
-		}
-		if unavailable {
-			opts.Notices = append(opts.Notices, "no sandbox is available on this system; commands run without one")
-		}
-
-		return eng, nil
+		return newProcess(r, runnerPath, stateDir, logger, p, opts)
 	}
 	ecfg := embedded.Config{
 		StateDir: stateDir, MaxDisk: r.MaxDisk, Logger: logger, Provider: r.Settings.Provider, Hooks: opts.Hooks,

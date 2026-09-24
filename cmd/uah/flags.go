@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"slices"
 	"strings"
 	"time"
@@ -131,7 +132,19 @@ func inputs(cmd *cli.Command) app.Inputs {
 		Ask:            cmd.String("ask"),
 		AllowDotenv:    cmd.Bool("allow-dotenv"),
 		NoInstructions: cmd.Bool("no-instructions"),
+		Gate:           gateExecutable(),
 	}
+}
+
+// gateExecutable is uah itself, which applies the command rules to the
+// process engine's commands ("" when it cannot be found).
+func gateExecutable() string {
+	exe, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+
+	return exe
 }
 
 // oneOf accepts one of allowed, or empty (unset).
