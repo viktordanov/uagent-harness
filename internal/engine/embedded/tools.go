@@ -16,6 +16,7 @@ import (
 	"github.com/viktordanov/uagent/core"
 
 	"github.com/viktordanov/uagent-harness/internal/approval"
+	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/mcp"
 	"github.com/viktordanov/uagent-harness/internal/sandbox"
 )
@@ -52,8 +53,27 @@ func (w *wiring) tools(ctx context.Context, req core.Request, sessionID session.
 	never := w.e.cfg.Approver != nil && w.e.cfg.Approver.Policy() == approval.Never
 	registry = withMCP(registry, mcpTools, req.DisallowedTools, mcpGate{ctx: ctx, ask: w.ask, never: never})
 	req.SessionID = string(sessionID)
+	registry = w.withAgents(registry, req)
 
 	return withPreToolUse(ctx, registry, w.e.cfg.Hooks, req, w.l.SessionsDir), nil
+}
+
+// withAgents attaches the run to the subagents and adds the agent tools.
+func (w *wiring) withAgents(registry tool.Registry, req core.Request) tool.Registry {
+	a := w.e.cfg.Subagents
+	if a == nil {
+		return withAgents(registry, false, nil, req.DisallowedTools)
+	}
+	emit := w.notify
+	if emit == nil {
+		emit = w.emit
+	}
+	if emit == nil {
+		emit = func(core.Event) {}
+	}
+	offer := a.Attach(engine.AgentParent{SessionID: req.SessionID, Request: req, Ask: w.userAsk, Emit: emit})
+
+	return withAgents(registry, offer, a.Roles(), req.DisallowedTools)
 }
 
 // translators returns the built-in tools. Bash runs in the workspace with

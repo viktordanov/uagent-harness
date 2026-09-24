@@ -72,7 +72,7 @@ func (ix *Index) sessions(ctx context.Context, query string, args ...any) ([]ses
 	sessionsDir := filepath.Join(ix.stateDir, "sessions")
 	for i := range infos {
 		if sc, found, err := session.ReadSidecar(sessionsDir, infos[i].ID); err == nil && found {
-			infos[i].Source = sc.Source
+			infos[i].Source, infos[i].Parent = sc.Source, sc.Parent
 		}
 	}
 	slices.SortStableFunc(infos, func(a, b session.Info) int { return b.LastActivity.Compare(a.LastActivity) })

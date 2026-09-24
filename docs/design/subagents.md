@@ -1,12 +1,13 @@
 # Subagents: research and plan
 
-Status: planned 2026-09-24, not built. Ledger item 12. Codex facts are from openai/codex at rust-v0.156.1 (`C/` is `codex-rs/`); Claude Code facts are from its public documentation.
+Status: planned 2026-09-24 and built the same day (see [As built](#as-built)). Ledger item 12. Codex facts are from openai/codex at rust-v0.156.1 (`C/` is `codex-rs/`); Claude Code facts are from its public documentation.
 
 1. [How Codex does it](#how-codex-does-it)
 2. [How Claude Code does it](#how-claude-code-does-it)
 3. [What uah has to build on](#what-uah-has-to-build-on)
 4. [Plan](#plan)
 5. [Open decisions](#open-decisions)
+6. [As built](#as-built)
 
 ## How Codex does it
 
@@ -55,3 +56,25 @@ Defaults taken; change them here before building.
 1. **Workspace sharing.** Children share the parent's workspace (Codex v1). Codex's "forked workspace" guidance for code-edit subtasks is not built; git worktrees per child could come later.
 2. **Claude Code's Markdown agent definitions** are not read. Codex role files only, for one format.
 3. **v2 tools** (`task_name`, `followup_task`, `list_agents`, `interrupt_agent`) are left out until Codex makes v2 the default.
+
+## As built
+
+Built 2026-09-24 on unreal-agent-runner v0.1.1.
+
+- **Tools as remote jobs.** `spawn_agent`, `send_input`, `wait`, and `close_agent` are one remote job plan, `uah.agent` v1 (`internal/engine/embedded/agenttool.go`, `agentjobs.go`), next to `uah.mcp_call` in the run's `LocalOperationManager`. Each call runs on its own goroutine, so `wait` never holds up the coordinator: the model gets the runner's "still running" placeholder and keeps working, and the result wakes a new turn. A job that had started before a restart fails instead of running twice, as MCP calls do. The tool names are always resolved, so a session with past agent calls resumes where agents are off.
+- **`engine.Subagents`** is the seam: the embedded engine calls `Attach` at each run start with the run's request, its approval function, and its event sink, and offers the tools when `Attach` reports the session may spawn (its depth is below `max_depth`). `internal/agents.Manager` implements it; `app.Setup` builds it only for the embedded engine and binds it to that engine.
+- **Children** are `session.Open` sessions on the parent's engine (wrapped so closing a child leaves the shared MCP servers running), with sidecar `source: "subagent"` and `parent`. Their settings are the parent run's provider, model, effort, workspace, and host prompt; the configured defaults, the role, and the call override model and effort in that order, and a role's `developer_instructions` follow the host prompt. `Info.Parent` comes from the sidecar; `session.Interactive` drops subagents from the picker; `session.Tree` puts them under their parent in `uah sessions`.
+- **Status.** A child is `running` from the moment a message is sent until its session is idle with every sent message accepted; it is then `completed` with the last run's answer, or `errored`. `close_agent` and closing the parent make it `shutdown`; an unknown ID is `not_found`. `wait` returns every listed child already in a final status, as Codex's v1 does, so waiting again on a finished child returns at once.
+- **Limits.** `max_concurrent_threads_per_session` counts open children in the whole tree under the root session; finished children count until closed, as in Codex. Depth comes from the live children and then the sidecars, so a resumed child keeps its depth.
+- **Approvals.** A child's session gets `Options.Ask`, which asks through the parent's latest run with `agent <nickname>:` before the justification. The child's own run applies the auto-reviewer first; what it leaves to the user goes to the parent's session (and its PermissionRequest hooks) without a second review. With no one to ask, the child is declined with a reason.
+- **Progress.** `engine.AgentUpdated` events go into the parent session's stream through `engine.Options.Notify`, which the session posts to its loop, so a child that finishes after the parent's run ended still updates its line; the TUI draws one line per child (`KindAgent`), `/agents` lists them, and `uah run` prints `agent <nickname>: <state>`.
+- **Roles** load from `~/.config/uagent/agents` and a trusted workspace's `.uagent/agents` (recursive `*.toml`, later directories win). The subset read: `name`, `description`, `nickname_candidates`, `model`, `model_reasoning_effort`, `developer_instructions`, with Codex's validation; other keys produce a warning notice.
+- **Tests.** `internal/agents/agents_test.go` drives one `fakellm` server for parent and children (routes by message content, and replies built from the request for IDs): spawn, wait, and the answer; the coordinator working while a `wait` is pending; a wait timing out; depth 1; `send_input`; the limit and `close_agent`; a child's escalation shown in the parent's session; the picker hiding the child.
+
+Open:
+
+1. **Children across processes.** A child from an earlier process is resumable with `uah resume <id>`, but the parent's `send_input` and `wait` know only the children of the current process (Codex's `resume_agent` is not built).
+2. **Auto-review transcript.** The auto-reviewer's transcript is per engine, so children's events join the parent's.
+3. **`SubagentStop` hook** and ctrl+t details of each child's tool lines are not built.
+4. **Interrupting the parent** does not stop its children; closing the session does.
+5. **Approvals while the parent is idle.** The session shows approvals only during a run, so a child's escalation while its parent is idle is declined.

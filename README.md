@@ -56,7 +56,7 @@ The default view is compact, like Codex: your messages, one line per command (`�
 | mouse wheel, shift+↑ / shift+↓, pgup / pgdn | Scroll the transcript; end returns to the bottom. While the TUI reports the mouse, select text with Option (iTerm2, Terminal) or Shift (most others) held |
 | ctrl+c | Clear the composer; on an empty composer, quit (twice while a run is live) |
 
-Commands: `/model <id>`, `/effort <level>`, `/compact`, `/resume [id]`, `/new`, `/stop`, `/status` (with a 12-week activity heatmap), `/mcp`, `/details`, `/reasoning`, `/help`, `/quit`. `/model`, `/effort`, and `/fast` apply from the next model request on the embedded engine, and from the next run on the process engine. `/fast` needs the embedded engine and the openai or openai-codex provider.
+Commands: `/model <id>`, `/effort <level>`, `/compact`, `/resume [id]`, `/new`, `/stop`, `/status` (with a 12-week activity heatmap), `/mcp`, `/agents`, `/details`, `/reasoning`, `/help`, `/quit`. `/model`, `/effort`, and `/fast` apply from the next model request on the embedded engine, and from the next run on the process engine. `/fast` needs the embedded engine and the openai or openai-codex provider.
 Tool calls keep their place in the transcript, so a command that finishes after later turns updates its original row. Diagnostics go to `<state-dir>/logs/uah-tui.log`.
 
 `uah run` takes the same backend, guard, and state flags as uagent (`--provider`, `-m`, `-e`, `-t`, `-C`, `--state-dir`, `--runner`, `--max-disk`, `--allow-dotenv`); `uah run --help` lists them.
@@ -208,6 +208,44 @@ Servers start on the first run (or `/mcp`) and stop when the session closes; a s
 
 <!-- /memoria:section -->
 
+<!-- memoria:section id="subagents" files="internal/agents/manager.go internal/agents/child.go internal/agents/roles.go internal/engine/subagents.go internal/engine/embedded/agenttool.go internal/engine/embedded/agentjobs.go internal/engine/embedded/agentprompt.go internal/app/agents.go internal/tui/state/agents.go" -->
+### Subagents
+
+On the embedded engine, the agent can start subagents with Codex's v1 tools. The tool description tells the model, as Codex's does, to spawn only when you or AGENTS.md ask for delegation or parallel work.
+
+| Tool | Does |
+| --- | --- |
+| `spawn_agent(message, agent_type?, model?, reasoning_effort?)` | Starts a subagent with the task and returns `{id, nickname}` at once |
+| `send_input(id, message)` | Gives a running or finished subagent another message |
+| `wait(ids, timeout_ms?)` | Returns when any listed subagent finishes, with each finished one's final answer, or `timed_out` after the timeout (default 30s, 10s to 1h) |
+| `close_agent(id)` | Stops a subagent and returns its status before it stopped |
+
+The tools run in the background, as MCP calls do, so the agent keeps working while a subagent runs or while it waits. A subagent is an ordinary session in the same workspace, with the parent's provider, model, effort, instructions, sandbox, and MCP servers. It asks for approval through the parent's session: the prompt's reason starts with `agent <nickname>:`. With no one to ask (`uah run`), such commands are declined with a reason. The TUI shows each subagent as one line where it was spawned (`• agent Ada: running 0:42`, then `done`), and `/agents` lists them with their IDs. `uah sessions` lists subagents under their parent, and the resume picker hides them; `uah resume <id>` opens one like any session.
+
+```toml
+[agents]
+enabled = true                              # default
+max_concurrent_threads_per_session = 4      # open subagents per session tree (Codex's max_threads also works)
+max_depth = 1                               # 1: subagents cannot spawn their own
+default_subagent_model = "gpt-6-luna"       # default: the parent's model
+default_subagent_reasoning_effort = "medium" # default: the parent's effort
+```
+
+Agent types are Codex role files: `~/.config/uagent/agents/*.toml`, and `<workspace>/.uagent/agents/*.toml` in a trusted workspace, which replaces a user role of the same name. The `spawn_agent` description lists them.
+
+```toml
+name = "reviewer"
+description = "Reviews a diff for bugs and missing tests."
+nickname_candidates = ["Rex", "Rita"]   # optional
+model = "gpt-6-sol"                     # optional
+model_reasoning_effort = "high"         # optional
+developer_instructions = "Review only; do not edit files. List each finding with its file and line."
+```
+
+uah reads these keys of a role file; other Codex config keys in it are ignored with a warning, and a file without a name, description, or `developer_instructions` is skipped with a warning. The process engine does not run subagents ([plan and as-built notes](docs/design/subagents.md)).
+
+<!-- /memoria:section -->
+
 <!-- memoria:section id="configuration" files="internal/config/config.go cmd/uah/flags.go cmd/uah/config.go internal/app/resolve.go internal/app/setup.go internal/app/explain.go internal/app/explain_files.go .uagent/config.toml .uagent/hooks/guard.sh" -->
 ### Configuration
 
@@ -231,6 +269,9 @@ allow = ["go test", "git status"]   # command prefixes that run outside the sand
 
 [tui]
 details = true   # start in the detailed view
+
+[agents]
+max_concurrent_threads_per_session = 4   # see Subagents for every key
 
 # A workspace's .uagent/config.toml applies only when trusted here.
 [projects."/Users/me/code/proj"]
