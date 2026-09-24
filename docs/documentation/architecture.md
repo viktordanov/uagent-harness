@@ -12,6 +12,7 @@ uah is a pure core with well-organized infrastructure around it, not layered DDD
 | `internal/tui/state` | The pure TUI model: a reducer from events and intents to state and effects. No I/O. |
 | `internal/tui/render` | Pure drawing of state to lines, with a per-item cache. |
 | `internal/tui/bubble` | The Bubble Tea shell: keys to intents, effects to commands, and frames. |
+| `internal/app` | Session setup: `Resolve` picks settings from flags, the resumed session, the configuration, and defaults with no I/O; `Setup` loads files and builds the engine. |
 | `cmd/uah` | The CLI: flags, `run`, `resume`, `sessions`, `hooks`, and the TUI launcher. |
 | `testing` | `harnesstest` (fake and real runners, isolated state) and `fakellm` (a scripted Responses API). |
 
