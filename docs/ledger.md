@@ -12,8 +12,8 @@ Asked for by the owner after item 28; these come first.
 | --- | --- | --- | --- |
 | 29 | MCP approvals from the CLI and the prompt; the guard hook becomes `forbid` rules | lane approvals | done |
 | 30 | The auto-review prompt (and the compaction prompt) customizable, with a CLI that writes the defaults into the config folder as a starting point | lane approvals | done |
-| 31 | Custom agents as Markdown files with front matter, as Claude Code and Codex have them; subagents never start subagents | lane agents3 | doing |
-| 32 | A real probe that forking a subagent reuses the provider's prompt cache | lane agents3 | doing |
+| 31 | Custom agents as Markdown files with front matter, as Claude Code and Codex have them; subagents never start subagents | lane agents3 | done |
+| 32 | A real probe that forking a subagent reuses the provider's prompt cache | lane agents3 | done (partial reuse on openai-codex; see docs/design/subagents.md) |
 | 33 | The process engine made solid, with the behavior both engines share in one place | lane process | done |
 
 ### 29. MCP approvals

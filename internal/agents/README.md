@@ -18,7 +18,8 @@ This README describes how the package works for someone changing it. The root RE
 9. [Persistence and resume](#persistence-and-resume)
 10. [Limits](#limits)
 11. [Roles](#roles)
-12. [Extending](#extending)
+12. [Markdown agents](#markdown-agents)
+13. [Extending](#extending)
 <!-- /memoria:section -->
 
 <!-- memoria:section id="seam" files="manager.go tools.go" -->
@@ -31,7 +32,7 @@ This README describes how the package works for someone changing it. The root RE
 - `Call` runs one tool call (`engine.AgentCall`: the parent's ID, the model's call ID, the tool, and its JSON arguments) and returns the JSON result for the model. The engine runs each call as a remote job (`uah.agent` v1) on its own goroutine, so a long `wait_agent` never holds up the parent's coordinator. The call's context ends when the coordinator cancels the call or the run stops.
 - `Interrupt` runs when the user interrupts the parent's run.
 
-The engine knows no tool name, schema, or result, and the session knows children only as sessions with `source: "subagent"` and a `parent` in their sidecar. An engine that also implements `engine.Forker` (the embedded engine) copies a parent's history into a child for `fork_context` and gives every child its tree's prompt cache key (see [Forking](#forking)). `app.Setup` builds the manager for the embedded engine, even when subagents are off, and binds it with `Bind` to that engine and to the session options it returns, the ones the root session opens with. `Close` closes every child; the engine calls it when a session on it closes, and the manager stays usable for the engine's next session.
+The engine knows no tool name, schema, or result, and the session knows children only as sessions with `source: "subagent"` and a `parent` in their sidecar. An engine that also implements `engine.Forker` (the embedded engine) copies a parent's history into a child for `fork_context` and gives every child its tree's prompt cache key (see [Forking](#forking)). One that implements `engine.Scoper` narrows a child's tools and pre-approves its actions as its role says (see [Markdown agents](#markdown-agents)). `app.Setup` builds the manager for the embedded engine, even when subagents are off, and binds it with `Bind` to that engine and to the session options it returns, the ones the root session opens with. `Close` closes every child; the engine calls it when a session on it closes, and the manager stays usable for the engine's next session.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="parity" files="manager.go ops.go" -->
@@ -42,9 +43,9 @@ A subagent is the root agent in every way except what makes it a child. `childOp
 The only differences:
 
 1. its session ID, `subagent-<uuid>`, and its sidecar's `source: "subagent"` and `parent`;
-2. the spawn tools, offered only below `max_depth`, except to a forked child;
+2. the spawn tools, never offered to a child, except to a forked child, which keeps its parent's tools and whose spawns are refused;
 3. approvals, asked through the parent session;
-4. the model, effort, service tier, and instructions a role, the spawn call, or `[agents]` defaults set;
+4. the model, effort, service tier, and instructions a role, the spawn call, or `[agents]` defaults set, and a role's tools and pre-approvals;
 5. a hook runner of its own with the same hooks, so hook results stay with the child's session;
 6. its engine handle, which does not close the shared engine when the child closes;
 7. its prompt cache key, the root session's ID, as Codex keys every agent of a tree.
@@ -94,7 +95,7 @@ The tools are Codex's v1 set (rust-v0.156.1), with its parameters, results, and 
 
 A child's session has no user of its own. Its `session.Options.Ask` asks through the parent session's `engine.Options.AskAnytime`, with `agent <nickname>:` before the justification. The child's own run applies the auto-reviewer first, on the child's own transcript; what it leaves to the user reaches the parent session and its PermissionRequest hooks.
 
-Such a prompt stays open after the parent's run ends, and a child can ask while the parent is idle. It ends when the user answers, when the child is interrupted or closed (each child has a context for its prompts that these cancel), or when the parent session closes. With no one to ask, as in `uah run`, the child is declined with a reason.
+Such a prompt stays open after the parent's run ends, and a child can ask while the parent is idle. It ends when the user answers, when the child is interrupted or closed (each child has a context for its prompts that these cancel), or when the parent session closes. With no one to ask, as in `uah run`, the child is declined with a reason. A role's `approve` list answers first, before the child's auto-reviewer (see [Markdown agents](#markdown-agents)).
 <!-- /memoria:section -->
 
 <!-- memoria:section id="events" files="child.go stop.go" -->
@@ -156,15 +157,61 @@ The manager knows only the children of the current process. `resume_agent(id)` r
 ## Limits
 
 - **Concurrency.** `MaxThreads` (`max_concurrent_threads_per_session`, default 4) counts the open children in the whole tree under the root session, checked under the lock so parallel spawns keep it. Finished children count until closed, as in Codex.
-- **Depth.** `MaxDepth` (default 1: children cannot spawn) is compared with a session's depth, which comes from the live children and then the sidecars, so a resumed child keeps its depth. A session at the limit is not offered the tools, as in Codex, except a forked child, which keeps its parent's tools; a spawn or resume from a session at the limit is refused with Codex's message. `MaxDepth` 0 offers no tools; `app.Setup` uses it when `[agents] enabled = false`, and past calls still get an answer.
+- **Depth.** Subagents never start subagents: `MaxDepth` is at most 1, a rule rather than a setting. `New` clamps a higher value, and `app.Setup` does too, with a notice, for `[agents] max_depth` above 1. It is compared with a session's depth, which comes from the live children and then the sidecars, so a resumed child keeps its depth. A child is not offered the tools, as in Codex at its depth limit, except a forked child, which keeps its parent's tools for the prompt cache; a spawn or resume from a child is refused with Codex's message, `Agent depth limit reached. Solve the task yourself.` `MaxDepth` 0 offers no tools; `app.Setup` uses it when `[agents] enabled = false`, and past calls still get an answer. `TestDepth_ChildrenNeverSpawn` pins both with `MaxDepth` 5.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="roles" files="roles.go models.go" -->
+<!-- memoria:section id="roles" files="roles.go models.go markdown.go" -->
 ## Roles
 
-Agent types are Codex role files, loaded by `LoadRoles` from `~/.config/uagent/agents` and a trusted workspace's `.uagent/agents` (recursive `*.toml`; a later directory replaces a role of the same name). The subset read is `name`, `description`, `nickname_candidates`, `model`, `model_reasoning_effort`, `service_tier`, and `developer_instructions`, with Codex's validation. Other keys produce a warning, and a malformed file is skipped with one. The `spawn_agent` description lists the roles.
+Agent types are Codex role files and Markdown agent files, loaded by `LoadRoles` from `~/.config/uagent/agents` and a trusted workspace's `.uagent/agents` (recursive `*.toml` and `*.md`). A later directory replaces a role of the same name; within one directory, a Markdown file replaces a TOML file of the same name, with a warning. The subset read from TOML is `name`, `description`, `nickname_candidates`, `model`, `model_reasoning_effort`, `service_tier`, `developer_instructions`, and uah's `tools` and `approve`, with Codex's validation. Other keys produce a warning, and a malformed file is skipped with one. The `spawn_agent` description lists the roles of both formats alike.
 
 `service_tier` is Codex's key: `"priority"` (or its legacy name `"fast"`) runs the role's agents with priority processing when the provider offers it, `"default"` runs them without it, and an absent key follows the parent. `"flex"`, which no provider of uah's serves, is ignored with a warning. Codex rust-v0.156.1 reads the key into the role's config layer but then sets every child's tier to the root's (`apply_spawn_agent_service_tier`); uah applies the role's tier, so a role can turn fast mode on for its agents alone.
+<!-- /memoria:section -->
+
+<!-- memoria:section id="markdown" files="markdown.go toolnames.go manager.go" -->
+## Markdown agents
+
+A Markdown agent file is Claude Code's subagent format: YAML front matter between `---` lines, then the agent's instructions (`markdown.go`, parsed with `go.yaml.in/yaml/v3`). Claude Code's `.claude/agents/*.md` files load unchanged; keys uah does not use (`color`, `permissionMode`, `hooks`, and others) produce a warning.
+
+```markdown
+---
+name: reviewer
+description: Reviews a diff for bugs and missing tests. Use after a change.
+tools: Bash, Edit, mcp__github
+model: gpt-6-luna
+effort: high
+fast: true
+approve:
+  - git diff
+  - Bash(git log:*)
+  - mcp__github__get_pull_request
+---
+
+Review only; do not edit files. List each finding with its file and line.
+```
+
+| Key | Role field | Notes |
+| --- | --- | --- |
+| `name`, `description` | `Name`, `Description` | Required, as in both Claude Code and Codex |
+| the body | `DeveloperInstructions` | Required, as Codex requires `developer_instructions` |
+| `model` | `Model` | `inherit` and Claude Code's aliases (`sonnet`, `opus`, `haiku`, `fable`, with a warning) are the parent's model |
+| `effort`, `model_reasoning_effort` | `Effort` | Claude Code's key and Codex's; Codex's wins |
+| `fast`, `service_tier` | `ServiceTier` | `fast: true` is `priority`, `false` is `default`; `service_tier` wins |
+| `tools` | `Tools` | A comma-separated string or a list, mapped by `mapTools` (`toolnames.go`) |
+| `approve` | `Approve` | A list, read by `mapApprove` |
+| `nickname_candidates` | `NicknameCandidates` | Codex's key |
+
+**Tools.** `mapTools` keeps uah's names and maps Claude Code's: `Edit`, `Write`, `MultiEdit`, and `NotebookEdit` to `apply_patch`, `Skill` to `SkillUse`, and `mcp__<server>` or `mcp__<server>__*` stay patterns for a server's tools. `Read`, `Grep`, `Glob`, `LS`, the spawn tools, and unknown names drop with a warning. A non-nil empty list offers no tools, so a list whose names all drop never grants every tool. A missing `tools` key offers every tool, as in Claude Code.
+
+**Pre-approval.** `mapApprove` keeps command prefixes (`git diff`, Claude Code's `Bash(git diff *)` and `Bash(git diff:*)`), `apply_patch` (or `Edit`, `Write`), and MCP names or server patterns; an empty prefix, a bare tool name, and anything that is not plain words drop with a warning.
+
+**Enforcement.** `Manager.scope` passes the role's `Tools` and `Approve` to the engine as an `engine.Scope` for the child's session ID when the child starts or resumes (a fork gets none: it keeps its parent's tools). The embedded engine keeps it per session, as it keeps the cache key, and each run of the child applies it (`internal/engine/embedded/scope.go`):
+
+- the registry: built-in tools the scope does not offer join the request's `DisallowedTools`, which the registry already honors for Bash, ViewImage, SkillUse, and `apply_patch`, and MCP tools it does not offer are left out, so the model never sees them and a call to one fails as an unknown tool;
+- commands and patches: the prefixes are the approver's kind of prefix rule (`rules.FromPrefixes`, matched with `rules.Policy.Check`, so every simple command must match). They sit in front of the run's ask, before the auto-reviewer, and answer "approve" where the approver would ask. They are not added as `allow` rules, because an allow rule runs a command outside the sandbox without asking, which would widen the mode. So a `forbid` rule and `approval_policy = "never"` decide before any ask, an approved escalation runs outside the sandbox as the user's approval would, and in read only mode an escalation is still asked;
+- MCP tools: the MCP gate treats a pre-approved tool as `approval_mode = "approve"`, the mode "always allow this tool" sets.
+
+`TestScope_Tools`, `TestScope_PreApproval`, and `TestScope_PreApprovalKeepsReadOnly` check these end to end with fakellm and the sandbox; `TestLoadRoles_Markdown` and `TestLoadRoles_MarkdownBesideTOML` check the loading.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="extending" files="tools.go prompt.go roles.go" -->
@@ -172,5 +219,5 @@ Agent types are Codex role files, loaded by `LoadRoles` from `~/.config/uagent/a
 
 - **A tool.** Add an entry to `tools` in `tools.go` with its name, description, JSON Schema, and run function, and its text to `prompt.go`. The engine offers and runs it with no change. Keep a removed tool's name in `ToolNames`, as `wait` is kept, so sessions with past calls resume.
 - **A tool set, such as Codex's v2.** Choose the set in `definitions` and `Call` by configuration; the seam and the engine stay the same.
-- **A role key.** Add the field to `Role` with its TOML name, apply it in `Manager.settings` (or where it belongs), and document it in the root README. `LoadRoles` warns about any key `Role` does not decode.
+- **A role key.** Add the field to `Role` with its TOML name and to `front` (and `frontKeys`) with its Markdown name, apply it in `childOptions` or `Manager.scope`, and document it in the configuration reference. `LoadRoles` warns about any key either format does not decode.
 <!-- /memoria:section -->
