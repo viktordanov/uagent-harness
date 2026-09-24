@@ -20,6 +20,7 @@ Asked for by the owner after item 28; these come first.
 | 36 | The composer's λ on its first row only | main session | done |
 | 37 | Paste images into the prompt, as Codex and Claude Code do (ctrl+v on macOS; the Linux key to be found); first check what the runner and uagent allow | lane images | doing |
 | 38 | `!` shell mode in the composer: run a command yourself, and its result joins the conversation | lane shell | doing |
+| 39 | Show the subscription's usage, as designed in item 35 (the owner accepted the defaults) | lane usage2 | doing |
 
 ### 34. The resume hint on quit
 
@@ -36,6 +37,10 @@ Codex and Claude Code let you paste an image from the clipboard into the prompt 
 ### 38. `!` shell mode
 
 Typing `!` at the start of an empty composer switches it to shell mode: the λ becomes `!`, and enter runs the line as a command in the workspace (in the session's sandbox and permission mode) instead of sending it to the agent. The command and its output, whether it succeeded or failed, join the conversation as a message, so the agent sees them on its next turn, as Claude Code's `!` and Codex's user shell commands do. Backspace on an empty line, or esc, leaves shell mode. Research both first: how each shows it, what exactly goes into the conversation and when (at once, or with the next message), output limits, and whether a running agent is interrupted.
+
+### 39. Subscription usage
+
+Build docs/design/usage.md's recommended design with its defaults, which the owner accepted: read the openai-codex plan's usage from `/wham/usage` (read-only, uah's own identity, on demand and after each run, cached for 60 s, no polling); `uah usage` (`--json`); `/status` rows with each window's percent left and reset time; the tightest window in the footer beside the context meter; warnings at 75, 90, and 95% used; "try again at …" when a run hits the limit; a `usage` check in `uah doctor`. Other providers say usage is not available.
 
 ### 29. MCP approvals
 
