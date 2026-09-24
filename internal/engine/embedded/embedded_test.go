@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -18,6 +19,7 @@ import (
 	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/engine/embedded"
 	"github.com/viktordanov/uagent-harness/internal/engine/process"
+	"github.com/viktordanov/uagent-harness/internal/hooks"
 	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/testing/fakellm"
 	"github.com/viktordanov/uagent-harness/testing/harnesstest"
@@ -182,8 +184,11 @@ func TestEmbedded_MatchesTheRunner(t *testing.T) {
 	ee := newEnv(t, script()...)
 	embResult, embEvents, embItems := runWith(t, ee, ee.embedded())
 
-	assert.Equal(t, procEvents, embEvents)
-	assert.Equal(t, procItems, embItems, "the session files hold the same items")
+	// Parallel tools finish in any order, in both engines: compare the order
+	// of everything else, and the tool results and session items as sets.
+	assert.Equal(t, withoutPrefix(procEvents, "done "), withoutPrefix(embEvents, "done "))
+	assert.ElementsMatch(t, procEvents, embEvents)
+	assert.ElementsMatch(t, procItems, embItems, "the session files hold the same items")
 	assert.Equal(t, procResult.Status, embResult.Status)
 	assert.Equal(t, procResult.Answer, embResult.Answer)
 	assert.Equal(t, procResult.Stats.ToolCalls, embResult.Stats.ToolCalls)
@@ -299,10 +304,15 @@ func e2eRequests(s *fakellm.Server) []fakellm.Request {
 	var out []fakellm.Request
 	for _, r := range s.Requests() {
 		r.System = ""
+		slices.Sort(r.ToolOutputs)
 		out = append(out, r)
 	}
 
 	return out
+}
+
+func withoutPrefix(lines []string, prefix string) []string {
+	return slices.DeleteFunc(slices.Clone(lines), func(l string) bool { return strings.HasPrefix(l, prefix) })
 }
 
 func countKind[T core.Event](all []core.Event) int {
@@ -371,4 +381,36 @@ func sessionItemKinds(t *testing.T, path string) []string {
 	}
 
 	return out
+}
+
+func TestEmbedded_PreToolUseHooks(t *testing.T) {
+	e := newEnv(t,
+		fakellm.Reply{Commands: []string{"rm -rf build", "echo original"}},
+		fakellm.Reply{Text: "done"},
+	)
+	runner, err := hooks.New([]hooks.Hook{
+		{Event: hooks.PreToolUse, Matcher: "Bash", Source: hooks.SourceUser, Command: `
+			input=$(cat)
+			case "$input" in
+			*rm\ -rf*) echo 'destructive commands are not allowed' >&2; exit 2 ;;
+			*original*) echo '{"hookSpecificOutput":{"updatedInput":{"command":"echo rewritten"}}}' ;;
+			esac`},
+	}, nil, e.Workspace)
+	require.NoError(t, err)
+	eng := embedded.New(embedded.Config{StateDir: e.StateDir, Provider: "openai", Getenv: e.getenv, Hooks: runner})
+	s, err := session.Open(context.Background(), eng, session.Options{Settings: e.settings(), Hooks: runner})
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = s.Close() })
+	ev := &events{t: t, s: s}
+
+	_, err = s.Submit("clean up")
+	require.NoError(t, err)
+	result := ev.finished()
+
+	assert.Equal(t, core.StatusOK, result.Status)
+	reqs := e.llm.Requests()
+	last := strings.Join(reqs[len(reqs)-1].ToolOutputs, "\n")
+	assert.Contains(t, last, "Error: blocked by a PreToolUse hook: destructive commands are not allowed", "a block is the tool's error result")
+	assert.Contains(t, last, "rewritten", "updatedInput replaced the command")
+	assert.Equal(t, 2, countKind[session.HookRan](ev.all))
 }

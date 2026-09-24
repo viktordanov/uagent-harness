@@ -16,6 +16,7 @@ import (
 	"github.com/viktordanov/uagent/harness"
 
 	"github.com/viktordanov/uagent-harness/internal/engine"
+	"github.com/viktordanov/uagent-harness/internal/hooks"
 )
 
 const tierPriority = "priority"
@@ -34,6 +35,8 @@ type Config struct {
 	Getenv func(string) string
 	// Providers replaces the runner's provider table, for tests.
 	Providers []Provider
+	// Hooks, when set, runs PreToolUse hooks before each tool call.
+	Hooks *hooks.Runner
 }
 
 // Engine runs the agent in process.

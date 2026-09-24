@@ -139,7 +139,11 @@ func compactLines(it state.Item, w int, now time.Time) ([]string, bool) {
 		}
 
 		return wrapPrefixed(it.Text, w, bullet, "  "), true
-	case state.KindUser, state.KindReasoning, state.KindNotice:
+	case state.KindNotice:
+		if it.Level == state.LevelDebug {
+			return nil, true
+		}
+	case state.KindUser, state.KindReasoning:
 	}
 
 	return nil, false

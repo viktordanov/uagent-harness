@@ -82,6 +82,15 @@ func (s *State) onEvent(ev core.Event) {
 			fast = " · fast"
 		}
 		s.notice("info", fmt.Sprintf("%s/%s · effort %s%s, applies %s", e.Settings.Provider, e.Settings.Model, e.Settings.Effort, fast, when))
+	case session.HookRan:
+		switch e.Outcome {
+		case "ok":
+			s.notice(LevelDebug, fmt.Sprintf("hook %s · %s · %s", e.Event, e.Command, e.Duration.Round(time.Millisecond)))
+		case "blocked":
+			s.notice("warning", fmt.Sprintf("%s hook blocked: %s", e.Event, e.Reason))
+		default:
+			s.notice("warning", fmt.Sprintf("%s hook %s: %s", e.Event, e.Outcome, e.Reason))
+		}
 	case session.Idle:
 		s.Busy, s.Live = false, nil
 	case session.Notice:
@@ -347,6 +356,9 @@ func (s *State) update(key string, fn func(*Item)) bool {
 
 	return true
 }
+
+// LevelDebug notices show only in the detailed view.
+const LevelDebug = "debug"
 
 func (s *State) notice(level, text string) {
 	s.put(Item{Kind: KindNotice, Key: s.nextKey("notice"), Level: level, Text: text})

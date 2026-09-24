@@ -3,7 +3,7 @@
 The general-purpose harness built on [uagent](https://github.com/viktordanov/uagent), the wrapper around unreal-agent-runner.
 uagent runs one task with safety guards. This repository adds what long-lived, interactive work needs: sessions with a message queue and steering, an embedded engine for live model, effort, and fast-mode changes, instruction files, configuration, hooks, and a terminal UI.
 
-Status: milestone M5: sessions, instructions, configuration, the TUI, and the embedded engine. Hooks (M6) come next.
+Status: milestone M6: sessions, instructions, configuration, the TUI, the embedded engine, and hooks. Sandboxing and approvals are researched in [docs/design/sandbox-research.md](docs/design/sandbox-research.md) but not built.
 
 ## Use it
 
@@ -67,6 +67,31 @@ The runner reads no instruction files, so `uah` builds them into the runner's sy
 2. One file per directory from the repository root down to the workspace: `AGENTS.override.md`, else `AGENTS.md`, else `CLAUDE.md`.
 
 Later files are more specific. The total stops at 32 KiB. `--no-instructions` turns this off, and the loaded files are reported as `instructions_loaded`.
+
+### Hooks
+
+Hooks run a command at a session event, with Claude Code's contract: the event arrives as JSON on stdin, exit 0 continues (optionally printing JSON), exit 2 blocks with stderr as the reason, and any other exit is reported and ignored.
+
+```toml
+[[hooks.PreToolUse]]            # embedded engine only
+matcher = "Bash"                # a regular expression on the tool name
+command = "~/.config/uagent/hooks/no-rm-rf.sh"
+timeout = "10s"                 # default 60s
+
+[[hooks.Stop]]
+command = "osascript -e 'display notification \"uah is idle\"'"
+```
+
+| Event | When | What a hook can do |
+| --- | --- | --- |
+| `SessionStart` | The session opens (`source`: startup or resume) | Add context to the first message (`additionalContext` or plain stdout), show a `systemMessage` |
+| `UserPromptSubmit` | Before a message is sent | Block it (exit 2 or `"decision":"block"`), or add context (`additionalContext` or plain stdout) |
+| `PreToolUse` | Before each tool call, on the embedded engine | Deny it (exit 2 or `permissionDecision: "deny"`); the reason is the tool's error result. Rewrite it (`updatedInput`) |
+| `PostToolUse` | After each tool call | Observe only |
+| `Stop` | The agent finished and nothing is queued | Keep it going: `"decision":"block"` with a `reason` sends the reason as the next message (at most 5 times in a row; `stop_hook_active` is true after the first) |
+| `SessionEnd` | The session closes | Observe only, with at most a second |
+
+Hooks in the user file run as written. Hooks in a trusted project's `.uagent/config.toml` run only after `uah hooks trust` records their exact commands (by SHA-256, in `~/.config/uagent/trusted-hooks.json`); a changed command needs trust again. `uah hooks` lists the hooks for a workspace and whether each runs. Hook runs appear in the TUI's detailed view (ctrl+t); blocks and failures appear in both views.
 
 ### Configuration
 

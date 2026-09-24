@@ -26,7 +26,7 @@ func sessionsCommand() *cli.Command {
 	}
 	jsonFlag := &cli.BoolFlag{Name: "json", Usage: "print JSON"}
 	all := &cli.BoolFlag{Name: flagAll, Usage: "list sessions from every directory"}
-	workspace := &cli.StringFlag{Name: "workspace", Aliases: []string{"C"}, Usage: "list this directory's sessions", DefaultText: "the current directory", TakesFile: true}
+	workspace := &cli.StringFlag{Name: flagWorkspace, Aliases: []string{"C"}, Usage: "list this directory's sessions", DefaultText: "the current directory", TakesFile: true}
 
 	return &cli.Command{
 		Name:         "sessions",

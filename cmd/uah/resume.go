@@ -12,7 +12,10 @@ import (
 )
 
 // flagAll turns off the current-directory filter.
-const flagAll = "all"
+const (
+	flagAll       = "all"
+	flagWorkspace = "workspace"
+)
 
 // resumeCommand is `uah resume`, modeled on `codex resume`: a picker of this
 // directory's sessions, a session by ID, or the most recent with --last.

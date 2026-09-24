@@ -8,9 +8,12 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"time"
 
 	"github.com/BurntSushi/toml"
+
+	"github.com/viktordanov/uagent-harness/internal/hooks"
 )
 
 // Config holds defaults below flags, the environment, and a resumed session.
@@ -27,6 +30,8 @@ type Config struct {
 
 	Instructions Instructions `toml:"instructions"`
 	TUI          TUI          `toml:"tui"`
+	// Hooks are keyed by event name: [[hooks.PreToolUse]].
+	Hooks map[string][]Hook `toml:"hooks"`
 
 	// Projects are keyed by absolute workspace path.
 	Projects map[string]Project `toml:"projects"`
@@ -37,6 +42,40 @@ type Instructions struct {
 	// Enabled defaults to true.
 	Enabled  *bool `toml:"enabled"`
 	MaxBytes int   `toml:"max_bytes"`
+}
+
+// Hook is one [[hooks.<Event>]] entry.
+type Hook struct {
+	Matcher string `toml:"matcher"`
+	Command string `toml:"command"`
+	Timeout string `toml:"timeout"`
+	// Source is the file kind it came from, set by Load.
+	Source hooks.Source `toml:"-"`
+}
+
+// HookList converts the configured hooks, checking events and timeouts.
+func (c Config) HookList() ([]hooks.Hook, error) {
+	var out []hooks.Hook
+	for _, event := range hooks.Events {
+		for _, h := range c.Hooks[string(event)] {
+			var timeout time.Duration
+			if h.Timeout != "" {
+				d, err := time.ParseDuration(h.Timeout)
+				if err != nil || d <= 0 {
+					return nil, fmt.Errorf("invalid %s hook timeout %q", event, h.Timeout)
+				}
+				timeout = d
+			}
+			out = append(out, hooks.Hook{Event: event, Matcher: h.Matcher, Command: h.Command, Timeout: timeout, Source: h.Source})
+		}
+	}
+	for name := range c.Hooks {
+		if !slices.Contains(hooks.Events, hooks.Event(name)) {
+			return nil, fmt.Errorf("unknown hook event %q (want one of %v)", name, hooks.Events)
+		}
+	}
+
+	return out, nil
 }
 
 // TUI configures the terminal UI.
@@ -103,6 +142,7 @@ func Load(userPath, workspace string) (Config, []string, error) {
 	if found {
 		loaded = append(loaded, userPath)
 	}
+	tagHooks(cfg.Hooks, hooks.SourceUser)
 	abs, err := filepath.Abs(workspace)
 	if err != nil {
 		return Config{}, nil, fmt.Errorf("failed to resolve workspace: %w", err)
@@ -122,6 +162,7 @@ func Load(userPath, workspace string) (Config, []string, error) {
 	if len(project.Projects) > 0 {
 		return Config{}, nil, fmt.Errorf("%s: [projects] belongs in the user file only", path)
 	}
+	tagHooks(project.Hooks, hooks.SourceProject)
 
 	return merge(cfg, project), append(loaded, path), nil
 }
@@ -141,7 +182,16 @@ func decode(path string, into *Config) (bool, error) {
 	return true, nil
 }
 
-// merge returns base with every value set in over replacing it.
+func tagHooks(byEvent map[string][]Hook, source hooks.Source) {
+	for event, list := range byEvent {
+		for i := range list {
+			list[i].Source = source
+		}
+		byEvent[event] = list
+	}
+}
+
+// merge returns base with every value set in over replacing it. Hooks add up.
 func merge(base, over Config) Config {
 	set := func(dst *string, v string) {
 		if v != "" {
@@ -153,6 +203,15 @@ func merge(base, over Config) Config {
 	set(&base.Effort, over.Effort)
 	set(&base.Timeout, over.Timeout)
 	set(&base.MaxDisk, over.MaxDisk)
+	set(&base.Engine, over.Engine)
+	base.Fast = base.Fast || over.Fast
+	base.TUI.Details = base.TUI.Details || over.TUI.Details
+	for event, list := range over.Hooks {
+		if base.Hooks == nil {
+			base.Hooks = map[string][]Hook{}
+		}
+		base.Hooks[event] = append(base.Hooks[event], list...)
+	}
 	if over.Instructions.Enabled != nil {
 		base.Instructions.Enabled = over.Instructions.Enabled
 	}

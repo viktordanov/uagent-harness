@@ -20,6 +20,7 @@ import (
 	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/engine/embedded"
 	"github.com/viktordanov/uagent-harness/internal/engine/process"
+	"github.com/viktordanov/uagent-harness/internal/hooks"
 	"github.com/viktordanov/uagent-harness/internal/instructions"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
@@ -54,7 +55,7 @@ func sessionFlags() []cli.Flag {
 			DefaultText: defaultEffort + ", or the resumed session's", Validator: oneOf("effort", session.Efforts),
 		},
 		&cli.StringFlag{
-			Name: "workspace", Aliases: []string{"C"}, Usage: "agent workspace and Bash working directory",
+			Name: flagWorkspace, Aliases: []string{"C"}, Usage: "agent workspace and Bash working directory",
 			DefaultText: "the current directory, or the resumed session's", TakesFile: true,
 		},
 		&cli.StringFlag{Name: "session", Aliases: []string{"s"}, Usage: "resume a session by ID or unique ID prefix"},
@@ -172,6 +173,20 @@ func setupFor(cmd *cli.Command, logOutput io.Writer, ref string) (setup, error) 
 		return setup{}, cli.Exit(err.Error(), exitUsage)
 	}
 	opts.Settings = settings
+	opts.SessionsDir = filepath.Join(stateDir, "sessions")
+	hookList, err := cfg.HookList()
+	if err != nil {
+		return setup{}, cli.Exit(err.Error(), exitUsage)
+	}
+	if len(hookList) > 0 {
+		trust, err := hooks.LoadTrust(hookTrustFile())
+		if err != nil {
+			return setup{}, cli.Exit(err.Error(), exitUsage)
+		}
+		if opts.Hooks, err = hooks.New(hookList, trust, workspace); err != nil {
+			return setup{}, cli.Exit(err.Error(), exitUsage)
+		}
+	}
 
 	maxDiskText := cmd.String("max-disk")
 	if !cmd.IsSet("max-disk") && cfg.MaxDisk != "" {
@@ -193,8 +208,11 @@ func setupFor(cmd *cli.Command, logOutput io.Writer, ref string) (setup, error) 
 			return setup{}, cli.Exit(err.Error(), exitUsage)
 		}
 		eng = process.New(harness.Config{RunnerPath: runner, StateDir: stateDir, MaxDisk: maxDisk, Logger: logger})
+		if opts.Hooks.Has(hooks.PreToolUse, "") {
+			opts.Notices = append(opts.Notices, "PreToolUse hooks need the embedded engine; they do not run on the process engine")
+		}
 	case engineEmbedded:
-		emb := embedded.New(embedded.Config{StateDir: stateDir, MaxDisk: maxDisk, Logger: logger, Provider: settings.Provider})
+		emb := embedded.New(embedded.Config{StateDir: stateDir, MaxDisk: maxDisk, Logger: logger, Provider: settings.Provider, Hooks: opts.Hooks})
 		if settings.ServiceTier != "" && !emb.Capabilities().ServiceTier {
 			return setup{}, cli.Exit("--fast needs the openai or openai-codex provider", exitUsage)
 		}
@@ -205,6 +223,9 @@ func setupFor(cmd *cli.Command, logOutput io.Writer, ref string) (setup, error) 
 
 	return setup{stateDir: stateDir, engine: eng, options: opts, config: cfg}, nil
 }
+
+// hookTrustFile records the project hook commands the user approved.
+func hookTrustFile() string { return filepath.Join(config.Dir(), "trusted-hooks.json") }
 
 // pick returns the first value that is set: the flag (by flag or
 // environment; an empty variable counts as unset), the resumed session's

@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/viktordanov/uagent-harness/internal/config"
+	"github.com/viktordanov/uagent-harness/internal/hooks"
 )
 
 func write(t *testing.T, path, content string) {
@@ -72,4 +73,35 @@ func TestLoad(t *testing.T) {
 
 		require.ErrorContains(t, err, "user file only")
 	})
+}
+
+func TestHooks(t *testing.T) {
+	root := t.TempDir()
+	ws := filepath.Join(root, "ws")
+	user := filepath.Join(root, "config.toml")
+	write(t, user, `
+[projects."`+ws+`"]
+trusted = true
+
+[[hooks.PreToolUse]]
+matcher = "Bash"
+command = "check.sh"
+timeout = "5s"
+`)
+	write(t, config.ProjectFile(ws), "[[hooks.Stop]]\ncommand = \"notify.sh\"\n")
+
+	cfg, _, err := config.Load(user, ws)
+	require.NoError(t, err)
+	list, err := cfg.HookList()
+	require.NoError(t, err)
+	assert.Equal(t, []hooks.Hook{
+		{Event: hooks.PreToolUse, Matcher: "Bash", Command: "check.sh", Timeout: 5 * time.Second, Source: hooks.SourceUser},
+		{Event: hooks.Stop, Command: "notify.sh", Source: hooks.SourceProject},
+	}, list)
+
+	write(t, user, "[[hooks.Nope]]\ncommand = \"x\"\n")
+	cfg, _, err = config.Load(user, ws)
+	require.NoError(t, err)
+	_, err = cfg.HookList()
+	require.ErrorContains(t, err, `unknown hook event "Nope"`)
 }

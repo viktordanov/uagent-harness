@@ -80,8 +80,9 @@ func TestVersion(t *testing.T) {
 func TestHelpListsCommands(t *testing.T) {
 	res := uah(t, "--help")
 	require.Equal(t, 0, res.code)
-	assert.Contains(t, res.stdout, "run")
-	assert.Contains(t, res.stdout, "sessions")
+	for _, command := range []string{"run", "resume", "sessions", "hooks"} {
+		assert.Regexp(t, `(?m)^\s+`+command+`\b`, res.stdout)
+	}
 	assert.Contains(t, res.stdout, "a general-purpose harness for unreal-agent-runner")
 }
 
@@ -283,4 +284,29 @@ func TestRunEmbedded(t *testing.T) {
 	require.Len(t, reqs, 3)
 	assert.Equal(t, "priority", reqs[0].ServiceTier)
 	assert.Equal(t, []string{"first question", "and a follow-up"}, reqs[2].UserTexts)
+}
+
+func TestHooksCommand(t *testing.T) {
+	e := harnesstest.NewEnv(t)
+	configDir := filepath.Join(e.StateDir, "..", "config")
+	ws, err := filepath.EvalSymlinks(e.Workspace)
+	require.NoError(t, err)
+	require.NoError(t, os.MkdirAll(filepath.Join(configDir, "uagent"), 0o700))
+	require.NoError(t, os.WriteFile(filepath.Join(configDir, "uagent", "config.toml"), []byte(
+		"[projects.\""+ws+"\"]\ntrusted = true\n[[hooks.Stop]]\ncommand = \"notify-send done\"\n"), 0o600))
+	require.NoError(t, os.MkdirAll(filepath.Join(ws, ".uagent"), 0o700))
+	require.NoError(t, os.WriteFile(filepath.Join(ws, ".uagent", "config.toml"), []byte(
+		"[[hooks.PreToolUse]]\nmatcher = \"Bash\"\ncommand = \"./check.sh\"\n"), 0o600))
+	env := []string{"XDG_CONFIG_HOME=" + configDir}
+
+	res := uahWith(t, env, "", "hooks", "-C", ws)
+	require.Equal(t, 0, res.code, res.stderr)
+	assert.Regexp(t, `PreToolUse\s+Bash\s+project\s+untrusted\s+./check.sh`, res.stdout)
+	assert.Regexp(t, `Stop\s+user\s+runs\s+notify-send done`, res.stdout)
+
+	res = uahWith(t, env, "", "hooks", "trust", "-C", ws)
+	require.Equal(t, 0, res.code, res.stderr)
+	assert.Contains(t, res.stdout, "trusting PreToolUse hook: ./check.sh")
+	res = uahWith(t, env, "", "hooks", "-C", ws)
+	assert.Regexp(t, `PreToolUse\s+Bash\s+project\s+runs`, res.stdout)
 }
