@@ -51,6 +51,17 @@ type ServerConfig struct {
 	HTTPHeaders       map[string]string `toml:"http_headers"`
 	// EnvHTTPHeaders maps a header to the environment variable holding its value.
 	EnvHTTPHeaders map[string]string `toml:"env_http_headers"`
+	// Auth is how uah authorizes to the server; only "oauth" (the default)
+	// is supported.
+	Auth string `toml:"auth"`
+	// Scopes are the OAuth scopes `uah mcp login` asks for (default: the
+	// ones the server advertises).
+	Scopes []string `toml:"scopes"`
+	// OAuthResource is the RFC 8707 resource sent while logging in
+	// (default: the server's own).
+	OAuthResource string `toml:"oauth_resource"`
+	// OAuth configures the login's client and callback.
+	OAuth *OAuthConfig `toml:"oauth"`
 
 	// Enabled defaults to true.
 	Enabled *bool `toml:"enabled"`
@@ -70,6 +81,19 @@ type ServerConfig struct {
 	Tools                     map[string]ToolConfig `toml:"tools"`
 }
 
+// OAuthConfig is one [mcp_servers.<name>.oauth] table, with Codex's keys.
+type OAuthConfig struct {
+	// ClientID is a client registered with the authorization server ahead
+	// of time; unset, uah registers one dynamically.
+	ClientID string `toml:"client_id"`
+	// CallbackURL is the redirect URI sent to the server; the listener
+	// still binds 127.0.0.1. It overrides mcp_oauth_callback_url.
+	CallbackURL string `toml:"callback_url"`
+	// CallbackPort is the listener's port; it overrides
+	// mcp_oauth_callback_port.
+	CallbackPort *int `toml:"callback_port"`
+}
+
 // ToolConfig is one [mcp_servers.<name>.tools.<tool>] table.
 type ToolConfig struct {
 	ApprovalMode ApprovalMode `toml:"approval_mode"`
@@ -80,23 +104,11 @@ func (c ServerConfig) IsEnabled() bool { return c.Enabled == nil || *c.Enabled }
 
 // Validate checks the transport and values, as Codex's TryFrom does.
 func (c ServerConfig) Validate() error {
-	stdioOnly := map[string]bool{"args": len(c.Args) > 0, "env": len(c.Env) > 0, "env_vars": len(c.EnvVars) > 0, "cwd": c.Cwd != ""}
-	httpOnly := map[string]bool{
-		"bearer_token_env_var": c.BearerTokenEnvVar != "", "http_headers": len(c.HTTPHeaders) > 0, "env_http_headers": len(c.EnvHTTPHeaders) > 0,
+	if err := c.validateTransport(); err != nil {
+		return err
 	}
-	switch {
-	case c.Command != "" && c.URL != "":
-		return errors.New("set command (stdio) or url (streamable HTTP), not both")
-	case c.Command != "":
-		if key := firstSet(httpOnly); key != "" {
-			return fmt.Errorf("%s is not supported for stdio", key)
-		}
-	case c.URL != "":
-		if key := firstSet(stdioOnly); key != "" {
-			return fmt.Errorf("%s is not supported for streamable_http", key)
-		}
-	default:
-		return errors.New("set command (stdio) or url (streamable HTTP)")
+	if err := c.validateAuth(); err != nil {
+		return err
 	}
 	for _, v := range []*float64{c.StartupTimeoutSec, c.ToolTimeoutSec} {
 		if v != nil && *v <= 0 {
@@ -113,6 +125,52 @@ func (c ServerConfig) Validate() error {
 	for _, m := range modes {
 		if m != "" && !slices.Contains(approvalModes, m) {
 			return fmt.Errorf("unknown approval mode %q (want one of %v)", m, approvalModes)
+		}
+	}
+
+	return nil
+}
+
+// validateTransport checks that the keys match the transport.
+func (c ServerConfig) validateTransport() error {
+	stdioOnly := map[string]bool{"args": len(c.Args) > 0, "env": len(c.Env) > 0, "env_vars": len(c.EnvVars) > 0, "cwd": c.Cwd != ""}
+	httpOnly := map[string]bool{
+		"bearer_token_env_var": c.BearerTokenEnvVar != "", "http_headers": len(c.HTTPHeaders) > 0, "env_http_headers": len(c.EnvHTTPHeaders) > 0,
+		"auth": c.Auth != "", "scopes": len(c.Scopes) > 0, "oauth_resource": c.OAuthResource != "", "oauth": c.OAuth != nil,
+	}
+	switch {
+	case c.Command != "" && c.URL != "":
+		return errors.New("set command (stdio) or url (streamable HTTP), not both")
+	case c.Command != "":
+		if key := firstSet(httpOnly); key != "" {
+			return fmt.Errorf("%s is not supported for stdio", key)
+		}
+	case c.URL != "":
+		if key := firstSet(stdioOnly); key != "" {
+			return fmt.Errorf("%s is not supported for streamable_http", key)
+		}
+	default:
+		return errors.New("set command (stdio) or url (streamable HTTP)")
+	}
+
+	return nil
+}
+
+// validateAuth checks the OAuth keys. Codex's other auth values (chatgpt,
+// ema_auth) need Codex's account and are not supported.
+func (c ServerConfig) validateAuth() error {
+	if c.Auth != "" && c.Auth != "oauth" {
+		return fmt.Errorf("auth %q is not supported (want oauth)", c.Auth)
+	}
+	if c.OAuth == nil {
+		return nil
+	}
+	if p := c.OAuth.CallbackPort; p != nil && (*p <= 0 || *p > 65535) {
+		return fmt.Errorf("oauth.callback_port %d is not a port", *p)
+	}
+	if u := c.OAuth.CallbackURL; u != "" {
+		if err := checkCallbackURL(u); err != nil {
+			return fmt.Errorf("oauth.callback_url: %w", err)
 		}
 	}
 

@@ -1,0 +1,24 @@
+
+
+
+
+
+
+
+• MCP servers
+  • docs: ready · stdio · 2 tools
+      command: npx -y docs-mcp
+      mcp__docs__get · auto · Get a page.
+      mcp__docs__write · writes, asks · Write a page.
+  • tracker: needs login · streamable_http
+      run `uah mcp login tracker`, then /new or restart uah
+      url: https://mcp.example.com/mcp
+      auth: Not logged in
+  • broken: failed · stdio
+      failed to connect: exec: "missing": not found
+      command: missing
+  • off: disabled · stdio
+      command: off
+────────────────────────────────────────────────────────────────────────────────────────────────────
+›
+ gpt-6-sol · high · /workspace/proj                                     ctrl+t details · / commands
