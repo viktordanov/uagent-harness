@@ -22,6 +22,7 @@ import (
 	"github.com/viktordanov/uagent-harness/internal/hooks"
 	"github.com/viktordanov/uagent-harness/internal/instructions"
 	"github.com/viktordanov/uagent-harness/internal/mcp"
+	"github.com/viktordanov/uagent-harness/internal/models"
 	"github.com/viktordanov/uagent-harness/internal/review"
 	"github.com/viktordanov/uagent-harness/internal/sandbox"
 	"github.com/viktordanov/uagent-harness/internal/session"
@@ -34,6 +35,8 @@ type Result struct {
 	Engine   engine.Engine
 	Options  session.Options
 	Config   config.Config
+	// Models is the session provider's model catalog, loaded from the cache.
+	Models *models.Manager
 }
 
 // Setup resolves the inputs against the resumed session (in.SessionRef) and
@@ -74,7 +77,8 @@ func Setup(ctx context.Context, in Inputs, logOutput io.Writer) (Result, error) 
 		}
 	}
 	opts.Settings = r.Settings
-	useModels(ctx, NewModels(stateDir, r.Settings, os.Getenv))
+	catalog := NewModels(stateDir, r.Settings, os.Getenv)
+	catalog.Catalog(ctx, catalog.Provider(), models.Offline) // the cache only, no network
 	opts.SessionsDir = filepath.Join(stateDir, "sessions")
 	if opts.Hooks, err = loadHooks(cfg, in.Workspace); err != nil {
 		return Result{}, err
@@ -89,8 +93,8 @@ func Setup(ctx context.Context, in Inputs, logOutput io.Writer) (Result, error) 
 	if err != nil {
 		return Result{}, err
 	}
-	subagents := newAgents(r, cfg, in.Workspace, &opts)
-	eng, err := newEngine(r, in.Runner, stateDir, logger, servers, &opts, approver, subagents) //nolint:contextcheck // on Linux, the sandbox probes bwrap once per process, with its own timeout
+	subagents := newAgents(r, cfg, in.Workspace, &opts, catalog)
+	eng, err := newEngine(r, in.Runner, stateDir, logger, parts{servers: servers, approver: approver, subagents: subagents, models: catalog}, &opts) //nolint:contextcheck // on Linux, the sandbox probes bwrap once per process, with its own timeout
 	if err != nil {
 		return Result{}, err
 	}
@@ -98,7 +102,7 @@ func Setup(ctx context.Context, in Inputs, logOutput io.Writer) (Result, error) 
 		subagents.Bind(eng, opts) // children open exactly as this session does
 	}
 
-	return Result{StateDir: stateDir, Engine: eng, Options: opts, Config: cfg}, nil
+	return Result{StateDir: stateDir, Engine: eng, Options: opts, Config: cfg, Models: catalog}, nil
 }
 
 // loadHooks builds the hook runner for the configured hooks (nil when there
@@ -124,7 +128,15 @@ func loadHooks(cfg config.Config, workspace string) (*hooks.Runner, error) {
 }
 
 // newEngine builds the resolved engine and adds its notices to opts.
-func newEngine(r Resolved, runnerPath, stateDir string, logger *slog.Logger, servers *mcp.Manager, opts *session.Options, approver *approval.Approver, subagents *agents.Manager) (engine.Engine, error) {
+// parts are what Setup builds for the embedded engine.
+type parts struct {
+	servers   *mcp.Manager
+	approver  *approval.Approver
+	subagents *agents.Manager
+	models    *models.Manager
+}
+
+func newEngine(r Resolved, runnerPath, stateDir string, logger *slog.Logger, p parts, opts *session.Options) (engine.Engine, error) {
 	sandboxDir := filepath.Join(stateDir, "sandbox")
 	if r.Engine == EngineProcess {
 		runner, err := harness.FindRunner(runnerPath)
@@ -134,7 +146,7 @@ func newEngine(r Resolved, runnerPath, stateDir string, logger *slog.Logger, ser
 		if opts.Hooks.Has(hooks.PreToolUse, "") {
 			opts.Notices = append(opts.Notices, "PreToolUse hooks need the embedded engine; they do not run on the process engine")
 		}
-		if servers != nil {
+		if p.servers != nil {
 			opts.Notices = append(opts.Notices, "MCP servers need the embedded engine; they do not start on the process engine")
 		}
 		// The runner runs each command with $SHELL, so a sandboxing shell
@@ -165,14 +177,14 @@ func newEngine(r Resolved, runnerPath, stateDir string, logger *slog.Logger, ser
 	}
 	ecfg := embedded.Config{
 		StateDir: stateDir, MaxDisk: r.MaxDisk, Logger: logger, Provider: r.Settings.Provider, Hooks: opts.Hooks,
-		Sandbox: &r.Sandbox, SandboxDir: sandboxDir, Env: r.Env, MCP: servers, Approver: approver,
+		Sandbox: &r.Sandbox, SandboxDir: sandboxDir, Env: r.Env, MCP: p.servers, Approver: p.approver, Models: p.models,
 		AutoReview: r.ApprovalsReviewer == review.ReviewerAuto, Review: r.Review,
 		InstructionFiles: instructionFiles(opts.Instructions),
 		Compaction:       r.Compaction, ContextWindow: r.Settings.ContextWindow,
 		BeforeCompact: preCompactHook(opts.Hooks, r.Settings),
 	}
-	if subagents != nil {
-		ecfg.Subagents = subagents
+	if p.subagents != nil {
+		ecfg.Subagents = p.subagents
 	}
 	emb := embedded.New(ecfg)
 	if r.Settings.ServiceTier != "" && !emb.Capabilities().ServiceTier {

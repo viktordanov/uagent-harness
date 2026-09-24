@@ -9,6 +9,7 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
+	"github.com/viktordanov/uagent-harness/internal/compaction"
 	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
@@ -86,6 +87,10 @@ type State struct {
 	Picker  Picker
 	Menu    Menu
 	Now     time.Time
+	// Windows finds a model's context window in the session's model
+	// catalog, for the footer's "N% context left" (nil: the default
+	// window). The shell sets it; the reducer only calls it.
+	Windows compaction.WindowLookup
 	// agentIDs are the subagents' IDs in the order they started, so lookups
 	// of the agents do not walk the whole transcript (Agents).
 	agentIDs []string

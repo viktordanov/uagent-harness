@@ -200,11 +200,7 @@ func (m *Manager) Window(model string) (int64, bool) {
 			return md.ContextWindow, true
 		}
 	}
-	if md, ok := Bundled(ProviderCodex).Metadata(model); ok && md.ContextWindow > 0 {
-		return md.ContextWindow, true
-	}
-
-	return 0, false
+	return BundledWindow(model)
 }
 
 // ApplyPatch reports whether the provider's model gets Codex's apply_patch
@@ -219,9 +215,6 @@ func (m *Manager) ApplyPatch(provider, model string) bool {
 
 	return provider == ProviderOpenAI || provider == ProviderCodex
 }
-
-// ApplyPatch asks the default manager (Manager.ApplyPatch).
-func ApplyPatch(provider, model string) bool { return Default().ApplyPatch(provider, model) }
 
 // ErrUnavailable matches an UnavailableError.
 var ErrUnavailable = errors.New("the model is not available")
@@ -278,31 +271,12 @@ func (c Catalog) Check(model string) error {
 	return nil
 }
 
-var defaultManager atomic.Pointer[Manager]
-
-// SetDefault makes m the manager Validate and ContextWindow use; uah sets
-// it when a session starts.
-func SetDefault(m *Manager) { defaultManager.Store(m) }
-
-// Default is the manager SetDefault set, else one without a cache.
-func Default() *Manager {
-	if m := defaultManager.Load(); m != nil {
-		return m
+// BundledWindow is the model's context window in the catalog shipped with
+// uah, for callers without a provider's list, such as uah config.
+func BundledWindow(model string) (int64, bool) {
+	if md, ok := Bundled(ProviderCodex).Metadata(model); ok && md.ContextWindow > 0 {
+		return md.ContextWindow, true
 	}
-	m := New(Options{})
-	defaultManager.CompareAndSwap(nil, m)
 
-	return defaultManager.Load()
+	return 0, false
 }
-
-// Validate checks spawn_agent's model against the provider's list with the
-// default manager: nil when the list has it or no list from the provider is
-// known, else an UnavailableError reading "Unknown model `X` for
-// spawn_agent. Available models: A, B. Did you mean `Y`?". It may call the
-// provider, for at most RefreshTimeout; a fresh cache answers without it.
-func Validate(ctx context.Context, provider, model string) error {
-	return Default().Validate(ctx, provider, model)
-}
-
-// Window is the model's context window as the default manager knows it.
-func Window(model string) (int64, bool) { return Default().Window(model) }

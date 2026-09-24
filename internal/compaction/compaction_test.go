@@ -90,9 +90,11 @@ func TestSummaryRequest(t *testing.T) {
 }
 
 func TestWindowAndMeter(t *testing.T) {
-	assert.Equal(t, int64(272_000), compaction.ContextWindow("unknown", 0))
-	assert.Equal(t, int64(372_000), compaction.ContextWindow("gpt-daybreak-red-latest", 0))
-	assert.Equal(t, int64(1000), compaction.ContextWindow("gpt-6-sol", 1000))
+	catalog := func(model string) (int64, bool) { return map[string]int64{"red": 372_000}[model], model == "red" }
+	assert.Equal(t, int64(272_000), compaction.ContextWindow("unknown", 0, catalog))
+	assert.Equal(t, int64(372_000), compaction.ContextWindow("red", 0, catalog), "the catalog's window")
+	assert.Equal(t, int64(272_000), compaction.ContextWindow("red", 0, nil), "no catalog: the default")
+	assert.Equal(t, int64(1000), compaction.ContextWindow("red", 1000, catalog), "model_context_window wins")
 	assert.Equal(t, int64(244_800), compaction.AutoLimit(272_000, 90))
 	assert.Equal(t, int64(0), compaction.AutoLimit(272_000, 0))
 	assert.Equal(t, 100, compaction.PercentLeft(5_000, 272_000))

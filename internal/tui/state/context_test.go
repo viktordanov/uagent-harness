@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/viktordanov/uagent/core"
 	uaharness "github.com/viktordanov/uagent/harness"
@@ -93,4 +94,16 @@ func TestReduce_ClearStaysInTheSession(t *testing.T) {
 	s, _ = apply(s, engine.CompactionStarted{At: t0, Trigger: compaction.TriggerClear}, engine.Compacted{At: t0, Trigger: compaction.TriggerClear})
 	assert.Len(t, s.Items, 2, "the engine's report is a debug line only")
 	assert.Equal(t, state.LevelDebug, s.Items[1].Level)
+}
+
+// TestContextLeft_UsesTheSessionCatalog takes the window from the catalog
+// the shell gives the state, not from any process-wide default.
+func TestContextLeft_UsesTheSessionCatalog(t *testing.T) {
+	s := opened()
+	s, _ = apply(s, core.ModelResponded{At: t0, Turn: 1, Usage: core.Tokens{InputTokens: 60_000}})
+	pct, ok := s.ContextLeft()
+	require.True(t, ok)
+	s.Windows = func(string) (int64, bool) { return 1_000_000, true }
+	larger, _ := s.ContextLeft()
+	assert.Greater(t, larger, pct, "a larger window from the catalog leaves more context")
 }

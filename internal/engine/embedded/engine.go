@@ -22,6 +22,7 @@ import (
 	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/hooks"
 	"github.com/viktordanov/uagent-harness/internal/mcp"
+	"github.com/viktordanov/uagent-harness/internal/models"
 	"github.com/viktordanov/uagent-harness/internal/review"
 	"github.com/viktordanov/uagent-harness/internal/sandbox"
 )
@@ -55,8 +56,11 @@ type Config struct {
 	// Compaction configures automatic compaction and the summary call; its
 	// zero value never compacts automatically.
 	Compaction compaction.Settings
-	// ContextWindow overrides the model table's context window (tokens).
+	// ContextWindow overrides the model catalog's context window (tokens).
 	ContextWindow int64
+	// Models is the model catalog: context windows and whether a model
+	// gets apply_patch (nil: the catalog shipped with uah).
+	Models *models.Manager
 	// BeforeCompact, when set, runs as each compaction starts; an error
 	// cancels the compaction. A PreCompact hook attaches here.
 	BeforeCompact func(ctx context.Context, sessionID string, trigger compaction.Trigger) error
@@ -89,6 +93,8 @@ type Engine struct {
 	transcripts sync.Map
 	// last are each session's latest model request, for /context.
 	last lastRequests
+	// models is cfg.Models, or a catalog of the bundled list.
+	models *models.Manager
 	// forks are the forked sessions whose first run has not started;
 	// cacheKeys are the sessions whose prompt cache key is not their ID.
 	forks, cacheKeys sync.Map
@@ -108,13 +114,17 @@ func New(cfg Config) *Engine {
 	if cfg.Getenv == nil {
 		cfg.Getenv = os.Getenv
 	}
+	catalog := cfg.Models
+	if catalog == nil {
+		catalog = models.New(models.Options{})
+	}
 	if cfg.Providers == nil {
 		cfg.Providers = DefaultProviders()
 	}
 	if cfg.Approver == nil {
 		cfg.Approver = approval.New(approval.Config{})
 	}
-	e := &Engine{cfg: cfg}
+	e := &Engine{cfg: cfg, models: catalog}
 	e.h = harness.New(harness.Config{
 		Backend: backend{e}, StateDir: cfg.StateDir, MaxDisk: cfg.MaxDisk, Logger: cfg.Logger, Getenv: cfg.Getenv,
 	})

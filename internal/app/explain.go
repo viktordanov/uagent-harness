@@ -13,6 +13,7 @@ import (
 
 	"github.com/viktordanov/uagent-harness/internal/compaction"
 	"github.com/viktordanov/uagent-harness/internal/config"
+	"github.com/viktordanov/uagent-harness/internal/models"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
 
@@ -163,7 +164,7 @@ func sessionSettings(in Inputs, o Origins, r Resolved, cfg config.Config) []Sett
 		one("permission_mode", string(s.Mode), modeSource(in, o)),
 		one("sandbox_mode", string(r.Sandbox.Mode), modeSource(in, o)),
 		one("approval_policy", string(r.Approval), pick(input(in.Ask, EnvAsk, env), overrides(l, func(c config.Config) any { return c.ApprovalPolicy }), FromDefault)),
-		one("model_context_window", compaction.ContextWindow(s.Model, s.ContextWindow), pick(overrides(l, func(c config.Config) any { return c.ModelContextWindow }), FromDefault)),
+		one("model_context_window", compaction.ContextWindow(s.Model, s.ContextWindow, models.BundledWindow), pick(overrides(l, func(c config.Config) any { return c.ModelContextWindow }), FromDefault)),
 		{Key: "instructions.enabled", Value: r.Instructions, Sources: orSources(given(in.NoInstructions), []Source{overrides(l, func(c config.Config) any { return c.Instructions.Enabled })})},
 	}
 }

@@ -110,7 +110,7 @@ func (s State) agentNames() []string {
 // far with the reducer the session's transcript uses.
 func (s *State) openAgentView(e AgentViewOpened) {
 	st := New(s.Now)
-	st.Caps, st.Details, st.ShowReasoning = s.Caps, s.Details, s.ShowReasoning
+	st.Caps, st.Details, st.ShowReasoning, st.Windows = s.Caps, s.Details, s.ShowReasoning, s.Windows
 	if len(e.History) > 0 {
 		st, _ = Reduce(st, HistoryLoaded{SessionID: e.ID, Runs: e.History})
 	}

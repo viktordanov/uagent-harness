@@ -30,7 +30,7 @@ A `Model` keeps the Codex fields that uah uses: the ID and display name, the con
 
 Lists are ordered by Codex's `priority`, lowest first; a model without a priority comes after the others. Hidden models (Codex's visibility `hide`) are accepted but menus do not offer them.
 
-`Catalog.Metadata` finds the entry whose metadata applies to an ID in Codex's order: the exact ID, then the longest ID that starts it (`gpt-5.5-2026-01-01` → `gpt-5.5`), then the same after one simple namespace (`openai/gpt-5.5` → `gpt-5.5`). `Window` uses it: the session provider's last catalog first, then the bundled one. `compaction.ContextWindow` is the one function every caller uses for a context window: `model_context_window` when it is set, then `Window`, then 272,000 tokens.
+`Catalog.Metadata` finds the entry whose metadata applies to an ID in Codex's order: the exact ID, then the longest ID that starts it (`gpt-5.5-2026-01-01` → `gpt-5.5`), then the same after one simple namespace (`openai/gpt-5.5` → `gpt-5.5`). `Window` uses it: the session provider's last catalog first, then the bundled one. `compaction.ContextWindow` is the one function every caller uses for a context window: `model_context_window` when it is set, then the catalog the caller passes (a `Manager.Window`), then 272,000 tokens. There is no process-wide catalog: `app.Setup` builds one per session (`Result.Models`) and hands it to the embedded engine, the subagents' model check, and the TUI; `uah config` uses the shipped catalog alone (`BundledWindow`).
 
 `Suggest` returns up to three near misses: the same words in another order first (`gpt-luna-6` → `gpt-6-luna`), then an edit distance within a third of the ID's length.
 <!-- /memoria:section -->
@@ -71,7 +71,7 @@ Shell completion calls `Cached`. It reads the provider's file without reading cr
 Only a list from the provider (`live` or `cached`, not empty) can refuse a model. With the bundled list or no list, any model passes as before, so a model newer than uah still works.
 
 - `Catalog.Check` gives the `/model` wording: "gpt-luna-6 is not available on openai-codex; did you mean gpt-6-luna?"
-- `Validate(ctx, provider, model)` is for `spawn_agent`. It uses the default manager (`SetDefault`, set by session setup) with `OnlineIfUncached` and gives Codex's wording plus the near misses: "Unknown model \`gpt-luna-6\` for spawn_agent. Available models: gpt-6-astra, gpt-6-sol, gpt-6-luna, gpt-5.6-sol, gpt-5.6-terra. Did you mean \`gpt-6-luna\`?"
+- `Manager.Validate(ctx, provider, model)` is for `spawn_agent`. It uses `OnlineIfUncached` and gives Codex's wording plus the near misses: "Unknown model \`gpt-luna-6\` for spawn_agent. Available models: gpt-6-astra, gpt-6-sol, gpt-6-luna, gpt-5.6-sol, gpt-5.6-terra. Did you mean \`gpt-6-luna\`?"
 
 Both return an `*UnavailableError` that matches `ErrUnavailable`, with the suggestions and the first five visible models as fields.
 <!-- /memoria:section -->

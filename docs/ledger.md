@@ -228,7 +228,6 @@ Ideas that come up while working go here, not into the items.
 - `/config`: Claude Code's `/config key=value` form, a search field, and more rows (the sandbox's network access, the reviewer).
 - Crash cleanup kills recorded process groups; a reused process group ID after a reboot could hit an unrelated process (uagent's end-of-run cleanup has the same risk).
 - `uah config` does not list `[agents]` yet.
-- `compaction.ContextWindow` reads the model catalog through a process-wide default (`models.SetDefault`), which the TUI's pure reducer then depends on. Better: the session reports the resolved window with its settings. It works today because one process has one catalog.
 - The render theme is package-level state (`SetTheme`), so render tests cannot run in parallel and one process cannot draw two themes. Better: a styles value in the render cache. Not needed while one TUI draws one theme.
 
 ## Log

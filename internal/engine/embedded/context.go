@@ -50,7 +50,7 @@ func (e *Engine) ContextUsage(sessionID string) (contextusage.Usage, bool) {
 	if !ok {
 		return contextusage.Usage{}, false
 	}
-	window := compaction.ContextWindow(last.req.Model.ID, e.cfg.ContextWindow)
+	window := compaction.ContextWindow(last.req.Model.ID, e.cfg.ContextWindow, e.models.Window)
 
 	return contextusage.Analyze(last.req, last.input, window, e.cfg.Compaction, e.cfg.InstructionFiles), true
 }
