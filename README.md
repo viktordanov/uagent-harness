@@ -61,7 +61,7 @@ A flag wins over the environment (`UNREAL_HARNESS_LLM_*`, `UAGENT_*`), which win
 
 <!-- /memoria:section -->
 
-<!-- memoria:section id="engines" files="internal/engine/engine.go internal/engine/embedded/engine.go internal/engine/embedded/wiring.go internal/engine/embedded/client.go internal/engine/embedded/store.go internal/engine/embedded/agent.go internal/engine/embedded/providers.go internal/engine/process/process.go internal/session/session.go" -->
+<!-- memoria:section id="engines" files="internal/engine/engine.go internal/engine/embedded/engine.go internal/engine/embedded/wiring.go internal/engine/embedded/client.go internal/engine/embedded/store.go internal/engine/embedded/agent.go internal/engine/embedded/providers.go internal/engine/process/process.go internal/session/dispatch.go internal/session/runs.go" -->
 ### Engines
 
 `uah` runs the agent in one of two ways, chosen with `--engine`, `UAH_ENGINE`, or `engine` in the configuration:

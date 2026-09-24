@@ -67,12 +67,12 @@ func (s *State) command(text string) (State, []Effect) {
 	args = strings.TrimSpace(args)
 	cmd, ok := FindCommand(name)
 	if !ok {
-		s.notice("error", fmt.Sprintf("unknown command /%s (see /help)", name))
+		s.notice(session.LevelError, fmt.Sprintf("unknown command /%s (see /help)", name))
 
 		return *s, nil
 	}
 	if s.Busy && !cmd.WhileBusy {
-		s.notice("warning", fmt.Sprintf("/%s waits until the agent is idle; press esc twice to interrupt it", cmd.Name))
+		s.notice(session.LevelWarning, fmt.Sprintf("/%s waits until the agent is idle; press esc twice to interrupt it", cmd.Name))
 
 		return *s, nil
 	}
@@ -82,14 +82,14 @@ func (s *State) command(text string) (State, []Effect) {
 
 func cmdModel(s *State, args string) []Effect {
 	if args == "" {
-		s.notice("info", fmt.Sprintf("model: %s/%s (change it with /model <id>)", s.Settings.Provider, s.Settings.Model))
+		s.notice(session.LevelInfo, fmt.Sprintf("model: %s/%s (change it with /model <id>)", s.Settings.Provider, s.Settings.Model))
 
 		return nil
 	}
 	next := s.Settings
 	next.Model = args
 	if err := next.Validate(); err != nil {
-		s.notice("error", err.Error())
+		s.notice(session.LevelError, err.Error())
 
 		return nil
 	}
@@ -99,7 +99,7 @@ func cmdModel(s *State, args string) []Effect {
 
 func cmdEffort(s *State, args string) []Effect {
 	if !slices.Contains(session.Efforts, args) {
-		s.notice("info", fmt.Sprintf("effort: %s (set it with /effort %s)", s.Settings.Effort, strings.Join(session.Efforts, "|")))
+		s.notice(session.LevelInfo, fmt.Sprintf("effort: %s (set it with /effort %s)", s.Settings.Effort, strings.Join(session.Efforts, "|")))
 
 		return nil
 	}
@@ -111,7 +111,7 @@ func cmdEffort(s *State, args string) []Effect {
 
 func cmdFast(s *State, _ string) []Effect {
 	if !s.Caps.ServiceTier {
-		s.notice("warning", "/fast needs the embedded engine and the openai or openai-codex provider")
+		s.notice(session.LevelWarning, "/fast needs the embedded engine and the openai or openai-codex provider")
 
 		return nil
 	}
@@ -144,9 +144,9 @@ func cmdStatus(s *State, _ string) []Effect {
 	if len(s.Files) > 0 {
 		files = strings.Join(s.Files, ", ")
 	}
-	s.notice("info", fmt.Sprintf("session %s · %s engine · %s/%s · effort %s · %s", s.SessionID, s.Engine, s.Settings.Provider, s.Settings.Model, s.Settings.Effort, s.Settings.Workspace))
-	s.notice("info", fmt.Sprintf("%d runs · %d turns · %d tool calls (max %d parallel) · %d in / %d out tokens · tools overlapped the model %s", t.Runs, t.Turns, t.ToolCalls, t.MaxParallel, t.Tokens.InputTokens, t.Tokens.OutputTokens, t.Overlap.Round(100_000_000)))
-	s.notice("info", "instructions: "+files)
+	s.notice(session.LevelInfo, fmt.Sprintf("session %s · %s engine · %s/%s · effort %s · %s", s.SessionID, s.Engine, s.Settings.Provider, s.Settings.Model, s.Settings.Effort, s.Settings.Workspace))
+	s.notice(session.LevelInfo, fmt.Sprintf("%d runs · %d turns · %d tool calls (max %d parallel) · %d in / %d out tokens · tools overlapped the model %s", t.Runs, t.Turns, t.ToolCalls, t.MaxParallel, t.Tokens.InputTokens, t.Tokens.OutputTokens, t.Overlap.Round(100_000_000)))
+	s.notice(session.LevelInfo, "instructions: "+files)
 
 	return nil
 }
@@ -162,7 +162,7 @@ func cmdHelp(s *State, _ string) []Effect {
 	}
 	b.WriteString("\nenter send (queues while the agent works) · ctrl+enter or alt+enter send now · shift+enter or ctrl+j new line\n")
 	b.WriteString("esc esc interrupt · ↑ edit the last queued message · alt+, alt+. effort · ctrl+s sessions · ctrl+n new · ctrl+t details · ctrl+r reasoning · wheel, shift+↑↓, pgup/pgdn scroll (end: bottom) · ctrl+c ctrl+c quit")
-	s.notice("info", b.String())
+	s.notice(session.LevelInfo, b.String())
 
 	return nil
 }
