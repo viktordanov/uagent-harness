@@ -10,6 +10,7 @@ import (
 
 	"github.com/urfave/cli/v3"
 
+	"github.com/viktordanov/uagent-harness/internal/models"
 	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/internal/store"
 	"github.com/viktordanov/uagent-harness/internal/tui/bubble"
@@ -80,6 +81,11 @@ func openTUI(ctx context.Context, cmd *cli.Command, launch tuiLaunch) error {
 			}
 
 			return s, history, nil
+		},
+		// The session's setup made the catalog the default; it caches for
+		// five minutes and bounds a refresh to five seconds.
+		Models: func(ctx context.Context, provider string) models.Catalog {
+			return models.Default().Catalog(ctx, provider, models.OnlineIfUncached)
 		},
 		Activity: func() (map[string]int, error) { return store.ActivityIn(ctx, st.StateDir, time.Now(), 7*12) },
 		Sessions: func() ([]session.Info, error) {
