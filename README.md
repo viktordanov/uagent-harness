@@ -1,6 +1,8 @@
 <!-- memoria:section id="overview" files="cmd/uah/main.go go.mod" -->
 # uah
 
+<p align="center"><img src="docs/assets/uah.png" alt="The uah TUI: a flaky test found and fixed with a diff, then two subagents reviewing in parallel" width="760"></p>
+
 `uah` is a terminal coding agent built on [uagent](https://github.com/viktordanov/uagent), the wrapper around unreal-agent-runner. It works like Codex: a TUI and a headless `uah run`, sessions you can resume, AGENTS.md and skills, a sandbox with approvals and auto-review, MCP servers, subagents, compaction, and hooks.
 
 1. [Get started](#get-started)
@@ -444,6 +446,8 @@ go run ./cmd/uah --version   # build and run
 go test -race ./...          # unit and end-to-end tests
 golangci-lint run ./...      # lint (golangci-lint v2.13.2)
 ```
+
+The title image is [docs/assets/title.html](docs/assets/title.html), drawn in the TUI's colors and captured with headless Chrome: `chrome --headless=new --force-device-scale-factor=2 --default-background-color=00000000 --window-size=940,1400 --screenshot=uah.png title.html`, then `magick uah.png -trim +repage uah.png`.
 
 CI runs the build, the race tests, and the linter on each push; the linter also fails on a function above 20 cyclomatic complexity, a backstop for the rule of about 15. Design records, the architecture rules, and the documentation procedure are in [docs](docs/README.md):
 
