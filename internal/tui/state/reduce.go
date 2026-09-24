@@ -353,7 +353,7 @@ func (s *State) nextKey(prefix string) string {
 }
 
 func (s *State) resetTranscript() {
-	s.Items, s.index, s.Totals, s.Scroll, s.Files, s.ContextUsed = nil, map[string]int{}, Totals{}, 0, nil, 0
+	s.Items, s.index, s.agentIDs, s.Totals, s.Scroll, s.Files, s.ContextUsed = nil, map[string]int{}, nil, Totals{}, 0, nil, 0
 }
 
 func turnKey(live *Live, turn int) string {
