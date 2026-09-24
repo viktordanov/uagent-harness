@@ -87,6 +87,8 @@ func itemLines(it state.Item, w int, now time.Time, v view) []string {
 		return []string{toolLine(it, w, now)}
 	case state.KindAgent:
 		return []string{agentLine(it, w, now)}
+	case state.KindContext:
+		return contextLines(it.Context, w)
 	case state.KindAssistant:
 		if it.Final {
 			return append([]string{"", answer.Render("● answer")}, markdownLines(it.Text, w, "  ", "  ")...)

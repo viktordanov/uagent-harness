@@ -29,6 +29,7 @@ func Commands() []Command {
 		{Name: "new", Aliases: []string{"clear"}, Help: "start a new session", run: func(*State, string) []Effect { return []Effect{EffOpenSession{}} }},
 		{Name: "stop", Help: "interrupt the live run; queued messages stay", WhileBusy: true, run: func(*State, string) []Effect { return []Effect{EffInterrupt{}} }},
 		{Name: "compact", Help: "summarize the context to free it; your messages stay as written (embedded engine)", WhileBusy: true, run: cmdCompact},
+		{Name: "context", Help: "what fills the context window: prompt, instructions, skills, tools, messages", WhileBusy: true, run: cmdContext},
 		{Name: "status", Help: "session, settings, and totals", WhileBusy: true, run: cmdStatus},
 		{Name: "mcp", Help: "MCP servers, their state, and their tools", WhileBusy: true, run: cmdMCP},
 		{Name: "agents", Help: "subagents the agent started, and their state", WhileBusy: true, run: cmdAgents},

@@ -62,6 +62,9 @@ type Config struct {
 	BeforeCompact func(ctx context.Context, sessionID string, trigger compaction.Trigger) error
 	// MCP, when set, offers its servers' tools; the engine closes it.
 	MCP *mcp.Manager
+	// InstructionFiles are the instruction files in the host prompt, in
+	// order, so /context can list them.
+	InstructionFiles []string
 	// AutoReview puts the auto-reviewer in front of the user for actions
 	// that need approval (approvals_reviewer = "auto_review"), with Review's
 	// model, effort, and timeout.
@@ -83,6 +86,8 @@ type Engine struct {
 	h   *harness.Harness
 	// transcript feeds the auto-reviewer across the session's runs.
 	transcript *transcript
+	// last are each session's latest model request, for /context.
+	last lastRequests
 }
 
 func New(cfg Config) *Engine {

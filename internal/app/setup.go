@@ -147,6 +147,7 @@ func newEngine(r Resolved, runnerPath, stateDir string, logger *slog.Logger, ser
 		StateDir: stateDir, MaxDisk: r.MaxDisk, Logger: logger, Provider: r.Settings.Provider, Hooks: opts.Hooks,
 		Sandbox: &r.Sandbox, SandboxDir: sandboxDir, Env: r.Env, MCP: servers, Approver: approver,
 		AutoReview: r.ApprovalsReviewer == review.ReviewerAuto, Review: r.Review,
+		InstructionFiles:   instructionFiles(opts.Instructions),
 		AutoCompactPercent: r.AutoCompactPercent, ContextWindow: r.Settings.ContextWindow,
 		BeforeCompact: preCompactHook(opts.Hooks, r.Settings),
 	}
@@ -181,6 +182,15 @@ func preCompactHook(runner *hooks.Runner, s session.Settings) func(context.Conte
 
 		return nil
 	}
+}
+
+// instructionFiles are the loaded instruction files' paths, for /context.
+func instructionFiles(loaded *session.InstructionsLoaded) []string {
+	if loaded == nil {
+		return nil
+	}
+
+	return loaded.Files
 }
 
 // RealShell is the user's shell for commands: $SHELL, or /bin/sh.

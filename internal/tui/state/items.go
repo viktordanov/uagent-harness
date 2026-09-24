@@ -3,6 +3,8 @@ package state
 import (
 	"time"
 
+	"github.com/viktordanov/uagent-harness/internal/contextusage"
+
 	"github.com/viktordanov/uagent/core"
 )
 
@@ -20,6 +22,8 @@ const (
 	// KindAgent is a subagent: Name is its nickname, Label its role, Text
 	// its ID, Detail its state, and Started when its current work began.
 	KindAgent
+	// KindContext is a /context breakdown in Context.
+	KindContext
 )
 
 // InputState tracks a user message from the queue to the runner.
@@ -74,6 +78,9 @@ type Item struct {
 	Label  string
 	Tool   ToolState
 	Detail string
+
+	// KindContext
+	Context *contextusage.Usage
 }
 
 // Live reports whether an item changes with time (spinners, elapsed times)
