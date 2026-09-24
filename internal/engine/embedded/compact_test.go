@@ -21,6 +21,11 @@ func (e *env) compacting(percent int) *embedded.Engine {
 	return embedded.New(embedded.Config{StateDir: e.StateDir, Provider: "openai", Getenv: e.getenv, AutoCompactPercent: percent})
 }
 
+// compactingIn compacts automatically at percent of a window of this many tokens.
+func (e *env) compactingIn(window int64, percent int) *embedded.Engine {
+	return embedded.New(embedded.Config{StateDir: e.StateDir, Provider: "openai", Getenv: e.getenv, AutoCompactPercent: percent, ContextWindow: window})
+}
+
 func summaryText(s string) string { return compaction.SummaryPrefix + "\n" + s }
 
 // ask sends a message and waits for the session to be idle again.
@@ -110,7 +115,7 @@ func TestEmbedded_AutoCompactsAtTheThreshold(t *testing.T) {
 	for _, x := range ev.all {
 		if v, ok := x.(engine.CompactionStarted); ok {
 			assert.Equal(t, compaction.TriggerAuto, v.Trigger)
-			assert.Equal(t, int64(250_010), v.Tokens)
+			assert.Greater(t, v.Tokens, int64(250_010), "the last response plus the tool output after it")
 		}
 	}
 }

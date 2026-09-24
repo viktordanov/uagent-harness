@@ -35,6 +35,12 @@ type Reply struct {
 	// From, when set, builds the reply from the request, such as a call
 	// that needs an ID from an earlier tool result.
 	From func(Request) Reply
+	// Fail, when set, is the HTTP status of an error answer with FailCode
+	// as the Responses API error code, as a provider rejects a request.
+	Fail     int
+	FailCode string
+	// NoUsage leaves the usage out of the response, as some providers do.
+	NoUsage bool
 }
 
 // Call is a function call to a tool by name, with JSON arguments.
@@ -158,6 +164,11 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	if reply.Fail != 0 {
+		failWith(w, reply)
+
+		return
+	}
 	event, err := json.Marshal(streamEvent{Type: "response.completed", Response: response(n, reply)})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -178,7 +189,7 @@ type (
 		Object string       `json:"object"`
 		Status string       `json:"status"`
 		Output []outputItem `json:"output"`
-		Usage  usage        `json:"usage"`
+		Usage  *usage       `json:"usage,omitempty"`
 	}
 	outputItem struct {
 		ID        string        `json:"id"`
@@ -251,10 +262,25 @@ func response(n int, reply Reply) responseBody {
 		input = reply.InputTokens
 	}
 
-	return responseBody{
-		ID: fmt.Sprintf("resp-%d", n), Object: "response", Status: completed, Output: output,
-		Usage: usage{InputTokens: input, OutputTokens: 10, TotalTokens: input + 10},
+	body := responseBody{ID: fmt.Sprintf("resp-%d", n), Object: "response", Status: completed, Output: output}
+	if !reply.NoUsage {
+		body.Usage = &usage{InputTokens: input, OutputTokens: 10, TotalTokens: input + 10}
 	}
+
+	return body
+}
+
+// failWith answers with the reply's HTTP status and a Responses API error.
+func failWith(w http.ResponseWriter, reply Reply) {
+	body, err := json.Marshal(map[string]any{"error": map[string]any{
+		"code": reply.FailCode, "message": "fakellm: " + reply.FailCode, "type": "invalid_request_error",
+	}})
+	if err != nil {
+		panic(err) // a map of strings always encodes
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(reply.Fail)
+	_, _ = w.Write(body)
 }
 
 func parseRequest(body []byte) Request {

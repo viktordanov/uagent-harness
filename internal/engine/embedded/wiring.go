@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"slices"
 	"strings"
 	"time"
@@ -107,10 +108,11 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 		return nil, err
 	}
 	operations := operation.NewLocalOperationManager(runCtx, newMCPJobs(runCtx, w.e.cfg.MCP), newAgentJobs(runCtx, w.e.cfg.Subagents, string(s.id)))
-	comp, err := w.compactor(ctx, s, sw, opts.Compact)
+	comp, err := w.compactor(runCtx, s, sw, opts.Compact)
 	if err != nil {
 		return nil, err
 	}
+	w.closers = append(w.closers, comp.stop)
 	a, err := newAgent(runCtx, cancel, sw, s.restored, req.Effort, messages)
 	if err != nil {
 		return nil, err
@@ -137,12 +139,19 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 }
 
 // compactor wraps the switcher with the session's compactions and seeds the
-// context in use from the session's last response.
+// context in use from the session's last response. ctx is the run's: a
+// compaction lives until the run ends.
 func (w *wiring) compactor(ctx context.Context, s runStore, sw *switcher, compactFirst bool) (*compactor, error) {
-	log := newCompactionLog(w.l.SessionsDir, s.id)
-	rec, err := log.last()
+	log := compaction.OpenLog(w.l.SessionsDir, string(s.id))
+	rec, corrupt, err := log.Last()
 	if err != nil {
 		return nil, err
+	}
+	if corrupt > 0 && w.e.cfg.Logger != nil {
+		w.e.cfg.Logger.WarnContext(ctx, "skipped unreadable lines in the compaction log",
+			slog.String("path", log.Path()),
+			slog.Int("lines", corrupt),
+		)
 	}
 	used, err := lastUsage(ctx, s.store, s.id)
 	if err != nil {
@@ -162,7 +171,7 @@ func (w *wiring) compactor(ctx context.Context, s runStore, sw *switcher, compac
 	}
 
 	return &compactor{
-		next: sw, log: log, emit: emit, before: before, window: cfg.ContextWindow, percent: cfg.AutoCompactPercent,
+		ctx: ctx, next: sw, log: log, emit: emit, before: before, window: cfg.ContextWindow, percent: cfg.AutoCompactPercent,
 		record: rec, pending: compactFirst, used: used,
 	}, nil
 }
