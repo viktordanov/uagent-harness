@@ -141,8 +141,8 @@ func TestTUI_SendAMessageAndQuit(t *testing.T) {
 
 	d.typeText("hi there") // typed before the session opens: it is held, not lost
 	d.key(tea.KeyEnter, 0)
-	d.waitFor("● hello")
-	assert.Contains(t, d.view(), "› hi there")
+	d.waitFor("• hello")
+	assert.Contains(t, d.view(), "λ hi there")
 	assert.NotContains(t, d.view(), "1 run ·", "the compact view hides totals")
 
 	d.key('t', tea.ModCtrl)
@@ -165,13 +165,13 @@ func TestTUI_CommandsAndPrompt(t *testing.T) {
 	d.typeText("/re")
 	assert.Contains(t, d.view(), "/resume [id]", "typing a command shows completions")
 	d.key('c', tea.ModCtrl) // clears the draft, not quits
-	assert.Contains(t, d.view(), "message · / for commands", "the composer is empty again")
+	assert.Contains(t, d.view(), "Ask uah to do anything", "the composer is empty again")
 	assert.NotContains(t, d.view(), "/resume [id]")
 
 	d.typeText("/effort low")
 	d.key(tea.KeyEnter, 0)
 	d.waitFor("effort low, applies from the next run")
-	assert.Contains(t, d.view(), "· low ·", "the footer shows the new effort")
+	assert.Contains(t, d.view(), "gpt-6-sol low", "the footer shows the new effort")
 
 	d.typeText("/nope")
 	d.key(tea.KeyEnter, 0)
@@ -200,8 +200,8 @@ func TestTUI_ResumeFromThePicker(t *testing.T) {
 	d.waitFor("Resume a session")
 	d.typeText("remember")
 	d.key(tea.KeyEnter, 0)
-	d.waitFor("› remember this")
-	d.waitFor("● hello")
+	d.waitFor("λ remember this")
+	d.waitFor("• hello")
 
 	d.key('c', tea.ModCtrl)
 	d.waitQuit()
@@ -213,7 +213,7 @@ func TestTUI_QueueInterruptAndEdit(t *testing.T) {
 	deps.Prompt = "start the long job"
 	d := start(t, deps)
 	d.waitFor("esc to interrupt")
-	d.waitFor("Running sleep 300")
+	d.waitFor("sleep 300")
 
 	d.typeText("then update the README")
 	d.key(tea.KeyEnter, 0)
@@ -225,13 +225,13 @@ func TestTUI_QueueInterruptAndEdit(t *testing.T) {
 	d.waitFor("■ interrupted")
 	d.until("idle", func() bool { return !strings.Contains(d.view(), "esc to interrupt") })
 	assert.Contains(t, d.view(), "↳ queued: then update the README", "an interrupt keeps the queue")
-	assert.Contains(t, d.view(), "stopped", "the unfinished tool is shown as stopped")
+	assert.Contains(t, d.view(), "stop ", "the unfinished tool is shown as stopped")
 
 	d.key(tea.KeyUp, 0)
 	d.until("the queued message back in the composer", func() bool {
 		v := d.view()
 
-		return strings.Contains(v, "› then update the README") && !strings.Contains(v, "queued: then update the README")
+		return strings.Contains(v, "λ then update the README") && !strings.Contains(v, "queued: then update the README")
 	})
 
 	d.key('c', tea.ModCtrl) // clears the draft
@@ -243,7 +243,7 @@ func TestTUI_WheelScrolls(t *testing.T) {
 	d := start(t, deps(t, "simple.jsonl"))
 	d.typeText("hi")
 	d.key(tea.KeyEnter, 0)
-	d.waitFor("● hello")
+	d.waitFor("• hello")
 	for range 3 {
 		d.typeText("/help")
 		d.key(tea.KeyEnter, 0)
@@ -256,7 +256,7 @@ func TestTUI_WheelScrolls(t *testing.T) {
 		d.send(tea.MouseWheelMsg{Button: tea.MouseWheelUp})
 	}
 	top := d.view()
-	assert.Contains(t, top, "› hi", "the first message is reachable")
+	assert.Contains(t, top, "λ hi", "the first message is reachable")
 	d.send(tea.MouseWheelMsg{Button: tea.MouseWheelDown})
 	assert.NotEqual(t, top, d.view(), "scrolling back down moves at once: the offset stops at the top")
 
@@ -271,20 +271,20 @@ func TestTUI_MenuCompletes(t *testing.T) {
 	d := start(t, deps)
 	d.typeText("hi")
 	d.key(tea.KeyEnter, 0)
-	d.waitFor("● hello")
+	d.waitFor("• hello")
 
 	d.typeText("/eff")
 	d.key(tea.KeyTab, 0)
 	d.typeText("l")
 	d.key(tea.KeyTab, 0)
-	assert.Contains(t, d.view(), "› /effort low")
+	assert.Contains(t, d.view(), "λ /effort low")
 	d.key(tea.KeyEnter, 0)
 	d.waitFor("effort low, applies from the next run")
 
 	d.typeText("see @not")
 	d.waitFor("notes.md")
 	d.key(tea.KeyTab, 0)
-	assert.Contains(t, d.view(), "› see notes.md")
+	assert.Contains(t, d.view(), "λ see notes.md")
 	d.key(tea.KeyEscape, 0)
 	assert.NotContains(t, d.view(), "press esc again", "esc with no menu open still means interrupt only while busy")
 }
@@ -295,7 +295,7 @@ func TestTUI_StatusShowsActivity(t *testing.T) {
 	d := start(t, deps)
 	d.typeText("hi")
 	d.key(tea.KeyEnter, 0)
-	d.waitFor("● hello")
+	d.waitFor("• hello")
 	d.typeText("/status")
 	d.key(tea.KeyEnter, 0)
 	d.waitFor("activity · last 12 weeks · 3 runs")

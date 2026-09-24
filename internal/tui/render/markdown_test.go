@@ -20,7 +20,7 @@ func TestMarkdownLines(t *testing.T) {
 		"",
 		"  Run go test and check the output:",
 		"",
-		"  func main() {}",
+		"   func main() {}",
 		"",
 		"  • first item",
 		"    • nested",
@@ -29,7 +29,7 @@ func TestMarkdownLines(t *testing.T) {
 		"  ────────────────────────────────────────",
 		"  See the docs (https://example.com).",
 	}, plain)
-	assert.NotEqual(t, got[4], "  func main() {}", "code is highlighted")
+	assert.NotEqual(t, got[4], "   func main() {}", "code is highlighted")
 }
 
 func TestMarkdownKeepsSnakeCaseAndStars(t *testing.T) {

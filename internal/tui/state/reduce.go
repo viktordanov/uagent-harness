@@ -123,6 +123,9 @@ func (s *State) finishRun(r core.Result) {
 	s.update("run:"+r.Request.RunID, func(it *Item) {
 		it.Status, it.Wall, it.Tokens = r.Status, r.Wall, r.Stats.Tokens.InputTokens+r.Stats.Tokens.OutputTokens
 	})
+	if !s.update("done:"+r.Request.RunID, func(it *Item) { it.Status, it.Wall = r.Status, r.Wall }) {
+		s.put(Item{Kind: KindFinish, Key: "done:" + r.Request.RunID, RunID: r.Request.RunID, Status: r.Status, Started: r.StartedAt, Wall: r.Wall})
+	}
 	for i := range s.Items {
 		it := &s.Items[i]
 		if it.Kind == KindTool && (it.Tool == ToolRunning || it.Tool == ToolCalled) {

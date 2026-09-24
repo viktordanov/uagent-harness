@@ -1,4 +1,4 @@
-<!-- memoria:section id="overview" files="state/state.go state/effects.go render/styles.go bubble/model.go" -->
+<!-- memoria:section id="overview" files="state/state.go state/effects.go render/theme.go bubble/model.go" -->
 # TUI
 
 The terminal UI is three packages: a pure reducer (`state`), a pure renderer (`render`), and a thin Bubble Tea v2 shell (`bubble`) that does all I/O.
@@ -14,8 +14,9 @@ The layout, screens, and framework choice are recorded in the [TUI design](../..
 3. [Transcript items](#transcript-items)
 4. [Keys](#keys)
 5. [Slash commands](#slash-commands)
-6. [Extending the TUI](#extending-the-tui)
-7. [Tests](#tests)
+6. [The look](#the-look)
+7. [Extending the TUI](#extending-the-tui)
+8. [Tests](#tests)
 <!-- /memoria:section -->
 
 <!-- memoria:section id="packages" files="state/state.go state/reduce.go state/effects.go render/screen.go render/items.go bubble/model.go bubble/effects.go bubble/keys.go" -->
@@ -66,6 +67,7 @@ The transcript is a list of `Item`s, each with a stable key. The reducer updates
 | `KindNotice` | `notice:<n>` | Session notices, hook results, command output, approvals |
 | `KindAgent` | `agent:<ID>` | `engine.AgentUpdated` (a subagent); its tool calls from `engine.AgentActivity` go into `Sub`, drawn under it in the detailed view |
 | `KindContext` | `context:<n>` | `/context` (`ContextShown`) |
+| `KindFinish` | `done:<run ID>` | `RunFinished`: the end of a run in the compact view |
 | `KindMCP` | `mcp:<n>` | `/mcp` (`MCPListed`): one line per server; `Final` asks for the verbose form (`render/mcp.go`) |
 
 The compact view draws one line per tool call, as Codex does; the detailed view (ctrl+t) adds the header, run dividers, turns, and token totals. `LevelDebug` notices show only in the detailed view.
@@ -126,6 +128,28 @@ In the picker, ↑/↓ choose, enter resumes, tab switches between this director
 | `/quit` (`/exit`) | Close the session and exit | Yes |
 
 `/model`, `/effort`, and `/fast` apply from the next model request on the embedded engine, and from the next run on the process engine; the session's `SettingsChanged` event says which.
+<!-- /memoria:section -->
+
+<!-- memoria:section id="look" files="render/theme.go render/compact.go render/screen.go render/markdown.go bubble/model.go" -->
+## The look
+
+The compact view is shaped like Codex's, in amber. The choices came from the style swatchbook and are listed in the [ledger](../../docs/ledger.md) (item 19).
+
+| Part | Drawn as | Code |
+| --- | --- | --- |
+| Background | The terminal's own; only your messages, the composer, and code blocks sit on a band | `band` in `render/theme.go` |
+| Banner | Codex's box at the top of the transcript: `λ uah (version)`, the model with `/model to change`, the directory | `banner` in `render/compact.go` |
+| Your messages | `λ ` and the text on the band, with a band row above and below | `userLines` |
+| Tool calls | A dim column: label, time, command (`RAN   4.1s  go test ./...`); a live call in the accent (`RUN`), a failed one with `fail` and its detail | `compactTool` |
+| Agent messages | `•` in the accent | `compactLines` |
+| Code blocks | On the band, highlighted with the theme's code colors, not wrapped | `markdownLines`, `highlight` |
+| Subagents | A tree: `AGENT Ada  42s`, and under a running one `└ ⠹ Read …`, its live tool call | `agentLines` |
+| Working | A breathing `λ` (seven shades, one breath every 1.6 s) and `Working (12s • esc to interrupt)` | `workingLine`, `breathing` |
+| A finished run | `12:14 PM · worked 1m 12s`: Codex's time and Claude Code's duration; how it ended first when not ok | `finishLine` (a `KindFinish` item) |
+| Composer | `λ ` on the band, with a band row above and below | `Screen`, `composerStyles` in `bubble/model.go` |
+| Footer | Model and effort, directory, context left, hints | `footerLine` |
+
+A `Theme` holds every color: the accent, dim text, the band, the breath's shades, and the code colors. `Amber` is for dark terminals and `AmberLight` for light ones. The shell asks the terminal for its background at start (`tea.RequestBackgroundColor`); `ThemeFor` picks the theme and tints the band from that background, as Codex tints its message background, and `SetTheme` applies it. A new theme is a new `Theme` value. Text is never colored by the theme, so it keeps the terminal's own foreground.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="extending" files="state/commands.go state/contextview.go state/effects.go state/items.go render/contextview.go render/items.go bubble/effects.go bubble/model.go" -->

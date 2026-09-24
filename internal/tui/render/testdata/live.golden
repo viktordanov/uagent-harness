@@ -1,24 +1,24 @@
 
+╭────────────────────────────────────────────────╮
+│ λ uah                                          │
+│                                                │
+│ model:     gpt-6-sol high   /model to change   │
+│ directory: /workspace/proj                     │
+╰────────────────────────────────────────────────╯
 
 
 
+λ Fix the failing test in pkg/foo
 
-
-
-
-
-
-
-
-
-
-› Fix the failing test in pkg/foo
-• Ran go test ./pkg/foo  exit 1
-⠋ Running go test ./... -run Bar  0:04
+  RAN   fail   go test ./pkg/foo  exit 1
+  RUN   4s     go test ./... -run Bar
 • I'll patch the fixture while the suite runs.
-⠋ Thinking 0:08 · esc to interrupt
+
+λ Thinking (8s • esc to interrupt)
   ↳ queued: also update the README
     ctrl+enter sends now · ↑ edits
-────────────────────────────────────────────────────────────────────────────────────────────────────
-›
- gpt-6-sol · high · /workspace/proj · 1 queued mes… 100% context left · ctrl+t details · / commands
+
+
+λ
+
+ gpt-6-sol high · /workspace/proj · 1 queued messa… 100% context left · ctrl+t details · / commands

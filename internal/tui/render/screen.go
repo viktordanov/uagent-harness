@@ -22,6 +22,8 @@ type Frame struct {
 	ComposerHeight int
 	// Draft is the composer's text, for command completion.
 	Draft string
+	// Version is uah's version, for the banner.
+	Version string
 }
 
 // Screen draws the whole screen and returns the row where the composer starts.
@@ -40,17 +42,24 @@ func Screen(s state.State, c *Cache, f Frame) (string, int) {
 	bottom := make([]string, 0, len(panel)+f.ComposerHeight+3)
 	if !s.Details {
 		if line := statusLine(s, f.Width); line != "" {
-			bottom = append(bottom, line)
+			bottom = append(bottom, "", line)
 		}
 	}
 	bottom = append(bottom, panel...)
-	bottom = append(bottom, dim.Render(strings.Repeat("─", f.Width)))
+	// The composer sits on the band, with a band row above and below.
+	bottom = append(bottom, "", band("", f.Width))
 	composerTop := len(bottom)
-	bottom = append(bottom, strings.Split(f.Composer, "\n")...)
-	bottom = append(bottom, footerLine(s, f.Width))
+	for l := range strings.SplitSeq(f.Composer, "\n") {
+		bottom = append(bottom, band(l, f.Width))
+	}
+	bottom = append(bottom, band("", f.Width), footerLine(s, f.Width))
 
 	height := max(f.Height-len(top)-len(bottom), 1)
-	body := transcript(s, c, f.Width, height)
+	var head []string
+	if !s.Details && s.SessionID != "" {
+		head = banner(s, f.Version, f.Width)
+	}
+	body := transcript(s, c, f.Width, height, head)
 	lines := make([]string, 0, f.Height)
 	lines = append(lines, top...)
 	lines = append(lines, body...)
@@ -66,7 +75,9 @@ func Screen(s state.State, c *Cache, f Frame) (string, int) {
 
 // transcript returns exactly height lines ending at the scroll position,
 // rendering items from the bottom up and stopping once the window is full.
-func transcript(s state.State, c *Cache, w, height int) []string {
+// head, when the whole transcript fits above the scroll position, comes
+// first: the banner.
+func transcript(s state.State, c *Cache, w, height int, head []string) []string {
 	need := height + s.Scroll
 	var rev [][]string
 	count := 0
@@ -85,6 +96,7 @@ func transcript(s state.State, c *Cache, w, height int) []string {
 	}
 	c.maxScroll = -1
 	if i < 0 {
+		all = append(slices.Clip(head), all...)
 		c.maxScroll = max(len(all)-height, 0)
 	}
 	end := len(all) - min(s.Scroll, max(len(all)-height, 0))
@@ -170,27 +182,26 @@ func panelLines(s state.State, f Frame) []string {
 	return out
 }
 
-// statusLine is the compact view's activity line above the composer.
+// statusLine is the compact view's activity line above the composer: the
+// breathing λ and what the agent does, as Codex's "Working (12s • esc to
+// interrupt)".
 func statusLine(s state.State, w int) string {
-	var text string
 	switch {
 	case s.Status != "":
 		return warn.Render(ansi.Truncate(s.Status, w, "…"))
 	case s.SessionID == "":
-		text = spin(s.Now) + " Opening the session"
+		return ansi.Truncate(workingLine(s.Now, "Opening the session", time.Time{}), w, "…")
 	case s.Live != nil && !s.Live.TurnSince.IsZero():
-		text = fmt.Sprintf("%s Thinking %s · esc to interrupt", spin(s.Now), clock(s.Now.Sub(s.Live.Started)))
+		return ansi.Truncate(workingLine(s.Now, "Thinking", s.Live.Started), w, "…")
 	case s.Live != nil && s.Live.Tools > 0:
-		text = fmt.Sprintf("%s Running %s %s · esc to interrupt", spin(s.Now), plural(s.Live.Tools, "command"), clock(s.Now.Sub(s.Live.Started)))
+		return ansi.Truncate(workingLine(s.Now, "Running "+plural(s.Live.Tools, "command"), s.Live.Started), w, "…")
 	case s.Live != nil:
-		text = fmt.Sprintf("%s Working %s · esc to interrupt", spin(s.Now), clock(s.Now.Sub(s.Live.Started)))
+		return ansi.Truncate(workingLine(s.Now, "Working", s.Live.Started), w, "…")
 	case s.Busy:
-		text = spin(s.Now) + " Starting"
-	default:
-		return ""
+		return ansi.Truncate(workingLine(s.Now, "Starting", time.Time{}), w, "…")
 	}
 
-	return tool.Render(ansi.Truncate(text, w, "…"))
+	return ""
 }
 
 func footerLine(s state.State, w int) string {
@@ -205,7 +216,7 @@ func footerLine(s state.State, w int) string {
 		if s.Settings.Sandbox != "" && s.Settings.Sandbox != string(sandbox.WorkspaceWrite) {
 			box = s.Settings.Sandbox
 		}
-		for _, p := range []string{s.Settings.Model, s.Settings.Effort, fast, box, home(s.Settings.Workspace)} {
+		for _, p := range []string{strings.TrimSpace(s.Settings.Model + " " + s.Settings.Effort), fast, box, home(s.Settings.Workspace)} {
 			if p != "" {
 				parts = append(parts, p)
 			}

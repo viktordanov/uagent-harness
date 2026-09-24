@@ -7,18 +7,18 @@
 
 
 
+╭────────────────────────────────────────────────╮
+│ λ uah                                          │
+│                                                │
+│ model:     gpt-6-sol high   /model to change   │
+│ directory: /workspace/proj                     │
+╰────────────────────────────────────────────────╯
+
+  AGENT Ada  0s
+    └ ⠋ thinking
+  AGENT Rex reviewer  done
 
 
+λ
 
-
-
-
-
-
-
-
-• agent Ada: ⠋ running 0:00
-• agent Rex (reviewer): done
-────────────────────────────────────────────────────────────────────────────────────────────────────
-›
- gpt-6-sol · high · /workspace/proj                                     ctrl+t details · / commands
+ gpt-6-sol high · /workspace/proj                                       ctrl+t details · / commands

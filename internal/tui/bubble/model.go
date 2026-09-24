@@ -11,6 +11,7 @@ import (
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/viktordanov/uagent/core"
 
@@ -45,6 +46,8 @@ type Deps struct {
 	AllSessions bool
 	// Details starts in the detailed view: turns, run dividers, and tokens.
 	Details bool
+	// Version is uah's version, for the banner.
+	Version string
 	// Now is the clock (default time.Now).
 	Now func() time.Time
 }
@@ -100,20 +103,33 @@ func New(ctx context.Context, deps Deps) Model {
 
 func newComposer() textarea.Model {
 	ta := textarea.New()
-	ta.Placeholder = "message · / for commands · ctrl+enter sends while the agent works"
+	ta.Placeholder = "Ask uah to do anything · / for commands"
 	ta.ShowLineNumbers = false
-	ta.Prompt = "› "
+	ta.Prompt = "λ "
 	ta.DynamicHeight = true
 	ta.MinHeight = 1
 	ta.MaxHeight = 8
 	ta.KeyMap.InsertNewline = key.NewBinding(key.WithKeys("shift+enter", "ctrl+j"))
-	styles := textarea.DefaultStyles(true)
-	styles.Focused.CursorLine = styles.Focused.Text
-	ta.SetStyles(styles)
+	ta.SetStyles(composerStyles())
 	ta.SetVirtualCursor(false)
 	ta.Focus()
 
 	return ta
+}
+
+// composerStyles draw the composer in the theme: the λ in the accent, and
+// no backgrounds of its own, since the screen puts it on the band.
+func composerStyles() textarea.Styles {
+	styles := textarea.DefaultStyles(true)
+	for _, st := range []*textarea.StyleState{&styles.Focused, &styles.Blurred} {
+		st.Base = lipgloss.NewStyle()
+		st.Text = lipgloss.NewStyle()
+		st.CursorLine = lipgloss.NewStyle()
+		st.Prompt = render.Accent()
+		st.Placeholder = render.Dim()
+	}
+
+	return styles
 }
 
 // Run starts the program and blocks until it exits.
@@ -128,11 +144,12 @@ func Run(ctx context.Context, deps Deps, opts ...tea.ProgramOption) error {
 }
 
 func (m Model) Init() tea.Cmd {
+	// The theme follows the terminal's background once it answers.
 	if m.deps.Picker {
-		return m.run(state.EffLoadSessions{})
+		return tea.Batch(tea.RequestBackgroundColor, m.run(state.EffLoadSessions{}))
 	}
 
-	return m.open(m.deps.SessionID)
+	return tea.Batch(tea.RequestBackgroundColor, m.open(m.deps.SessionID))
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -140,6 +157,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.w, m.h = msg.Width, msg.Height
 		m.composer.SetWidth(msg.Width)
+
+		return m, nil
+	case tea.BackgroundColorMsg:
+		render.SetTheme(render.ThemeFor(msg.Color))
+		m.composer.SetStyles(composerStyles())
+		m.cache = render.NewCache()
 
 		return m, nil
 	case tea.MouseWheelMsg:
@@ -251,7 +274,7 @@ func (m *Model) afterChange() tea.Cmd {
 func (m Model) View() tea.View {
 	draft := m.composer.Value()
 	content, composerRow := render.Screen(m.st, m.cache, render.Frame{
-		Width: m.w, Height: m.h, Composer: m.composer.View(), ComposerHeight: m.composer.Height(), Draft: draft,
+		Width: m.w, Height: m.h, Composer: m.composer.View(), ComposerHeight: m.composer.Height(), Draft: draft, Version: m.deps.Version,
 	})
 	v := tea.NewView(content)
 	v.AltScreen = true

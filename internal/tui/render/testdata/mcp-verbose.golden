@@ -1,8 +1,6 @@
-
-
-
-
-
+│ model:     gpt-6-sol high   /model to change   │
+│ directory: /workspace/proj                     │
+╰────────────────────────────────────────────────╯
 
 
 • MCP servers
@@ -19,6 +17,8 @@
       command: missing
   • off: disabled · stdio
       command: off
-────────────────────────────────────────────────────────────────────────────────────────────────────
-›
- gpt-6-sol · high · /workspace/proj                                     ctrl+t details · / commands
+
+
+λ
+
+ gpt-6-sol high · /workspace/proj                                       ctrl+t details · / commands
