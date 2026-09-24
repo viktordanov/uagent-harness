@@ -211,6 +211,10 @@ The survey found 3 high, 11 medium, and 12 low findings. Fixed:
 
 Deferred to Later, with reasons below: the model catalog as a process global behind `compaction.ContextWindow`, and the theme as package-level state.
 
+### Second-round summary
+
+Done: items 13–27. `/context`, shell completion, module READMEs and a root README as a guide; compaction, subagents, and MCP checked against Codex and hardened; the amber look; `/clear` in the same session; the model catalog from the provider; subagent notifications, steering, and the agent view; a quality pass; configurable compaction and `/config`; permission modes on shift+tab and settings kept per session; Codex's `apply_patch` with diffs. Open edges are under Later.
+
 ## Later
 
 Ideas that come up while working go here, not into the items.
