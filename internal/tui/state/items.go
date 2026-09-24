@@ -18,7 +18,8 @@ const (
 	KindReasoning
 	KindNotice
 	// KindAgent is a subagent: Name is its nickname, Label its role, Text
-	// its ID, Detail its state, and Started when its current work began.
+	// its ID, Detail its state, Started when its current work began, and
+	// Sub its latest tool calls (KindTool items) for the detailed view.
 	KindAgent
 )
 
@@ -74,6 +75,9 @@ type Item struct {
 	Label  string
 	Tool   ToolState
 	Detail string
+
+	// KindAgent
+	Sub []Item
 }
 
 // Live reports whether an item changes with time (spinners, elapsed times)
