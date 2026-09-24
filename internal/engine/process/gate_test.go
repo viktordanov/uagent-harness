@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -173,6 +174,8 @@ func TestProcess_RealRunnerAppliesRules(t *testing.T) {
 	reqs := llm.Requests()
 	require.Len(t, reqs, 2)
 	require.Len(t, reqs[1].ToolOutputs, 3)
-	assert.Contains(t, reqs[1].ToolOutputs[0], "not run: a rule forbids this command: never delete.")
-	assert.Contains(t, reqs[1].ToolOutputs[1], "no user can approve it")
+	// The commands run at once, so their results come back in any order.
+	outputs := strings.Join(reqs[1].ToolOutputs, "\n")
+	assert.Contains(t, outputs, "not run: a rule forbids this command: never delete.")
+	assert.Contains(t, outputs, "no user can approve it")
 }
