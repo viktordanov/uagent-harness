@@ -98,3 +98,28 @@ func TestSetupUsageErrors(t *testing.T) {
 		})
 	}
 }
+
+// TestSetup_Rules loads the user's rules files and a trusted project's; a
+// broken rules file is a usage error, and an untrusted project's is not read.
+func TestSetup_Rules(t *testing.T) {
+	e, in := setupEnv(t)
+	userRules := filepath.Join(filepath.Dir(in.ConfigPath), "rules")
+	require.NoError(t, os.MkdirAll(userRules, 0o700))
+	require.NoError(t, os.WriteFile(filepath.Join(userRules, "default.rules"), []byte(`prefix_rule(pattern=["git", "pull"])`), 0o600))
+	projectRules := filepath.Join(e.Workspace, ".uagent", "rules")
+	require.NoError(t, os.MkdirAll(projectRules, 0o700))
+	require.NoError(t, os.WriteFile(filepath.Join(projectRules, "broken.rules"), []byte(`prefix_rule(`), 0o600))
+
+	_, err := app.Setup(in, io.Discard)
+	require.NoError(t, err, "an untrusted project's rules are not read")
+
+	require.NoError(t, os.WriteFile(in.ConfigPath, []byte("[projects.\""+e.Workspace+"\"]\ntrusted = true\n"), 0o600))
+	_, err = app.Setup(in, io.Discard)
+	require.ErrorContains(t, err, "broken.rules")
+	var usage *app.UsageError
+	assert.ErrorAs(t, err, &usage)
+
+	require.NoError(t, os.WriteFile(filepath.Join(userRules, "default.rules"), []byte(`prefix_rule(pattern=[])`), 0o600))
+	_, err = app.Setup(in, io.Discard)
+	require.ErrorContains(t, err, "default.rules")
+}
