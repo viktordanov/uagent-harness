@@ -61,6 +61,7 @@ func mergeSandbox(base *Config, over Config) {
 	set(&base.Review.Model, over.Review.Model)
 	set(&base.Review.Effort, over.Review.Effort)
 	set(&base.Review.Timeout, over.Review.Timeout)
+	set(&base.Review.PolicyFile, over.Review.PolicyFile)
 	w := &base.SandboxWorkspaceWrite
 	w.NetworkAccess = w.NetworkAccess || over.SandboxWorkspaceWrite.NetworkAccess
 	w.WritableRoots = slices.Concat(w.WritableRoots, over.SandboxWorkspaceWrite.WritableRoots)

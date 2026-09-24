@@ -45,16 +45,43 @@ func pickCompaction(cfg config.Config, s *session.Settings) (compaction.Settings
 		return c, "", usage(err)
 	}
 	var file string
-	if f := cfg.ExperimentalCompactPromptFile; f != "" && c.Prompt == "" {
-		path, err := expandHome(f)
-		if err != nil || !filepath.IsAbs(path) {
-			return c, "", usage(fmt.Errorf("invalid experimental_compact_prompt_file %q (want an absolute path or one under ~/)", f))
+	if c.Prompt == "" {
+		if file, err = promptPath("experimental_compact_prompt_file", cfg.ExperimentalCompactPromptFile); err != nil {
+			return c, "", err
 		}
-		file = path
 	}
 	s.ContextWindow = cfg.ModelContextWindow
 
 	return c, file, nil
+}
+
+// promptPath checks a prompt file key: an absolute path or one under ~/,
+// with ~/ expanded. Empty stays empty.
+func promptPath(key, value string) (string, error) {
+	if value == "" {
+		return "", nil
+	}
+	path, err := expandHome(value)
+	if err != nil || !filepath.IsAbs(path) {
+		return "", usage(fmt.Errorf("invalid %s %q (want an absolute path or one under ~/)", key, value))
+	}
+
+	return path, nil
+}
+
+// readPrompt reads a prompt file. As in Codex, a missing or empty file is
+// an error.
+func readPrompt(key, path string) (string, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", usage(fmt.Errorf("failed to read %s: %w", key, err))
+	}
+	text := strings.TrimSpace(string(data))
+	if text == "" {
+		return "", usage(errors.New(key + " " + path + " is empty"))
+	}
+
+	return text, nil
 }
 
 // readCompactPrompt reads experimental_compact_prompt_file into the
@@ -64,17 +91,10 @@ func readCompactPrompt(r *Resolved) error {
 	if r.CompactPromptFile == "" || r.Compaction.Prompt != "" {
 		return nil
 	}
-	data, err := os.ReadFile(r.CompactPromptFile)
-	if err != nil {
-		return usage(fmt.Errorf("failed to read experimental_compact_prompt_file: %w", err))
-	}
-	text := strings.TrimSpace(string(data))
-	if text == "" {
-		return usage(errors.New("experimental_compact_prompt_file " + r.CompactPromptFile + " is empty"))
-	}
+	text, err := readPrompt("experimental_compact_prompt_file", r.CompactPromptFile)
 	r.Compaction.Prompt = text
 
-	return nil
+	return err
 }
 
 // expandHome replaces a leading ~/ with the home directory.

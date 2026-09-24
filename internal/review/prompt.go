@@ -51,6 +51,10 @@ var DefaultLimits = Limits{
 	ActionBytes: 8_000,
 }
 
+// DefaultPolicy is Codex's review policy, which [review] policy_file
+// replaces.
+func DefaultPolicy() string { return strings.TrimSpace(defaultPolicy) + "\n" }
+
 // Instructions is the system prompt: Codex's policy template with policy,
 // or the default policy when it is empty, and the JSON output contract.
 func Instructions(policy string) string {

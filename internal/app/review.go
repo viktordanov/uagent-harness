@@ -32,9 +32,26 @@ func pickReview(cfg config.Config, s session.Settings) (string, review.Config, e
 		}
 		timeout = d
 	}
+	policyFile, err := promptPath("review.policy_file", cfg.Review.PolicyFile)
+	if err != nil {
+		return "", review.Config{}, err
+	}
 
 	return who, review.Config{
 		Model:  first(cfg.Review.Model, review.DefaultModel(s.Provider, s.Model)),
-		Effort: effort, Timeout: timeout,
+		Effort: effort, Timeout: timeout, PolicyFile: policyFile,
 	}, nil
+}
+
+// readReviewPolicy reads [review] policy_file into the reviewer's policy.
+// As with experimental_compact_prompt_file, a missing or empty file is an
+// error.
+func readReviewPolicy(r *Resolved) error {
+	if r.Review.PolicyFile == "" {
+		return nil
+	}
+	text, err := readPrompt("review.policy_file", r.Review.PolicyFile)
+	r.Review.Policy = text
+
+	return err
 }

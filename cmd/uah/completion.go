@@ -78,11 +78,21 @@ func completionValues(ctx context.Context, cmd *cli.Command, prev string) []stri
 	case "model", "m":
 		return modelIDs(cmd)
 	}
-	if cmd.Name == "show" {
-		return sessionIDs(ctx, cmd)
+
+	return argValues(ctx, cmd)
+}
+
+// argValues lists a show command's arguments: the built-in prompts for
+// `uah prompts show`, else session IDs.
+func argValues(ctx context.Context, cmd *cli.Command) []string {
+	if cmd.Name != subShow {
+		return nil
+	}
+	if lineage := cmd.Lineage(); len(lineage) > 1 && lineage[1].Name == promptsName {
+		return promptNames()
 	}
 
-	return nil
+	return sessionIDs(ctx, cmd)
 }
 
 // completionFlag is a flag's value in completion mode, which skips flag
