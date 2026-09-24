@@ -58,6 +58,17 @@ func TestApply_KeepsUserMessagesAndReplacesTheRest(t *testing.T) {
 	}, texts(got))
 }
 
+func TestNewRecord_LeavesNewUserMessagesAfterTheSummary(t *testing.T) {
+	history := []llm.Item{msg(llm.RoleSystem, "sys"), msg(llm.RoleUser, "first"), call("a"), result("a", "x"), msg(llm.RoleUser, "new")}
+	rec, err := compaction.NewRecord(history, "s", compaction.TriggerManual, "m", time.Now())
+	require.NoError(t, err)
+	assert.Equal(t, 3, rec.Covered)
+	got, err := compaction.Apply(history, rec)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"system: sys", "user: first", "user: " + compaction.SummaryPrefix + "\ns", "user: new"}, texts(got))
+	assert.Equal(t, 0, compaction.Coverable([]llm.Item{msg(llm.RoleSystem, "sys"), msg(llm.RoleUser, "only")}))
+}
+
 func TestApply_RejectsAnotherHistory(t *testing.T) {
 	history := []llm.Item{msg(llm.RoleSystem, "sys"), msg(llm.RoleUser, "first"), call("a")}
 	rec, err := compaction.NewRecord(history, "s", compaction.TriggerAuto, "m", time.Now())

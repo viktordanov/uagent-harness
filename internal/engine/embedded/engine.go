@@ -11,10 +11,12 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"sync"
 
 	"github.com/viktordanov/uagent/core"
 	"github.com/viktordanov/uagent/harness"
 
+	"github.com/viktordanov/uagent-harness/internal/compaction"
 	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/hooks"
 	"github.com/viktordanov/uagent-harness/internal/sandbox"
@@ -46,6 +48,14 @@ type Config struct {
 	// Env is which environment variables commands get (the zero value is
 	// all of them). It applies when Sandbox is set.
 	Env sandbox.EnvPolicy
+	// AutoCompactPercent compacts the context before a model request once
+	// the last response used this share of the model's window (0: never).
+	AutoCompactPercent int
+	// ContextWindow overrides the model table's context window (tokens).
+	ContextWindow int64
+	// BeforeCompact, when set, runs as each compaction starts; an error
+	// cancels the compaction. A PreCompact hook attaches here.
+	BeforeCompact func(context.Context, compaction.Trigger) error
 }
 
 // Engine runs the agent in process.
@@ -74,13 +84,21 @@ func (e *Engine) Name() string { return "embedded" }
 func (e *Engine) Capabilities() engine.Capabilities {
 	p, err := e.provider(e.cfg.Provider)
 
-	return engine.Capabilities{LiveInput: true, LiveEffort: true, LiveModel: true, ServiceTier: err == nil && p.Priority}
+	return engine.Capabilities{LiveInput: true, LiveEffort: true, LiveModel: true, ServiceTier: err == nil && p.Priority, Compaction: true}
 }
 
-type optionsKey struct{}
+// startKey carries a run's options and event sink to the backend.
+type (
+	startKey   struct{}
+	startValue struct {
+		opts engine.Options
+		emit func(core.Event)
+	}
+)
 
 func (e *Engine) Start(ctx context.Context, req core.Request, opts engine.Options, sink core.Sink) (engine.Run, error) {
-	r, err := e.h.Start(context.WithValue(ctx, optionsKey{}, opts), req, sink)
+	ls := &lockedSink{sink: sink}
+	r, err := e.h.Start(context.WithValue(ctx, startKey{}, startValue{opts: opts, emit: ls.emit}), req, ls.emit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start run: %w", err)
 	}
@@ -114,6 +132,7 @@ func (r *run) Send(in core.UserInput) error     { return r.agent.Send(in) }
 func (r *run) SetEffort(effort string) error    { return r.agent.SetEffort(effort) }
 func (r *run) SetModel(model string) error      { return r.agent.SetModel(model) }
 func (r *run) SetServiceTier(tier string) error { return r.agent.SetServiceTier(tier) }
+func (r *run) Compact() error                   { return r.agent.Compact() }
 func (r *run) Interrupt()                       { r.run.Interrupt() }
 func (r *run) Kill()                            { r.run.Kill() }
 
@@ -124,4 +143,24 @@ func (r *run) Wait() (core.Result, error) {
 	}
 
 	return result, nil
+}
+
+// lockedSink lets the engine add its own events to a run's stream: one
+// goroutine at a time, and none after RunFinished.
+type lockedSink struct {
+	mu       sync.Mutex
+	sink     core.Sink
+	finished bool
+}
+
+func (s *lockedSink) emit(e core.Event) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.finished {
+		return
+	}
+	if _, ok := e.(core.RunFinished); ok {
+		s.finished = true
+	}
+	s.sink(e)
 }

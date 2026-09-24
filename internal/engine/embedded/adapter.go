@@ -77,3 +77,32 @@ func (s *switcher) Close() error {
 
 	return errors.Join(errs...)
 }
+
+// currentModel is the model the next request goes to.
+func (s *switcher) currentModel() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.model
+}
+
+// direct is the current client without the live model override, for
+// one-shot calls that pick their own model; an empty model is the live one.
+func (s *switcher) direct() llm.Adapter {
+	return adapterFunc(func(ctx context.Context, req llm.Request, opts llm.RequestOptions) (llm.Response, error) {
+		s.mu.Lock()
+		client, model := s.clients[s.priority], s.model
+		s.mu.Unlock()
+		if req.Model.ID == "" {
+			req.Model.ID = model
+		}
+
+		return client.Respond(ctx, req, opts) //nolint:wrapcheck // llmcall wraps model errors
+	})
+}
+
+type adapterFunc func(context.Context, llm.Request, llm.RequestOptions) (llm.Response, error)
+
+func (f adapterFunc) Respond(ctx context.Context, req llm.Request, opts llm.RequestOptions) (llm.Response, error) {
+	return f(ctx, req, opts)
+}
