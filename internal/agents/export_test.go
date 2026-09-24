@@ -33,3 +33,15 @@ func (m *Manager) ContextUsage(id string) (contextusage.Usage, bool) {
 
 	return c.s.ContextUsage()
 }
+
+// Waiting reports how many wait_agent calls of the parent are pending on
+// the child.
+func (m *Manager) Waiting(parentID, id string) int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if c, ok := m.find(parentID, id); ok {
+		return c.waiters
+	}
+
+	return 0
+}

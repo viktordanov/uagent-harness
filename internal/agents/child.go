@@ -2,6 +2,7 @@ package agents
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -38,7 +39,12 @@ type child struct {
 	// pending the ones submitted that the session has not queued yet, and
 	// early the ones it queued before their submit returned, so an Idle from
 	// before a message does not end the child's work.
-	gen, sending   int
+	gen, sending int
+	// notified is the gen the parent was last told about (completionNote).
+	notified int
+	// waiters counts the parent's wait_agent calls pending on this child;
+	// their result tells the parent, so no notification is sent.
+	waiters        int
 	pending, early map[string]bool
 	// last is the last run's result; failed is a run that did not start;
 	// cause is the last error the run reported, such as the provider's.
@@ -239,10 +245,39 @@ func (m *Manager) notify(c *child) {
 	if c.status.State == engine.AgentErrored {
 		update.Message = c.status.Message
 	}
+	note := m.completionNote(c, current)
+	inject := m.parents[c.parent].Inject
 	m.mu.Unlock()
 	if emit != nil && current {
 		emit(update)
 	}
+	if note != "" && inject != nil {
+		inject(note)
+	}
+}
+
+// completionNote is Codex's <subagent_notification> for a child that just
+// reached a final status, once per message it was sent; "" otherwise. A
+// child the parent closed itself, or one a pending wait_agent returns, is
+// not reported, since the parent learns it anyway.
+// It holds m.mu.
+func (m *Manager) completionNote(c *child, current bool) string {
+	if !current || !c.status.Final() || c.status.State == engine.AgentShutdown || c.notified == c.gen {
+		return ""
+	}
+	c.notified = c.gen
+	if c.waiters > 0 {
+		return "" // a pending wait_agent returns this status
+	}
+	body, err := json.Marshal(struct {
+		AgentPath string `json:"agent_path"`
+		Status    Status `json:"status"`
+	}{c.id, c.status})
+	if err != nil {
+		return ""
+	}
+
+	return "<subagent_notification>\n" + string(body) + "\n</subagent_notification>"
 }
 
 // forward passes a child's tool events to the parent, for its detailed

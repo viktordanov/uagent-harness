@@ -72,6 +72,10 @@ type Options struct {
 	// Notify adds an engine event to the session's stream, also after the
 	// run ends, such as a subagent's progress (nil: the run's stream).
 	Notify func(core.Event)
+	// Inject gives the agent a message without a turn of its own: it goes
+	// with the next message (Session.Inject). A subagent's notification to
+	// its parent goes this way (nil: dropped).
+	Inject func(text string)
 }
 
 // Run is a started run.

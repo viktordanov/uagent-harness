@@ -241,3 +241,50 @@ func TestAgents_ProgressAfterTheParentsRun(t *testing.T) {
 
 	assert.Equal(t, "Ada", done.Nickname)
 }
+
+// TestAgents_NotifyTheParentWhenAChildEnds sends Codex's
+// <subagent_notification> to the parent when a child finishes that the
+// parent did not wait for: the parent is idle then, so it goes with the
+// parent's next message and starts no run of its own.
+func TestAgents_NotifyTheParentWhenAChildEnds(t *testing.T) {
+	gate := make(chan struct{})
+	e := newEnv(t, agents.Config{},
+		fakellm.Reply{Calls: []fakellm.Call{call("spawn_agent", `{"message":"CHILD-N count the files"}`)}},
+		fakellm.Reply{Text: "started it"},
+		fakellm.Reply{Text: "the agent said forty-two"},
+	)
+	e.llm.Route("CHILD-N", fakellm.Reply{Gate: gate, Text: "forty-two"})
+	s, ev := e.open(t, false)
+	_, err := s.Submit("delegate")
+	require.NoError(t, err)
+	ev.finished()
+	close(gate)
+	ev.agentState(engine.AgentCompleted)
+	time.Sleep(100 * time.Millisecond) // a run the notification started would have asked the model by now
+	parentRequests := func() int {
+		n := 0
+		for _, r := range e.llm.Requests() {
+			if !isChild(r) {
+				n++
+			}
+		}
+
+		return n
+	}
+	assert.Equal(t, 2, parentRequests(), "the notification starts no run")
+
+	_, err = s.Submit("what did it say?")
+	require.NoError(t, err)
+	ev.finished()
+	var last fakellm.Request
+	for _, r := range e.llm.Requests() {
+		if !isChild(r) {
+			last = r
+		}
+	}
+	require.GreaterOrEqual(t, len(last.UserTexts), 2)
+	note := last.UserTexts[len(last.UserTexts)-2]
+	assert.Contains(t, note, "<subagent_notification>")
+	assert.Contains(t, note, `"status":{"completed":"forty-two"}`)
+	assert.Equal(t, "what did it say?", last.UserTexts[len(last.UserTexts)-1])
+}

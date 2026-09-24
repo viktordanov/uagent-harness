@@ -35,7 +35,7 @@ The loop tracks where the session is in a run:
 `Close` interrupts a live run, waits for it to end, closes the event stream, and then closes the engine when it is an `io.Closer` (MCP servers and subagents stop with the session).
 <!-- /memoria:section -->
 
-<!-- memoria:section id="messages" files="dispatch.go runs.go" -->
+<!-- memoria:section id="messages" files="dispatch.go runs.go inject.go" -->
 ## Messages: queue, steer, interrupt
 
 Every message gets an ID and is reported as `InputQueued`, then `InputSent` when it goes to the runner, and `InputDelivered` when the runner echoes it as a `UserMessage`. Messages that never reached the runner are reported as `InputFailed`.
@@ -50,6 +50,8 @@ What `dispatch` does with a message depends on the state and on whether it is a 
 | `stopping` | Queues it | Queues it; a new run starts after the stop |
 
 When a run ends, messages sent into it that it never read go back to the front of the queue. After a user interrupt (esc esc, `/stop`) the queue stays and the session goes idle; otherwise the queue starts the next run at once. `Withdraw` takes a message back while it is queued or waiting for its hooks.
+
+`Inject` gives the agent a message without a turn of its own, as Codex's `inject_no_new_turn`: it is held and goes out before the next run's messages, and it never starts a run. It is not sent into a live run, because the runner cancels its model request when a message arrives, which would throw away a paid request. It skips the queue and the hooks. A subagent's `<subagent_notification>` reaches its parent this way (`engine.Options.Inject`).
 <!-- /memoria:section -->
 
 <!-- memoria:section id="settings" files="settings.go dispatch.go compact.go" -->

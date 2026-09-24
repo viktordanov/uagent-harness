@@ -69,6 +69,9 @@ type AgentParent struct {
 	// Emit adds an event to the parent session's stream, also after the
 	// run ends, such as AgentUpdated.
 	Emit func(core.Event)
+	// Inject gives the parent's agent a message without a turn of its own,
+	// as a child's <subagent_notification> (nil: none).
+	Inject func(text string)
 }
 
 // AgentTool is a tool a run is offered, with its JSON Schema parameters.

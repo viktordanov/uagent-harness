@@ -249,6 +249,22 @@ func (m *Manager) send(parentID, id, message string, interrupt bool) (string, er
 func (m *Manager) wait(ctx context.Context, parentID string, ids []string, timeout time.Duration) (map[string]Status, bool, error) {
 	timer := time.NewTimer(timeout)
 	defer timer.Stop()
+	m.mu.Lock()
+	for _, id := range ids {
+		if c, ok := m.find(parentID, id); ok {
+			c.waiters++
+		}
+	}
+	m.mu.Unlock()
+	defer func() {
+		m.mu.Lock()
+		for _, id := range ids {
+			if c, ok := m.find(parentID, id); ok {
+				c.waiters--
+			}
+		}
+		m.mu.Unlock()
+	}()
 	for {
 		m.mu.Lock()
 		out := map[string]Status{}

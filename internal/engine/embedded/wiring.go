@@ -41,7 +41,7 @@ type backend struct{ e *Engine }
 // inbox, context builder, and coordinator. It never loads the workspace .env.
 func (b backend) Start(ctx context.Context, l harness.Launch) (harness.Process, error) {
 	start, _ := ctx.Value(startKey{}).(startValue)
-	w := &wiring{e: b.e, l: l, getenv: b.e.cfg.Getenv, emit: start.emit, notify: start.opts.Notify, ask: start.opts.Ask, askAnytime: start.opts.AskAnytime, tier: start.opts.ServiceTier}
+	w := &wiring{e: b.e, l: l, getenv: b.e.cfg.Getenv, emit: start.emit, notify: start.opts.Notify, ask: start.opts.Ask, askAnytime: start.opts.AskAnytime, inject: start.opts.Inject, tier: start.opts.ServiceTier}
 	a, err := w.start(ctx, start.opts)
 	if err != nil {
 		w.cleanup()
@@ -67,6 +67,8 @@ type wiring struct {
 	// askAnytime asks the user also after the run ends: subagents' approvals
 	// go to it, after their own auto-review.
 	askAnytime approval.Ask
+	// inject gives the session's agent a message without a turn of its own.
+	inject func(string)
 	// tier is the run's service tier when it started.
 	tier    string
 	closers []func() error

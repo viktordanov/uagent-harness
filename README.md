@@ -138,7 +138,7 @@ Each subagent runs on the parent's provider. To give one another model, effort, 
 
 To hand a subagent the conversation so far, ask for a forked subagent ("fork a subagent to write the tests for what we just discussed"): `spawn_agent` with `fork_context` starts it from a copy of the parent's history, so it needs no exploring again and reuses the provider's prompt cache.
 
-To watch a subagent work, type `/agents <name>` (tab completes the names): the TUI shows its transcript as it works, and a message you type there goes to it. alt+← and alt+→ switch between the main agent and the subagents, as in Codex (alt+b and alt+f on an empty prompt in terminals that send those), and esc esc interrupts the agent you are viewing. The main agent keeps running meanwhile. `uah sessions` lists subagents under their parent as `subagent-1a2b3c4d`, and `uah sessions show subagent-1a2b3c4d` prints one's transcript.
+To watch a subagent work, type `/agents <name>` (tab completes the names): the TUI shows its transcript as it works, and a message you type there goes to it. alt+← and alt+→ switch between the main agent and the subagents, as in Codex (alt+b and alt+f on an empty prompt in terminals that send those), esc esc interrupts the agent you are viewing, and ctrl+enter steers it. When a subagent finishes or is interrupted, the main agent is told with your next message, as in Codex; one it is waiting for returns at once. The main agent keeps running meanwhile. `uah sessions` lists subagents under their parent as `subagent-1a2b3c4d`, and `uah sessions show subagent-1a2b3c4d` prints one's transcript.
 
 ### Keep a long session going
 

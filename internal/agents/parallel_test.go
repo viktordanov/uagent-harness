@@ -82,6 +82,11 @@ func TestAgents_ParallelCalls(t *testing.T) {
 	awaitRequests(t, e, "CHILD-P", 3) // every child asks while all are held
 	targets := <-waited
 	first, second := taskPrefix(t, e, targets[0]), taskPrefix(t, e, targets[1])
+	// Both waits are pending before a child answers, so neither child's end
+	// sends a notification as well.
+	require.Eventually(t, func() bool {
+		return e.mgr.Waiting(s.ID(), targets[0]) == 1 && e.mgr.Waiting(s.ID(), targets[1]) == 1
+	}, waitTimeout, time.Millisecond)
 	close(gates[second]) // the second wait's child answers first
 	awaitRequests(t, e, "fan out", 3)
 	close(gates[first])
