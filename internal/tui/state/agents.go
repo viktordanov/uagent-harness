@@ -65,8 +65,8 @@ func subTool(it *Item, callID string, fn func(*Item)) {
 	}
 }
 
-// cmdAgents lists the session's subagents with their state.
-func cmdAgents(s *State, _ string) []Effect {
+// listAgents lists the session's subagents with their state.
+func listAgents(s *State) {
 	var b strings.Builder
 	for _, it := range s.Items {
 		if it.Kind != KindAgent {
@@ -91,9 +91,8 @@ func cmdAgents(s *State, _ string) []Effect {
 	if b.Len() == 0 {
 		s.notice(session.LevelInfo, "no subagents in this session; the agent starts them with spawn_agent when you ask it to delegate")
 
-		return nil
+		return
 	}
+	b.WriteString("\n/agents <name> shows one's transcript as it works; esc returns")
 	s.notice(session.LevelInfo, b.String())
-
-	return nil
 }

@@ -241,3 +241,6 @@ func (s *lockedSink) emit(e core.Event) {
 	}
 	s.sink(e)
 }
+
+// Subagents is the engine's subagents, for a view that follows one.
+func (e *Engine) Subagents() engine.Subagents { return e.cfg.Subagents }

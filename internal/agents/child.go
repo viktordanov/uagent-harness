@@ -25,9 +25,10 @@ type child struct {
 	id, parent, role, nickname string
 	s                          *session.Session
 	status                     Status
-	// started is when the child's current work began.
-	started time.Time
-	closed  bool
+	// started is when the child's current work began; opened when its
+	// session opened in this process.
+	started, opened time.Time
+	closed          bool
 	// forked is a child started with fork_context.
 	forked bool
 	// callID and task are the spawn call's ID and message; model and
@@ -49,11 +50,15 @@ type child struct {
 	cancel context.CancelFunc
 	// stopStreak counts SubagentStop hooks that kept the child going.
 	stopStreak int
+	// log are the session's events since it opened, and subs the views
+	// that follow them (see watch.go).
+	log  []core.Event
+	subs []chan core.Event
 }
 
 func newChild(id, parent, role, nickname string) *child {
 	c := &child{
-		id: id, parent: parent, role: role, nickname: nickname, started: time.Now(), status: Status{State: engine.AgentRunning},
+		id: id, parent: parent, role: role, nickname: nickname, started: time.Now(), opened: time.Now(), status: Status{State: engine.AgentRunning},
 		pending: map[string]bool{}, early: map[string]bool{},
 	}
 	c.asks, c.cancel = context.WithCancel(context.Background())
@@ -140,6 +145,7 @@ func (m *Manager) watch(c *child) {
 	for e := range c.s.Events() {
 		m.mu.Lock()
 		changed, check := m.observe(c, e)
+		c.record(e)
 		m.mu.Unlock()
 		if check != nil {
 			go m.checkStop(c, *check)
@@ -152,6 +158,7 @@ func (m *Manager) watch(c *child) {
 	m.mu.Lock()
 	c.closed = true
 	c.status = Status{State: engine.AgentShutdown}
+	c.endViews()
 	m.mu.Unlock()
 	m.notify(c)
 }

@@ -22,12 +22,26 @@ func Reduce(s State, ev any) (State, []Effect) {
 	if s.index == nil {
 		s.index = map[string]int{}
 	}
+	if s.View != nil {
+		if effects, ok := s.onAgentView(ev); ok {
+			return s, effects
+		}
+	}
 	switch e := ev.(type) {
 	case Tick:
 		s.Now = e.Now
 		s.expireConfirmations()
+		if s.View != nil {
+			s.View.St.Now = e.Now
+		}
 
 		return s, nil
+	case AgentViewOpened:
+		s.openAgentView(e)
+
+		return s, nil
+	case AgentEvents:
+		return s, nil // a view that closed meanwhile
 	case session.ApprovalRequested:
 		s.requestApproval(e)
 
@@ -59,6 +73,7 @@ func (s *State) onEvent(ev core.Event) {
 	case session.SessionOpened:
 		if e.ID != s.SessionID {
 			s.resetTranscript()
+			s.View = nil
 		}
 		s.SessionID, s.Resumed, s.Engine, s.Settings = e.ID, e.Resumed, e.Engine, e.Settings
 		s.Queue, s.Live, s.Busy, s.Quitting, s.Approvals = nil, nil, false, false, nil
