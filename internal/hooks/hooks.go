@@ -13,6 +13,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/viktordanov/uagent-harness/internal/patch"
 )
 
 // Event names a point where hooks run.
@@ -178,13 +180,24 @@ func (r *Runner) matching(event Event, tool string) []Hook {
 		if h.Event != event {
 			continue
 		}
-		if h.Matcher != "" && tool != "" && !regexp.MustCompile("^(?:"+h.Matcher+")$").MatchString(tool) {
+		if h.Matcher != "" && tool != "" && !matches(h.Matcher, tool) {
 			continue
 		}
 		out = append(out, h)
 	}
 
 	return out
+}
+
+// matches reports whether a matcher matches the tool's name or one of its
+// aliases: apply_patch also answers to Edit and Write, as in Codex.
+func matches(matcher, tool string) bool {
+	re := regexp.MustCompile("^(?:" + matcher + ")$")
+	if re.MatchString(tool) {
+		return true
+	}
+
+	return tool == patch.ToolName && slices.ContainsFunc(patch.HookAliases, re.MatchString)
 }
 
 // Run runs the matching hooks in order and returns their combined decision.

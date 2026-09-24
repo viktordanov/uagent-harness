@@ -115,7 +115,8 @@ func firstPrompt(req core.Request) string {
 // Load reads every run of a session in start order, with its events. The
 // runner writes only the items each run appended, so the runs together are
 // the whole transcript. Saved compactions join the events they happened
-// among, as engine.Compacted.
+// among, as engine.Compacted, and applied patches their calls, as
+// engine.PatchApplied.
 func Load(stateDir, id string) ([]LoadedRun, error) {
 	records, err := harness.New(harness.Config{StateDir: stateDir}).Runs()
 	if err != nil {
@@ -133,7 +134,7 @@ func Load(stateDir, id string) ([]LoadedRun, error) {
 		runs = append(runs, loaded)
 	}
 
-	return withCompactions(stateDir, id, runs)
+	return withCompactions(stateDir, id, withPatches(runs))
 }
 
 // SameDir reports whether two paths name the same directory after making

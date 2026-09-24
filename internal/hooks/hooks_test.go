@@ -140,3 +140,14 @@ func TestNew_Validates(t *testing.T) {
 	_, err = hooks.New([]hooks.Hook{{Event: hooks.PreToolUse, Command: "true", Matcher: "("}}, nil, "")
 	require.ErrorContains(t, err, "matcher")
 }
+
+func TestHas_ApplyPatchAliases(t *testing.T) {
+	for matcher, want := range map[string]bool{"apply_patch": true, "Edit": true, "Write": true, "Edit|Write": true, "Bash": false} {
+		h := user(hooks.PreToolUse, "true")
+		h.Matcher = matcher
+		r, err := hooks.New([]hooks.Hook{h}, nil, t.TempDir())
+		require.NoError(t, err)
+		assert.Equal(t, want, r.Has(hooks.PreToolUse, "apply_patch"), matcher)
+		assert.False(t, r.Has(hooks.PreToolUse, "Edit") && matcher == "apply_patch", "the alias works one way")
+	}
+}

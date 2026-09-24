@@ -101,8 +101,14 @@ func (s *Session) askFunc(anytime bool) approval.Ask {
 }
 
 // permissionInput describes the prompt to a PermissionRequest hook as a tool
-// call: an MCP tool by its name and arguments, anything else as Bash.
+// call: a prompt's own tool (apply_patch) with its input, an MCP tool by its
+// name and arguments, anything else as Bash.
 func permissionInput(in hooks.Input, p approval.Prompt) hooks.Input {
+	if p.Tool != "" {
+		in.ToolName, in.ToolInput = p.Tool, p.Input
+
+		return in
+	}
 	name, args, _ := strings.Cut(p.Command, " ")
 	if strings.HasPrefix(name, "mcp__") && json.Valid([]byte(args)) {
 		in.ToolName, in.ToolInput = name, json.RawMessage(args)

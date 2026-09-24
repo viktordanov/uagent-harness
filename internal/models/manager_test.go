@@ -234,3 +234,13 @@ func TestWindow(t *testing.T) {
 	w, _ = models.Window("openai/gpt-5.5-2026-01-01")
 	assert.Equal(t, int64(272000), w, "a namespaced, dated ID takes its base model's metadata, as in Codex")
 }
+
+func TestApplyPatch(t *testing.T) {
+	m := models.New(models.Options{})
+	assert.True(t, m.ApplyPatch(models.ProviderCodex, "gpt-5.5"), "the bundled entry has apply_patch_tool_type")
+	md, ok := models.Bundled(models.ProviderCodex).Metadata("gpt-5.5")
+	require.True(t, ok)
+	assert.Equal(t, "freeform", md.ApplyPatchTool)
+	assert.True(t, m.ApplyPatch(models.ProviderOpenAI, "gpt-unlisted"), "OpenAI's providers get it without an entry")
+	assert.False(t, m.ApplyPatch("ollama", "llama3"))
+}

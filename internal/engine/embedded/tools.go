@@ -22,8 +22,8 @@ import (
 )
 
 // tools builds the registry the coordinator runs: Bash, ViewImage, and
-// workspace skills, as the runner registers them, and MCP tools, with
-// PreToolUse hooks around them. Its static definitions are the tools the model is offered,
+// workspace skills, as the runner registers them, MCP tools, and Codex's
+// apply_patch, with PreToolUse hooks around them. Its static definitions are the tools the model is offered,
 // so a tool added or changed here reaches both.
 func (w *wiring) tools(ctx context.Context, req core.Request, sessionID session.ID) (tool.Registry, error) {
 	translators, err := w.translators(req, sessionID) //nolint:contextcheck // on Linux, the sandbox probes bwrap once per process, with its own timeout
@@ -52,6 +52,7 @@ func (w *wiring) tools(ctx context.Context, req core.Request, sessionID session.
 	}
 	never := w.e.cfg.Approver != nil && w.e.cfg.Approver.Policy() == approval.Never
 	registry = withMCP(registry, mcpTools, req.DisallowedTools, mcpGate{ctx: ctx, ask: w.ask, never: never})
+	registry = withPatch(registry, offersPatch(req), w.patchGate(ctx, req))
 	req.SessionID = string(sessionID)
 	registry = w.withAgents(registry, req)
 

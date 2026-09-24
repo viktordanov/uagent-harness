@@ -52,17 +52,36 @@ type hookedTranslator struct {
 	r    hookedRegistry
 }
 
+// hookShaper is a tool whose hook tool_input differs from its arguments,
+// such as apply_patch's {"command": patch}.
+type hookShaper interface {
+	hookInput(arguments string) json.RawMessage
+	fromHookInput(updated json.RawMessage) (string, error)
+}
+
 func (t hookedTranslator) Translate(ctx tool.Context, call llm.ToolCall) tool.CallStatus {
 	in := t.r.base
 	in.ToolName, in.ToolUseID = t.name, call.CallID
-	if json.Valid([]byte(call.Arguments)) {
+	shaper, shaped := t.Translator.(hookShaper)
+	switch {
+	case shaped:
+		in.ToolInput = shaper.hookInput(call.Arguments)
+	case json.Valid([]byte(call.Arguments)):
 		in.ToolInput = json.RawMessage(call.Arguments)
 	}
 	d := t.r.hooks.Run(t.r.ctx, in)
 	if d.Block {
 		return tool.CallStatus{Error: "blocked by a PreToolUse hook: " + d.Reason}
 	}
-	if len(d.UpdatedInput) > 0 {
+	switch {
+	case len(d.UpdatedInput) == 0:
+	case shaped:
+		args, err := shaper.fromHookInput(d.UpdatedInput)
+		if err != nil {
+			return tool.CallStatus{Error: "a PreToolUse hook's updatedInput is invalid: " + err.Error()}
+		}
+		call.Arguments = args
+	default:
 		call.Arguments = string(d.UpdatedInput)
 	}
 
