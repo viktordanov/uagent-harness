@@ -18,7 +18,7 @@ import (
 func hooksCommand() *cli.Command {
 	flags := []cli.Flag{
 		&cli.StringFlag{Name: flagWorkspace, Aliases: []string{"C"}, Usage: "the workspace whose hooks to show", DefaultText: "the current directory", TakesFile: true},
-		&cli.StringFlag{Name: "config", Usage: "user configuration file", Value: config.UserFile(), Sources: cli.EnvVars("UAGENT_CONFIG"), TakesFile: true},
+		&cli.StringFlag{Name: flagConfig, Usage: "user configuration file", Value: config.UserFile(), Sources: cli.EnvVars("UAGENT_CONFIG"), TakesFile: true},
 	}
 
 	return &cli.Command{
@@ -49,7 +49,7 @@ func loadHooks(cmd *cli.Command) (string, *hooks.Runner, *hooks.Trust, error) {
 	if err != nil {
 		return "", nil, nil, fmt.Errorf("failed to resolve workspace: %w", err)
 	}
-	cfg, _, err := config.Load(cmd.String("config"), workspace)
+	cfg, _, err := config.Load(cmd.String(flagConfig), workspace)
 	if err != nil {
 		return "", nil, nil, cli.Exit(err.Error(), exitUsage)
 	}
