@@ -1,0 +1,10 @@
+--new-session
+--die-with-parent
+--ro-bind / /
+--dev /dev
+--unshare-user
+--unshare-pid
+--unshare-ipc
+--unshare-net
+--proc /proc
+--cap-drop ALL
