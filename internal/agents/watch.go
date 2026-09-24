@@ -47,9 +47,26 @@ func (m *Manager) WatchAgent(parentID, ref string) (*session.AgentWatch, error) 
 
 	return &session.AgentWatch{
 		ID: c.id, Nickname: c.nickname, History: history, Events: events, Next: next,
-		Stop: func() { m.unwatch(c, next) },
-		Send: func(text string) error { _, err := m.submit(c, text, false); return err },
+		Stop:      func() { m.unwatch(c, next) },
+		Send:      func(text string) error { _, err := m.submit(c, text, false); return err },
+		Interrupt: func() { m.interruptTree(c) },
 	}, nil
+}
+
+// interruptTree stops the live runs of a child and its descendants, as the
+// parent's interrupt does for all of its children.
+func (m *Manager) interruptTree(c *child) {
+	m.mu.Lock()
+	stop := m.subtree(c)
+	for _, x := range stop {
+		x.cancelAsks()
+	}
+	m.mu.Unlock()
+	for _, x := range stop {
+		if s := x.session(m); s != nil {
+			go func() { _ = s.Interrupt() }() // never wait on a child's loop from the caller's
+		}
+	}
 }
 
 // byRef finds the parent's latest child with the ID, or the nickname

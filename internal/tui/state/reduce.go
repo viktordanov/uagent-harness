@@ -33,9 +33,12 @@ func Reduce(s State, ev any) (State, []Effect) {
 		s.expireConfirmations()
 		if s.View != nil {
 			s.View.St.Now = e.Now
+			s.View.St.expireConfirmations()
 		}
 
 		return s, nil
+	case SwitchAgent:
+		return s, s.switchAgent(e.Delta)
 	case AgentViewOpened:
 		s.openAgentView(e)
 

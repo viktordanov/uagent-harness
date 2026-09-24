@@ -2,10 +2,13 @@ package state
 
 import (
 	"fmt"
+	"slices"
 	"strings"
+	"time"
 
 	"github.com/viktordanov/uagent/core"
 
+	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
 
@@ -33,6 +36,10 @@ type (
 	}
 	// CloseAgentView returns to the session's own transcript.
 	CloseAgentView struct{}
+	// SwitchAgent moves to the next (+1) or previous (-1) of the main
+	// agent and its subagents, in the order they started, as Codex's
+	// alt+→ and alt+← do.
+	SwitchAgent struct{ Delta int }
 )
 
 // Effects of the agent view.
@@ -43,11 +50,14 @@ type (
 	EffCloseAgentView struct{}
 	// EffAgentSend gives the viewed agent a message, as send_input does.
 	EffAgentSend struct{ ID, Text string }
+	// EffAgentInterrupt stops the viewed agent's current work.
+	EffAgentInterrupt struct{ ID string }
 )
 
 func (EffViewAgent) effect()      {}
 func (EffCloseAgentView) effect() {}
 func (EffAgentSend) effect()      {}
+func (EffAgentInterrupt) effect() {}
 
 // cmdAgentsName is the /agents command's name.
 const cmdAgentsName = "agents"
@@ -110,10 +120,14 @@ func (s *State) onAgentView(ev any) ([]Effect, bool) {
 				*v.St, _ = Reduce(*v.St, x)
 			}
 		}
-	case CloseAgentView, Esc:
+	case CloseAgentView:
 		s.View = nil
 
 		return []Effect{EffCloseAgentView{}}, true
+	case SwitchAgent:
+		return s.switchAgent(e.Delta), true
+	case Esc:
+		return v.esc(s.Now), true
 	case Submit, Steer:
 		text := strings.TrimSpace(textOf(e))
 		name, _, _ := strings.Cut(strings.TrimPrefix(text, "/"), " ")
@@ -122,7 +136,7 @@ func (s *State) onAgentView(ev any) ([]Effect, bool) {
 		case strings.HasPrefix(text, "/") && (name == cmdAgentsName || name == "quit" || name == "exit"):
 			return nil, false
 		case strings.HasPrefix(text, "/"):
-			v.St.notice(session.LevelWarning, fmt.Sprintf("/%s is for the main agent; esc returns to it", name))
+			v.St.notice(session.LevelWarning, fmt.Sprintf("/%s is for the main agent; alt+← returns to it", name))
 		default:
 			v.St.Scroll = 0
 
@@ -146,4 +160,61 @@ func textOf(ev any) string {
 	}
 
 	return ""
+}
+
+// switchAgent moves along the main agent and the subagents, in the order
+// they started, wrapping around: the main agent is first.
+func (s *State) switchAgent(delta int) []Effect {
+	ids := []string{""}
+	for _, it := range s.Items {
+		if it.Kind == KindAgent {
+			ids = append(ids, it.Text)
+		}
+	}
+	if len(ids) == 1 {
+		s.notice(session.LevelInfo, "no subagents in this session")
+
+		return nil
+	}
+	at := 0
+	if s.View != nil {
+		at = max(slices.Index(ids, s.View.ID), 0)
+	}
+	next := ids[((at+delta)%len(ids)+len(ids))%len(ids)]
+	if next == "" {
+		s.View = nil
+
+		return []Effect{EffCloseAgentView{}}
+	}
+
+	return []Effect{EffViewAgent{ID: next}}
+}
+
+// esc in the agent view works as it does for the main agent: twice
+// interrupts the agent while it works. alt+← returns to the main agent.
+func (v *AgentView) esc(now time.Time) []Effect {
+	st := v.St
+	if st.Live == nil && !st.Busy {
+		return nil
+	}
+	if !st.escArmed.IsZero() && now.Sub(st.escArmed) < confirmWindow {
+		st.escArmed, st.Status = time.Time{}, ""
+
+		return []Effect{EffAgentInterrupt{ID: v.ID}}
+	}
+	st.escArmed, st.Status = now, "press esc again to interrupt "+v.Nickname
+
+	return nil
+}
+
+// AgentsRunning reports whether any subagent is working, so the clock keeps
+// ticking for their spinners while the main agent is idle.
+func (s State) AgentsRunning() bool {
+	for _, it := range s.Items {
+		if it.Kind == KindAgent && it.Detail == engine.AgentRunning {
+			return true
+		}
+	}
+
+	return false
 }

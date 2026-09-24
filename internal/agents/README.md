@@ -136,6 +136,7 @@ Hooks come from `Config.Hooks`, the session's runner:
 - `Events`: its session's events since it opened in this process, which the watcher logs (the newest 20,000);
 - `Next`: the events that follow, on a channel of 4,096. A view that falls a whole queue behind is closed rather than holding up the child; the TUI opens it again;
 - `Send`: a message to the child through `submit`, as `send_input` sends it, so the child's status and `wait_agent` see it;
+- `Interrupt`: stops the child's current work and its own children's (`interruptTree`, which the parent's `Interrupt` also uses for each child); the child stays open;
 - `Stop`: the end of the watch.
 
 The TUI's `/agents <name>` view is built on it (see the TUI README).

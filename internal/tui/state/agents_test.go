@@ -31,7 +31,7 @@ func TestReduce_Agents(t *testing.T) {
 	assert.False(t, s.Items[n-1].Live())
 
 	s, _ = apply(s, state.Submit{Text: "/agents"})
-	assert.Equal(t, "Ada (reviewer) · completed · a1\n/agents <name> shows one's transcript as it works; esc returns", s.Items[len(s.Items)-1].Text)
+	assert.Equal(t, "Ada (reviewer) · completed · a1\n/agents <name> shows one's transcript as it works; alt+← and alt+→ switch agents", s.Items[len(s.Items)-1].Text)
 
 	s, _ = apply(s, engine.AgentUpdated{ID: "a1", Nickname: "Ada", State: engine.AgentErrored, Message: "The model is not supported"})
 	assert.Equal(t, "The model is not supported", s.Items[n-1].Agent.Message, "the item keeps the latest update")
@@ -70,9 +70,21 @@ func TestReduce_AgentView(t *testing.T) {
 	assert.Empty(t, eff)
 	assert.Contains(t, s.View.St.Items[len(s.View.St.Items)-1].Text, "/model is for the main agent")
 
+	// esc esc interrupts the agent while it works, as for the main agent.
+	s, _ = apply(s, state.AgentEvents{ID: "subagent-1", Events: []core.Event{core.RunStarted{At: t0, RunID: "r1", SessionID: "subagent-1"}}})
 	s, eff = apply(s, state.Esc{})
-	assert.Nil(t, s.View)
+	assert.Empty(t, eff)
+	require.NotNil(t, s.View, "esc does not leave the view")
+	assert.Contains(t, s.View.St.Status, "press esc again to interrupt Ada")
+	s, eff = apply(s, state.Esc{})
+	assert.Equal(t, []state.Effect{state.EffAgentInterrupt{ID: "subagent-1"}}, eff)
+
+	// alt+← and alt+→ cycle the main agent and the subagents, wrapping.
+	s, eff = apply(s, state.SwitchAgent{Delta: 1})
+	assert.Nil(t, s.View, "after the last agent comes the main agent")
 	assert.Equal(t, []state.Effect{state.EffCloseAgentView{}}, eff)
+	_, eff = apply(s, state.SwitchAgent{Delta: -1})
+	assert.Equal(t, []state.Effect{state.EffViewAgent{ID: "subagent-1"}}, eff)
 }
 
 func TestReduce_AgentActivity(t *testing.T) {
