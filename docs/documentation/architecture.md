@@ -9,6 +9,7 @@ uah is a pure core with well-organized infrastructure around it, not layered DDD
 | `internal/instructions` | AGENTS.md discovery and the host prompt, following Codex. |
 | `internal/config` | TOML configuration: the user file and trusted project files. |
 | `internal/hooks` | Hook contract, execution, and the trust store. |
+| `internal/review` | The auto-reviewer: one model call over `internal/llmcall` judges an action that needs approval, with Codex's prompt, a fail-closed verdict, and a circuit breaker. No engine wiring. |
 | `internal/tui/state` | The pure TUI model: a reducer from events and intents to state and effects. No I/O. |
 | `internal/tui/render` | Pure drawing of state to lines, with a per-item cache. |
 | `internal/tui/bubble` | The Bubble Tea shell: keys to intents, effects to commands, and frames. |
