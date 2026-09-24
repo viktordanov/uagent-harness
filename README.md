@@ -247,14 +247,14 @@ The TUI is a pure reducer from session events and user intents to state and effe
 Read more: [sessions](internal/session/README.md), [the session index](internal/store/README.md), and [the TUI](internal/tui/README.md) with its look. Diagnostics go to `<state-dir>/logs/uah-tui.log`.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="engines" files="internal/app/resolve.go internal/app/setup.go" -->
+<!-- memoria:section id="engines" files="internal/app/resolve.go internal/app/setup.go internal/app/features.go internal/app/process.go" -->
 ### Engines
 
 <!-- memoria:import src="internal/engine/README.md#summary" -->
-An engine starts runs of unreal-agent-runner for a session: the embedded engine (the default) runs the runner's packages inside uah, so messages, model, effort, fast mode, and the permission mode reach a live run, and the process engine spawns the runner binary through uagent. Both keep uagent's guards, session lock, and run records, and write the same session files, so a session can move between them.
+An engine starts runs of unreal-agent-runner for a session: the embedded engine (the default) runs the runner's packages inside uah, so messages, model, effort, fast mode, and the permission mode reach a live run, and the process engine spawns the runner binary through uagent. Both keep uagent's guards, session lock, and run records, apply the command rules, and write the same session files, so a session can move between them; one capability table says what the process engine does not run, and the session, `uah doctor`, and `/status` report it from there.
 <!-- /memoria:import -->
 
-`embedded` is the default; choose with `--engine` or `engine`. The [engine README](internal/engine/README.md) has a table of what each engine supports.
+`embedded` is the default; choose with `--engine` or `engine`. The process engine sandboxes every command and applies the `allow` and `forbidden` command rules in the shell it gives the runner, but it has no live input, approvals, compaction, PreToolUse hooks, MCP servers, subagents, or `apply_patch`. A session on it shows one notice for each such feature the configuration uses, `uah doctor` warns about them in its `engine` check, and `/status` lists what the engine runs without. The [engine README](internal/engine/README.md#what-each-engine-supports) has the capability table and where each behavior lives.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="patch" files="cmd/uah/sessions.go" -->

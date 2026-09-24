@@ -33,6 +33,8 @@ The loop tracks where the session is in a run:
 | `closed` | `Close` finished: SessionEnd hooks ran and `Events()` is closed |
 
 `Close` interrupts a live run, waits for it to end, closes the event stream, and then closes the engine when it is an `io.Closer` (MCP servers and subagents stop with the session).
+
+`Open` also checks the engine's capabilities against `Options.Uses`, the features the configuration asks for: each one the engine does not run gets one `Notice` after `SessionOpened`, from the [capability table](../engine/README.md#what-each-engine-supports). The session never checks the engine's name.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="messages" files="dispatch.go runs.go inject.go" -->
@@ -91,7 +93,7 @@ The session runs the hooks of its events; `internal/hooks` runs the commands. A 
 | `SessionEnd` | In `Close`, with at most a second per hook |
 | `PermissionRequest` | In the approval ask, above |
 
-PreToolUse and PreCompact hooks run in the embedded engine, on the coordinator's goroutine. Each hook run is reported as `HookRan`. The hook contract and trust are in [internal/hooks](../hooks/README.md).
+These hooks are the same on both engines. PreToolUse and PreCompact hooks run in the embedded engine, on the coordinator's goroutine, and the process engine runs neither. Each hook run is reported as `HookRan`. The hook contract and trust are in [internal/hooks](../hooks/README.md).
 <!-- /memoria:section -->
 
 <!-- memoria:section id="files" files="sidecar.go history.go agentwatch.go patches.go" -->
@@ -129,5 +131,5 @@ Listing and search go through the rebuildable SQLite index in [internal/store](.
 <!-- memoria:section id="tests" files="session_test.go hooks_test.go process_test.go compact_test.go history_test.go sidecar_test.go saved_test.go" -->
 ## Tests
 
-`session_test.go` and `hooks_test.go` drive a session with a scripted fake engine, so each state transition can be held open: queueing while running, steering while starting, interrupts that keep the queue, messages the run never read, withdrawal, live settings, failures, and every hook event. `saved_test.go` pins the settings kept in the sidecar and a live mode change. `process_test.go` runs a session on the real process engine with uagent's fake runner. Resuming with the saved settings is tested end to end in `internal/app/resume_test.go`.
+`session_test.go` and `hooks_test.go` drive a session with a scripted fake engine, so each state transition can be held open: queueing while running, steering while starting, interrupts that keep the queue, messages the run never read, withdrawal, live settings, failures, and every hook event. `saved_test.go` pins the settings kept in the sidecar and a live mode change. `process_test.go` runs a session on the real process engine with uagent's fake runner: a steer that restarts the run, and what the session does the same on both engines (the host prompt, the session-level hooks, the saved settings and when they apply, and the notices for what the engine does not run). Resuming with the saved settings is tested end to end in `internal/app/resume_test.go`.
 <!-- /memoria:section -->

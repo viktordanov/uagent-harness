@@ -1,29 +1,30 @@
-<!-- memoria:section id="overview" files="engine.go events.go process/process.go embedded/engine.go" -->
+<!-- memoria:section id="overview" files="engine.go capabilities.go events.go process/process.go embedded/engine.go" -->
 # Engines
 
 An engine starts runs of unreal-agent-runner for a session. The `process` engine spawns the runner binary through uagent; the `embedded` engine runs the runner's own packages inside uah, so messages and settings reach a live run.
 
 <!-- memoria:export id="summary" -->
-An engine starts runs of unreal-agent-runner for a session: the embedded engine (the default) runs the runner's packages inside uah, so messages, model, effort, fast mode, and the permission mode reach a live run, and the process engine spawns the runner binary through uagent. Both keep uagent's guards, session lock, and run records, and write the same session files, so a session can move between them.
+An engine starts runs of unreal-agent-runner for a session: the embedded engine (the default) runs the runner's packages inside uah, so messages, model, effort, fast mode, and the permission mode reach a live run, and the process engine spawns the runner binary through uagent. Both keep uagent's guards, session lock, and run records, apply the command rules, and write the same session files, so a session can move between them; one capability table says what the process engine does not run, and the session, `uah doctor`, and `/status` report it from there.
 <!-- /memoria:export -->
 
 The choice comes from `--engine`, `UAH_ENGINE`, or `engine` in the [configuration](../../docs/configuration.md#model-and-engine); `internal/app/setup.go` builds the engine. The [harness design](../../docs/design/harness.md#two-engines) records why there are two.
 
 1. [The interface](#the-interface)
 2. [What each engine supports](#what-each-engine-supports)
-3. [The process engine](#the-process-engine)
-4. [The embedded engine](#the-embedded-engine)
-5. [Remote jobs](#remote-jobs)
-6. [Extending an engine](#extending-an-engine)
-7. [Tests](#tests)
+3. [Where each behavior lives](#where-each-behavior-lives)
+4. [The process engine](#the-process-engine)
+5. [The embedded engine](#the-embedded-engine)
+6. [Remote jobs](#remote-jobs)
+7. [Extending an engine](#extending-an-engine)
+8. [Tests](#tests)
 <!-- /memoria:section -->
 
-<!-- memoria:section id="interface" files="engine.go events.go subagents.go patch.go" -->
+<!-- memoria:section id="interface" files="engine.go capabilities.go events.go subagents.go patch.go" -->
 ## The interface
 
 `engine.Engine` has three methods: `Name`, `Capabilities`, and `Start(ctx, request, options, sink) (Run, error)`. The sink receives `RunStarted` first and `RunFinished` last, from one goroutine at a time. A `Run` takes messages and settings while it is live (`Send`, `SetEffort`, `SetModel`, `SetServiceTier`, `SetMode`, `Compact`, `Clear`), stops (`Interrupt`, `Kill`), and ends (`Wait`). A method the engine cannot serve returns `ErrUnsupported`, and the session then applies the change from the next run.
 
-`Capabilities` says what reaches a live run: `LiveInput`, `LiveEffort`, `LiveModel`, `ServiceTier`, `Compaction`, and `LiveMode`. The session and the TUI read them; they never check the engine's name.
+`Capabilities` says what reaches a live run (`LiveInput`, `LiveEffort`, `LiveModel`, `ServiceTier`, `LiveMode`) and which features the engine runs at all (`Compaction`, `Rules`, `Approvals`, `ToolHooks`, `MCP`, `Subagents`, `ApplyPatch`, `CodexSkills`, `ContextUsage`). The session, the TUI, and `uah doctor` read them; none of them checks the engine's name. [What each engine supports](#what-each-engine-supports) turns them into the capability table.
 
 `engine.Options` carries what `core.Request` does not:
 
@@ -51,35 +52,86 @@ Optional interfaces are the seams the session probes with a type assertion:
 The engine's own events join the run's stream: `CompactionStarted`, `Compacted`, `AutoReviewed`, `AgentUpdated`, `AgentActivity` (a child's tool events, for the parent's view), and `PatchApplied` (the diff of an applied `apply_patch` call, `patch.go`). The embedded engine's `Subagents()` returns its `Subagents`, so a session can follow one child's whole stream (`session.WatchAgent`).
 <!-- /memoria:section -->
 
-<!-- memoria:section id="support" files="engine.go process/process.go embedded/engine.go embedded/tools.go" -->
+<!-- memoria:section id="support" files="capabilities.go process/process.go embedded/engine.go" -->
 ## What each engine supports
 
-| Feature | embedded | process |
-| --- | --- | --- |
-| A message sent while the agent works | Reaches the agent before its next model request | Queues; ctrl+enter restarts the run with the queue |
-| `/model`, `/effort` | From the next model request | From the next run |
-| `/fast` (priority processing) | openai and openai-codex | No |
-| The permission mode (shift+tab) | From the next command and model request | From the next run: each mode's sandbox has its own `SHELL` |
-| An interrupt | A hard stop through the runner's inbox; the session file records the stopped tools | uagent interrupts the runner process |
-| Sandbox | Per command, with escalation and approvals | Every command, through a sandboxing `SHELL`; no escalation |
-| Rules, auto-review, approval prompts | Yes | No |
-| PreToolUse and PermissionRequest hooks | Yes | No |
-| Compaction and `/context` | Yes | No |
-| MCP servers | Yes | No; uah says so when some are configured |
-| Codex's `apply_patch` and its diffs | Yes, on openai and openai-codex models | No |
-| Subagents | Yes | No |
-| Codex skills (`.agents/skills`, `~/.config/uagent/skills`, `$CODEX_HOME/skills`) | Yes | Only the runner's `.harness/skills` |
-| `unreal-agent-runner` binary | Not needed | Required |
+`engine.Table` (`capabilities.go`) is the capability table: one row per feature that some engine may not run, the capability it needs, and what happens without it. It is the only place that says what the process engine cannot do:
+
+- **At session start.** `internal/app` lists the features the configuration uses (`usedFeatures` in `internal/app/features.go`: MCP servers, PreToolUse, PermissionRequest, and PreCompact hooks, command rules, `prompt` rules, Auto mode, `[agents] enabled`, compaction keys, and skills in Codex's folders) as `session.Options.Uses`. `session.Open` shows one notice for each of them the engine does not run, such as `MCP servers: not supported by the process engine (they do not start); use the embedded engine`.
+- **In `uah doctor`.** The `engine` check names what the engine lacks, and warns with the same notices when the configuration uses any of it.
+- **In the TUI.** `/status` adds `the process engine runs without: …`.
+
+Features that are on by default, such as live input or subagents, get no notice; `/status` and `uah doctor` list them.
+
+| Feature | Capability | embedded | process |
+| --- | --- | --- | --- |
+| A message sent while the agent works | `LiveInput` | Reaches the agent before its next model request | Queues; ctrl+enter restarts the run with the queue |
+| `/model`, `/effort`, the permission mode (shift+tab) | `LiveEffort`, `LiveModel`, `LiveMode` | From the next model request or command | From the next run: each mode's sandbox has its own `SHELL` |
+| `/fast` (priority processing) | `ServiceTier` | openai and openai-codex | No; `--fast` is refused |
+| Compaction, `/compact`, `/clear`, PreCompact hooks | `Compaction` | Yes | No (`session.ErrNoCompaction`) |
+| Command rules: `allow` and `forbidden` | `Rules` | In the Bash tool | In the shell gate (below) |
+| `prompt` rules, escalation, auto-review, Auto mode, PermissionRequest hooks | `Approvals` | Yes | A `prompt` rule refuses the command with the headless reason; no escalation; Auto mode is the workspace sandbox |
+| PreToolUse hooks | `ToolHooks` | Yes | No |
+| MCP servers | `MCP` | Yes | No |
+| Subagents | `Subagents` | Yes | No |
+| Codex's `apply_patch` and its diffs | `ApplyPatch` | On openai and openai-codex models | No |
+| Codex skills (`.agents/skills`, `~/.config/uagent/skills`, `$CODEX_HOME/skills`) | `CodexSkills` | Yes | Only the runner's `.harness/skills` |
+| `/context` | `ContextUsage` | Yes | No |
+| An interrupt | | A hard stop through the runner's inbox; the session file records the stopped tools | uagent interrupts the runner process |
+| `unreal-agent-runner` binary | | Not needed | Required |
 
 Both engines read the host prompt with the instruction files from the request, keep uagent's guards (timeout, disk limit, session lock), and write run records. The embedded engine never loads the workspace `.env`.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="process" files="process/process.go" -->
+<!-- memoria:section id="behaviors" files="capabilities.go process/shell.go process/shellgate/gate.go" -->
+## Where each behavior lives
+
+This audit (item 33 of the ledger) lists each behavior, the code that does it, and whether both engines share it. "Shared" means one piece of code serves both engines.
+
+| Behavior | Where | Shared? |
+| --- | --- | --- |
+| Instructions (AGENTS.md and the host prompt) | `internal/app` loads them into `Settings.SystemPrompt`; the session sends it with each request | Shared |
+| Skills | embedded: `embedded/skills.go`, through the runner's `SkillUse`; process: the runner finds `.harness/skills` itself | Engine-specific; the runner cannot load other folders |
+| SessionStart, UserPromptSubmit, PostToolUse, Stop, SessionEnd hooks | `internal/session/hooks.go` | Shared |
+| PreToolUse hooks | `embedded/pretooluse.go`, around the tool registry | Embedded only |
+| PermissionRequest hooks | `internal/session/approvals.go`, in the ask the approver calls | Embedded only: a process run never asks |
+| PreCompact hooks | `internal/app/setup.go` (`preCompactHook`), called by `embedded/compact.go` | Embedded only |
+| SubagentStop hooks | `internal/agents` | Embedded only |
+| Permission mode to sandbox | `approval.Mode.Sandbox()`; the session sends the mode as `Options.Mode` | Shared; embedded switches the shell per command (`embedded/mode.go`), process per run (`process.NewSandboxed`) |
+| The sandbox | `internal/sandbox`: `Wrap` and `Shell` | Shared; embedded picks a shell per command, process gives the runner one `$SHELL` per mode (`process.Shells`) |
+| Rules: `allow`, `forbidden`, `prompt` | `approval.Approver.Decide` | Shared: embedded calls it in the Bash tool (`embedded/sandboxtool.go`), process in the shell gate, with no one to ask |
+| Escalation, approvals, auto-review, Auto mode | The approver, `embedded/autoreview.go`, and the session's ask | Embedded only |
+| MCP servers | `internal/mcp`, `embedded/mcptool.go` | Embedded only |
+| Subagents | `internal/agents`, `embedded/agenttool.go` | Embedded only |
+| Compaction and `/clear` | `embedded/compact.go` and `internal/compaction`; the session keeps the pending request (`internal/session/compact.go`) | Embedded only |
+| `/context` | `embedded/context.go` (`ContextReporter`) | Embedded only |
+| `apply_patch` | `embedded/patchtool.go` and `internal/patch` | Embedded only |
+| Session settings, saved and restored | `internal/session/saved.go` and `sidecar.go` | Shared |
+| Model catalog | `internal/models`: the TUI's `/model` list (both), the subagents' model check, `apply_patch` per model, and the context window for compaction (embedded) | Shared where both use it |
+| Crash cleanup | uagent's `harness.Start` kills the tools a crashed run left behind, before the next run of the session (uagent v0.4.2) | Shared |
+| Notices for what an engine cannot do | `engine.Table`, shown by `session.Open` from `Options.Uses` | Shared |
+
+What moved to one place:
+
+- **The gaps.** The notices were `if`s in `internal/app/setup.go` (PreToolUse hooks, MCP servers), and `uah doctor` checked the engine's name for MCP. They are now rows of `engine.Table`, read through `Capabilities`.
+- **The rules.** They applied only on the embedded engine. The process engine now applies them through the same `approval.Approver`, in the shell gate.
+- **The process engine's shells.** The closure in `internal/app/setup.go` that built each mode's sandboxing shell is `process.Shells`, which the app and the tests share.
+
+Already shared, and confirmed: the session-level hooks, the instructions, the saved settings, the mode's sandbox (`approval.Mode.Sandbox`), and the crash cleanup (uagent). Not moved: PreToolUse hooks in the shell gate, because the gate has no session or run ID for the hook input and no way to report `HookRan` to the session, so it would run half a hook; approvals in the gate, because the gate cannot reach the user.
+<!-- /memoria:section -->
+
+<!-- memoria:section id="process" files="process/process.go process/shell.go process/shellgate/gate.go process/shellgate/main.go" -->
 ## The process engine
 
-`process.Engine` is a thin adapter over uagent's `harness.Harness`: `Start` spawns the runner, and every live setter returns `ErrUnsupported`. The runner reads its request once, so the session queues messages until the run ends. Its tests (`process/process_test.go`) run uagent's fake runner: a run's events and result, every live setter returning `ErrUnsupported`, an interrupt, and one harness per permission mode's sandbox, built when a run first asks for it, whose runner gets that sandbox's shell.
+`process.Engine` is a thin adapter over uagent's `harness.Harness`: `Start` spawns the runner, and every live setter returns `ErrUnsupported`. The runner reads its request once, so the session queues messages until the run ends.
 
-The runner runs each command with `$SHELL`. `internal/app/setup.go` points `SHELL` at a script from `sandbox.Shell` that runs the real shell inside the sandbox, so commands are sandboxed without changing the runner. That script cannot ask for more access. `process.NewSandboxed` keeps one harness per sandbox mode, built on first use, and each run uses its permission mode's (`Options.Mode`).
+The runner (v0.1.1) runs every Bash command as `$SHELL -c <command>` (`harness/operation/shell.go`) and nothing else through `$SHELL`. So `process.Shells` builds the runner's `SHELL` for each sandbox mode, and that shell is where the process engine applies what the embedded engine applies in its Bash tool:
+
+1. `sandbox.Shell` writes a script that runs the real shell inside the mode's sandbox, and another one without a sandbox (only the environment policy).
+2. With command rules and a gate executable (`Inputs.Gate`, which `uah` sets to itself), `shellgate.Write` writes a third script, `exec uah __shell-gate <config> "$@"`, whose config carries the rules, the approval policy, and the two shells. `cmd/uah` runs `shellgate.Main` before anything else when its first argument is `__shell-gate`.
+3. For `-c <command>`, the gate calls `approval.Approver.Decide` with no one to ask, as a headless embedded run does: a `forbidden` rule, or a `prompt` rule, prints the reason (`not run: a rule forbids this command: …`) on standard error and exits 1, so the model reads it as the command's output; an `allow` rule execs the shell without a sandbox; any other command execs the sandboxed shell. A shell a command starts itself (not `-c`) runs in the sandbox.
+
+The rules see the same command string as on the embedded engine, so they are as strong there as here: they match the command's words, not what a script it runs does. Without rules, `$SHELL` is the sandboxing script, with no gate. That script cannot ask for more access. `process.NewSandboxed` keeps one harness per sandbox mode, built on first use, and each run uses its permission mode's (`Options.Mode`). `process.Capabilities(rules)` is the process engine's capabilities: only `Rules`, when the shells have a gate.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="embedded" files="embedded/engine.go embedded/wiring.go embedded/agent.go embedded/adapter.go embedded/client.go embedded/providers.go codexauth/codexauth.go embedded/store.go embedded/observer.go embedded/tools.go embedded/sandboxtool.go embedded/sandboxschema.go embedded/skills.go embedded/pretooluse.go embedded/autoreview.go embedded/compact.go embedded/context.go embedded/fork.go embedded/mode.go embedded/patchtool.go" -->
@@ -151,12 +203,13 @@ A slow tool must not hold up the coordinator. MCP calls, the agent tools, and pa
 A job that had already started before the run stopped fails with "interrupted" when the session resumes, instead of running twice. Cancelling a job cancels its context. The calls of one model turn run at the same time, each on its own goroutine (`TestAgents_ParallelCalls`).
 <!-- /memoria:section -->
 
-<!-- memoria:section id="extending" files="engine.go embedded/tools.go embedded/providers.go embedded/wiring.go" -->
+<!-- memoria:section id="extending" files="engine.go capabilities.go embedded/tools.go embedded/providers.go embedded/wiring.go" -->
 ## Extending an engine
 
 | To add | Touch |
 | --- | --- |
-| A live setting | A `Capabilities` field and a `Run` method in `engine.go`; `process.go` returns `ErrUnsupported`; `embedded/agent.go` delivers it; `internal/session/dispatch.go` (`onSettings`) calls it |
+| A live setting | A `Capabilities` field in `capabilities.go` and a `Run` method in `engine.go`; `process.go` returns `ErrUnsupported`; `embedded/agent.go` delivers it; `internal/session/dispatch.go` (`onSettings`) calls it |
+| A feature one engine does not run | A `Capabilities` field, a `Feature`, and a row of `engine.Table` in `capabilities.go`; `usedFeatures` in `internal/app/features.go` when a configuration key turns it on. The notice, `uah doctor`, and `/status` follow |
 | A built-in tool | A registry layer in `embedded/tools.go`, wrapping the registry as the MCP and agent layers do. Use a remote job if the call can take long |
 | A provider | `embedded/providers.go`, mirroring the runner's table; set `Priority` if it accepts `service_tier = "priority"` |
 | A session-level query | An optional interface in `engine.go`, implemented by the embedded engine and probed by `internal/session` |
@@ -164,13 +217,17 @@ A job that had already started before the run stopped fails with "interrupted" w
 The runner stays unchanged: uah reproduces its wiring instead of patching it, and the equivalence test below keeps the two in step.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="tests" files="embedded/embedded_test.go embedded/approval_test.go embedded/compact_test.go embedded/compact_settings_test.go embedded/context_test.go embedded/mcp_test.go embedded/mcpjobs_internal_test.go embedded/sandbox_test.go embedded/mode_test.go" -->
+<!-- memoria:section id="tests" files="capabilities_test.go process/process_test.go process/gate_test.go process/shellgate/gate_test.go embedded/embedded_test.go embedded/approval_test.go embedded/compact_test.go embedded/compact_settings_test.go embedded/context_test.go embedded/mcp_test.go embedded/mcpjobs_internal_test.go embedded/sandbox_test.go embedded/mode_test.go" -->
 ## Tests
 
-The embedded tests run against `testing/fakellm`, a scripted Responses API, and need no tokens.
+The embedded tests, and the process tests with the real runner, run against `testing/fakellm`, a scripted Responses API, and need no tokens.
 
 | Test | Pins |
 | --- | --- |
+| `capabilities_test.go` | The capability table: what a set of capabilities lacks, which used features get a notice, and its text |
+| `process/process_test.go` | On uagent's fake runner: a run's events and result, every live setter returning `ErrUnsupported`, the empty capabilities, an interrupt, and one harness per permission mode's sandbox, built when a run first asks for it, whose runner gets that sandbox's shell |
+| `process/gate_test.go` | The gate shell as the runner calls it (the test binary is the gate): `forbidden` and `prompt` refused with the embedded engine's reasons, `allow` outside a read-only sandbox, the rest in it; and with the real runner (skipped under `-short`), the model's forbidden command not run and its reason in the next request |
+| `process/shellgate/gate_test.go` | The gate's decisions, the approval policy, calls other than `-c`, and its script |
 | `TestEmbedded_MatchesTheRunner` | The real `unreal-agent-runner` (built from go.mod's version) and the embedded engine get the same script and must produce the same events and session items. `go test -short` skips it |
 | `TestEmbedded_SteersALiveRun`, `TestEmbedded_ChangesSettingsLive`, `TestEmbedded_InterruptThenContinue`, `TestEmbedded_ResumesAProcessSession` | Live input, live settings, interrupts, and moving a session between engines |
 | `approval_test.go`, `sandbox_test.go` | Escalation, rules, "don't ask again", headless denial, PermissionRequest hooks, auto-review, and the sandbox |
