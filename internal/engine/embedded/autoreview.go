@@ -75,9 +75,10 @@ func keepLast[T any](s []T, n int) []T { return s[max(len(s)-n, 0):] }
 // PermissionRequest hooks and the user.
 func (w *wiring) reviewedAsk(sw *switcher, req core.Request) approval.Ask {
 	rv := review.New(sw.direct(), w.e.cfg.Review)
-	w.e.transcript.mu.Lock()
-	w.e.transcript.onUser = rv.Reset
-	w.e.transcript.mu.Unlock()
+	t := w.e.transcript(req.SessionID)
+	t.mu.Lock()
+	t.onUser = rv.Reset
+	t.mu.Unlock()
 	next, emit := w.ask, w.emit
 	mode := ""
 	if w.e.cfg.Sandbox != nil {
@@ -85,7 +86,7 @@ func (w *wiring) reviewedAsk(sw *switcher, req core.Request) approval.Ask {
 	}
 
 	return func(ctx context.Context, p approval.Prompt) approval.Answer {
-		users, calls := w.e.transcript.snapshot()
+		users, calls := t.snapshot()
 		action := review.Action{Tool: "Bash", Command: p.Command, Cwd: p.Cwd, SandboxMode: mode, Justification: p.Justification}
 		if name, args, _ := strings.Cut(p.Command, " "); strings.HasPrefix(name, "mcp__") {
 			action.Tool, action.Command = name, args
