@@ -1,6 +1,6 @@
 # Subagents: research and plan
 
-Status: planned 2026-09-24, built the same day, then validated and hardened (see [As built](#as-built) and [Validation](#validation)). Ledger item 12. Codex facts are from openai/codex at rust-v0.156.1 (`C/` is `codex-rs/`); Claude Code facts are from its public documentation.
+Status: planned 2026-09-24, built the same day, then validated and hardened (see [As built](#as-built) and [Validation](#validation)), then extended in a second round (see [Round 2](#round-2)). Ledger item 12. Codex facts are from openai/codex at rust-v0.156.1 (`C/` is `codex-rs/`); Claude Code facts are from its public documentation.
 
 1. [How Codex does it](#how-codex-does-it)
 2. [How Claude Code does it](#how-claude-code-does-it)
@@ -9,6 +9,7 @@ Status: planned 2026-09-24, built the same day, then validated and hardened (see
 5. [Open decisions](#open-decisions)
 6. [As built](#as-built)
 7. [Validation](#validation)
+8. [Round 2](#round-2)
 
 ## How Codex does it
 
@@ -104,4 +105,55 @@ Differences from Codex, kept on purpose:
 Open:
 
 1. **Stopping a child while the parent is idle.** The user can interrupt only a live parent run; an idle parent's children run until they finish, the model closes them, or the session closes.
-2. **v2 tools**, `items`, and `fork_context` are not built (see Open decisions).
+2. **v2 tools** and `items` are not built (see Open decisions). `fork_context` is built in [Round 2](#round-2).
+
+## Round 2
+
+Built 2026-09-24 on unreal-agent-runner v0.1.1, against Codex rust-v0.156.1. Five requests: subagent session IDs, `fork_context`, per-subagent model, effort, and fast mode, a view of a subagent in the TUI, and evidence for parallel calls and for waiting without polling. A bug report added a sixth: a failed subagent must say why.
+
+### Codex facts mirrored
+
+| Fact | Codex source | uah |
+| --- | --- | --- |
+| `spawn_agent` has `fork_context: bool` (default false): "True forks the current thread history into the new agent; false or omitted starts with only the initial prompt." `agent_type` says "Omit to inherit the parent agent type with a full-history fork; otherwise, `default` is used." | `C/core/src/tools/handlers/multi_agents_spec.rs:18,608`; `multi_agents/spawn.rs:231` | Same parameter, description, and default (`prompt.go`) |
+| A full-history fork with `agent_type` is refused: "Full-history forked agents inherit the parent agent type; omit agent_type, or spawn without a full-history fork." | `C/core/src/agent/child_config.rs` (`reject_full_fork_agent_type_override`) | Same message (`ops.go`) |
+| A fork keeps the parent's settings: the role layer is skipped; the call's `model` and `reasoning_effort` and the `[agents]` defaults still apply | `child_config.rs` (`prepare_agent_spawn_config`) | Same (`spawnRole`, `childOptions`) |
+| V1 hides the agent tools from a thread at the depth limit, and the handlers refuse a spawn or resume there: "Agent depth limit reached. Solve the task yourself." | `C/core/src/tools/spec_plan.rs:646`; `multi_agents/spawn.rs:73`; `multi_agents/resume_agent.rs:58` | Same, except a forked child keeps its parent's tools (below) |
+| Every thread of a tree uses the root session's ID as its prompt cache key and, on the ChatGPT backend, its `session-id` header | `C/core/src/client.rs:561,577`; `session/session.rs:647`; `agent/control.rs:156` | `engine.Forker.SetCacheKey` gives every child its root's ID |
+| A role file's `service_tier` is read (`fast` means `priority`) | `C/core/src/agent/role.rs:44,202` | Read (`roles.go`) |
+| There is no `default_subagent_service_tier`: `[agents]` has only `default_subagent_model` and `default_subagent_reasoning_effort` | `C/config/src/config_toml.rs:695` | Not added |
+| An unknown `model` fails at `spawn_agent`: "Unknown model `x` for spawn_agent. Available models: …", naming up to 5 listed models of the catalog; the call's model, else `default_subagent_model`, is checked | `child_config.rs` (`find_spawn_agent_model_name`, `MAX_SPAWN_AGENT_MODEL_OVERRIDES`); `C/models-manager/models.json` | Same message, on the openai-codex provider, against the bundled catalog (`models.go`) |
+| The TUI's `/subagents` switches the view to another thread of the session; a V1 child takes the user's input directly (only V2 children are "parent owned") | `C/tui/src/slash_command.rs:139`; `app/session_lifecycle.rs:170`; `app/agent_navigation.rs` | `/agents <name>`: the child's live transcript, and messages go to it |
+
+### As built
+
+- **Session IDs.** A child's ID is `subagent-<uuid>` (`session.NewSubagentID`). The runner's store accepts ASCII letters, digits, and dashes (`localfile.validateSessionID`); uagent's session lock and run records take any ID; the index keys by the ID. `session.ShortID` prints `subagent-1a2b3c4d`, which `uah resume`, `uah sessions show`, and completion find as a prefix. Lists used to print an ID's first 8 characters, which would be `subagent` for every child. Older children keep plain UUIDs; the sidecar's `parent` identifies them. Test: `TestAgents_SpawnWaitAnswer` (the store, lock, run records, and `FindSession` with the short ID), `TestShortID`.
+- **`fork_context`.** See [the agents README](../../internal/agents/README.md#forking). The embedded engine copies the parent's session items before the turn that made the spawn call into the child's session through the runner store's append methods, marks unfinished operations canceled, copies the compactions recorded until then, and puts the child's first messages in the store before its coordinator restores it.
+- **Per-subagent model, effort, and fast mode.** `spawn_agent`'s `model` and `reasoning_effort`, a role's `model`, `model_reasoning_effort`, and `service_tier`, and the `[agents]` defaults. A child runs on the parent's provider with its own model: the embedded engine builds each run's client from the run's request, and `/context` and the compaction window read the session's model. `/context` for a child failed before (its engine handle hid the context reporter); fixed. Test: `TestAgents_ModelEffortAndFastPerChild`.
+- **Failures.** A child whose run failed reports the cause in one line: the provider's JSON message when the runner error carries one. It reaches `wait_agent`'s `{"errored": …}`, `engine.AgentUpdated.Message` (the TUI's `/agents` and `Item.Agent`), and `uah run`'s `agent Ada: failed: …`. Before, the parent saw only "the run ended with status error". Test: `TestAgents_FailureReachesTheParent`, `TestReadable`.
+- **The agent view.** `/agents <name>` shows a child's live transcript in the TUI, from a second `state.State` fed by `Session.WatchAgent`; see [the TUI README](../../internal/tui/README.md#the-agent-view). Tests: `TestAgents_Watch`, `TestReduce_AgentView`, `TestScreen_AgentView`.
+- **`AgentUpdated` carries the whole picture**: the spawn call's ID and message, the model, effort, and whether the child was forked, so a renderer can draw `SPAWN Ada · gpt-6-luna low · Summarize…` and `WAIT Ada` from the latest update of each agent ID.
+
+### Evidence
+
+- **The fork's prompt prefix.** `TestFork_ChildStartsWithTheParentsRequest` scripts a parent that runs a command and then spawns with `fork_context`. The child's first request has the parent's system prompt, the same tools in the same order with the same JSON, the same prompt cache key, and starts with every input item of the parent's request that made the spawn call, byte for byte, the command's call and result included, followed by the child's message. `TestFork_KeepsTheParentsCompaction` does the same after a `/compact`: the child's request starts with the parent's compacted request. The child keeps the spawn tools at the depth limit, and its own spawn gets Codex's depth message.
+- **Parallel calls.** `TestAgents_ParallelCalls`: three `spawn_agent` calls in one turn start three children that all ask the model while every answer is held, and of two `wait_agent` calls in one turn, the second returns (its child answered) while the first still blocks, so the parent's next request has one result and "Tool call is still running" for the other. Each call is a remote job on its own goroutine (`agentJobs.AddRemoteJob`).
+- **No polling.** `wait_agent` sleeps on `m.changed`, a channel closed and replaced at every status change, with a timer only for its timeout. A child's end of work comes from its session's `Idle` event, read by the `watch` goroutine that ranges over the session's event channel; SubagentStop hooks, approvals, and the TUI's agent view are driven by events and contexts too. No code in `internal/agents`, `internal/session`, or the embedded engine sleeps or ticks (checked with a search for `time.Sleep`, tickers, and `time.After`); the TUI's 100 ms tick runs only while something moves on screen, now also the viewed agent.
+
+### Differences from Codex v1
+
+1. **Interrupts reach children**, **`interrupted` is final**, and **no completion notification**: as in [Validation](#validation).
+2. **A fork keeps the whole history.** Codex's fork keeps only system, developer, and user messages and final answers, and drops reasoning, tool calls, and their results (`C/core/src/agent/control/spawn.rs:72`, `keep_forked_rollout_item`), so its prompt prefix ends at the parent's first tool call. uah keeps every item, for the longest prefix.
+3. **A forked child keeps the spawn tools** at the depth limit and refuses the calls, so its tools match its parent's. Codex hides them, which changes the tool list.
+4. **A role's `service_tier` applies.** Codex reads it and then sets every child's tier to the root's (`child_config.rs`, `apply_spawn_agent_service_tier`; `C/core/tests/suite/subagent_service_tier.rs` spawns a `service_tier = "priority"` role under a root without a tier and expects no tier). uah honors the role, as asked; `"flex"` is ignored.
+5. **The model check** runs only on openai-codex, against the catalog bundled at rust-v0.156.1; Codex also refreshes its catalog from the backend and checks the effort against the model's levels. Other providers accept any model; their failures come back through `wait_agent`.
+6. **The view.** `/agents <name>` instead of Codex's `/subagents` picker with alt+← and alt+→; the view has no entry for the main agent (esc returns), and a grandchild cannot be viewed from the root.
+7. **`items`** (structured input) is not built.
+
+### Open items
+
+1. **The runner's `Store.Fork`** (v0.1.1) drops the operation snapshots of inherited tool calls ("TODO: Preserve status snapshots in forked history"), so uah replays the items itself. Once the runner keeps them, `Fork` can use it.
+2. **A tool call still running** when the parent made the spawn call is canceled for the child, so the child's request differs from the parent's at that item.
+3. **The fork's first run** is marked in memory: a process that exits between the spawn and the child's first run (which follows at once) leaves a child that asks the model without its message when resumed.
+4. **Stopping a child from its view.** esc returns; the view has no interrupt of its own yet.
+5. **The catalog** is pinned to rust-v0.156.1 and needs updating with Codex.

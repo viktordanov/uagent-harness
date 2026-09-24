@@ -25,29 +25,40 @@ type child struct {
 	id, parent, role, nickname string
 	s                          *session.Session
 	status                     Status
-	// started is when the child's current work began.
-	started time.Time
-	closed  bool
+	// started is when the child's current work began; opened when its
+	// session opened in this process.
+	started, opened time.Time
+	closed          bool
+	// forked is a child started with fork_context.
+	forked bool
+	// callID and task are the spawn call's ID and message; model and
+	// effort the child's settings.
+	callID, task, model, effort string
 	// gen counts the messages sent. sending are the ones being submitted,
 	// pending the ones submitted that the session has not queued yet, and
 	// early the ones it queued before their submit returned, so an Idle from
 	// before a message does not end the child's work.
 	gen, sending   int
 	pending, early map[string]bool
-	// last is the last run's result; failed is a run that did not start.
-	last   *core.Result
-	failed string
+	// last is the last run's result; failed is a run that did not start;
+	// cause is the last error the run reported, such as the provider's.
+	last          *core.Result
+	failed, cause string
 	// asks ends the child's open approvals when it is interrupted or
 	// closed; cancel ends it and a new one follows.
 	asks   context.Context
 	cancel context.CancelFunc
 	// stopStreak counts SubagentStop hooks that kept the child going.
 	stopStreak int
+	// log are the session's events since it opened, and subs the views
+	// that follow them (see watch.go).
+	log  []core.Event
+	subs []chan core.Event
 }
 
 func newChild(id, parent, role, nickname string) *child {
 	c := &child{
-		id: id, parent: parent, role: role, nickname: nickname, started: time.Now(), status: Status{State: engine.AgentRunning},
+		id: id, parent: parent, role: role, nickname: nickname, started: time.Now(), opened: time.Now(), status: Status{State: engine.AgentRunning},
 		pending: map[string]bool{}, early: map[string]bool{},
 	}
 	c.asks, c.cancel = context.WithCancel(context.Background())
@@ -134,6 +145,7 @@ func (m *Manager) watch(c *child) {
 	for e := range c.s.Events() {
 		m.mu.Lock()
 		changed, check := m.observe(c, e)
+		c.record(e)
 		m.mu.Unlock()
 		if check != nil {
 			go m.checkStop(c, *check)
@@ -146,6 +158,7 @@ func (m *Manager) watch(c *child) {
 	m.mu.Lock()
 	c.closed = true
 	c.status = Status{State: engine.AgentShutdown}
+	c.endViews()
 	m.mu.Unlock()
 	m.notify(c)
 }
@@ -162,6 +175,8 @@ func (m *Manager) observe(c *child, e core.Event) (bool, *stopCheck) {
 		}
 	case session.InputFailed:
 		c.failed = e.Reason
+	case core.RunnerError:
+		c.cause = e.Message
 	case core.RunFinished:
 		r := e.Result
 		c.last, c.failed = &r, ""
@@ -174,7 +189,7 @@ func (m *Manager) observe(c *child, e core.Event) (bool, *stopCheck) {
 			return false, nil
 		}
 		status := c.final()
-		c.last, c.failed = nil, ""
+		c.last, c.failed, c.cause = nil, "", ""
 		clear(c.early)
 		if status.State == engine.AgentCompleted && m.tmpl.Hooks.Has(hooks.SubagentStop, "") {
 			return false, &stopCheck{gen: c.gen, status: status}
@@ -194,12 +209,14 @@ func (c *child) final() Status {
 		return Status{State: engine.AgentCompleted, Message: c.last.Answer}
 	case c.last != nil && c.last.Status == core.StatusInterrupted:
 		return Status{State: engine.AgentInterrupted}
+	case c.last != nil && c.cause != "":
+		return Status{State: engine.AgentErrored, Message: readable(c.cause)}
 	case c.last != nil:
 		msg := strings.TrimSpace(fmt.Sprintf("the run ended with status %s. %s", c.last.Status, c.last.Answer))
 
 		return Status{State: engine.AgentErrored, Message: msg}
 	case c.failed != "":
-		return Status{State: engine.AgentErrored, Message: c.failed}
+		return Status{State: engine.AgentErrored, Message: readable(c.failed)}
 	}
 
 	return Status{State: engine.AgentCompleted}
@@ -215,7 +232,13 @@ func (m *Manager) notify(c *child) {
 	m.changed = make(chan struct{})
 	current := m.children[c.id] == c // not a closed child a resume replaced
 	emit := m.parents[c.parent].Emit
-	update := engine.AgentUpdated{At: time.Now(), ID: c.id, Nickname: c.nickname, Role: c.role, State: c.status.State, Started: c.started}
+	update := engine.AgentUpdated{
+		At: time.Now(), ID: c.id, Nickname: c.nickname, Role: c.role, State: c.status.State, Started: c.started,
+		CallID: c.callID, Task: c.task, Model: c.model, Effort: c.effort, Forked: c.forked,
+	}
+	if c.status.State == engine.AgentErrored {
+		update.Message = c.status.Message
+	}
 	m.mu.Unlock()
 	if emit != nil && current {
 		emit(update)

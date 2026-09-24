@@ -22,6 +22,8 @@ func TestPrinter_Agents(t *testing.T) {
 
 	assert.Contains(t, out.String(), "agent Ada: running")
 	assert.Contains(t, out.String(), "agent Ada: Bash  ls (exit 0, 1.0s)")
+	p.print(engine.AgentUpdated{ID: "a1", Nickname: "Ada", State: engine.AgentErrored, Message: "The 'gpt-luna-6' model is not supported"})
+	assert.Contains(t, out.String(), "agent Ada: failed: The 'gpt-luna-6' model is not supported")
 
 	out.Reset()
 	quiet := newPrinter(&out, false)

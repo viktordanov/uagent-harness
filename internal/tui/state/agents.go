@@ -17,7 +17,7 @@ import (
 func (s *State) onAgentUpdated(e engine.AgentUpdated) {
 	key := "agent:" + e.ID
 	set := func(it *Item) {
-		it.Detail, it.Started = e.State, e.Started
+		it.Detail, it.Started, it.Agent = e.State, e.Started, &e
 		if e.State != engine.AgentRunning {
 			for i := range it.Sub {
 				if it.Sub[i].Tool == ToolCalled || it.Sub[i].Tool == ToolRunning {
@@ -65,8 +65,8 @@ func subTool(it *Item, callID string, fn func(*Item)) {
 	}
 }
 
-// cmdAgents lists the session's subagents with their state.
-func cmdAgents(s *State, _ string) []Effect {
+// listAgents lists the session's subagents with their state.
+func listAgents(s *State) {
 	var b strings.Builder
 	for _, it := range s.Items {
 		if it.Kind != KindAgent {
@@ -80,6 +80,9 @@ func cmdAgents(s *State, _ string) []Effect {
 			fmt.Fprintf(&b, " (%s)", it.Label)
 		}
 		fmt.Fprintf(&b, " · %s", it.Detail)
+		if it.Agent != nil && it.Agent.Message != "" {
+			fmt.Fprintf(&b, ": %s", it.Agent.Message)
+		}
 		if it.Detail == engine.AgentRunning {
 			fmt.Fprintf(&b, " %s", time.Since(it.Started).Round(time.Second))
 		}
@@ -88,9 +91,8 @@ func cmdAgents(s *State, _ string) []Effect {
 	if b.Len() == 0 {
 		s.notice(session.LevelInfo, "no subagents in this session; the agent starts them with spawn_agent when you ask it to delegate")
 
-		return nil
+		return
 	}
+	b.WriteString("\n/agents <name> shows one's transcript as it works; esc returns")
 	s.notice(session.LevelInfo, b.String())
-
-	return nil
 }

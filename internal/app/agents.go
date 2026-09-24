@@ -70,8 +70,13 @@ func newAgents(r Resolved, cfg config.Config, workspace string, opts *session.Op
 		opts.Notices = append(opts.Notices, warnings...)
 	}
 
+	var models []agents.Model
+	if r.Settings.Provider == CodexProvider { // a ChatGPT account runs only Codex's models
+		models = agents.CodexModels
+	}
+
 	return agents.New(agents.Config{
 		MaxThreads: r.Agents.MaxThreads, MaxDepth: depth, Model: r.Agents.Model, Effort: r.Agents.Effort,
-		Roles: roles,
+		Roles: roles, Models: models,
 	})
 }

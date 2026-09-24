@@ -205,14 +205,38 @@ Codex keys uah does not support are errors: `bearer_token`, `http_headers_helper
 
 | Key | Type | Default | Merge | Meaning |
 | --- | --- | --- | --- | --- |
-| `enabled` | bool | true | override, can unset | Offer `spawn_agent`, `send_input`, `wait`, and `close_agent` |
+| `enabled` | bool | true | override, can unset | Offer `spawn_agent`, `send_input`, `wait_agent`, `close_agent`, and `resume_agent` |
 | `max_concurrent_threads_per_session` | int | 4 | override | Open subagents per session tree; Codex's `max_threads` is an alias |
 | `max_threads` | int | none | override | Codex's older name for `max_concurrent_threads_per_session` |
 | `max_depth` | int | 1 | override | How deep subagents nest; 1 means subagents cannot spawn their own |
-| `default_subagent_model` | string | the parent's model | override | Model for subagents a role or call does not set |
+| `default_subagent_model` | string | the parent's model | override | Model for subagents a role or call does not set; on openai-codex it must be in Codex's model catalog, as `spawn_agent`'s `model` must |
 | `default_subagent_reasoning_effort` | string | the parent's effort | override | Effort for subagents a role or call does not set |
 
-Roles are Codex role files in `~/.config/uagent/agents/*.toml` and, for a trusted workspace, `<workspace>/.uagent/agents/*.toml` (a project role replaces a user role of the same name). uah reads `name`, `description`, `nickname_candidates`, `model`, `model_reasoning_effort`, and `developer_instructions`.
+There is no `default_subagent_service_tier`: Codex has no such key. Fast mode for subagents comes from a role's `service_tier`, or from the parent's `/fast`, which its children inherit.
+
+Roles are Codex role files in `~/.config/uagent/agents/*.toml` and, for a trusted workspace, `<workspace>/.uagent/agents/*.toml` (a project role replaces a user role of the same name). A role file is a layer over the parent's settings; uah reads these keys and warns about the others:
+
+| Key | Type | Meaning |
+| --- | --- | --- |
+| `name` | string | The `agent_type` that selects the role. Required |
+| `description` | string | When to use it; the `spawn_agent` description lists it. Required |
+| `developer_instructions` | string | Added to the agent's system prompt. Required |
+| `nickname_candidates` | array of strings | Names for its agents instead of uah's list |
+| `model` | string | The agent's model, on the parent's provider |
+| `model_reasoning_effort` | string | The agent's effort: `low`, `medium`, `high`, `xhigh`, or `max` |
+| `service_tier` | string | `"priority"` (or `"fast"`) runs its agents with priority processing (fast mode), when the provider offers it; `"default"` runs them without it; absent follows the parent |
+
+A spawn call's `model` and `reasoning_effort` come before the role's, and the role's before `[agents]` defaults and the parent's. A role for fast reviews:
+
+```toml
+# ~/.config/uagent/agents/fast-reviewer.toml
+name = "fast-reviewer"
+description = "Reviews a diff quickly for correctness bugs."
+model = "gpt-6-luna"
+model_reasoning_effort = "low"
+service_tier = "priority"
+developer_instructions = "Review the diff you are given. List only real bugs, each with its file and line."
+```
 
 ### TUI
 

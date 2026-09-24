@@ -18,7 +18,7 @@ Section IDs identify a concern within a README. Keep the ID stable when a headin
 | `auth` | Authorization, logins, and where credentials are stored |
 | `extending` | Where and how to add to a package |
 | `subagents` | Subagent tools, `[agents]` keys, and role files |
-| `seam`, `parity`, `lifecycle`, `tools`, `events`, `resume`, `limits`, `roles`, `extending` | The subagent package's README: its contract with the engine, a child's parity with the root session, a child's lifecycle, the tools, events and hooks, resume, limits, roles, and how to extend it |
+| `seam`, `parity`, `lifecycle`, `tools`, `events`, `fork`, `watch`, `resume`, `limits`, `roles`, `extending` | The subagent package's README: its contract with the engine, a child's parity with the root session, a child's lifecycle, the tools, events and hooks, forking, watching a child, resume, limits, roles, and how to extend it |
 | `configuration` | Configuration files and precedence |
 | `development` | Building, testing, linting, and CI |
 

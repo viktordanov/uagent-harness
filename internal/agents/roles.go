@@ -25,6 +25,10 @@ type Role struct {
 	// Model and Effort override the parent's for agents of this role.
 	Model  string `toml:"model"`
 	Effort string `toml:"model_reasoning_effort"`
+	// ServiceTier is Codex's service_tier: "priority" (or its legacy name
+	// "fast") runs the agent with priority processing, and "default" without
+	// it, whatever the parent uses. Empty follows the parent.
+	ServiceTier string `toml:"service_tier"`
 	// DeveloperInstructions are added to the agent's system prompt.
 	DeveloperInstructions string `toml:"developer_instructions"`
 	// Path is the file the role came from.
@@ -104,6 +108,12 @@ func readRole(path string) (Role, []string, error) {
 	for _, k := range meta.Undecoded() {
 		ignored = append(ignored, k[0])
 	}
+	if tier, ok := serviceTier(r.ServiceTier); ok {
+		r.ServiceTier = tier
+	} else {
+		ignored = append(ignored, fmt.Sprintf("service_tier = %q (want priority, fast, or default)", r.ServiceTier))
+		r.ServiceTier = ""
+	}
 	slices.Sort(ignored)
 	r.Path = path
 	r.Name, r.Description = strings.TrimSpace(r.Name), strings.TrimSpace(r.Description)
@@ -144,4 +154,29 @@ func (r Role) check() error {
 // digits, spaces, hyphens, and underscores.
 func nicknameRune(c rune) bool {
 	return c == ' ' || c == '-' || c == '_' || ('0' <= c && c <= '9') || ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z')
+}
+
+// defaultRole is the agent type of a child spawned without one.
+const defaultRole = "default"
+
+// Role service tiers: Codex's request values that uah's providers serve.
+const (
+	TierPriority = "priority"
+	TierDefault  = "default"
+)
+
+// serviceTier normalizes a role's service_tier as Codex reads it: "fast"
+// is the legacy name of "priority". Codex also sends "flex", which no
+// provider of uah's serves, so it is not ok.
+func serviceTier(v string) (string, bool) {
+	switch strings.TrimSpace(v) {
+	case "":
+		return "", true
+	case "priority", "fast":
+		return TierPriority, true
+	case TierDefault:
+		return TierDefault, true
+	}
+
+	return "", false
 }

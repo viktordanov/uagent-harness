@@ -24,10 +24,36 @@ type Subagents interface {
 	// Call runs one of the parent's tool calls and returns the result for
 	// the model. It blocks as long as the tool needs (a wait); ctx ends
 	// when the call is canceled or the run stops.
-	Call(ctx context.Context, parentID, tool string, args json.RawMessage) (string, error)
+	Call(ctx context.Context, call AgentCall) (string, error)
 	// Interrupt stops the live runs of the parent's children and their
 	// own children, because the user interrupted the parent.
 	Interrupt(parentID string)
+}
+
+// AgentCall is one tool call of a parent session.
+type AgentCall struct {
+	ParentID string
+	// CallID is the model's ID for the call; spawn_agent's fork_context
+	// finds the request that made it by this ID. Empty for calls from before
+	// uah recorded it.
+	CallID string
+	Tool   string
+	Args   json.RawMessage
+}
+
+// Forker is an engine whose sessions can start from a copy of another
+// session's history, and share its prompt cache. The embedded engine
+// implements it; internal/agents uses it for spawn_agent's fork_context.
+type Forker interface {
+	// Fork creates the session childID from the parent's history as it was
+	// when the model made the call callID: every item before that model
+	// request, and the compaction that applied to it. The child's first
+	// model request then starts with the parent's.
+	Fork(ctx context.Context, parentID, childID, callID string) error
+	// SetCacheKey makes the session's model requests use key as their
+	// prompt cache key (the provider's cache affinity) instead of the
+	// session's ID. Codex keys every agent of a tree by the root session.
+	SetCacheKey(sessionID, key string)
 }
 
 // AgentParent is a parent session's live run.
@@ -63,15 +89,29 @@ const (
 	AgentNotFound    = "not_found"
 )
 
-// AgentUpdated reports a child's progress in its parent's stream.
+// AgentUpdated reports a child's progress in its parent's stream. Every
+// update carries the whole picture, so the latest one is enough to draw
+// the child.
 type AgentUpdated struct {
 	At       time.Time
 	ID       string
 	Nickname string
 	Role     string
 	State    string
+	// Message says why an errored child failed, in one line: the
+	// provider's message when it gave one.
+	Message string
 	// Started is when the child's current work began.
 	Started time.Time
+	// CallID is the parent's spawn_agent call that started the child
+	// ("" for a resumed child), Task that call's message, and Model and
+	// Effort the child's settings as it runs.
+	CallID string
+	Task   string
+	Model  string
+	Effort string
+	// Forked is a child started with fork_context.
+	Forked bool
 }
 
 // AgentActivity is one of a child's tool events (core.ToolCalled,
