@@ -10,7 +10,7 @@ Status: the [ledger](docs/ledger.md) tracks the work: sessions, the TUI, both en
 2. [Development](#development)
 <!-- /memoria:section -->
 
-<!-- memoria:section id="usage" files="cmd/uah/main.go cmd/uah/run.go cmd/uah/resume.go cmd/uah/sessions.go cmd/uah/tui.go cmd/uah/print.go internal/session/history.go internal/session/sidecar.go internal/store/store.go internal/store/query.go" -->
+<!-- memoria:section id="usage" files="cmd/uah/main.go cmd/uah/run.go cmd/uah/resume.go cmd/uah/sessions.go cmd/uah/tui.go cmd/uah/print.go cmd/uah/doctor.go internal/app/doctor.go internal/app/doctorchecks.go internal/session/history.go internal/session/sidecar.go internal/store/store.go internal/store/query.go" -->
 ## Use it
 
 ```sh
@@ -22,6 +22,7 @@ uah resume                                                 # pick a session of t
 uah resume --last                                          # resume this directory's most recent session
 uah --session 3f2a                                         # the TUI, resuming a session with its transcript
 uah --fast                                                 # priority processing (openai and openai-codex)
+uah doctor                                                 # check the runner, credentials, sandbox, config, hooks, MCP servers, and state (--json; exit 1 on a ✗)
 
 uah run -C ~/code/proj "Fix the failing test in pkg/foo"   # a session: progress on stderr, answers on stdout
 uah sessions                                               # this directory's sessions, most recent first (--all: every directory)
@@ -151,7 +152,7 @@ For simple cases, `[approvals]` in `config.toml` lists command prefixes: `allow`
 
 <!-- /memoria:section -->
 
-<!-- memoria:section id="hooks" files="internal/hooks/hooks.go internal/hooks/exec.go internal/hooks/payload.go internal/hooks/trust.go internal/engine/embedded/pretooluse.go internal/engine/embedded/tools.go cmd/uah/hooks.go internal/app/setup.go internal/session/hooks.go" -->
+<!-- memoria:section id="hooks" files="internal/hooks/hooks.go internal/hooks/exec.go internal/hooks/payload.go internal/hooks/trust.go internal/hooks/script.go internal/engine/embedded/pretooluse.go internal/engine/embedded/tools.go cmd/uah/hooks.go internal/app/setup.go internal/session/hooks.go" -->
 ### Hooks
 
 Hooks run a command at a session event, with Claude Code's contract: the event arrives as JSON on stdin, exit 0 continues (optionally printing JSON), exit 2 blocks with stderr as the reason, and any other exit is reported and ignored.
@@ -177,7 +178,7 @@ command = "osascript -e 'display notification \"uah is idle\"'"
 | `PreCompact` | A compaction is about to start (`trigger`: manual or auto), on the embedded engine | Stop it (exit 2 or `"decision":"block"`) |
 | `SessionEnd` | The session closes | Observe only, with at most a second |
 
-Hooks in the user file run as written. Hooks in a trusted project's `.uagent/config.toml` run only after `uah hooks trust` records their exact commands (by SHA-256, in `~/.config/uagent/trusted-hooks.json`); a changed command needs trust again. `uah hooks` lists the hooks for a workspace and whether each runs. Hook runs appear in the TUI's detailed view (ctrl+t); blocks and failures appear in both views.
+Hooks in the user file run as written. Hooks in a trusted project's `.uagent/config.toml` run only after `uah hooks trust` records their exact commands (by SHA-256, in `~/.config/uagent/trusted-hooks.json`); a changed command needs trust again. When a command runs a local script (its first word is a path to a file, absolute or relative to the workspace, such as `.uagent/hooks/check.sh` or `"$UAH_PROJECT_DIR"/check.sh`), trust also records the script's SHA-256, so an edited script is reported as untrusted ("the script changed") until `uah hooks trust` runs again. Entries trusted before uah hashed scripts still cover commands that run no script; commands that run one need trust again. `uah hooks` lists the hooks for a workspace and whether each runs. Hook runs appear in the TUI's detailed view (ctrl+t); blocks and failures appear in both views.
 
 <!-- /memoria:section -->
 

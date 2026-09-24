@@ -25,7 +25,7 @@ func configCommand() *cli.Command {
 		Description: "Takes the same flags as a session and shows what a session started with them would use:\n" +
 			"each key's value and its source (flag, env, session, project file, user file, or default).\n" +
 			"Keys whose files add up list every file that set them. The reference is docs/configuration.md.",
-		Flags:        append(sessionFlags(), &cli.BoolFlag{Name: "json", Usage: "print JSON"}),
+		Flags:        append(sessionFlags(), &cli.BoolFlag{Name: flagJSON, Usage: "print JSON"}),
 		OnUsageError: onUsageError,
 		Action:       configAction,
 	}
@@ -36,7 +36,7 @@ func configAction(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return exitError(err)
 	}
-	if cmd.Bool("json") {
+	if cmd.Bool(flagJSON) {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 

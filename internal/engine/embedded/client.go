@@ -56,19 +56,44 @@ func (w *wiring) client(req core.Request, opts engine.Options) (string, *switche
 
 // apiKey returns UNREAL_HARNESS_LLM_API_KEY, else the provider's key
 // variable. A provider without a key variable needs no key.
-func (w *wiring) apiKey(p Provider) (string, error) {
+func (w *wiring) apiKey(p Provider) (string, error) { return providerKey(p, w.getenv) }
+
+func providerKey(p Provider, getenv func(string) string) (string, error) {
 	if p.APIKeyEnv == "" {
 		return "", nil
 	}
-	key := strings.TrimSpace(w.getenv("UNREAL_HARNESS_LLM_API_KEY"))
+	key := strings.TrimSpace(getenv("UNREAL_HARNESS_LLM_API_KEY"))
 	if key == "" {
-		key = strings.TrimSpace(w.getenv(p.APIKeyEnv))
+		key = strings.TrimSpace(getenv(p.APIKeyEnv))
 	}
 	if key == "" {
 		return "", fmt.Errorf("UNREAL_HARNESS_LLM_API_KEY or %s must be set", p.APIKeyEnv)
 	}
 
 	return key, nil
+}
+
+// CheckCredentials builds the provider's client the way a run does, which
+// reads and checks its credentials, and closes it without calling the
+// model. Errors never include a secret.
+func CheckCredentials(provider string, getenv func(string) string) error {
+	for _, p := range DefaultProviders() {
+		if p.Name != provider {
+			continue
+		}
+		key, err := providerKey(p, getenv)
+		if err != nil {
+			return err
+		}
+		c, err := p.NewClient(ClientConfig{APIKey: key, BaseURL: p.BaseURL, MaxAttempts: 1, Getenv: getenv})
+		if err != nil {
+			return fmt.Errorf("failed to create the %s client: %w", p.Name, err)
+		}
+
+		return c.Close() //nolint:wrapcheck // closing an unused client
+	}
+
+	return fmt.Errorf("unsupported provider %q", provider)
 }
 
 // maxAttempts returns the request's attempt limit, else the environment's,

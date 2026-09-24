@@ -16,6 +16,7 @@ import (
 const (
 	flagAll       = "all"
 	flagWorkspace = "workspace"
+	flagJSON      = "json"
 )
 
 // resumeCommand is `uah resume`, modeled on `codex resume`: a picker of this
