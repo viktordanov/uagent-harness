@@ -156,6 +156,9 @@ func nicknameRune(c rune) bool {
 	return c == ' ' || c == '-' || c == '_' || ('0' <= c && c <= '9') || ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z')
 }
 
+// defaultRole is the agent type of a child spawned without one.
+const defaultRole = "default"
+
 // Role service tiers: Codex's request values that uah's providers serve.
 const (
 	TierPriority = "priority"
@@ -171,7 +174,7 @@ func serviceTier(v string) (string, bool) {
 		return "", true
 	case "priority", "fast":
 		return TierPriority, true
-	case "default":
+	case TierDefault:
 		return TierDefault, true
 	}
 

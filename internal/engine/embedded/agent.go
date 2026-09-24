@@ -58,12 +58,32 @@ func (a *agent) Kill()      { a.Terminate() }
 
 // Send delivers a message to the running agent.
 func (a *agent) Send(in core.UserInput) error {
-	payload, err := json.Marshal(in.Text)
+	input, err := messageInput(in)
 	if err != nil {
-		return fmt.Errorf("failed to encode message: %w", err)
+		return err
 	}
 
-	return a.submit(inbox.Input{ID: inbox.ID(in.ID), Kind: inbox.InputExternal, Payload: payload})
+	return a.submit(input)
+}
+
+// messageInput is a user message as the inbox takes it.
+func messageInput(in core.UserInput) (inbox.Input, error) {
+	payload, err := json.Marshal(in.Text)
+	if err != nil {
+		return inbox.Input{}, fmt.Errorf("failed to encode message: %w", err)
+	}
+
+	return inbox.Input{ID: inbox.ID(in.ID), Kind: inbox.InputExternal, Payload: payload}, nil
+}
+
+// controlInput is a control message as the inbox takes it.
+func controlInput(msg inbox.ControlMessage) (inbox.Input, error) {
+	payload, err := json.Marshal(msg)
+	if err != nil {
+		return inbox.Input{}, fmt.Errorf("failed to encode control: %w", err)
+	}
+
+	return inbox.Input{ID: inbox.ID(uuid.NewString()), Kind: inbox.InputControl, Payload: payload}, nil
 }
 
 func (a *agent) SetEffort(effort string) error {
@@ -91,12 +111,12 @@ func (a *agent) Compact() error {
 }
 
 func (a *agent) control(msg inbox.ControlMessage) error {
-	payload, err := json.Marshal(msg)
+	input, err := controlInput(msg)
 	if err != nil {
-		return fmt.Errorf("failed to encode control: %w", err)
+		return err
 	}
 
-	return a.submit(inbox.Input{ID: inbox.ID(uuid.NewString()), Kind: inbox.InputControl, Payload: payload})
+	return a.submit(input)
 }
 
 func (a *agent) submit(in inbox.Input) error {

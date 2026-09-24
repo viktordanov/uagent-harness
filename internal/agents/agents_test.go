@@ -70,6 +70,7 @@ func TestAgents_SpawnWaitAnswer(t *testing.T) {
 		}
 	}
 	assert.NotContains(t, child.Tools, "spawn_agent", "depth 1: a child cannot spawn")
+	assert.Equal(t, e.llm.Requests()[0].CacheKey, child.CacheKey, "as in Codex, every agent of a tree uses the root session's prompt cache key")
 	assert.Contains(t, child.Tools, "Bash")
 
 	updates := 0

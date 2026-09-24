@@ -28,6 +28,8 @@ type child struct {
 	// started is when the child's current work began.
 	started time.Time
 	closed  bool
+	// forked is a child started with fork_context.
+	forked bool
 	// gen counts the messages sent. sending are the ones being submitted,
 	// pending the ones submitted that the session has not queued yet, and
 	// early the ones it queued before their submit returned, so an Idle from

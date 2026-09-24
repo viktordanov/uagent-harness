@@ -15,6 +15,9 @@ type record struct {
 	// Model and Effort are the spawn call's overrides.
 	Model  string `json:"model,omitempty"`
 	Effort string `json:"effort,omitempty"`
+	// Fork is a child started with fork_context: it keeps the spawn tools
+	// its parent was offered, so its requests share the parent's prefix.
+	Fork bool `json:"fork,omitempty"`
 }
 
 func recordPath(sessionsDir, id string) string {

@@ -66,6 +66,14 @@ type Request struct {
 	ToolImages []string
 	// Tools are the offered tools' parameter schemas as JSON, by name.
 	Tools map[string]string
+	// ToolNames are the offered tools' names in order, and ToolDefs the
+	// tools as sent.
+	ToolNames []string
+	ToolDefs  []json.RawMessage
+	// Input are the input items as sent, in order.
+	Input []json.RawMessage
+	// CacheKey is the prompt cache key.
+	CacheKey string
 }
 
 // Server serves the script. When the script runs out, it answers "done".
@@ -287,6 +295,7 @@ func parseRequest(body []byte) Request {
 	var raw struct {
 		Model       string `json:"model"`
 		ServiceTier string `json:"service_tier"`
+		CacheKey    string `json:"prompt_cache_key"`
 		Reasoning   struct {
 			Effort string `json:"effort"`
 		} `json:"reasoning"`
@@ -302,10 +311,16 @@ func parseRequest(body []byte) Request {
 			CallID  string          `json:"call_id"`
 		} `json:"input"`
 	}
+	var items struct {
+		Input []json.RawMessage `json:"input"`
+		Tools []json.RawMessage `json:"tools"`
+	}
 	_ = json.Unmarshal(body, &raw)
-	req := Request{Model: raw.Model, ServiceTier: raw.ServiceTier, Effort: raw.Reasoning.Effort, Tools: map[string]string{}}
+	_ = json.Unmarshal(body, &items)
+	req := Request{Model: raw.Model, ServiceTier: raw.ServiceTier, Effort: raw.Reasoning.Effort, Tools: map[string]string{}, Input: items.Input, ToolDefs: items.Tools, CacheKey: raw.CacheKey}
 	for _, t := range raw.Tools {
 		req.Tools[t.Name] = string(t.Parameters)
+		req.ToolNames = append(req.ToolNames, t.Name)
 	}
 	for _, in := range raw.Input {
 		if in.Type == "function_call_output" {
