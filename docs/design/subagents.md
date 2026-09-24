@@ -1,6 +1,6 @@
 # Subagents: research and plan
 
-Status: planned 2026-09-24, built the same day, then validated and hardened (see [As built](#as-built) and [Validation](#validation)), then extended in a second round (see [Round 2](#round-2)). Ledger item 12. Codex facts are from openai/codex at rust-v0.156.1 (`C/` is `codex-rs/`); Claude Code facts are from its public documentation.
+Status: planned 2026-09-24, built the same day, then validated and hardened (see [As built](#as-built) and [Validation](#validation)), then extended in a second round (see [Round 2](#round-2)) and a third (see [Round 3](#round-3)). Ledger item 12. Codex facts are from openai/codex at rust-v0.156.1 (`C/` is `codex-rs/`); Claude Code facts are from its public documentation.
 
 1. [How Codex does it](#how-codex-does-it)
 2. [How Claude Code does it](#how-claude-code-does-it)
@@ -10,6 +10,7 @@ Status: planned 2026-09-24, built the same day, then validated and hardened (see
 6. [As built](#as-built)
 7. [Validation](#validation)
 8. [Round 2](#round-2)
+9. [Round 3](#round-3)
 
 ## How Codex does it
 
@@ -57,7 +58,7 @@ Build it after items 2–5 merge, because it depends on asynchronous tools and a
 Defaults taken; change them here before building.
 
 1. **Workspace sharing.** Children share the parent's workspace (Codex v1). Codex's "forked workspace" guidance for code-edit subtasks is not built; git worktrees per child could come later.
-2. **Claude Code's Markdown agent definitions** are not read. Codex role files only, for one format.
+2. **Claude Code's Markdown agent definitions** were not read at first, for one format; [Round 3](#round-3) reads them beside Codex's role files.
 3. **v2 tools** (`task_name`, `followup_task`, `list_agents`, `interrupt_agent`) are left out until Codex makes v2 the default.
 
 ## As built
@@ -156,3 +157,53 @@ Built 2026-09-24 on unreal-agent-runner v0.1.1, against Codex rust-v0.156.1. Fiv
 2. **A tool call still running** when the parent made the spawn call is canceled for the child, so the child's request differs from the parent's at that item.
 3. **The fork's first run** is marked in memory: a process that exits between the spawn and the child's first run (which follows at once) leaves a child that asks the model without its message when resumed.
 4. **Stopping a child from its view.** esc returns; the view has no interrupt of its own yet.
+
+## Round 3
+
+Built 2026-09-24 against Codex rust-v0.156.1 and Claude Code's documentation of the same day. Ledger items 31 (custom agents as Markdown; subagents never start subagents) and 32 (a real probe of the fork's prompt cache).
+
+### Facts mirrored
+
+| Fact | Source | uah |
+| --- | --- | --- |
+| Subagent files are Markdown with YAML front matter in `.claude/agents/` (project) and `~/.claude/agents/` (user), searched with subfolders; the project wins on a name clash | [code.claude.com/docs/en/sub-agents](https://code.claude.com/docs/en/sub-agents), "File locations and precedence" | `~/.config/uagent/agents/` and a trusted `.uagent/agents/`, recursive; the project wins |
+| `name` and `description` are required; the body is the system prompt | the same page, "YAML frontmatter fields" | Required; the body is `developer_instructions` |
+| `tools` is a comma-separated string or a YAML list; omitted inherits every tool; `mcp__<server>` or `mcp__<server>__*` names a server's tools | the same page, `tools` | Both forms; omitted is every tool; the same patterns |
+| `model` is `sonnet`, `opus`, `haiku`, `fable`, a full ID, or `inherit` | the same page, `model` | `inherit` and the aliases are the parent's model (the aliases with a warning); a full ID is used on the parent's provider |
+| `effort` is `low` to `max` | the same page, `effort` | Read, beside Codex's `model_reasoning_effort` |
+| Unknown fields are ignored without an error | the same page | Ignored with a warning, as uah treats TOML roles |
+| `tools` restricts but does not pre-approve; permission prompts still apply by the subagent's `permissionMode`, and a subagent never gets `bypassPermissions` when the parent does not have it | the same page, "permissionMode" | `tools` restricts; `approve` is uah's own key for pre-approval, and it never widens the parent's mode; `permissionMode` is not read |
+| By default a subagent may spawn subagents up to three levels down; at the limit the Agent tool is withheld from every subagent except a fork, which keeps the main conversation's exact tool pool | the same page, "Subagent spawning" | Depth is fixed at 1; a fork keeps its parent's tools and its spawns are refused |
+| Role files are TOML: `name`, `description`, `nickname_candidates`, and a config layer; `developer_instructions` is required; unknown top-level keys are an error (`deny_unknown_fields`) | `C/agent-roles/src/agent_role_config.rs:20-28,134-157` | Unchanged TOML loading, unknown keys warn |
+| Role files are found recursively as `*.toml` under the layer's `agents/` directory | `C/agent-roles/src/discovery.rs:7-40` | `*.toml` and `*.md` |
+| A name declared twice in one layer is a warning, and the first is kept | `C/agent-roles/src/loader.rs:60-90,317` | A warning; the Markdown file is kept over a TOML file, else the later file |
+| "Roles may customize the child or reduce its capabilities, but never replace the parent session's authority": a role can only turn features off | `C/core/src/agent/role.rs:1-4,91-104` | `tools` only narrows, and `approve` answers prompts within the mode |
+| At the depth limit V1 hides the agent tools and refuses spawn and resume with "Agent depth limit reached. Solve the task yourself." | `C/core/src/tools/spec_plan.rs:646`; `multi_agents/spawn.rs:73` | The same message |
+
+### As built
+
+- **The format and loading.** See [the agents README](../../internal/agents/README.md#markdown-agents). `LoadRoles` reads both formats; the front matter is parsed with `go.yaml.in/yaml/v3`.
+- **Tools.** A role's `tools` becomes an `engine.Scope` for the child's session. The embedded engine adds the built-in tools it leaves out to the run's `DisallowedTools`, which the registry already honors, and drops the MCP tools it leaves out, so the child's model request lists only the allowed tools (`TestScope_Tools`).
+- **Pre-approval.** A role's `approve` prefixes are prefix rules of the approver's kind, consulted where the approver would ask, before the auto-reviewer; MCP names make the MCP gate treat the tool as `approval_mode = "approve"`. They are not `allow` rules, which run a command outside the sandbox without asking. A `forbid` rule and `approval_policy = "never"` decide first, and in read only mode an escalation is still asked (`TestScope_PreApproval`, `TestScope_PreApprovalKeepsReadOnly`).
+- **Depth.** Fixed at 1. `max_depth` above 1 is clamped to 1 with a notice rather than refused, so a configuration written for Codex still starts; `max_depth = 0` still turns subagents off (`TestDepth_ChildrenNeverSpawn`, `TestSetup_MaxDepthIsOne`).
+
+### Validation: the fork's prompt cache on openai-codex
+
+Three small probes with `uah run --stdin --stream` on openai-codex, `gpt-6-luna` at low effort, in an empty temporary workspace with an empty configuration and its own state directory. The parent answered two or three one-word turns, then spawned a child with `fork_context: true` and waited for it. The numbers are `llm.Usage` from each run's `events.jsonl` (input tokens / cached input tokens); the provider's per-item attribution (`Usage.Raw.attribution`) shows which items were cached. The second and third probes left 10 to 12 seconds between the parent's turns.
+
+| Probe | Parent's request that made the spawn call | Child's first request | Child's second request | Parent's last request |
+| --- | --- | --- | --- | --- |
+| 1 (turns back to back) | 4,653 / 3,584 | 4,665 / 3,584 | 4,741 / 3,584 | 4,835 / 4,608 |
+| 2 (12 s between turns) | 4,655 / 3,584 | 4,674 / 3,584 | 4,756 / 3,584 | 4,847 / 4,608 |
+| 3 (as 2, one HTTP transport for every run) | 4,655 / 3,584 | 4,674 / 3,584 | none | 4,838 / 4,608 |
+
+- **The prefix is the parent's.** The child's first request is the parent's request plus the child's message: the attribution lists the same items with the same token counts (the 2,113 tokens of tools, the 2,455-token system message, then the conversation), 12 to 19 tokens longer. `TestFork_ChildStartsWithTheParentsRequest` pins the same byte for byte with fakellm, and a capture of two real request bodies from separate runs (a local server as the base URL) showed the system message and the tools identical across runs.
+- **The cache reuse is partial.** The child's first request had 3,584 of 4,665 tokens cached (77%): the tools and the first 1,471 tokens of the system message. That is exactly what every request that starts a run got, the parent's own second and third turns included, whose prefix had been sent 10 seconds earlier in the same session with the same prompt cache key and `session-id` header. Only a request later in the same run went further (4,608, the whole system message and the earlier turns), and then only once that prefix had been sent at least twice. The child's second request, 5 seconds after its first, got 3,584 too.
+- **Why.** Not found in uah. The child's `prompt_cache_key` and `session-id` header are the root session's, as in Codex (`C/core/src/client.rs:561-586`: a subagent's header is the tree's `session_id`, the root's). Sharing one HTTP transport across runs (probe 3) changed nothing. Codex differs in transport: it keeps a websocket per session across turns (`client.rs:617`) and replays the backend's `x-codex-turn-state` sticky-routing token within a turn (`C/core/src/client.rs:278-298`), which the runner's HTTP client cannot. The likely cause is backend routing between requests that do not share such state; it limits the parent's own turns as much as the fork.
+- **Conclusion.** The fork keeps the parent's prefix exactly, so it never does worse than the parent's own next turn; on openai-codex today that means the common prefix (about 3.5k tokens here) is cached and the parent's history is not. The cost of a fork's first request is its uncached history.
+
+Open:
+
+1. **Cross-run cache on openai-codex.** Requests that start a run get only the common prefix cached. Following Codex's transport (a websocket kept across turns, `x-codex-turn-state`) would need the runner's client; a probe with a longer history (tens of thousands of tokens) would show whether the backend caches more beyond some size.
+2. **`permissionMode`, `disallowedTools`, `skills`, `mcpServers`, `hooks`, `maxTurns`, `isolation`, and `color`** from Claude Code's front matter are not read. `permissionMode` could only make a child stricter; the others need features uah's children do not have.
+3. **Read, Grep, and Glob** have no tools of their own in uah; an agent limited to them gets no tools and a warning.

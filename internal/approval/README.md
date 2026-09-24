@@ -34,7 +34,7 @@ For each Bash call on the embedded engine:
 
 An approved escalation runs outside the sandbox, with network. An approved `prompt` rule on a command that did not ask for escalation runs in the sandbox. A denied command is not run, and the model gets the reason as the tool's error.
 
-The same ask (steps 6 to 8) serves [patches](#patches) that write outside the sandbox, MCP tools whose `approval_mode` needs approval, and subagents: a subagent runs its own auto-review, then asks its parent's user, with `agent <nickname>:` in front of the reason.
+The same ask (steps 6 to 8) serves [patches](#patches) that write outside the sandbox, MCP tools whose `approval_mode` needs approval, and subagents: a subagent runs its own auto-review, then asks its parent's user, with `agent <nickname>:` in front of the reason. A subagent whose role has an `approve` list answers those prompts itself, before its auto-review; an escalation in read only mode is still asked ([Markdown agents](../agents/README.md#markdown-agents)).
 
 The process engine applies steps 2, 3, and 5 in the shell it gives the runner, with the same `Approver.Decide` and no one to ask ([the shell gate](../engine/README.md#the-process-engine)): `forbidden` refuses, `allow` runs outside the sandbox, `prompt` refuses with the headless reason, and the rest runs in the sandbox. It has no escalation, no auto-review, and no PermissionRequest hooks.
 <!-- /memoria:section -->

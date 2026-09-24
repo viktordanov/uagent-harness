@@ -242,25 +242,45 @@ Codex keys uah does not support are errors: `bearer_token`, `http_headers_helper
 | `enabled` | bool | true | override, can unset | Offer `spawn_agent`, `send_input`, `wait_agent`, `close_agent`, and `resume_agent` |
 | `max_concurrent_threads_per_session` | int | 4 | override | Open subagents per session tree; Codex's `max_threads` is an alias |
 | `max_threads` | int | none | override | Codex's older name for `max_concurrent_threads_per_session` |
-| `max_depth` | int | 1 | override | How deep subagents nest; 1 means subagents cannot spawn their own |
+| `max_depth` | int | 1 | override | 1 offers subagents, 0 turns them off. Subagents never start subagents: a value above 1 is used as 1, with a notice |
 | `default_subagent_model` | string | the parent's model | override | Model for subagents a role or call does not set; on openai-codex it must be in Codex's model catalog, as `spawn_agent`'s `model` must |
 | `default_subagent_reasoning_effort` | string | the parent's effort | override | Effort for subagents a role or call does not set |
 
 There is no `default_subagent_service_tier`: Codex has no such key. Fast mode for subagents comes from a role's `service_tier`, or from the parent's `/fast`, which its children inherit.
 
-Roles are Codex role files in `~/.config/uagent/agents/*.toml` and, for a trusted workspace, `<workspace>/.uagent/agents/*.toml` (a project role replaces a user role of the same name). A role file is a layer over the parent's settings; uah reads these keys and warns about the others:
+Kinds of subagents (roles) are files in `~/.config/uagent/agents/` and, for a trusted workspace, `<workspace>/.uagent/agents/`, searched recursively: Markdown files with YAML front matter (`*.md`, as Claude Code's `.claude/agents/*.md`) and Codex role files (`*.toml`). A project file replaces a user file of the same name; in one directory, a Markdown file replaces a TOML file of the same name, with a notice. uah reads these keys and warns about the others:
 
-| Key | Type | Meaning |
-| --- | --- | --- |
-| `name` | string | The `agent_type` that selects the role. Required |
-| `description` | string | When to use it; the `spawn_agent` description lists it. Required |
-| `developer_instructions` | string | Added to the agent's system prompt. Required |
-| `nickname_candidates` | array of strings | Names for its agents instead of uah's list |
-| `model` | string | The agent's model, on the parent's provider |
-| `model_reasoning_effort` | string | The agent's effort: `low`, `medium`, `high`, `xhigh`, or `max` |
-| `service_tier` | string | `"priority"` (or `"fast"`) runs its agents with priority processing (fast mode), when the provider offers it; `"default"` runs them without it; absent follows the parent |
+| Markdown key | TOML key | Type | Meaning |
+| --- | --- | --- | --- |
+| `name` | `name` | string | The `agent_type` that selects the role. Required |
+| `description` | `description` | string | When to use it; the `spawn_agent` description lists it. Required |
+| the body | `developer_instructions` | string | Added to the agent's system prompt. Required |
+| `nickname_candidates` | `nickname_candidates` | list of strings | Names for its agents instead of uah's list |
+| `model` | `model` | string | The agent's model, on the parent's provider. `inherit`, and Claude Code's aliases (`sonnet`, `opus`, `haiku`, `fable`, with a notice), mean the parent's |
+| `effort` or `model_reasoning_effort` | `model_reasoning_effort` | string | The agent's effort: `low`, `medium`, `high`, `xhigh`, or `max` |
+| `fast` or `service_tier` | `service_tier` | bool or string | `true` or `"priority"` (or `"fast"`) runs its agents with priority processing (fast mode), when the provider offers it; `false` or `"default"` runs them without it; absent follows the parent |
+| `tools` | `tools` | comma-separated string or list | The tools its agents are offered; absent offers every tool |
+| `approve` | `approve` | list of strings | Commands and MCP tools its agents run without asking, within the permission mode |
 
-A spawn call's `model` and `reasoning_effort` come before the role's, and the role's before `[agents]` defaults and the parent's. A role for fast reviews:
+`tools` takes uah's names (`Bash`, `ViewImage`, `SkillUse`, `apply_patch`, `mcp__<server>__<tool>`) and Claude Code's: `Edit`, `Write`, `MultiEdit`, and `NotebookEdit` are `apply_patch`, `Skill` is `SkillUse`, and `mcp__<server>` or `mcp__<server>__*` is every tool of a server. `Read`, `Grep`, `Glob`, and `LS` have no tool of their own in uah, whose agents read files with `Bash`; they are dropped with a notice. A list whose names all drop offers no tools. The spawn tools are never offered to a subagent.
+
+`approve` takes command prefixes (`git diff`, or Claude Code's `Bash(git diff *)` and `Bash(git diff:*)`), `apply_patch` (or `Edit`, `Write`) for patches, and MCP tool names or `mcp__<server>` patterns. A pre-approved action answers the approval prompt for the agent: a command runs where an approved command would run (in the sandbox, or outside it for an escalation), and an MCP tool as with `approval_mode = "approve"`. It never widens the permission mode: an escalation in read only mode is still asked, a `forbid` rule still denies, and `approval_policy = "never"` still declines commands and patches (a pre-approved MCP tool runs, as a tool with `approval_mode = "approve"` does). Each simple command of a compound command must match.
+
+A spawn call's `model` and `reasoning_effort` come before the role's, and the role's before `[agents]` defaults and the parent's. A role for fast reviews, in either format:
+
+```markdown
+---
+name: fast-reviewer
+description: Reviews a diff quickly for correctness bugs.
+model: gpt-6-luna
+effort: low
+fast: true
+tools: Bash
+approve: [git diff, git log]
+---
+
+Review the diff you are given. List only real bugs, each with its file and line.
+```
 
 ```toml
 # ~/.config/uagent/agents/fast-reviewer.toml
@@ -269,6 +289,8 @@ description = "Reviews a diff quickly for correctness bugs."
 model = "gpt-6-luna"
 model_reasoning_effort = "low"
 service_tier = "priority"
+tools = ["Bash"]
+approve = ["git diff", "git log"]
 developer_instructions = "Review the diff you are given. List only real bugs, each with its file and line."
 ```
 

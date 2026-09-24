@@ -147,23 +147,29 @@ Put them in `AGENTS.md` at the repository root or in any directory below it, as 
 
 ### Delegate to subagents
 
-Ask for it, for example "use two subagents to review the TUI and the store in parallel". The agent starts them with Codex's tools; each shows in the transcript as `AGENT <name>` with what it is doing, and `/agents` lists them. To define a kind of subagent, add a Codex role file:
+Ask for it, for example "use two subagents to review the TUI and the store in parallel". The agent starts them with Codex's tools; each shows in the transcript as `AGENT <name>` with what it is doing, and `/agents` lists them. Subagents never start subagents of their own. To define a kind of subagent, add a Markdown file with front matter, as for Claude Code (`.claude/agents/*.md` files work as they are), to `~/.config/uagent/agents/`, or to `.uagent/agents/` in a trusted project:
 
-```toml
-# ~/.config/uagent/agents/reviewer.toml
-name = "reviewer"
-description = "Reviews a diff for bugs and missing tests."
-model_reasoning_effort = "high"
-developer_instructions = "Review only; do not edit files. List each finding with its file and line."
+```markdown
+---
+name: reviewer
+description: Reviews a diff for bugs and missing tests.
+tools: Bash, mcp__github
+effort: high
+approve: [git diff, git log, mcp__github__get_pull_request]
+---
+
+Review only; do not edit files. List each finding with its file and line.
 ```
+
+The body is the subagent's instructions. `tools` limits the tools it is offered (Claude Code's `Edit` and `Write` are `apply_patch`; omit `tools` for all of them). `approve` lists commands and MCP tools it runs without asking, within the session's permission mode: read only stays read only, and a `forbid` rule still wins. Codex's TOML role files (`reviewer.toml`) work too. See [agent files](docs/configuration.md#subagents).
 
 Each subagent runs on the parent's provider. To give one another model, effort, or fast mode:
 
 - **Model and effort for one task.** Ask for it ("use a subagent on gpt-6-luna with low effort"). The agent passes `model` and `reasoning_effort` to `spawn_agent`. On openai-codex, a model outside Codex's catalog fails at once, with the models to choose from.
-- **Model, effort, and fast mode for a kind of subagent.** Set `model`, `model_reasoning_effort`, and `service_tier = "priority"` in its role file; `service_tier = "priority"` is fast mode for that role only. See [role files](docs/configuration.md#subagents).
+- **Model, effort, and fast mode for a kind of subagent.** Set `model`, `effort`, and `fast: true` in its agent file (`model`, `model_reasoning_effort`, and `service_tier = "priority"` in a TOML role file); fast mode then applies to that kind only. See [agent files](docs/configuration.md#subagents).
 - **Defaults for every subagent.** Set `default_subagent_model` and `default_subagent_reasoning_effort` in `[agents]`. Fast mode for every subagent follows the parent: `/fast` in the session turns it on for the children it starts.
 
-To hand a subagent the conversation so far, ask for a forked subagent ("fork a subagent to write the tests for what we just discussed"): `spawn_agent` with `fork_context` starts it from a copy of the parent's history, so it needs no exploring again and reuses the provider's prompt cache.
+To hand a subagent the conversation so far, ask for a forked subagent ("fork a subagent to write the tests for what we just discussed"): `spawn_agent` with `fork_context` starts it from a copy of the parent's history, so it needs no exploring again, and its first request starts with the parent's last one, which lets the provider reuse its prompt cache.
 
 To watch a subagent work, type `/agents <name>` (tab completes the names): the TUI shows its transcript as it works, and a message you type there goes to it. alt+← and alt+→ switch between the main agent and the subagents, as in Codex (alt+b and alt+f on an empty prompt in terminals that send those), esc esc interrupts the agent you are viewing, and ctrl+enter steers it. When a subagent finishes or is interrupted, the main agent is told with your next message, as in Codex; one it is waiting for returns at once. The main agent keeps running meanwhile. `uah sessions` lists subagents under their parent as `subagent-1a2b3c4d`, and `uah sessions show subagent-1a2b3c4d` prints one's transcript.
 
@@ -351,7 +357,9 @@ Subagents are child sessions that a session's agent starts, messages, waits for,
 A subagent is the same as the main agent in every way except its session, which is nested under the parent's: the same instructions, skills, sandbox, approvals, hooks, MCP servers, and compaction. It asks for approval through the parent's session.
 
 - Its session ID is `subagent-<uuid>`. A role or the spawn call can give it another model, effort, or fast mode on the parent's provider.
-- `fork_context` starts it from a copy of the parent's history, so its first model request starts with the parent's and reuses the provider's prompt cache.
+- A role is a Markdown file with front matter, as Claude Code's, or a Codex TOML role file; it can limit the subagent's tools and approve commands and MCP tools in advance, within the permission mode.
+- A subagent never starts subagents: the depth limit is 1.
+- `fork_context` starts it from a copy of the parent's history, so its first model request starts with the parent's, for the provider's prompt cache.
 - A failed subagent reports why, such as the provider's message, to the parent's `wait_agent`, the TUI, and `uah run`.
 - `/agents <name>` shows its live transcript in the TUI.
 
