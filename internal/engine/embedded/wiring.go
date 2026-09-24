@@ -110,6 +110,8 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 	if err != nil {
 		return nil, err
 	}
+	req.SessionID = string(sessionID)
+	registry = withPreToolUse(runCtx, registry, w.e.cfg.Hooks, req, w.l.SessionsDir)
 	operations := operation.NewLocalOperationManager(runCtx)
 	inputs, err := inbox.New(runCtx, restored.ExternalInputIDs)
 	if err != nil {

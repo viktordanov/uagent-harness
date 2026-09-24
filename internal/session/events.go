@@ -85,7 +85,19 @@ type Notice struct {
 	Message string
 }
 
+// HookRan reports one hook run.
+type HookRan struct {
+	At       time.Time
+	Event    string
+	Command  string
+	Source   string
+	Outcome  string // "ok", "blocked", "error", or "skipped"
+	Reason   string
+	Duration time.Duration
+}
+
 func (e SessionOpened) OccurredAt() time.Time      { return e.At }
+func (e HookRan) OccurredAt() time.Time            { return e.At }
 func (e InstructionsLoaded) OccurredAt() time.Time { return e.At }
 func (e InputQueued) OccurredAt() time.Time        { return e.At }
 func (e InputSent) OccurredAt() time.Time          { return e.At }

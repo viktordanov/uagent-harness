@@ -5,8 +5,10 @@ package session
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -16,6 +18,7 @@ import (
 	"github.com/viktordanov/uagent/core"
 
 	"github.com/viktordanov/uagent-harness/internal/engine"
+	"github.com/viktordanov/uagent-harness/internal/hooks"
 )
 
 // ErrClosed means the session has been closed.
@@ -43,6 +46,12 @@ type Options struct {
 	Settings Settings
 	// Instructions, when set, is emitted after SessionOpened.
 	Instructions *InstructionsLoaded
+	// Hooks run at session events (nil runs none).
+	Hooks *hooks.Runner
+	// SessionsDir holds the runner session files; hooks get the file's path.
+	SessionsDir string
+	// Notices are shown after SessionOpened, such as configuration warnings.
+	Notices []string
 }
 
 // Session is safe to use from any goroutine. All state lives on one internal
@@ -69,7 +78,28 @@ type Session struct {
 	restartAfterStop     bool
 	interruptWhenStarted bool
 	closeReply           chan error
+
+	hooks          *hooks.Runner
+	transcriptPath string
+	resumed        bool
+	jobs           chan func()
+	// checking are messages waiting for their UserPromptSubmit hooks, in order.
+	checking []pendingInput
+	// startContext is SessionStart hook context for the first message.
+	startContext []string
+	tools        map[string]core.ToolCalled
+	runID        string
+	stopGen      int
+	stopStreak   int
 }
+
+type pendingInput struct {
+	input core.UserInput
+	steer bool
+}
+
+// maxStopContinuations stops Stop hooks from keeping the agent going forever.
+const maxStopContinuations = 5
 
 // Open starts a session. Its first event is SessionOpened.
 func Open(ctx context.Context, eng engine.Engine, opts Options) (*Session, error) {
@@ -86,6 +116,7 @@ func Open(ctx context.Context, eng engine.Engine, opts Options) (*Session, error
 		in: make(chan any, eventBuffer), out: make(chan core.Event, eventBuffer),
 		ctx: runCtx, stop: stop, done: make(chan struct{}),
 		settings: opts.Settings, state: StateIdle, sent: map[string]bool{},
+		hooks: opts.Hooks, resumed: opts.Resumed, tools: map[string]core.ToolCalled{},
 	}
 	s.out <- SessionOpened{At: time.Now(), ID: id, Resumed: opts.Resumed, Engine: eng.Name(), Settings: opts.Settings}
 	if opts.Instructions != nil {
@@ -93,9 +124,51 @@ func Open(ctx context.Context, eng engine.Engine, opts Options) (*Session, error
 		loaded.At = time.Now()
 		s.out <- loaded
 	}
+	if opts.SessionsDir != "" {
+		s.transcriptPath = filepath.Join(opts.SessionsDir, id+".session.jsonl")
+	}
+	for _, n := range opts.Notices {
+		s.out <- Notice{At: time.Now(), Level: "warning", Message: n}
+	}
+	if s.hooks != nil {
+		s.jobs = make(chan func(), eventBuffer)
+		go s.work()
+		s.hooks.OnResult(func(r hooks.Result) { s.post(evHook{result: r, at: time.Now()}) })
+		if s.hooks.Has(hooks.SessionStart, "") {
+			in := s.hookInput(hooks.SessionStart)
+			in.Source = "startup"
+			if opts.Resumed {
+				in.Source = "resume"
+			}
+			s.jobs <- func() { s.post(evStartChecked{decision: s.hooks.Run(s.ctx, in)}) }
+		}
+	}
 	go s.loop()
 
 	return s, nil
+}
+
+// work runs hook jobs one at a time, in order.
+func (s *Session) work() {
+	for job := range s.jobs {
+		job()
+	}
+}
+
+// post hands a result to the loop, or drops it once the session is closed.
+func (s *Session) post(msg any) {
+	select {
+	case s.in <- msg:
+	case <-s.done:
+	}
+}
+
+// hookInput is the payload fields every hook gets.
+func (s *Session) hookInput(event hooks.Event) hooks.Input {
+	return hooks.Input{
+		Event: event, SessionID: s.id, RunID: s.runID, Cwd: s.settings.Workspace,
+		Model: s.settings.Model, Effort: s.settings.Effort, TranscriptPath: s.transcriptPath,
+	}
 }
 
 // ID is the runner session ID; resume the session with it.
@@ -196,6 +269,19 @@ type (
 		result core.Result
 		err    error
 	}
+	evHook struct {
+		result hooks.Result
+		at     time.Time
+	}
+	evStartChecked  struct{ decision hooks.Decision }
+	evPromptChecked struct {
+		id       string
+		decision hooks.Decision
+	}
+	evStopChecked struct {
+		gen      int
+		decision hooks.Decision
+	}
 )
 
 func call[T any](s *Session, cmd any) (T, error) {
@@ -223,6 +309,9 @@ func (s *Session) loop() {
 	defer close(s.done)
 	defer close(s.out)
 	defer s.stop()
+	if s.jobs != nil {
+		defer close(s.jobs)
+	}
 	for msg := range s.in {
 		switch m := msg.(type) {
 		case request:
@@ -230,6 +319,7 @@ func (s *Session) loop() {
 			m.reply <- reply{value: value, err: err}
 		case cmdClose:
 			if s.run == nil && s.state != StateStarting {
+				s.sessionEnd(s.ctx)
 				s.state = StateClosed
 				m.reply <- nil
 
@@ -247,6 +337,19 @@ func (s *Session) loop() {
 			if s.onEnded(m) {
 				return
 			}
+		case evHook:
+			r := m.result
+			s.emit(HookRan{
+				At: m.at, Event: string(r.Hook.Event), Command: r.Hook.Command, Source: string(r.Hook.Source),
+				Outcome: string(r.Outcome), Reason: r.Reason, Duration: r.Duration,
+			})
+		case evStartChecked:
+			s.showMessages(m.decision)
+			s.startContext = m.decision.Context
+		case evPromptChecked:
+			s.onPromptChecked(m)
+		case evStopChecked:
+			s.onStopChecked(m)
 		}
 	}
 }
@@ -264,6 +367,12 @@ func (s *Session) handle(cmd any) (any, error) {
 
 		return struct{}{}, nil
 	case cmdWithdraw:
+		if i := slices.IndexFunc(s.checking, func(p pendingInput) bool { return p.input.ID == c.id }); i >= 0 {
+			s.checking = slices.Delete(s.checking, i, i+1)
+			s.emit(InputWithdrawn{At: time.Now(), ID: c.id})
+
+			return true, nil
+		}
 		i := slices.IndexFunc(s.queue, func(in core.UserInput) bool { return in.ID == c.id })
 		if i < 0 {
 			return false, nil
@@ -282,6 +391,62 @@ func (s *Session) handle(cmd any) (any, error) {
 func (s *Session) onSubmit(c cmdSubmit) core.UserInput {
 	input := core.UserInput{ID: uuid.NewString(), Text: c.text}
 	s.emit(InputQueued{At: time.Now(), Input: input})
+	s.stopStreak = 0
+	s.stopGen++ // a pending Stop hook no longer decides anything
+	if s.jobs != nil && (s.hooks.Has(hooks.UserPromptSubmit, "") || s.hooks.Has(hooks.SessionStart, "")) {
+		// Through the worker even without UserPromptSubmit hooks, so the
+		// SessionStart context is ready and the order is kept.
+		s.checking = append(s.checking, pendingInput{input: input, steer: c.steer})
+		in := s.hookInput(hooks.UserPromptSubmit)
+		in.Prompt = input.Text
+		s.jobs <- func() {
+			var d hooks.Decision
+			if s.hooks.Has(hooks.UserPromptSubmit, "") {
+				d = s.hooks.Run(s.ctx, in)
+			}
+			s.post(evPromptChecked{id: input.ID, decision: d})
+		}
+
+		return input
+	}
+	s.dispatch(input, c.steer)
+
+	return input
+}
+
+// onPromptChecked sends a message its hooks allowed, with any added context.
+func (s *Session) onPromptChecked(m evPromptChecked) {
+	i := slices.IndexFunc(s.checking, func(p pendingInput) bool { return p.input.ID == m.id })
+	if i < 0 {
+		return // withdrawn while its hooks ran
+	}
+	p := s.checking[i]
+	s.checking = slices.Delete(s.checking, i, i+1)
+	s.showMessages(m.decision)
+	if m.decision.Block {
+		s.emit(InputFailed{At: time.Now(), IDs: []string{p.input.ID}, Reason: "blocked by a UserPromptSubmit hook: " + m.decision.Reason})
+		if s.state == StateIdle && len(s.checking) == 0 && s.closeReply == nil {
+			s.emit(Idle{At: time.Now()})
+		}
+
+		return
+	}
+	extra := slices.Concat(s.startContext, m.decision.Context)
+	s.startContext = nil
+	if len(extra) > 0 {
+		p.input.Text += "\n\n" + strings.Join(extra, "\n\n")
+	}
+	s.dispatch(p.input, p.steer)
+}
+
+func (s *Session) showMessages(d hooks.Decision) {
+	for _, msg := range d.Messages {
+		s.emit(Notice{At: time.Now(), Level: "info", Message: msg})
+	}
+}
+
+// dispatch starts a run with the message, sends it live, or queues it.
+func (s *Session) dispatch(input core.UserInput, steer bool) {
 	switch s.state {
 	case StateIdle:
 		// Messages left queued by an interrupt go out first, in order.
@@ -289,29 +454,27 @@ func (s *Session) onSubmit(c cmdSubmit) core.UserInput {
 		s.queue = nil
 		s.startRun(inputs)
 	case StateRunning:
-		if c.steer && s.caps.LiveInput {
+		if steer && s.caps.LiveInput {
 			if err := s.run.Send(input); err == nil {
 				s.markSent([]core.UserInput{input})
 				s.live = append(s.live, input)
 
-				return input
+				return
 			}
 		}
 		s.queue = append(s.queue, input)
-		if c.steer {
+		if steer {
 			s.restartAfterStop = true
 			s.interruptLive()
 		}
 	case StateStarting, StateStopping:
 		s.queue = append(s.queue, input)
-		if c.steer {
+		if steer {
 			s.restartAfterStop = true
 			s.interruptLive()
 		}
 	case StateClosed:
 	}
-
-	return input
 }
 
 func (s *Session) onSettings(next Settings) Applied {
@@ -411,6 +574,14 @@ func (s *Session) onStarted(m evStarted) bool {
 
 func (s *Session) onRunEvent(e core.Event) {
 	s.emit(e)
+	switch v := e.(type) {
+	case core.RunStarted:
+		s.runID = v.RunID
+	case core.ToolCalled:
+		s.tools[v.CallID] = v
+	case core.ToolFinished:
+		s.postToolUse(v)
+	}
 	if m, ok := e.(core.UserMessage); ok && s.sent[m.ID] {
 		delete(s.sent, m.ID)
 		s.emit(InputDelivered{At: time.Now(), ID: m.ID})
@@ -444,6 +615,7 @@ func (s *Session) onEnded(m evEnded) bool {
 	}
 	s.state = StateIdle
 	s.restartAfterStop = false
+	clear(s.tools)
 	if len(s.queue) > 0 && !userStopped {
 		inputs := s.queue
 		s.queue = nil
@@ -451,9 +623,70 @@ func (s *Session) onEnded(m evEnded) bool {
 
 		return false
 	}
+	if len(s.checking) > 0 {
+		return false // a message is on its way through its hooks
+	}
+	if !userStopped && s.hooks.Has(hooks.Stop, "") {
+		s.stopGen++
+		gen := s.stopGen
+		in := s.hookInput(hooks.Stop)
+		in.StopHookActive = s.stopStreak > 0
+		s.jobs <- func() { s.post(evStopChecked{gen: gen, decision: s.hooks.Run(s.ctx, in)}) }
+
+		return false
+	}
 	s.emit(Idle{At: time.Now()})
 
 	return false
+}
+
+// onStopChecked continues the agent when a Stop hook blocked, and otherwise
+// reports the session idle.
+func (s *Session) onStopChecked(m evStopChecked) {
+	if m.gen != s.stopGen || s.state != StateIdle || s.closeReply != nil {
+		return // a message arrived meanwhile
+	}
+	s.showMessages(m.decision)
+	reason := strings.TrimSpace(m.decision.Reason)
+	if m.decision.Block && reason != "" {
+		if s.stopStreak >= maxStopContinuations {
+			s.emit(Notice{At: time.Now(), Level: "warning", Message: fmt.Sprintf("Stop hooks continued the agent %d times in a row; stopping", s.stopStreak)})
+		} else {
+			s.stopStreak++
+			input := core.UserInput{ID: uuid.NewString(), Text: reason}
+			s.emit(InputQueued{At: time.Now(), Input: input})
+			s.startRun([]core.UserInput{input})
+
+			return
+		}
+	}
+	s.stopStreak = 0
+	s.emit(Idle{At: time.Now()})
+}
+
+// postToolUse runs PostToolUse hooks for a finished tool; they only observe.
+func (s *Session) postToolUse(f core.ToolFinished) {
+	called, ok := s.tools[f.CallID]
+	if !ok || !s.hooks.Has(hooks.PostToolUse, called.Name) {
+		return
+	}
+	in := s.hookInput(hooks.PostToolUse)
+	in.ToolName, in.ToolUseID = called.Name, f.CallID
+	if json.Valid([]byte(called.Arguments)) {
+		in.ToolInput = json.RawMessage(called.Arguments)
+	}
+	in.ToolResponse = &hooks.ToolResponse{Success: f.OK, Detail: f.Detail, Stdout: f.OutPath, Stderr: f.ErrPath}
+	s.jobs <- func() { s.hooks.Run(s.ctx, in) }
+}
+
+// sessionEnd runs SessionEnd hooks; each gets at most a second.
+func (s *Session) sessionEnd(ctx context.Context) {
+	if !s.hooks.Has(hooks.SessionEnd, "") {
+		return
+	}
+	in := s.hookInput(hooks.SessionEnd)
+	in.Reason = "exit"
+	s.hooks.Run(context.WithoutCancel(ctx), in) // the session is closing; its context may be done
 }
 
 // requeueUnread puts messages sent into the run that it never read back at
@@ -475,6 +708,7 @@ func (s *Session) requeueUnread(userStopped bool) {
 }
 
 func (s *Session) finishClose(err error) {
+	s.sessionEnd(s.ctx)
 	s.state = StateClosed
 	s.closeReply <- err
 }

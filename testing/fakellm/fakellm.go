@@ -34,6 +34,8 @@ type Request struct {
 	UserTexts []string
 	// System is the system prompt (the system messages in the input).
 	System string
+	// ToolOutputs are the tool results in the input, in order.
+	ToolOutputs []string
 }
 
 // Server serves the script. When the script runs out, it answers "done".
@@ -187,11 +189,17 @@ func parseRequest(body []byte) Request {
 			Type    string          `json:"type"`
 			Role    string          `json:"role"`
 			Content json.RawMessage `json:"content"`
+			Output  json.RawMessage `json:"output"`
 		} `json:"input"`
 	}
 	_ = json.Unmarshal(body, &raw)
 	req := Request{Model: raw.Model, ServiceTier: raw.ServiceTier, Effort: raw.Reasoning.Effort}
 	for _, in := range raw.Input {
+		if in.Type == "function_call_output" {
+			req.ToolOutputs = append(req.ToolOutputs, strings.Join(texts(in.Output), ""))
+
+			continue
+		}
 		switch in.Role {
 		case "user":
 			req.UserTexts = append(req.UserTexts, texts(in.Content)...)
