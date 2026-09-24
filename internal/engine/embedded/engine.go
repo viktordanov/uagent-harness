@@ -19,6 +19,7 @@ import (
 	"github.com/viktordanov/uagent-harness/internal/compaction"
 	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/hooks"
+	"github.com/viktordanov/uagent-harness/internal/mcp"
 	"github.com/viktordanov/uagent-harness/internal/sandbox"
 )
 
@@ -56,6 +57,8 @@ type Config struct {
 	// BeforeCompact, when set, runs as each compaction starts; an error
 	// cancels the compaction. A PreCompact hook attaches here.
 	BeforeCompact func(ctx context.Context, sessionID string, trigger compaction.Trigger) error
+	// MCP, when set, offers its servers' tools; the engine closes it.
+	MCP *mcp.Manager
 }
 
 // Engine runs the agent in process.
@@ -80,6 +83,24 @@ func New(cfg Config) *Engine {
 }
 
 func (e *Engine) Name() string { return "embedded" }
+
+// MCPServers reports the MCP servers, starting them if needed.
+func (e *Engine) MCPServers() []mcp.ServerStatus {
+	if e.cfg.MCP == nil {
+		return nil
+	}
+
+	return e.cfg.MCP.Status()
+}
+
+// Close stops the MCP servers; a later run starts them again.
+func (e *Engine) Close() error {
+	if e.cfg.MCP == nil {
+		return nil
+	}
+
+	return e.cfg.MCP.Close() //nolint:wrapcheck // the manager's errors name the server
+}
 
 func (e *Engine) Capabilities() engine.Capabilities {
 	p, err := e.provider(e.cfg.Provider)

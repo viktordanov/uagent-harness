@@ -8,6 +8,8 @@ import (
 	"errors"
 
 	"github.com/viktordanov/uagent/core"
+
+	"github.com/viktordanov/uagent-harness/internal/mcp"
 )
 
 // ErrUnsupported means the engine cannot do this while a run is live.
@@ -31,6 +33,14 @@ type Engine interface {
 	// Start begins a run. The sink receives RunStarted first and RunFinished
 	// last once Start succeeds, from one goroutine at a time.
 	Start(ctx context.Context, req core.Request, opts Options, sink core.Sink) (Run, error)
+}
+
+// MCPLister is an engine that runs MCP servers (the embedded engine). An
+// engine that also holds them between runs implements io.Closer, and the
+// session closes it.
+type MCPLister interface {
+	// MCPServers reports each configured server, starting them if needed.
+	MCPServers() []mcp.ServerStatus
 }
 
 // Options are run settings that core.Request does not carry.

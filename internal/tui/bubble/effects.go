@@ -84,6 +84,15 @@ func (m Model) run(e state.Effect) tea.Cmd {
 		dir := m.deps.Cwd
 
 		return func() tea.Msg { return state.FilesLoaded{Paths: workspaceFiles(m.ctx, dir)} }
+	case state.EffListMCP:
+		return func() tea.Msg {
+			if sess == nil {
+				return fail(errNoSession)
+			}
+			servers, ok := sess.MCPServers()
+
+			return state.MCPListed{Servers: servers, Supported: ok}
+		}
 	case state.EffOpenSession:
 		return m.switchTo(e.ID)
 	case state.EffQuit:

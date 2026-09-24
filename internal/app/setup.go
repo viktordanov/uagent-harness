@@ -19,6 +19,7 @@ import (
 	"github.com/viktordanov/uagent-harness/internal/engine/process"
 	"github.com/viktordanov/uagent-harness/internal/hooks"
 	"github.com/viktordanov/uagent-harness/internal/instructions"
+	"github.com/viktordanov/uagent-harness/internal/mcp"
 	"github.com/viktordanov/uagent-harness/internal/sandbox"
 	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/internal/store"
@@ -73,7 +74,11 @@ func Setup(ctx context.Context, in Inputs, logOutput io.Writer) (Result, error) 
 	}
 	r.Sandbox = absPolicy(r.Sandbox, in.Workspace)
 	logger := slog.New(slog.NewTextHandler(logOutput, &slog.HandlerOptions{Level: LogLevels[in.LogLevel]}))
-	eng, err := newEngine(r, in.Runner, stateDir, logger, &opts) //nolint:contextcheck // on Linux, the sandbox probes bwrap once per process, with its own timeout
+	servers, err := mcpManager(cfg, in.Workspace, logOutput)
+	if err != nil {
+		return Result{}, err
+	}
+	eng, err := newEngine(r, in.Runner, stateDir, logger, servers, &opts) //nolint:contextcheck // on Linux, the sandbox probes bwrap once per process, with its own timeout
 	if err != nil {
 		return Result{}, err
 	}
@@ -104,7 +109,7 @@ func loadHooks(cfg config.Config, workspace string) (*hooks.Runner, error) {
 }
 
 // newEngine builds the resolved engine and adds its notices to opts.
-func newEngine(r Resolved, runnerPath, stateDir string, logger *slog.Logger, opts *session.Options) (engine.Engine, error) {
+func newEngine(r Resolved, runnerPath, stateDir string, logger *slog.Logger, servers *mcp.Manager, opts *session.Options) (engine.Engine, error) {
 	sandboxDir := filepath.Join(stateDir, "sandbox")
 	if r.Engine == EngineProcess {
 		runner, err := harness.FindRunner(runnerPath)
@@ -113,6 +118,9 @@ func newEngine(r Resolved, runnerPath, stateDir string, logger *slog.Logger, opt
 		}
 		if opts.Hooks.Has(hooks.PreToolUse, "") {
 			opts.Notices = append(opts.Notices, "PreToolUse hooks need the embedded engine; they do not run on the process engine")
+		}
+		if servers != nil {
+			opts.Notices = append(opts.Notices, "MCP servers need the embedded engine; they do not start on the process engine")
 		}
 		// The runner runs each command with $SHELL, so a sandboxing shell
 		// sandboxes every command without changing the runner.
@@ -129,7 +137,7 @@ func newEngine(r Resolved, runnerPath, stateDir string, logger *slog.Logger, opt
 	}
 	emb := embedded.New(embedded.Config{
 		StateDir: stateDir, MaxDisk: r.MaxDisk, Logger: logger, Provider: r.Settings.Provider, Hooks: opts.Hooks,
-		Sandbox: &r.Sandbox, SandboxDir: sandboxDir, Env: r.Env,
+		Sandbox: &r.Sandbox, SandboxDir: sandboxDir, Env: r.Env, MCP: servers,
 		AutoCompactPercent: r.AutoCompactPercent, ContextWindow: r.Settings.ContextWindow,
 		BeforeCompact: preCompactHook(opts.Hooks, r.Settings),
 	})

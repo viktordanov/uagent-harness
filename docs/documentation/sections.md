@@ -11,6 +11,7 @@ Section IDs identify a concern within a README. Keep the ID stable when a headin
 | `compaction` | Compaction and the context meter |
 | `instructions` | AGENTS.md discovery and the host prompt |
 | `hooks` | Hook events, contract, and trust |
+| `mcp` | MCP servers: configuration, tools, and results |
 | `configuration` | Configuration files and precedence |
 | `development` | Building, testing, linting, and CI |
 
