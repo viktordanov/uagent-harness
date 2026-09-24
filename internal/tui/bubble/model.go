@@ -125,7 +125,15 @@ func newComposer(theme *render.Styles) textarea.Model {
 	ta := textarea.New()
 	ta.Placeholder = "Ask uah to do anything · / for commands"
 	ta.ShowLineNumbers = false
-	ta.Prompt = "λ "
+	// The λ marks the composer's first row only; the rows below it line up
+	// under the text, as Codex's composer does.
+	ta.SetPromptFunc(2, func(p textarea.PromptInfo) string {
+		if p.LineNumber == 0 {
+			return "λ "
+		}
+
+		return "  "
+	})
 	ta.DynamicHeight = true
 	ta.MinHeight = 1
 	ta.MaxHeight = 8

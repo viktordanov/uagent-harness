@@ -316,3 +316,23 @@ func TestTUI_StatusShowsActivity(t *testing.T) {
 	d.key(tea.KeyEnter, 0)
 	d.waitFor("activity · last 12 weeks · 3 runs")
 }
+
+// TestTUI_LambdaOnTheFirstRowOnly draws the λ before the composer's first
+// row, and nothing before the rows under it.
+func TestTUI_LambdaOnTheFirstRowOnly(t *testing.T) {
+	d := start(t, deps(t, "simple.jsonl"))
+	d.until("the session is open", func() bool { return !strings.Contains(d.view(), "Opening the session") })
+	d.typeText("first")
+	d.key('j', tea.ModCtrl) // a new line
+	d.typeText("second")
+	d.key('j', tea.ModCtrl)
+	d.typeText("third")
+	view := d.view()
+	assert.Contains(t, view, "λ first")
+	assert.Contains(t, view, "\n  second")
+	assert.Contains(t, view, "\n  third")
+	assert.Equal(t, 1, strings.Count(view, "\nλ "), "one λ for the whole composer")
+	d.key('c', tea.ModCtrl)
+	d.key('c', tea.ModCtrl)
+	d.waitQuit()
+}

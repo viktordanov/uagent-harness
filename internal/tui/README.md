@@ -192,7 +192,7 @@ The compact view is shaped like Codex's, in amber. The choices came from the sty
 | Subagents | While running, at the bottom above the working line with a blank line before each: `AGENT Ada  42s`, and under it `└ ⠹ Read …`, its live tool call. A finished one is one line where it was spawned: `done in 1m 12s`, or `failed:` and the provider's reason; closing it afterwards keeps that | `activeAgents`, `agentLines` |
 | Working | A breathing `λ` (seven shades, one breath every 1.6 s) and `Working (12s • esc to interrupt)` | `workingLine`, `breathing` |
 | A finished run | `12:14 PM · worked 1m 12s`: Codex's time and Claude Code's duration; how it ended first when not ok | `finishLine` (a `KindFinish` item) |
-| Composer | `λ ` on the band, with a band row above and below | `Screen`, `composerStyles` in `bubble/model.go` |
+| Composer | `λ ` before its first row only (the rows under it line up with the text), on the band, with a band row above and below | `Screen`, `composerStyles` in `bubble/model.go` |
 | Notices | Plain dim text; warnings start with `!` and errors with `✗` | `itemLines` |
 | Footer | Model and effort, fast, the permission mode (`read only mode`, `workspace mode`, `auto mode`, or `full access mode`), directory, context left, hints. The detailed view's header shows the mode too | `footerLine`, `modeText` |
 | `/context` | One dot per percent of the window in its category's color, `·` for free space, `○` for the auto-compaction buffer | `contextLines` |
