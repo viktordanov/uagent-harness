@@ -2,7 +2,47 @@
 
 The definitive list of work until it is done or the stop time arrives. Nothing outside this list gets built; an idea that comes up goes under [Later](#later), not into the work.
 
-Stop time: **07:50 local** (check with `date`). After **07:30**, start nothing new: finish, merge, and document what is in flight.
+Stop time (first round): 07:50 local. Later rounds have none.
+
+## Pending (round 3)
+
+Asked for by the owner after item 28; these come first.
+
+| # | Item | Lane | Status |
+| --- | --- | --- | --- |
+| 29 | MCP approvals from the CLI and the prompt; the guard hook becomes `forbid` rules | lane approvals | doing |
+| 30 | The auto-review prompt (and the compaction prompt) customizable, with a CLI that writes the defaults into the config folder as a starting point | lane approvals | doing |
+| 31 | Custom agents as Markdown files with front matter, as Claude Code and Codex have them; subagents never start subagents | lane agents3 | doing |
+| 32 | A real probe that forking a subagent reuses the provider's prompt cache | lane agents3 | doing |
+| 33 | The process engine made solid, with the behavior both engines share in one place | lane process | doing |
+
+### 29. MCP approvals
+
+- `uah mcp add <name> … --approve` sets `default_tools_approval_mode = "approve"` for the new server; `uah mcp approve <name> [tool] [--mode approve|prompt|writes|auto]` changes it later, through the comment-keeping editor (`internal/config/tomledit`).
+- The approval prompt for an MCP call gets "Yes, and always allow this tool", which saves `tools.<tool>.approval_mode = "approve"` for that server in the user file, as "don't ask again" saves a rule for a command.
+- This repository's `.uagent/config.toml` replaces the example guard hook with `[approvals] forbid` rules (the sandbox and the rules already cover what it blocked); the hook stays as an example in the hooks README only.
+
+### 30. Prompts you can customize
+
+- The auto-reviewer's prompt, from a file (`[review] prompt_file`, or Codex's key if it has one), falling back to the built-in one.
+- A CLI that writes the built-in prompts into the config folder as a starting point (for example `uah prompts init` writing `~/.config/uagent/prompts/review.md` and `compact.md`, and printing the keys that use them), so customizing starts from the real defaults. Compaction already reads `compact_prompt` and `experimental_compact_prompt_file`; the CLI covers it too.
+
+### 31. Custom agents as Markdown
+
+- Agent definitions as Markdown files with YAML front matter in `~/.config/uagent/agents/*.md` and a trusted workspace's `.uagent/agents/*.md`, as Claude Code's `.claude/agents/*.md` (name, description, tools, model) and beside Codex's TOML role files, which keep working. The body is the agent's instructions.
+- Front matter can pre-approve: the tools the agent may use (an allow-list), and commands or MCP tools it may run without asking, within the parent's permission mode and never beyond it.
+- Subagents never start subagents: the depth limit is fixed at 1, not configurable above it, and a child is never offered the spawn tools except as a fork keeping the parent's prefix, where every spawn is refused.
+
+### 32. The fork, for real
+
+One small real probe on openai-codex: a parent with some history spawns a child with `fork_context`, and the child's first response reports cached input tokens close to the parent's last request. The result goes into docs/design/subagents.md.
+
+### 33. The process engine
+
+- The behavior that does not depend on the engine lives in one place both engines use (instructions, hooks around the run, rules and permission modes where the runner allows, the session settings), so the process engine is not a second, thinner path.
+- What the process engine cannot do (live input, approvals inside a run, compaction) is stated once, checked at session start, and reported in `uah doctor` and the TUI rather than failing later.
+- Tests on the fake and the real runner for each of these.
+
 
 ## Rules
 
