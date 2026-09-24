@@ -80,7 +80,7 @@ func TestVersion(t *testing.T) {
 func TestHelpListsCommands(t *testing.T) {
 	res := uah(t, "--help")
 	require.Equal(t, 0, res.code)
-	for _, command := range []string{"run", "resume", "sessions", "hooks"} {
+	for _, command := range []string{"run", "resume", "sessions", "hooks", "doctor"} {
 		assert.Regexp(t, `(?m)^\s+`+command+`\b`, res.stdout)
 	}
 	assert.Contains(t, res.stdout, "a general-purpose harness for unreal-agent-runner")

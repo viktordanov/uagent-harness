@@ -44,7 +44,7 @@ func newApp() *cli.Command {
 			"/help lists commands. Resume with `uah resume`, --session <id or prefix>, or ctrl+s inside.",
 		Flags:    sessionFlags(),
 		Action:   tuiAction,
-		Commands: []*cli.Command{runCommand(), resumeCommand(), sessionsCommand(), hooksCommand()},
+		Commands: []*cli.Command{runCommand(), resumeCommand(), sessionsCommand(), hooksCommand(), doctorCommand()},
 	}
 }
 
