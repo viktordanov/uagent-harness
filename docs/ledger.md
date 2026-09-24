@@ -18,7 +18,7 @@ Asked for by the owner after item 28; these come first.
 | 34 | On quit, print how to resume the session, as Codex does | main session | done |
 | 35 | Research spike: Codex subscription usage (rate limits) on the openai-codex backend, isolated from the rest | lane usage | doing |
 | 36 | The composer's λ on its first row only | main session | done |
-| 37 | Paste images into the prompt, as Codex and Claude Code do (ctrl+v on macOS; the Linux key to be found); first check what the runner and uagent allow | lane images | doing |
+| 37 | Paste images into the prompt, as Codex and Claude Code do (ctrl+v on macOS; the Linux key to be found); first check what the runner and uagent allow | lane images | done (embedded engine; the image goes as a ViewImage result, since the runner's user message is text only; see docs/design/images.md) |
 | 38 | `!` shell mode in the composer: run a command yourself, and its result joins the conversation | lane shell | doing |
 
 ### 34. The resume hint on quit
@@ -32,6 +32,8 @@ A research spike on how Codex reads the ChatGPT subscription's usage and rate li
 ### 37. Pasting images
 
 Codex and Claude Code let you paste an image from the clipboard into the prompt (ctrl+v on macOS, where cmd+v pastes text) and attach image files, and send it to the model with the message. First: how both do it (the keys on macOS and Linux, how they read the clipboard, how the image shows in the composer, what they send), and whether unreal-agent-runner and uagent can carry an image in a user message at all (the runner's inbox, `core.UserInput`, the session store, the Responses request). Then the plan, and the build if nothing upstream blocks it; a change the runner would need is written down, not made, since the runner stays unchanged.
+
+- Built: ctrl+v and alt+v paste the clipboard's image on macOS (osascript) and Linux (wl-paste or xclip), as Codex's ctrl+v and alt+v; a pasted or dropped image path and an `@` image file attach too. `[Image #N]` placeholders show in the composer, one backspace removes one with its image, and the transcript shows them live and resumed. The image is stored in `<state>/images` and travels with the message as a tag line through the session, the engine, and the runner's inbox. The runner cannot put an image in a user message (`llm.Message` is text only, the context builder decodes only a string), so the embedded engine sends each image as a `ViewImage` call and result after the message; a probe on openai-codex confirmed the provider takes it. The process engine states the gap through the capability table. Open, defaults taken: the upstream runner change (image parts in `llm.Message`, a structured inbox payload, `input_image` in the Responses encoder) is written down, not made; no renumbering after a delete; no Windows or WSL clipboard reader; no store cleanup. See [the images design](design/images.md).
 
 ### 38. `!` shell mode
 
