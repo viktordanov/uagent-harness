@@ -217,6 +217,9 @@ func footerLine(s state.State, w int) string {
 		if s.Scroll > 0 {
 			hint = "scrolled up · end returns "
 		}
+		if pct, ok := s.ContextLeft(); ok {
+			hint = fmt.Sprintf("%d%% context left · %s", pct, hint)
+		}
 		// The hint wins over the left side, which is cut when the line is full.
 		room := w - ansi.StringWidth(hint)
 		if room > 0 {
@@ -236,6 +239,10 @@ func footerLine(s state.State, w int) string {
 		text += fmt.Sprintf(" · overlap %d%%", int(100*t.Overlap/t.ToolBusy))
 	}
 	hint := "enter send · ctrl+enter now · / commands "
+	if left, ok := s.ContextLeft(); ok {
+		text += fmt.Sprintf(" · %d%% context left", left)
+		hint = "/ commands "
+	}
 	if gap := w - ansi.StringWidth(text) - ansi.StringWidth(hint); gap > 0 {
 		text += strings.Repeat(" ", gap) + hint
 	}

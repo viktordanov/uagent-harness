@@ -35,6 +35,8 @@ func (m Model) run(e state.Effect) tea.Cmd {
 		return withSession(func(s *session.Session) error { _, err := s.SteerNow(e.Text); return err })
 	case state.EffInterrupt:
 		return withSession(func(s *session.Session) error { return s.Interrupt() })
+	case state.EffCompact:
+		return withSession(func(s *session.Session) error { return s.Compact() })
 	case state.EffSetSettings:
 		return withSession(func(s *session.Session) error { _, err := s.SetSettings(e.Settings); return err })
 	case state.EffWithdraw:
