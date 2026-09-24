@@ -94,6 +94,9 @@ type Prompt struct {
 	// Tool and Input are Request.Tool and Request.Input: empty for Bash.
 	Tool  string
 	Input json.RawMessage
+	// MCPTool, when set, is the qualified name (mcp__<server>__<tool>) of
+	// the MCP tool asked about, and offers ApproveTool for it.
+	MCPTool string
 }
 
 // Answer is the user's choice.
@@ -103,7 +106,11 @@ const (
 	Approve Answer = "approve"
 	// ApprovePrefix approves and allows the proposed prefix from now on.
 	ApprovePrefix Answer = "approve_prefix"
-	Decline       Answer = "decline"
+	// ApproveTool approves an MCP tool call and sets the tool's
+	// approval_mode to approve from now on, as Codex's "Allow and don't ask
+	// me again".
+	ApproveTool Answer = "approve_tool"
+	Decline     Answer = "decline"
 )
 
 // declinePrefix starts a decline that carries its own reason.
@@ -114,7 +121,7 @@ const declinePrefix = "decline: "
 func DeclineBecause(reason string) Answer { return Answer(declinePrefix + reason) }
 
 // Approved reports whether the answer lets the command run.
-func (a Answer) Approved() bool { return a == Approve || a == ApprovePrefix }
+func (a Answer) Approved() bool { return a == Approve || a == ApprovePrefix || a == ApproveTool }
 
 // DeclineReason is the reason a DeclineBecause answer carries.
 func (a Answer) DeclineReason() (string, bool) {
@@ -214,7 +221,7 @@ func prompt(req Request, rule rules.Rule, matched bool, commands [][]string) Pro
 // answer turns the user's answer into the decision.
 func (a *Approver) answer(answer Answer, p Prompt, run Run) Decision {
 	switch answer {
-	case Approve:
+	case Approve, ApproveTool:
 		return Decision{Run: run}
 	case ApprovePrefix:
 		if len(p.ProposedPrefix) > 0 {

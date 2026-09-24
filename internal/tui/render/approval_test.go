@@ -15,4 +15,9 @@ func TestScreen_Approval(t *testing.T) {
 
 	s = apply(base(), session.ApprovalRequested{At: t0, ID: "a2", Command: "git push origin main"})
 	golden(t, "approval-rule", screen(s, ""))
+
+	s = apply(base(), session.ApprovalRequested{
+		At: t0, ID: "a3", Command: `mcp__docs__search {"q":"x"}`, Justification: "Search the docs.", MCPTool: "mcp__docs__search",
+	})
+	golden(t, "approval-mcp", screen(s, ""))
 }

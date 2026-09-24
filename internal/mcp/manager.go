@@ -44,6 +44,9 @@ type Options struct {
 	// HTTPClient makes OAuth discovery and token requests (default
 	// http.DefaultClient).
 	HTTPClient *http.Client
+	// ServerFile names the configuration file AlwaysAllow saves a server's
+	// tool approval to; nil or "" saves nothing.
+	ServerFile func(server string) string
 }
 
 // Tool is an MCP tool as the model sees it.

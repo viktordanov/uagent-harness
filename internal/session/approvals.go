@@ -26,6 +26,9 @@ type ApprovalRequested struct {
 	Escalation bool
 	// ProposedPrefix, when set, can be allowed from now on.
 	ProposedPrefix []string
+	// MCPTool, when set, is the MCP tool asked about, which can be allowed
+	// from now on (approval.ApproveTool).
+	MCPTool string
 }
 
 // ApprovalResolved ends an approval: the user answered, or it was
@@ -164,7 +167,7 @@ func (s *Session) onAsk(c cmdAsk) {
 	p := c.prompt
 	s.emit(ApprovalRequested{
 		At: time.Now(), ID: c.id, Command: p.Command, Cwd: p.Cwd, Justification: p.Justification,
-		Escalation: p.Escalation, ProposedPrefix: p.ProposedPrefix,
+		Escalation: p.Escalation, ProposedPrefix: p.ProposedPrefix, MCPTool: p.MCPTool,
 	})
 }
 
