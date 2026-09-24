@@ -16,7 +16,7 @@ require (
 	github.com/stretchr/testify v1.12.1
 	github.com/unreallabsai/unreal-agent v0.1.1
 	github.com/urfave/cli/v3 v3.13.0
-	github.com/viktordanov/uagent v0.4.3
+	github.com/viktordanov/uagent v0.4.4
 	github.com/zalando/go-keyring v0.2.8
 	go.starlark.net v0.0.0-20260908191801-89a6a09411d5
 	go.yaml.in/yaml/v3 v3.0.5
