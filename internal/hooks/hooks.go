@@ -25,10 +25,11 @@ const (
 	PreToolUse       Event = "PreToolUse"
 	PostToolUse      Event = "PostToolUse"
 	Stop             Event = "Stop"
+	PreCompact       Event = "PreCompact"
 )
 
 // Events are the supported events.
-var Events = []Event{SessionStart, SessionEnd, UserPromptSubmit, PreToolUse, PostToolUse, Stop}
+var Events = []Event{SessionStart, SessionEnd, UserPromptSubmit, PreToolUse, PostToolUse, Stop, PreCompact}
 
 const (
 	// DefaultTimeout applies when a hook sets none.

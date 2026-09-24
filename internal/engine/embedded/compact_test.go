@@ -1,6 +1,8 @@
 package embedded_test
 
 import (
+	"context"
+	"errors"
 	"path/filepath"
 	"testing"
 
@@ -141,4 +143,28 @@ func TestEmbedded_CompactsALiveRun(t *testing.T) {
 	require.Len(t, reqs, 3)
 	assert.Equal(t, []string{"first", compaction.Prompt}, reqs[1].UserTexts)
 	assert.Equal(t, []string{"first", summaryText("LIVE")}, reqs[2].UserTexts)
+}
+
+func TestEmbedded_BeforeCompactCanStopIt(t *testing.T) {
+	e := newEnv(t, fakellm.Reply{Text: "answer one"}, fakellm.Reply{Text: "answer two"})
+	var gotSession string
+	var gotTrigger compaction.Trigger
+	eng := embedded.New(embedded.Config{
+		StateDir: e.StateDir, Provider: "openai", Getenv: e.getenv,
+		BeforeCompact: func(_ context.Context, sessionID string, t compaction.Trigger) error {
+			gotSession, gotTrigger = sessionID, t
+
+			return errors.New("not now")
+		},
+	})
+	s, ev := e.open(t, eng, "")
+	ask(t, s, ev, "first")
+	require.NoError(t, s.Compact())
+	ask(t, s, ev, "second")
+
+	assert.Equal(t, s.ID(), gotSession, "the hook gets the session")
+	assert.Equal(t, compaction.TriggerManual, gotTrigger)
+	reqs := e.llm.Requests()
+	require.Len(t, reqs, 2, "no summary request: the compaction was stopped")
+	assert.Equal(t, []string{"first", "second"}, reqs[1].UserTexts)
 }
