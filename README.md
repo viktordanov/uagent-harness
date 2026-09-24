@@ -76,16 +76,20 @@ Both engines share uagent's guards, session lock, and run records, and write the
 
 <!-- /memoria:section -->
 
-<!-- memoria:section id="compaction" files="internal/compaction/compaction.go internal/compaction/window.go internal/engine/embedded/compact.go internal/engine/embedded/compactlog.go internal/llmcall/llmcall.go internal/session/compact.go internal/tui/state/context.go" -->
+<!-- memoria:section id="compaction" files="internal/engine/embedded/compact.go internal/engine/events.go internal/llmcall/llmcall.go internal/session/compact.go internal/tui/state/context.go cmd/uah/stream.go" -->
 ### Compaction
 
-On the embedded engine, uah compacts a long conversation the way Codex does. It asks the model for a handoff summary, then sends every earlier user message verbatim and in order, followed by the summary. The model's replies, reasoning, tool calls, and tool outputs before that point are dropped. Messages sent after the compaction follow the summary.
+<!-- memoria:import src="internal/compaction/README.md#summary" -->
+uah compacts a long conversation as Codex does: the earlier user messages stay verbatim and in order, up to the newest 20,000 tokens of them, and the rest is replaced by a model-written handoff summary. The session file keeps the full history; only what goes to the model changes, and a compaction is saved next to the session so a resumed session keeps it.
+<!-- /memoria:import -->
+
+On the embedded engine, uah asks the model for a handoff summary and then sends the kept user messages, followed by the summary. The model's replies, reasoning, tool calls, and tool outputs before that point are dropped. Messages sent after the compaction follow the summary.
 
 - `/compact` compacts before the next model request: now if the agent is working, or with the next message if it is idle.
-- Automatic compaction starts before a model request when the last response used `auto_compact_percent` of the model's context window (default 90, as Codex; 0 turns it off).
+- Automatic compaction starts before a model request when the context in use reaches `auto_compact_percent` of the model's context window (default 90, as Codex; 0 turns it off). The context in use is the last response's tokens plus an estimate of what was added since, such as tool outputs.
 - The window comes from Codex's model table (272,000 tokens for current models and for models it does not know). `model_context_window` overrides it.
 
-The footer shows "N% context left", computed from the last response's tokens as Codex computes it. A compaction is saved in `sessions/<id>.compaction.jsonl` next to the session file, so a resumed session keeps it. The runner's session file keeps the full history. The process engine cannot compact. The [plan](docs/design/compaction.md) lists the choices made.
+The footer shows "N% context left", computed from the last response's tokens as Codex computes it. A compaction is saved in `sessions/<id>.compaction.jsonl` next to the session file, so a resumed session keeps it, a reloaded transcript shows it, and `uah run --stream` writes `compaction_started` and `compacted` events. The process engine cannot compact. The [compaction README](internal/compaction/README.md) explains the rewrite, the triggers, and the failure behaviour; the [plan](docs/design/compaction.md) lists the choices made and the validation against Codex.
 
 <!-- /memoria:section -->
 
