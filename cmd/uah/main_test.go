@@ -311,3 +311,53 @@ func TestHooksCommand(t *testing.T) {
 	res = uahWith(t, env, "", "hooks", "-C", ws)
 	assert.Regexp(t, `PreToolUse\s+Bash\s+project\s+runs`, res.stdout)
 }
+
+// TestRunEmbeddedCompaction checks that compaction reaches `uah run --stream`
+// and a reloaded transcript (`uah sessions show`).
+func TestRunEmbeddedCompaction(t *testing.T) {
+	e := harnesstest.NewEnv(t)
+	llm := fakellm.New(t, fakellm.Reply{Commands: []string{"echo hi"}, InputTokens: 250_000}, fakellm.Reply{Text: "THE SUMMARY"}, fakellm.Reply{Text: "answer"})
+	configHome := filepath.Join(e.StateDir, "..", "config")
+	require.NoError(t, os.MkdirAll(filepath.Join(configHome, "uagent"), 0o700))
+	require.NoError(t, os.WriteFile(filepath.Join(configHome, "uagent", "config.toml"), []byte("auto_compact_percent = 90\n"), 0o600))
+	env := []string{
+		"UAH_ENGINE=embedded", "UAGENT_STATE_DIR=" + e.StateDir, "OPENAI_API_KEY=test-key",
+		"UNREAL_HARNESS_LLM_PROVIDER=", "UNREAL_HARNESS_LLM_MODEL=", "XDG_CONFIG_HOME=" + configHome,
+	}
+
+	res := uahWith(t, env, "", "run", "--stream", "--provider", "openai", "-m", "gpt-test", "--base-url", llm.URL, "-C", e.Workspace, "go")
+	require.Equal(t, 0, res.code, res.stderr)
+	var compacted struct {
+		Type    string `json:"type"`
+		Trigger string `json:"trigger"`
+		Summary string `json:"summary"`
+	}
+	var types []string
+	for line := range strings.Lines(res.stdout) {
+		var ev struct {
+			Type string `json:"type"`
+		}
+		require.NoError(t, json.Unmarshal([]byte(line), &ev), line)
+		types = append(types, ev.Type)
+		if ev.Type == "compacted" {
+			require.NoError(t, json.Unmarshal([]byte(line), &compacted))
+		}
+	}
+	assert.Contains(t, types, "compaction_started")
+	assert.Equal(t, "auto", compacted.Trigger)
+	assert.Equal(t, "THE SUMMARY", compacted.Summary)
+
+	show := uahWith(t, env, "", "sessions", "show", "--state-dir", e.StateDir, "--all", lastSessionID(t, e.StateDir))
+	require.Equal(t, 0, show.code, show.stderr)
+	assert.Contains(t, show.stdout, "⋯ context compacted (auto, 11-char summary)")
+}
+
+// lastSessionID is the one session file's ID in stateDir.
+func lastSessionID(t *testing.T, stateDir string) string {
+	t.Helper()
+	logs, err := filepath.Glob(filepath.Join(stateDir, "sessions", "*.compaction.jsonl"))
+	require.NoError(t, err)
+	require.Len(t, logs, 1)
+
+	return strings.TrimSuffix(filepath.Base(logs[0]), ".compaction.jsonl")
+}
