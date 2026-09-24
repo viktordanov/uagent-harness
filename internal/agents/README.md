@@ -37,7 +37,7 @@ The engine knows no tool name, schema, or result, and the session knows children
 <!-- memoria:section id="parity" files="manager.go ops.go" -->
 ## Parity with the root session
 
-A subagent is the root agent in every way except what makes it a child. `childOptions` starts from the options `app.Setup` returned for the root session and opens the child with `session.Open` on the same engine, so the child gets the same instructions and skills, sandbox, rules, approvals policy and auto-review, hooks, MCP servers, compaction, context meter, tool output limits, index, and sidecar. Its settings are the parent run's: `Settings.WithRequest` inverts the request the parent's run started with, and the run's service tier follows.
+A subagent is the root agent in every way except what makes it a child. `childOptions` starts from the options `app.Setup` returned for the root session and opens the child with `session.Open` on the same engine, so the child gets the same instructions and skills, sandbox, rules, approvals policy and auto-review, hooks, MCP servers, compaction, context meter, tool output limits, index, and sidecar. Its settings are the parent run's: `Settings.WithRequest` inverts the request the parent's run started with, the run's service tier follows, and the permission mode is the parent's at the time of the spawn (`AgentParent.Mode`), so a stricter mode chosen during the run holds for new children. The child's sidecar keeps the child's own settings.
 
 The only differences:
 
@@ -100,12 +100,12 @@ Such a prompt stays open after the parent's run ends, and a child can ask while 
 <!-- memoria:section id="events" files="child.go stop.go" -->
 ## Events and hooks
 
-The manager adds two engine events to the parent session's stream through the parent's `Emit`, which is `engine.Options.Notify`, so they arrive after the parent's run ended too:
+The manager adds two engine events to the parent session's stream through the parent's `Emit`, which is `engine.Options.Notify`, so they arrive after the parent's run ended too. They go through the parent's outbox (`outbox.go`): deliveries run in order on a short-lived goroutine, so a busy parent holds up only its own updates, never a child's event loop:
 
 - `engine.AgentUpdated`: the child's state, whenever it changes. One lock covers reading the state and sending it, so updates arrive in order. Each update is the whole picture: `ID`, `Nickname`, `Role`, `State`, `Message` (why an errored child failed), `Started`, the spawn call's `CallID` and message (`Task`), the child's `Model` and `Effort`, and `Forked`. The TUI keeps the latest one in its `KindAgent` item (`Item.Agent`), so a view can map an agent ID to its nickname and a spawn call to its agent.
 - `engine.AgentActivity`: each of the child's tool events (`core.ToolCalled`, `core.ToolStarted`, `core.ToolFinished`), for the TUI's detailed view.
 
-Waiters sleep on a channel that is closed and replaced at every change.
+Waiters sleep on a channel that is closed and replaced at every change. A spawn that fails before its first message removes the child's sidecar and agent record (`discard`), so no child that never ran is offered for resume. Depth and the tree root come from one walk (`lineage`), which remembers each parent it read from a sidecar.
 
 **Notifications.** When a child reaches a final status (completed, errored, or interrupted), the parent's agent is told with Codex's v1 message, a user-role `<subagent_notification>` holding `{"agent_path": <child ID>, "status": <status>}` (Codex `core/src/agent/control.rs`, `SubagentNotification`). It goes through `AgentParent.Inject`, which is `Session.Inject`: it waits and goes out with the parent's next message, starting no run, as Codex's `inject_no_new_turn`. It is not sent into a live run, since the runner would cancel that run's model request; a parent that needs the status at once has `wait_agent`. Once per message the child was sent (`completionNote`). Two cases send none, because the parent learns the status anyway: a child the parent closed itself, and a child a pending `wait_agent` covers (`child.waiters`); Codex sends it in both, so a waiting parent there sees the status twice.
 
@@ -135,7 +135,7 @@ Hooks come from `Config.Hooks`, the session's runner:
 `Manager` implements `session.AgentWatcher`, and `Session.WatchAgent(ref)` reaches it through the embedded engine's `Subagents()`. A watch finds the parent's child by ID or nickname and returns:
 
 - `History`: the child's runs from before this process, from its run records;
-- `Events`: its session's events since it opened in this process, which the watcher logs (the newest 20,000);
+- `Events`: its session's events since it opened in this process, which the watcher logs (the newest 20,000, trimmed in steps of a quarter; dropped when the child closes, whose runs stay on disk);
 - `Next`: the events that follow, on a channel of 4,096. A view that falls a whole queue behind is closed rather than holding up the child; the TUI opens it again;
 - `Send`: a message to the child through `submit`, as `send_input` sends it, so the child's status and `wait_agent` see it;
 - `Interrupt`: stops the child's current work and its own children's (`interruptTree`, which the parent's `Interrupt` also uses for each child); the child stays open;

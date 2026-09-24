@@ -65,13 +65,14 @@ func offersPatch(req core.Request) bool {
 	return models.ApplyPatch(req.Provider, req.Model) && !slices.Contains(req.DisallowedTools, patch.ToolName)
 }
 
-// patchGate builds the run's gate: the configured sandbox policy for the
-// workspace, and the approver and ask that Bash escalations use.
+// patchGate builds the run's gate: the sandbox policy of the run's
+// permission mode, read for each call as the Bash tool reads it, and the
+// approver and ask that Bash escalations use (the ask lets the
+// auto-reviewer decide alone in auto mode).
 func (w *wiring) patchGate(ctx context.Context, req core.Request) patchGate {
 	g := patchGate{ctx: ctx, cwd: req.Workspace, approver: w.e.cfg.Approver, ask: w.ask}
 	if w.e.cfg.Sandbox != nil {
-		p := w.policy(req, w.e.cfg.Sandbox.Mode)
-		g.policy = &p
+		g.policy = func() sandbox.Policy { return w.policy(req, w.mode.get().Sandbox()) }
 	}
 
 	return g
@@ -162,8 +163,9 @@ func (patchTranslator) fromHookInput(updated json.RawMessage) (string, error) {
 type patchGate struct {
 	ctx context.Context
 	cwd string
-	// policy is nil without a sandbox: every patch applies.
-	policy   *sandbox.Policy
+	// policy is the sandbox policy of the current permission mode; nil
+	// without a sandbox, when every patch applies.
+	policy   func() sandbox.Policy
 	approver *approval.Approver
 	ask      approval.Ask
 }
@@ -171,12 +173,16 @@ type patchGate struct {
 // check returns why the patch may not apply, or "". It blocks while the
 // user decides.
 func (g patchGate) check(hunks []patch.Hunk, arguments string) string {
-	if g.policy == nil || g.policy.Mode == sandbox.FullAccess {
+	if g.policy == nil {
+		return ""
+	}
+	policy := g.policy()
+	if policy.Mode == sandbox.FullAccess {
 		return ""
 	}
 	var outside []string
 	for _, p := range patch.Paths(g.cwd, hunks) {
-		if !g.policy.CanWrite(p) {
+		if !policy.CanWrite(p) {
 			outside = append(outside, p)
 		}
 	}
@@ -184,7 +190,7 @@ func (g patchGate) check(hunks []patch.Hunk, arguments string) string {
 		return ""
 	}
 	why := "the patch writes outside the writable roots"
-	if g.policy.Mode == sandbox.ReadOnly {
+	if policy.Mode == sandbox.ReadOnly {
 		why = "the sandbox is read-only"
 	}
 	req := approval.Request{

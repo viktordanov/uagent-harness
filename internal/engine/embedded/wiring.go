@@ -41,7 +41,11 @@ type backend struct{ e *Engine }
 // inbox, context builder, and coordinator. It never loads the workspace .env.
 func (b backend) Start(ctx context.Context, l harness.Launch) (harness.Process, error) {
 	start, _ := ctx.Value(startKey{}).(startValue)
-	w := &wiring{e: b.e, l: l, getenv: b.e.cfg.Getenv, emit: start.emit, notify: start.opts.Notify, ask: start.opts.Ask, askAnytime: start.opts.AskAnytime, inject: start.opts.Inject, tier: start.opts.ServiceTier}
+	w := &wiring{
+		e: b.e, l: l, getenv: b.e.cfg.Getenv, emit: start.emit, notify: start.opts.Notify, ask: start.opts.Ask,
+		askAnytime: start.opts.AskAnytime, inject: start.opts.Inject, tier: start.opts.ServiceTier,
+		mode: newModeCell(start.opts, b.e.cfg),
+	}
 	a, err := w.start(ctx, start.opts)
 	if err != nil {
 		w.cleanup()
@@ -70,8 +74,13 @@ type wiring struct {
 	// inject gives the session's agent a message without a turn of its own.
 	inject func(string)
 	// tier is the run's service tier when it started.
-	tier    string
-	closers []func() error
+	tier string
+	// mode is the run's permission mode, which Run.SetMode changes.
+	mode *modeCell
+	// bashTools, when set, keeps Bash's definition in each model request
+	// in step with the mode.
+	bashTools func([]llm.Tool) []llm.Tool
+	closers   []func() error
 }
 
 func (w *wiring) cleanup() {
@@ -95,7 +104,7 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 	}
 	w.closers = append(w.closers, sw.Close)
 	sw.seen, sw.cacheKey = w.e.last.recorder(req.SessionID), w.e.cacheKey(req.SessionID)
-	if w.e.cfg.AutoReview {
+	if w.e.cfg.AutoReview || w.ask != nil || w.mode.get().ReviewerDecides() {
 		w.ask = w.reviewedAsk(sw, req)
 	}
 	s, err := w.openStore(ctx, req, messages)
@@ -111,6 +120,7 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 	if err != nil {
 		return nil, err
 	}
+	sw.tools = w.bashTools
 	operations := operation.NewLocalOperationManager(runCtx, newMCPJobs(runCtx, w.e.cfg.MCP), newAgentJobs(runCtx, w.e.cfg.Subagents, string(s.id)), newPatchJobs(runCtx))
 	first := compaction.Trigger("")
 	switch {
@@ -128,7 +138,7 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 	if err != nil {
 		return nil, err
 	}
-	a.compactor = comp
+	a.compactor, a.mode = comp, w.mode
 
 	builder := newContextBuilder(registry, model, req)
 	obs := &observer{sessionID: s.id, out: io.MultiWriter(s.log, w.l.Stdout), cancel: cancel, emit: w.emit}

@@ -4,32 +4,12 @@ import (
 	"maps"
 
 	"github.com/unreallabsai/unreal-agent/harness/llm"
-	"github.com/unreallabsai/unreal-agent/harness/tool"
 
 	"github.com/viktordanov/uagent-harness/internal/sandbox"
 )
 
 // jsonString is the JSON schema type of a string.
 const jsonString = "string"
-
-// sandboxRegistry offers the model Bash with the escalation arguments and a
-// description of the sandbox.
-type sandboxRegistry struct {
-	tool.Registry
-
-	policy sandbox.Policy
-}
-
-func (r sandboxRegistry) StaticDefinitions() []tool.Definition {
-	defs := r.Registry.StaticDefinitions()
-	for i, d := range defs {
-		if d.Tool.Name == tool.BashName {
-			defs[i].Tool = bashWithEscalation(d.Tool, r.policy)
-		}
-	}
-
-	return defs
-}
 
 func bashWithEscalation(t llm.Tool, p sandbox.Policy) llm.Tool {
 	params := maps.Clone(t.Parameters)

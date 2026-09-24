@@ -86,6 +86,11 @@ type State struct {
 	Picker  Picker
 	Menu    Menu
 	Now     time.Time
+	// agentIDs are the subagents' IDs in the order they started, so lookups
+	// of the agents do not walk the whole transcript (Agents).
+	agentIDs []string
+	// viewGen numbers the agent views opened (AgentView.Gen).
+	viewGen int
 	// View, when set, shows a subagent's transcript instead of the
 	// session's (see agentview.go).
 	View *AgentView

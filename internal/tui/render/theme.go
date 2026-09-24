@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"image/color"
 	"math"
+	"regexp"
+	"slices"
 	"strings"
 
 	"charm.land/lipgloss/v2"
@@ -146,13 +148,24 @@ func SetTheme(t Theme) {
 
 // band draws a line on the band background, padded to width w.
 func band(line string, w int) string {
-	line = ansi.Truncate(line, w, "")
+	line = ansi.Truncate(untab(line), w, "")
 	pad := strings.Repeat(" ", max(w-ansi.StringWidth(line), 0))
+	// Any SGR that resets the background (0, 49, or no parameters) would
+	// end the band early, so the band follows each one.
+	line = sgr.ReplaceAllStringFunc(line, func(seq string) string {
+		params := strings.Split(seq[2:len(seq)-1], ";")
+		if slices.ContainsFunc(params, func(p string) bool { return p == "" || p == "0" || p == "49" }) {
+			return seq + bandOn
+		}
 
-	line = strings.ReplaceAll(line, "\x1b[0m", "\x1b[m")
+		return seq
+	})
 
-	return bandOn + strings.ReplaceAll(line, "\x1b[m", "\x1b[m"+bandOn) + pad + "\x1b[m"
+	return bandOn + line + pad + "\x1b[m"
 }
+
+// sgr matches one SGR escape sequence.
+var sgr = regexp.MustCompile("\x1b\\[[0-9;]*m")
 
 // breathing is the working λ: seven shades, dim to bright and back, one
 // breath every 1.6 s, eased like a slow breath.

@@ -82,7 +82,7 @@ func cmdClear(s *State, _ string) []Effect {
 
 		return nil
 	}
-	s.Items, s.index, s.Scroll, s.ContextUsed = nil, map[string]int{}, 0, 0
+	s.Items, s.index, s.agentIDs, s.Scroll, s.ContextUsed = nil, map[string]int{}, nil, 0, 0
 	s.notice(session.LevelInfo, "Context cleared: the agent starts fresh in this session. The session keeps its history; /new starts a new session")
 
 	return []Effect{EffClear{}}

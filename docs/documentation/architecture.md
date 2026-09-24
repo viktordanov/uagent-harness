@@ -37,7 +37,7 @@ uah is a pure core with well-organized infrastructure around it, not layered DDD
 
 Files stay under about 400 lines with one concern each, and functions under about 15 cyclomatic complexity. The known exceptions are dispatch switches over closed sets, where splitting would scatter one decision table:
 
-- the TUI reducer's `onIntent`, `onEvent`, and `onRunEvent` (`internal/tui/state`), the shell's `onKey` and effect runner `run` (`internal/tui/bubble`), and `itemLines` (`internal/tui/render`);
+- the TUI reducer's `onIntent`, `onEvent`, `onRunEvent`, and the menu's key handler `onMenu` (`internal/tui/state`), the shell's `Update`, `onKey`, and effect runner `run` (`internal/tui/bubble`), and `itemLines` (`internal/tui/render`);
 - `(*printer).print` in `cmd/uah/print.go`, one line of progress per event;
 - the session's `loop` (`internal/session/loop.go`), one case per command and internal event.
 

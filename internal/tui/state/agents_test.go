@@ -159,3 +159,18 @@ func TestReduce_FinishedAgentsAndNotifications(t *testing.T) {
 	_, eff = apply(s, state.Steer{Text: "faster"})
 	assert.Equal(t, []state.Effect{state.EffAgentSend{ID: "subagent-aaaaaaaa-1", Text: "faster", Now: true}}, eff, "ctrl+enter steers the agent")
 }
+
+func TestReduce_CallLabels(t *testing.T) {
+	s, _ := apply(opened(),
+		core.ToolCalled{At: t0, CallID: "s1", Name: "SkillUse", Label: `{"name":"i-have-adhd"}`},
+		core.ToolCalled{At: t0, CallID: "m1", Name: "mcp__x__y", Label: `{"a":"x","b":"y"}`},
+		core.ToolCalled{At: t0, CallID: "b1", Name: "Bash", Label: "go test ./..."},
+	)
+	labels := map[string]string{}
+	for _, it := range s.Items {
+		labels[it.Key] = it.Label
+	}
+	assert.Equal(t, "i-have-adhd", labels["call:s1"], "one string field shows as the string")
+	assert.Equal(t, `{"a":"x","b":"y"}`, labels["call:m1"], "more fields stay as given")
+	assert.Equal(t, "go test ./...", labels["call:b1"])
+}

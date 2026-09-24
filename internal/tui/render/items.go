@@ -21,8 +21,9 @@ type Cache struct {
 	// frame did not reach the first item (the limit is not known yet).
 	maxScroll int
 	// view caches the items of the agent view, viewID's.
-	view   *Cache
-	viewID string
+	view    *Cache
+	viewID  string
+	viewGen int
 }
 
 // MaxScroll is how far the last frame's transcript could scroll up, or -1
@@ -178,6 +179,7 @@ func toolLine(it state.Item, w int, now time.Time) string {
 
 // wrapPrefixed wraps text to width w with first and continuation prefixes.
 func wrapPrefixed(text string, w int, first, rest string) []string {
+	text = untab(text)
 	width := max(w-ansi.StringWidth(first), 10)
 	var out []string
 	for para := range strings.SplitSeq(strings.TrimRight(text, "\n"), "\n") {

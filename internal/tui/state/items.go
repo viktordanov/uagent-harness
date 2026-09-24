@@ -108,5 +108,5 @@ type Item struct {
 // and must not be served from a cache.
 func (it Item) Live() bool {
 	return (it.Kind == KindTurn && it.Pending) || (it.Kind == KindTool && (it.Tool == ToolRunning || it.Tool == ToolCalled)) ||
-		(it.Kind == KindRun && it.Status == core.StatusRunning) || (it.Kind == KindAgent && it.Detail == "running")
+		(it.Kind == KindRun && it.Status == core.StatusRunning) || (it.Kind == KindAgent && it.Detail == engine.AgentRunning)
 }

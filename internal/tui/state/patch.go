@@ -7,16 +7,16 @@ import (
 	"github.com/viktordanov/uagent-harness/internal/patch"
 )
 
-// callLabel is a tool call's label: the files an apply_patch call changes,
-// the subagents' nicknames for the agent tools, else the runner's label.
-func (s *State) callLabel(e core.ToolCalled) string {
+// eventLabel is a tool call's label: the files an apply_patch call
+// changes, else callLabel's.
+func (s *State) eventLabel(e core.ToolCalled) string {
 	if e.Name == patch.ToolName {
 		if files := patch.Describe(e.Arguments); files != "" {
 			return files
 		}
 	}
 
-	return s.agentCallLabel(e.Name, e.Label)
+	return s.callLabel(e.Name, e.Label)
 }
 
 // onPatchApplied puts an applied patch's diff on its tool call, which the

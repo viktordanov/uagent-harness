@@ -107,16 +107,7 @@ func (s *State) onEvent(ev core.Event) {
 	case session.InputWithdrawn:
 		s.Queue = slices.DeleteFunc(s.Queue, func(q Queued) bool { return q.ID == e.ID })
 	case session.SettingsChanged:
-		s.Settings = e.Settings
-		when := "from the next run"
-		if e.Applied == session.AppliedLive {
-			when = "now"
-		}
-		fast := ""
-		if e.Settings.ServiceTier != "" {
-			fast = " · fast"
-		}
-		s.notice(session.LevelInfo, fmt.Sprintf("%s/%s · effort %s%s, applies %s", e.Settings.Provider, e.Settings.Model, e.Settings.Effort, fast, when))
+		s.settingsChanged(e)
 	case session.HookRan:
 		switch e.Outcome {
 		case "ok":
@@ -245,6 +236,8 @@ func (s *State) onIntent(ev any) (State, []Effect) {
 		s.Scroll = 0
 	case StepEffort:
 		return s.stepEffort(e.Delta)
+	case CycleMode:
+		return s.cycleMode()
 	case OpenPicker:
 		return *s, []Effect{EffLoadSessions{}}
 	case ActivityLoaded:
@@ -360,7 +353,7 @@ func (s *State) nextKey(prefix string) string {
 }
 
 func (s *State) resetTranscript() {
-	s.Items, s.index, s.Totals, s.Scroll, s.Files, s.ContextUsed = nil, map[string]int{}, Totals{}, 0, nil, 0
+	s.Items, s.index, s.agentIDs, s.Totals, s.Scroll, s.Files, s.ContextUsed = nil, map[string]int{}, nil, Totals{}, 0, nil, 0
 }
 
 func turnKey(live *Live, turn int) string {

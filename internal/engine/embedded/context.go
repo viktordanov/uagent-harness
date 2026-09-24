@@ -34,6 +34,13 @@ func (l *lastRequests) recorder(sessionID string) func(llm.Request, llm.Usage) {
 	}
 }
 
+// forget drops a session's last request.
+func (l *lastRequests) forget(sessionID string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	delete(l.sessions, sessionID)
+}
+
 // ContextUsage breaks the session's last request down by what fills the
 // context. ok is false before its first model request.
 func (e *Engine) ContextUsage(sessionID string) (contextusage.Usage, bool) {

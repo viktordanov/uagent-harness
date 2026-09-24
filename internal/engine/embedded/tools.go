@@ -37,8 +37,8 @@ func (w *wiring) tools(ctx context.Context, req core.Request, sessionID session.
 	}
 	skills, skillErrs := discoverSkills(req.Workspace, w.getenv)
 	registry := tool.NewRegistry(translators, toolNames(req, len(skills) > 0)...)
-	if sandboxed && b.canEscalate() {
-		registry = sandboxRegistry{Registry: registry, policy: w.policy(req, b.mode)}
+	if sandboxed && b.available() {
+		registry = w.withSandbox(registry, req)
 	}
 	if err := registerSkills(registry, skills); err != nil {
 		return nil, err
@@ -59,6 +59,19 @@ func (w *wiring) tools(ctx context.Context, req core.Request, sessionID session.
 	return withPreToolUse(ctx, registry, w.e.cfg.Hooks, req, w.l.SessionsDir), nil
 }
 
+// withSandbox offers Bash with the escalation arguments and a note on the
+// sandbox, and has the switcher keep them in step with the mode.
+func (w *wiring) withSandbox(registry tool.Registry, req core.Request) tool.Registry {
+	policy := func() sandbox.Policy { return w.policy(req, w.mode.get().Sandbox()) }
+	for _, d := range registry.StaticDefinitions() {
+		if d.Tool.Name == tool.BashName {
+			w.bashTools = bashTools(d.Tool, policy)
+		}
+	}
+
+	return sandboxRegistry{Registry: registry, policy: policy}
+}
+
 // withAgents attaches the run to the subagents and adds the tools they
 // offer it.
 func (w *wiring) withAgents(registry tool.Registry, req core.Request) tool.Registry {
@@ -73,7 +86,10 @@ func (w *wiring) withAgents(registry tool.Registry, req core.Request) tool.Regis
 	if emit == nil {
 		emit = func(core.Event) {}
 	}
-	offered := a.Attach(engine.AgentParent{SessionID: req.SessionID, Request: req, ServiceTier: w.tier, Ask: w.askAnytime, Emit: emit, Inject: w.inject})
+	offered := a.Attach(engine.AgentParent{
+		SessionID: req.SessionID, Request: req, ServiceTier: w.tier, Mode: w.mode.get,
+		Ask: w.askAnytime, Emit: emit, Inject: w.inject,
+	})
 
 	return withAgents(registry, offered, a.ToolNames(), req.DisallowedTools)
 }

@@ -9,6 +9,8 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 	"github.com/viktordanov/uagent/harness"
+
+	"github.com/viktordanov/uagent-harness/internal/approval"
 )
 
 // Info summarizes one session from its run records.
@@ -29,6 +31,13 @@ type Info struct {
 	Source string
 	// Parent is the spawning session of a subagent.
 	Parent string
+	// Fast and Mode are the fast mode and the permission mode the session
+	// last used, from its sidecar (nil and "" when it does not record them).
+	Fast *bool
+	Mode approval.Mode
+	// Saved reports whether the sidecar recorded the settings, which then
+	// replaced the provider, model, and effort of the newest run.
+	Saved bool
 }
 
 // LoadedRun is one run of a session with its decoded runner events.
@@ -54,7 +63,7 @@ func Sessions(stateDir string) ([]Info, error) {
 	for id, runs := range bySession {
 		info := summarize(id, runs)
 		if sc, found, err := ReadSidecar(sessionsDir, id); err == nil && found {
-			info.Source, info.Parent = sc.Source, sc.Parent
+			info.ApplySidecar(sc)
 		}
 		infos = append(infos, info)
 	}
