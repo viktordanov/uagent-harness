@@ -10,6 +10,7 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
+	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/internal/tui/state"
 )
 
@@ -98,9 +99,9 @@ func itemLines(it state.Item, w int, now time.Time, v view) []string {
 	case state.KindNotice:
 		style, mark := dim, "  i "
 		switch it.Level {
-		case "warning":
+		case session.LevelWarning:
 			style, mark = warn, "  ! "
-		case "error":
+		case session.LevelError:
 			style, mark = bad, "  ✗ "
 		}
 		var out []string

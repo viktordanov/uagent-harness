@@ -341,7 +341,7 @@ Exit 0 continues; exit 2 blocks with stderr as the reason; other codes are repor
 | --- | --- | --- | --- |
 | `SessionStart`, `SessionEnd` | `internal/session/hooks.go` | Yes | Yes |
 | `UserPromptSubmit` | `internal/session/hooks.go` before delivery | Yes | Yes |
-| `PreToolUse` | `internal/engine/embedded/tools.go`, wrapping each tool translator | No | Yes: deny returns an error result to the model; `updatedInput` rewrites the arguments |
+| `PreToolUse` | `internal/engine/embedded/pretooluse.go`, wrapping each tool translator | No | Yes: deny returns an error result to the model; `updatedInput` rewrites the arguments |
 | `PostToolUse` | `internal/session` on `ToolFinished` | Observe only | Observe only |
 | `Stop` | `internal/session` on idle | Block: submit `stopReason` as a new message | Same |
 
