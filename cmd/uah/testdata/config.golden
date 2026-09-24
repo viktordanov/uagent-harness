@@ -15,7 +15,7 @@ sandbox_mode                                      read-only                     
 approval_policy                                   on-request                    default
 model_context_window                              272000                        default
 instructions.enabled                              true                          default
-approvals_reviewer                                auto_review                   default
+approvals_reviewer                                user                          default
 review.model                                      codex-auto-review             default
 review.effort                                     low                           default
 review.timeout                                    1m30s                         default

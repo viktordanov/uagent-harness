@@ -24,7 +24,7 @@ func TestSetup_ReviewPolicyFile(t *testing.T) {
 	t.Setenv("OPENAI_API_KEY", "test-key")
 	policy := filepath.Join(t.TempDir(), "review.md")
 	require.NoError(t, os.MkdirAll(filepath.Dir(in.ConfigPath), 0o700))
-	require.NoError(t, os.WriteFile(in.ConfigPath, []byte("[review]\npolicy_file = \""+policy+"\"\n"), 0o600))
+	require.NoError(t, os.WriteFile(in.ConfigPath, []byte("approvals_reviewer = \"auto_review\"\n\n[review]\npolicy_file = \""+policy+"\"\n"), 0o600))
 
 	_, err := app.Setup(context.Background(), in, io.Discard)
 	require.ErrorContains(t, err, "failed to read review.policy_file")

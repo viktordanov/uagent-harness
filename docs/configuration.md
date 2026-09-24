@@ -80,7 +80,7 @@ Every key may be set in the user file and in a trusted project file, except `[pr
 | `permission_mode` | string | `workspace` | `--sandbox`, `UAH_SANDBOX` (as a mode) | override | The permission mode: `read-only`, `workspace`, `auto`, or `full-access`. It sets the sandbox and who decides what needs approval (table below), and it wins over `sandbox_mode`. shift+tab in the TUI cycles `read-only`, `workspace`, and `auto` |
 | `sandbox_mode` | string | `workspace-write` | `--sandbox`, `UAH_SANDBOX` | override | `read-only`, `workspace-write`, or `danger-full-access` (no sandbox), as Codex names them. Without `permission_mode`, it picks the mode of the same sandbox: `read-only`, `workspace`, or `full-access` |
 | `approval_policy` | string | `on-request` | `--ask`, `UAH_ASK` | override | Who answers an escalation or a `prompt` rule: `on-request` asks the user (headless runs deny), `never` denies. In a file, Codex's `on-failure` means `on-request` |
-| `approvals_reviewer` | string | `auto_review` | none | override | `auto_review` lets the auto-reviewer judge before anyone is asked; `user` skips it |
+| `approvals_reviewer` | string | `user` | none | override | Who answers an escalation in the read-only and workspace modes: `user` asks you; `auto_review` lets the auto-reviewer judge first and asks you only when it leaves the decision to you. Auto mode always uses the auto-reviewer |
 | `user_shell_sandbox` | bool | false | none | OR | Run the commands you type in the TUI's shell mode (`!`) like the agent's: in the permission mode's sandbox, refused by `forbidden` rules, and outside the sandbox for `allow` rules. Off, they run as your own commands, outside the sandbox and the rules, as in Codex and Claude Code ([shell mode](design/shell-mode.md)) |
 
 The process engine applies `allow` and `forbidden` rules too, in the shell the runner runs each command with, but it cannot ask: a `prompt` rule refuses the command with the reason a headless run gives, nothing escalates, and `auto` is the `workspace` sandbox without the auto-reviewer.
@@ -89,8 +89,8 @@ The permission modes:
 
 | Mode | Sandbox | Escalations and `prompt` rules |
 | --- | --- | --- |
-| `read-only` | `read-only` | Ask: the auto-reviewer first (with `approvals_reviewer = "auto_review"`), then the user |
-| `workspace` (default) | `workspace-write` | Ask: the auto-reviewer first, then the user |
+| `read-only` | `read-only` | Ask you (the auto-reviewer first only with `approvals_reviewer = "auto_review"`) |
+| `workspace` (default) | `workspace-write` | Ask you (the auto-reviewer first only with `approvals_reviewer = "auto_review"`) |
 | `auto` | `workspace-write` | The auto-reviewer decides, also with `approvals_reviewer = "user"`. The user is not asked; a decline reaches the model with the reviewer's reason |
 | `full-access` | none (`danger-full-access`) | No escalations; `prompt` rules ask as in `workspace`. Only a flag or a file sets it; shift+tab moves from it to `read-only` |
 
@@ -357,7 +357,7 @@ fast = false                       # priority processing
 sandbox_mode = "workspace-write"   # read-only, workspace-write, danger-full-access
 # permission_mode = "workspace"    # read-only, workspace, auto, full-access; wins over sandbox_mode
 approval_policy = "on-request"     # or never
-approvals_reviewer = "auto_review" # or user: skip the auto-reviewer
+approvals_reviewer = "user" # or auto_review: the auto-reviewer answers first in read-only and workspace
 user_shell_sandbox = false         # true: `!` commands run in the sandbox, as the agent's
 auto_compact_percent = 90          # 0 turns automatic compaction off
 model_context_window = 272000      # tokens; overrides the model catalog
