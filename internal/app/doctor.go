@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/viktordanov/uagent-harness/internal/config"
+	"github.com/viktordanov/uagent-harness/internal/models"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
 
@@ -59,10 +60,12 @@ type DoctorOptions struct {
 	HookTrustFile string
 	// Stderr receives MCP servers' standard error (default discarded).
 	Stderr io.Writer
+	// Models is the model catalog (default NewModels for the settings).
+	Models *models.Manager
 }
 
 // Doctor checks what a session in the workspace would need: the
-// configuration, the runner, credentials, the sandbox, instructions, hooks,
+// configuration, the runner, credentials, the model list, the sandbox, instructions, hooks,
 // MCP servers, and the state directory. It starts no session and calls no
 // model; it runs `true` in the sandbox and starts the MCP servers.
 func Doctor(ctx context.Context, in Inputs, opts DoctorOptions) []Check {
@@ -95,7 +98,10 @@ func Doctor(ctx context.Context, in Inputs, opts DoctorOptions) []Check {
 	r.Sandbox = absPolicy(r.Sandbox, in.Workspace)
 	checks = append(checks, checkRunner(r.Engine, in.Runner))
 	checks = append(checks, checkCredentials(r, stateDir, opts.Getenv)...)
-	checks = append(checks, checkSandbox(ctx, r.Sandbox), checkInstructions(r, cfg, in.Workspace))
+	if opts.Models == nil {
+		opts.Models = NewModels(stateDir, r.Settings, opts.Getenv)
+	}
+	checks = append(checks, checkModels(ctx, opts.Models, r.Settings.Model), checkSandbox(ctx, r.Sandbox), checkInstructions(r, cfg, in.Workspace))
 	checks = append(checks, checkHooks(cfg, in.Workspace, opts.HookTrustFile)...)
 	checks = append(checks, checkMCP(ctx, cfg, r.Engine, in.Workspace, opts.Stderr)...)
 

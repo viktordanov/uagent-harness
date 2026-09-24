@@ -119,7 +119,7 @@ Every key may be set in the user file and in a trusted project file, except `[pr
 | Key | Type | Default | Merge | Meaning |
 | --- | --- | --- | --- | --- |
 | `auto_compact_percent` | integer 0–100 | 90 | override, can unset | Compact before a model request once the context in use (the last response's tokens plus an estimate of what was added since) reaches this share of the context window; 0 turns automatic compaction off |
-| `model_context_window` | integer | the model table (272,000 for current and unknown models) | override | The context window in tokens, for compaction and the context meter |
+| `model_context_window` | integer | the model catalog (the provider's list, else Codex's bundled one), else 272,000 | override | The context window in tokens, for compaction and the context meter |
 
 ### Instructions and skills
 
@@ -299,7 +299,7 @@ sandbox_mode = "workspace-write"   # read-only, workspace-write, danger-full-acc
 approval_policy = "on-request"     # or never
 approvals_reviewer = "auto_review" # or user: skip the auto-reviewer
 auto_compact_percent = 90          # 0 turns automatic compaction off
-model_context_window = 272000      # tokens; overrides the model table
+model_context_window = 272000      # tokens; overrides the model catalog
 project_doc_fallback_filenames = ["CLAUDE.md"]   # also read Claude Code's files
 project_root_markers = [".git"]
 project_doc_max_bytes = 32768

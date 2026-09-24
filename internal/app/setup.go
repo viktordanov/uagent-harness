@@ -71,6 +71,7 @@ func Setup(ctx context.Context, in Inputs, logOutput io.Writer) (Result, error) 
 		}
 	}
 	opts.Settings = r.Settings
+	useModels(ctx, NewModels(stateDir, r.Settings, os.Getenv))
 	opts.SessionsDir = filepath.Join(stateDir, "sessions")
 	if opts.Hooks, err = loadHooks(cfg, in.Workspace); err != nil {
 		return Result{}, err

@@ -12,10 +12,15 @@ import (
 
 func TestDoctor(t *testing.T) {
 	e, env := fakeEnv(t, "simple.jsonl")
+	env = append(env, "UNREAL_HARNESS_LLM_BASE_URL="+modelsServer(t).URL)
 
 	res := uahWith(t, env, "", "doctor", "-C", e.Workspace)
 	require.Equal(t, 0, res.code, res.stdout+res.stderr)
-	for _, line := range []string{"✓ config: no configuration files", "✓ runner: ", "✓ credentials: openai-codex", "✓ hooks: none configured", "✓ state: "} {
+	for _, line := range []string{
+		"✓ config: no configuration files", "✓ runner: ", "✓ credentials: openai-codex",
+		"✓ models: 2 models available to this login (live list from openai-codex); gpt-6-sol is in it",
+		"✓ hooks: none configured", "✓ state: ",
+	} {
 		assert.Contains(t, "\n"+res.stdout, "\n"+line, "stdout:\n%s", res.stdout)
 	}
 	assert.NotContains(t, res.stdout, "✗")

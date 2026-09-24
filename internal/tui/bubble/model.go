@@ -15,6 +15,7 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
+	"github.com/viktordanov/uagent-harness/internal/models"
 	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/internal/tui/render"
 	"github.com/viktordanov/uagent-harness/internal/tui/state"
@@ -32,6 +33,9 @@ type Deps struct {
 	Open func(ctx context.Context, id string) (*session.Session, []session.LoadedRun, error)
 	// Sessions lists sessions for the picker.
 	Sessions func() ([]session.Info, error)
+	// Models lists the provider's models for /model (optional). It may call
+	// the provider, so it runs off the update loop.
+	Models func(ctx context.Context, provider string) models.Catalog
 	// Activity counts recent runs per day for /status (optional).
 	Activity func() (map[string]int, error)
 	// SessionID is the session to open first ("" for a new one).

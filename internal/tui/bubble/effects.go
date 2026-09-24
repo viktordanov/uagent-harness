@@ -84,6 +84,12 @@ func (m Model) run(e state.Effect) tea.Cmd {
 
 			return state.ActivityLoaded{Counts: counts}
 		}
+	case state.EffLoadModels:
+		if m.deps.Models == nil {
+			return nil
+		}
+
+		return func() tea.Msg { return state.ModelsLoaded{Catalog: m.deps.Models(m.ctx, e.Provider)} }
 	case state.EffLoadFiles:
 		dir := m.deps.Cwd
 

@@ -99,6 +99,11 @@ func cmdModel(s *State, args string) []Effect {
 
 		return nil
 	}
+	if err := s.checkModel(args); err != nil {
+		s.notice(session.LevelError, err.Error())
+
+		return nil
+	}
 
 	return []Effect{EffSetSettings{Settings: next}}
 }
