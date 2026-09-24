@@ -57,6 +57,15 @@ type Sidecar struct {
 	Settings *Saved `json:"settings,omitempty"`
 }
 
+// RemoveSidecar deletes a session's sidecar, for a session that never ran.
+func RemoveSidecar(sessionsDir, id string) error {
+	if err := os.Remove(sidecarPath(sessionsDir, id)); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return fmt.Errorf("failed to remove the session's sidecar: %w", err)
+	}
+
+	return nil
+}
+
 func sidecarPath(sessionsDir, id string) string {
 	return filepath.Join(sessionsDir, id+".uah.json")
 }

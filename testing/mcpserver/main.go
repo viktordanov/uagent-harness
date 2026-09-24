@@ -29,6 +29,9 @@ type args struct {
 	Text string `json:"text"`
 	Ms   int    `json:"ms"`
 	N    int    `json:"n"`
+	// Mark, when set, is a file sleep creates as it starts, so a test can
+	// wait for the call to be running instead of guessing with a delay.
+	Mark string `json:"mark"`
 }
 
 // overlap counts calls to the overlap tool running at once.
@@ -58,6 +61,9 @@ func main() {
 		return r
 	})
 	add(s, "sleep", "Sleep for ms milliseconds.", func(a args) *sdk.CallToolResult {
+		if a.Mark != "" {
+			_ = os.WriteFile(a.Mark, nil, 0o600)
+		}
 		time.Sleep(time.Duration(a.Ms) * time.Millisecond)
 
 		return text("slept")

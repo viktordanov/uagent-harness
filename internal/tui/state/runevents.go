@@ -44,7 +44,7 @@ func (s *State) onRunEvent(ev core.Event) {
 			s.notice(session.LevelError, "model failure: "+e.Failure)
 		}
 	case core.ToolCalled:
-		s.put(Item{Kind: KindTool, Key: "call:" + e.CallID, Name: e.Name, Label: s.agentCallLabel(e.Name, e.Label), Tool: ToolCalled, Started: e.At})
+		s.put(Item{Kind: KindTool, Key: "call:" + e.CallID, Name: e.Name, Label: s.callLabel(e.Name, e.Label), Tool: ToolCalled, Started: e.At})
 	case core.ToolStarted:
 		if s.Live != nil {
 			s.Live.Tools++

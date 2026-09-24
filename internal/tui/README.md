@@ -66,7 +66,7 @@ The transcript is a list of `Item`s, each with a stable key. The reducer updates
 | `KindTool` | `call:<call ID>` | `ToolCalled`, `ToolStarted`, `ToolFinished` |
 | `KindAssistant`, `KindReasoning` | `text:<n>`, `reason:<n>` | `AssistantMessage`, `ReasoningSummary` |
 | `KindNotice` | `notice:<n>` | Session notices, hook results, command output, approvals |
-| `KindAgent` | `agent:<ID>` | `engine.AgentUpdated` (a subagent): `Name` is the nickname, `Text` the ID, `Detail` the state, and `Agent` the latest update (spawn call ID and message, model, effort, why it failed); its tool calls from `engine.AgentActivity` go into `Sub`, drawn under it in the detailed view |
+| `KindAgent` | `agent:<ID>` | `engine.AgentUpdated` (a subagent): `Name` is the nickname, `Text` the ID, `Detail` the state, and `Agent` the latest update (spawn call ID and message, model, effort, why it failed); its tool calls from `engine.AgentActivity` go into `Sub`, drawn under it in the detailed view. `State.Agents` lists them in start order without walking the transcript |
 | `KindContext` | `context:<n>` | `/context` (`ContextShown`) |
 | `KindFinish` | `done:<run ID>` | `RunFinished`: the end of a run in the compact view |
 | `KindMCP` | `mcp:<n>` | `/mcp` (`MCPListed`): one line per server; `Final` asks for the verbose form (`render/mcp.go`) |
