@@ -54,6 +54,11 @@ type Options struct {
 	// Ask asks the user to approve a command; nil means no one can, as in
 	// a headless run. Only the embedded engine asks.
 	Ask approval.Ask
+	// AskAnytime asks the user like Ask, also after the run ends, for work
+	// that outlives the run, such as a subagent's approvals. Such a prompt
+	// stays open until it is answered, its context ends, or the session
+	// closes (nil: no one can).
+	AskAnytime approval.Ask
 	// Notify adds an engine event to the session's stream, also after the
 	// run ends, such as a subagent's progress (nil: the run's stream).
 	Notify func(core.Event)
