@@ -40,7 +40,7 @@ type backend struct{ e *Engine }
 // inbox, context builder, and coordinator. It never loads the workspace .env.
 func (b backend) Start(ctx context.Context, l harness.Launch) (harness.Process, error) {
 	start, _ := ctx.Value(startKey{}).(startValue)
-	w := &wiring{e: b.e, l: l, getenv: b.e.cfg.Getenv, emit: start.emit, ask: start.opts.Ask}
+	w := &wiring{e: b.e, l: l, getenv: b.e.cfg.Getenv, emit: start.emit, notify: start.opts.Notify, ask: start.opts.Ask}
 	a, err := w.start(ctx, start.opts)
 	if err != nil {
 		w.cleanup()
@@ -60,6 +60,8 @@ type wiring struct {
 	l      harness.Launch
 	getenv func(string) string
 	emit   func(core.Event)
+	// notify reaches the session after the run ends (nil: emit only).
+	notify func(core.Event)
 	ask    approval.Ask
 	// userAsk is ask before the auto-reviewer: children's approvals go to
 	// it, after their own auto-review.

@@ -64,7 +64,10 @@ func (w *wiring) withAgents(registry tool.Registry, req core.Request) tool.Regis
 	if a == nil {
 		return withAgents(registry, false, nil, req.DisallowedTools)
 	}
-	emit := w.emit
+	emit := w.notify
+	if emit == nil {
+		emit = w.emit
+	}
 	if emit == nil {
 		emit = func(core.Event) {}
 	}

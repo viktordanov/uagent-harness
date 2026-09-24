@@ -54,6 +54,9 @@ type Options struct {
 	// Ask asks the user to approve a command; nil means no one can, as in
 	// a headless run. Only the embedded engine asks.
 	Ask approval.Ask
+	// Notify adds an engine event to the session's stream, also after the
+	// run ends, such as a subagent's progress (nil: the run's stream).
+	Notify func(core.Event)
 }
 
 // Run is a started run.
