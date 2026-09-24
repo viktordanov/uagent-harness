@@ -161,6 +161,15 @@ func TestResolve(t *testing.T) {
 			want: func(r *app.Resolved) { r.Instructions = false },
 		},
 		{
+			name: "a provider flag equal to the configured provider keeps the configured model",
+			in:   func(in *app.Inputs) { in.Provider = "openrouter" },
+			cfg:  config.Config{Provider: "openrouter", Model: "cfg-model"},
+			want: func(r *app.Resolved) {
+				r.Settings.Provider, r.Settings.Model = "openrouter", "cfg-model"
+				r.Review.Model = "cfg-model"
+			},
+		},
+		{
 			name: "the config file sets the sandbox",
 			cfg: config.Config{SandboxMode: "read-only", SandboxWorkspaceWrite: config.SandboxWorkspaceWrite{
 				NetworkAccess: true, WritableRoots: []string{"~/.cache"},

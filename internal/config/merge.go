@@ -1,11 +1,17 @@
 package config
 
-import "github.com/viktordanov/uagent-harness/internal/mcp"
+import (
+	"maps"
+	"slices"
+
+	"github.com/viktordanov/uagent-harness/internal/mcp"
+)
 
 // merge returns base with every value set in over (a project file)
 // replacing it. Hooks, writable roots, approval lists, and environment
 // patterns add up; an MCP server replaces the one of the same name whole;
-// booleans that turn something on stay on.
+// booleans that turn something on stay on. It changes neither argument's
+// maps or slices.
 func merge(base, over Config) Config {
 	set(&base.Provider, over.Provider)
 	set(&base.Model, over.Model)
@@ -24,7 +30,7 @@ func merge(base, over Config) Config {
 	mergeSandbox(&base, over)
 	mergeEnv(&base.ShellEnvironmentPolicy, over.ShellEnvironmentPolicy)
 	mergeInstructions(&base, over)
-	base.Hooks = mergeMap(base.Hooks, over.Hooks, func(a, b []Hook) []Hook { return append(a, b...) })
+	base.Hooks = mergeMap(base.Hooks, over.Hooks, func(a, b []Hook) []Hook { return slices.Concat(a, b) })
 	base.MCPServers = mergeMap(base.MCPServers, over.MCPServers, func(_, b mcp.ServerConfig) mcp.ServerConfig { return b })
 
 	return base
@@ -40,15 +46,15 @@ func set(dst *string, v string) {
 func mergeSandbox(base *Config, over Config) {
 	set(&base.SandboxMode, over.SandboxMode)
 	set(&base.ApprovalPolicy, over.ApprovalPolicy)
-	base.Approvals.Allow = append(base.Approvals.Allow, over.Approvals.Allow...)
-	base.Approvals.Forbid = append(base.Approvals.Forbid, over.Approvals.Forbid...)
+	base.Approvals.Allow = slices.Concat(base.Approvals.Allow, over.Approvals.Allow)
+	base.Approvals.Forbid = slices.Concat(base.Approvals.Forbid, over.Approvals.Forbid)
 	set(&base.ApprovalsReviewer, over.ApprovalsReviewer)
 	set(&base.Review.Model, over.Review.Model)
 	set(&base.Review.Effort, over.Review.Effort)
 	set(&base.Review.Timeout, over.Review.Timeout)
 	w := &base.SandboxWorkspaceWrite
 	w.NetworkAccess = w.NetworkAccess || over.SandboxWorkspaceWrite.NetworkAccess
-	w.WritableRoots = append(w.WritableRoots, over.SandboxWorkspaceWrite.WritableRoots...)
+	w.WritableRoots = slices.Concat(w.WritableRoots, over.SandboxWorkspaceWrite.WritableRoots)
 }
 
 func mergeEnv(env *ShellEnvironmentPolicy, over ShellEnvironmentPolicy) {
@@ -56,8 +62,8 @@ func mergeEnv(env *ShellEnvironmentPolicy, over ShellEnvironmentPolicy) {
 	if over.IgnoreDefaultExcludes != nil {
 		env.IgnoreDefaultExcludes = over.IgnoreDefaultExcludes
 	}
-	env.Exclude = append(env.Exclude, over.Exclude...)
-	env.IncludeOnly = append(env.IncludeOnly, over.IncludeOnly...)
+	env.Exclude = slices.Concat(env.Exclude, over.Exclude)
+	env.IncludeOnly = slices.Concat(env.IncludeOnly, over.IncludeOnly)
 	env.Set = mergeMap(env.Set, over.Set, func(_, b string) string { return b })
 }
 
@@ -79,8 +85,10 @@ func mergeInstructions(base *Config, over Config) {
 	}
 }
 
-// mergeMap adds over's entries to base, combining a key both have.
+// mergeMap returns a copy of base with over's entries added, combining a key
+// both have.
 func mergeMap[V any](base, over map[string]V, combine func(a, b V) V) map[string]V {
+	base = maps.Clone(base)
 	for k, v := range over {
 		if base == nil {
 			base = map[string]V{}
