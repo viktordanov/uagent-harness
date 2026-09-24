@@ -10,7 +10,10 @@ import (
 	"github.com/viktordanov/uagent-harness/internal/tui/state"
 )
 
-var errNoSession = errors.New("no session is open")
+var (
+	errNoSession = errors.New("no session is open")
+	errNoConfig  = errors.New("settings are not available here")
+)
 
 // run turns an effect into a command that does its I/O off the update loop.
 func (m Model) run(e state.Effect) tea.Cmd {
@@ -38,7 +41,7 @@ func (m Model) run(e state.Effect) tea.Cmd {
 	case state.EffClear:
 		return withSession(func(s *session.Session) error { return s.Clear() })
 	case state.EffCompact:
-		return withSession(func(s *session.Session) error { return s.Compact() })
+		return withSession(func(s *session.Session) error { return s.CompactWith(e.Focus) })
 	case state.EffResolve:
 		return withSession(func(s *session.Session) error { return s.Resolve(e.ID, e.Answer) })
 	case state.EffSetSettings:
@@ -94,6 +97,20 @@ func (m Model) run(e state.Effect) tea.Cmd {
 		dir := m.deps.Cwd
 
 		return func() tea.Msg { return state.FilesLoaded{Paths: workspaceFiles(m.ctx, dir)} }
+	case state.EffLoadConfig:
+		if m.deps.Config == nil {
+			return func() tea.Msg { return state.ConfigLoaded{Err: errNoConfig} }
+		}
+
+		return func() tea.Msg { return m.deps.Config(m.ctx) }
+	case state.EffSaveConfig:
+		if m.deps.SaveConfig == nil {
+			return func() tea.Msg { return state.ConfigSaved{Key: e.Key, Value: e.Value, Err: errNoConfig} }
+		}
+
+		return func() tea.Msg {
+			return state.ConfigSaved{Key: e.Key, Value: e.Value, Err: m.deps.SaveConfig(e.Key, e.Value)}
+		}
 	case state.EffListMCP:
 		return func() tea.Msg {
 			if sess == nil {

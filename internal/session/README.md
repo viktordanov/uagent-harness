@@ -61,7 +61,7 @@ When a run ends, messages sent into it that it never read go back to the front o
 
 The session keeps its provider, model, effort, fast mode, and permission mode in its sidecar (`Saved`): when it opens and after each change. On resume, `ApplySidecar` puts them in the session's `Info` in place of its newest run's provider, model, and effort, and `internal/app` restores them ahead of the configuration; a flag still wins. A session whose sidecar has no settings (from before uah kept them) resumes with its newest run's. A subagent's sidecar keeps its own settings.
 
-`Compact` marks a compaction as pending. While a run is live, the engine compacts before its next model request; while idle, `engine.Options.Compact` asks the next run to compact first. The pending flag clears when the engine reports a manual `CompactionStarted`. `Clear` (`/clear`) works the same way with `Run.Clear` and `engine.Options.Clear`: the model's next request starts fresh in the same session. The process engine returns `ErrNoCompaction` for both.
+`Compact` marks a compaction as pending; `CompactWith(focus)` adds what the summary should focus on (`/compact <focus>`). While a run is live, the engine compacts before its next model request (`Run.Compact(focus)`); while idle, `engine.Options.Compact` and `CompactFocus` ask the next run to compact first. The pending flag clears when the engine reports a manual `CompactionStarted`. `Clear` (`/clear`) works the same way with `Run.Clear` and `engine.Options.Clear`: the model's next request starts fresh in the same session. The process engine returns `ErrNoCompaction` for both.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="approvals" files="approvals.go" -->

@@ -60,6 +60,8 @@ func openTUI(ctx context.Context, cmd *cli.Command, launch tuiLaunch) error {
 		Details:     st.Config.TUI.Details,
 		Mouse:       st.Config.TUI.Mouse,
 		Version:     buildVersion(),
+		Config:      tuiConfig(cmd),
+		SaveConfig:  tuiSaveConfig(ctx, cmd),
 		Open: func(ctx context.Context, id string) (*session.Session, []session.LoadedRun, error) {
 			setup, err := setupFor(ctx, cmd, logFile, id)
 			if err != nil {

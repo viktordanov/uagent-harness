@@ -62,7 +62,7 @@ Logins are stored as Codex stores them, under the server's name and a hash of it
 
 `ServerConfig` has Codex's keys and meanings, so a Codex `[mcp_servers]` section copies over; unsupported Codex keys are errors rather than ignored. The keys, defaults, and merge rules are in [the configuration reference](../../docs/configuration.md#mcp-servers). Differences from Codex: tool names are at most 64 characters (flat function names instead of namespaces), `auth` accepts only `oauth`, and client ID metadata documents are not offered.
 
-`AddServer` and `RemoveServer` edit a configuration file for `uah mcp add` and `remove` without rewriting it: the go-toml parser finds the server's `[mcp_servers.<name>]` tables, those bytes are cut, and a new table is appended. Comments and the other keys stay as they were. The result must parse and validate before it replaces the file atomically with the same permissions; a server written as an inline table is refused.
+`AddServer` and `RemoveServer` edit a configuration file for `uah mcp add` and `remove` without rewriting it, with the editor in [internal/config/tomledit](../config/tomledit/tomledit.go) that the TUI's `/config` also uses: the go-toml parser finds the server's `[mcp_servers.<name>]` tables, those bytes are cut, and a new table is appended. Comments and the other keys stay as they were. The result must parse and validate before it replaces the file atomically with the same permissions; a server written as an inline table is refused.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="extending" files="manager.go server.go" -->

@@ -129,7 +129,7 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 	case opts.Compact:
 		first = compaction.TriggerManual
 	}
-	comp, err := w.compactor(runCtx, s, sw, first)
+	comp, err := w.compactor(runCtx, s, sw, first, opts.CompactFocus)
 	if err != nil {
 		return nil, err
 	}
@@ -162,7 +162,7 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 // compactor wraps the switcher with the session's compactions and seeds the
 // context in use from the session's last response. ctx is the run's: a
 // compaction lives until the run ends.
-func (w *wiring) compactor(ctx context.Context, s runStore, sw *switcher, first compaction.Trigger) (*compactor, error) {
+func (w *wiring) compactor(ctx context.Context, s runStore, sw *switcher, first compaction.Trigger, focus string) (*compactor, error) {
 	log := compaction.OpenLog(w.l.SessionsDir, string(s.id))
 	rec, corrupt, err := log.Last()
 	if err != nil {
@@ -192,8 +192,8 @@ func (w *wiring) compactor(ctx context.Context, s runStore, sw *switcher, first 
 	}
 
 	return &compactor{
-		ctx: ctx, next: sw, log: log, emit: emit, before: before, window: cfg.ContextWindow, percent: cfg.AutoCompactPercent,
-		record: rec, pending: first, used: used,
+		ctx: ctx, next: sw, log: log, emit: emit, before: before, window: cfg.ContextWindow, settings: cfg.Compaction,
+		record: rec, pending: first, focus: focus, used: used,
 	}, nil
 }
 

@@ -84,7 +84,7 @@ func TestApply_RejectsAnotherHistory(t *testing.T) {
 }
 
 func TestSummaryRequest(t *testing.T) {
-	system, input := compaction.SummaryRequest([]llm.Item{msg(llm.RoleSystem, "sys"), msg(llm.RoleUser, "hi")})
+	system, input := compaction.SummaryRequest([]llm.Item{msg(llm.RoleSystem, "sys"), msg(llm.RoleUser, "hi")}, "")
 	assert.Equal(t, "sys", system)
 	assert.Equal(t, []string{"user: hi", "user: " + compaction.Prompt}, texts(input))
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -44,16 +45,20 @@ type compactor struct {
 	summarize compaction.Summarizer
 	// before runs as each compaction starts; an error cancels it. It is where
 	// a PreCompact hook attaches.
-	before  func(context.Context, compaction.Trigger) error
-	window  int64 // the configured window; 0 uses the model table
-	percent int   // automatic compaction limit; 0 turns it off
+	before func(context.Context, compaction.Trigger) error
+	window int64 // the configured window; 0 uses the model table
+	// settings are the automatic limit, the summary model and prompt, and
+	// the cap on kept user messages.
+	settings compaction.Settings
 
 	mu     sync.Mutex
 	record *compaction.Record
 	stale  bool // the record does not match the history; reported once
 	// pending is the compaction asked for, "" when none: manual (/compact)
-	// or clear (/clear), which wins over manual.
+	// or clear (/clear), which wins over manual. focus is what a /compact
+	// asked the summary to focus on.
 	pending compaction.Trigger
+	focus   string
 	used    int64 // the last response's total tokens; 0 when unknown
 	job     *compactionJob
 	// autoFailures counts failed automatic compactions in a row.
@@ -68,12 +73,13 @@ type compactionJob struct {
 	interrupted bool
 }
 
-// requestCompaction compacts (or clears) before the next model request.
-func (c *compactor) requestCompaction(t compaction.Trigger) {
+// requestCompaction compacts (or clears) before the next model request;
+// focus is what the summary should focus on (manual only).
+func (c *compactor) requestCompaction(t compaction.Trigger, focus string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.pending != compaction.TriggerClear {
-		c.pending = t
+		c.pending, c.focus = t, focus
 	}
 }
 
@@ -138,11 +144,12 @@ func (c *compactor) startOrJoin(req llm.Request, opts llm.RequestOptions) *compa
 	if !ok {
 		return nil
 	}
-	c.pending = ""
+	focus := c.focus
+	c.pending, c.focus = "", ""
 	ctx, cancel := context.WithCancel(c.ctx)
 	job := &compactionJob{done: make(chan struct{}), cancel: cancel}
 	c.job = job
-	go c.run(ctx, job, req, opts, trigger, used)
+	go c.run(ctx, job, req, opts, compactionAsk{trigger: trigger, focus: focus, used: used})
 
 	return job
 }
@@ -163,7 +170,7 @@ func (c *compactor) dueLocked(input []llm.Item) (compaction.Trigger, int64, bool
 	if c.pending != "" {
 		return c.pending, used, true
 	}
-	limit := compaction.AutoLimit(compaction.ContextWindow(c.next.currentModel(), c.window), c.percent)
+	limit := c.autoLimit()
 	if limit == 0 || used < limit || c.autoFailures >= maxAutoFailures || compaction.Coverable(input) <= covered {
 		return "", 0, false
 	}
@@ -171,25 +178,37 @@ func (c *compactor) dueLocked(input []llm.Item) (compaction.Trigger, int64, bool
 	return compaction.TriggerAuto, used, true
 }
 
+// compactionAsk is one compaction to run: why, the user's focus for a
+// /compact, and the context in use when it was due.
+type compactionAsk struct {
+	trigger compaction.Trigger
+	focus   string
+	used    int64
+}
+
+// autoLimit is the tokens in use at which automatic compaction starts for
+// the current model; 0 means never.
+func (c *compactor) autoLimit() int64 {
+	return c.settings.Limit(compaction.ContextWindow(c.next.currentModel(), c.window))
+}
+
 // run summarizes the history as the model would see it, records the
 // compaction, and reports it. On failure the request goes out uncompacted.
-func (c *compactor) run(ctx context.Context, job *compactionJob, req llm.Request, opts llm.RequestOptions, trigger compaction.Trigger, used int64) {
+func (c *compactor) run(ctx context.Context, job *compactionJob, req llm.Request, opts llm.RequestOptions, ask compactionAsk) {
 	defer close(job.done)
 	defer job.cancel()
-	c.emit(engine.CompactionStarted{At: time.Now(), Trigger: trigger, Tokens: used})
-	rec, err := c.compact(ctx, req, opts, trigger)
+	trigger := ask.trigger
+	c.emit(engine.CompactionStarted{At: time.Now(), Trigger: trigger, Tokens: ask.used})
+	rec, err := c.compact(ctx, req, opts, ask)
 	interrupted := err != nil && ctx.Err() != nil
 	job.interrupted = interrupted
-	c.mu.Lock()
-	c.job = nil
-	switch {
-	case err == nil:
-		c.record, c.stale, c.used, c.autoFailures = &rec, false, 0, 0
-	case trigger == compaction.TriggerAuto && !interrupted:
-		c.autoFailures++
-	}
-	c.mu.Unlock()
 	if err != nil {
+		c.mu.Lock()
+		c.job = nil
+		if trigger == compaction.TriggerAuto && !interrupted {
+			c.autoFailures++
+		}
+		c.mu.Unlock()
 		if interrupted {
 			err = fmt.Errorf("interrupted: %w", err)
 		}
@@ -197,15 +216,43 @@ func (c *compactor) run(ctx context.Context, job *compactionJob, req llm.Request
 
 		return
 	}
-	c.emit(engine.Compacted{At: time.Now(), Trigger: trigger, Summary: rec.Summary})
+	warning := c.stillFull(req.Input, rec, trigger)
+	c.mu.Lock()
+	c.job = nil
+	c.record, c.stale, c.used = &rec, false, 0
+	c.autoFailures = 0
+	if warning != "" {
+		// Another compaction cannot shrink what stays: the system prompt,
+		// the kept user messages, and a summary.
+		c.autoFailures = maxAutoFailures
+	}
+	c.mu.Unlock()
+	c.emit(engine.Compacted{At: time.Now(), Trigger: trigger, Summary: rec.Summary, Warning: warning})
 }
 
-func (c *compactor) compact(ctx context.Context, req llm.Request, opts llm.RequestOptions, trigger compaction.Trigger) (compaction.Record, error) {
-	if trigger == compaction.TriggerClear {
+// stillFull warns when an automatic compaction left the context at or
+// above the automatic limit: without the warning, and the stop that goes
+// with it, every later request would compact again.
+func (c *compactor) stillFull(input []llm.Item, rec compaction.Record, trigger compaction.Trigger) string {
+	limit := c.autoLimit()
+	if trigger != compaction.TriggerAuto || limit == 0 {
+		return ""
+	}
+	view, err := compaction.Apply(input, rec)
+	if err != nil || compaction.EstimateTokens(view) < limit {
+		return ""
+	}
+
+	return fmt.Sprintf("the context is still about %d tokens after compacting, above the automatic limit of %d; "+
+		"automatic compaction stops for this run (/compact still works)", compaction.EstimateTokens(view), limit)
+}
+
+func (c *compactor) compact(ctx context.Context, req llm.Request, opts llm.RequestOptions, ask compactionAsk) (compaction.Record, error) {
+	if ask.trigger == compaction.TriggerClear {
 		return c.clear(req.Input)
 	}
 	if c.before != nil {
-		if err := c.before(ctx, trigger); err != nil {
+		if err := c.before(ctx, ask.trigger); err != nil {
 			return compaction.Record{}, fmt.Errorf("compaction was stopped: %w", err)
 		}
 	}
@@ -215,16 +262,18 @@ func (c *compactor) compact(ctx context.Context, req llm.Request, opts llm.Reque
 	}
 	summarize := c.summarize
 	if summarize == nil {
-		summarize = c.localSummary(req.Model.ReasoningEffort, opts.CacheKey)
+		summarize = c.localSummary(req.Model.ReasoningEffort, opts.CacheKey, ask.focus)
 	}
 	summary, err := summarize(ctx, c.apply(req.Input[:1+covered]))
 	if err != nil {
 		return compaction.Record{}, err
 	}
-	rec, err := compaction.NewRecord(req.Input, summary, trigger, c.next.currentModel(), time.Now().UTC())
+	rec, err := compaction.NewRecord(req.Input, summary, ask.trigger, c.summaryModel(), time.Now().UTC())
 	if err != nil {
 		return compaction.Record{}, err
 	}
+	window := compaction.ContextWindow(c.next.currentModel(), c.window)
+	rec.Keep, rec.Focus = c.settings.KeepFor(window), strings.TrimSpace(ask.focus)
 	// What a /clear dropped stays dropped.
 	c.mu.Lock()
 	if c.record != nil && !c.stale {
@@ -255,13 +304,32 @@ func (c *compactor) clear(input []llm.Item) (compaction.Record, error) {
 	return rec, nil
 }
 
-// localSummary asks the session's current model, as Codex's local
-// compaction does.
-func (c *compactor) localSummary(effort llm.ReasoningEffort, cacheKey string) compaction.Summarizer {
+// summaryModel is the model that writes the summary: compact_model, or the
+// session's current model, as Codex's local compaction uses.
+func (c *compactor) summaryModel() string {
+	if c.settings.Model != "" {
+		return c.settings.Model
+	}
+
+	return c.next.currentModel()
+}
+
+// localSummary asks the summary model with the configured prompt and the
+// user's focus. The effort is compact_effort, else the session's; the
+// window is the summary model's.
+func (c *compactor) localSummary(effort llm.ReasoningEffort, cacheKey, focus string) compaction.Summarizer {
+	if c.settings.Effort != "" {
+		effort = c.settings.Effort
+	}
+	window := compaction.ContextWindow(c.next.currentModel(), c.window)
+	if c.settings.Model != "" && c.settings.Model != c.next.currentModel() {
+		window = compaction.ContextWindow(c.settings.Model, 0)
+	}
+
 	return func(ctx context.Context, view []llm.Item) (string, error) {
 		return compaction.Summarize(ctx, compaction.SummaryCall{ //nolint:wrapcheck // Summarize wraps its errors
-			Adapter: c.next.direct(), Effort: effort, CacheKey: cacheKey,
-			Window: compaction.ContextWindow(c.next.currentModel(), c.window),
+			Adapter: c.next.direct(), Model: c.settings.Model, Effort: effort, CacheKey: cacheKey,
+			Window: window, Prompt: c.settings.SummaryPrompt(focus),
 		}, view)
 	}
 }

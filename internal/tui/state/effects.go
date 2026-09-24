@@ -26,8 +26,9 @@ type (
 	EffSetDraft struct{ Text string }
 	// EffOpenSession closes the current session and opens another ("" for a new one).
 	EffOpenSession struct{ ID string }
-	// EffCompact compacts the context.
-	EffCompact struct{}
+	// EffCompact compacts the context; Focus is what the summary should
+	// focus on ("" for none).
+	EffCompact struct{ Focus string }
 	// EffClear drops the context in the same session.
 	EffClear struct{}
 	// EffQuit closes the session and exits.

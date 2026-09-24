@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/unreallabsai/unreal-agent/harness/llm"
 
+	"github.com/viktordanov/uagent-harness/internal/compaction"
 	"github.com/viktordanov/uagent-harness/internal/contextusage"
 )
 
@@ -30,7 +31,7 @@ func TestAnalyze(t *testing.T) {
 		Tools: []llm.Tool{{Name: "Bash", Description: "Run a command"}, {Name: "mcp__docs__search", Description: "Search the docs"}},
 	}
 
-	u := contextusage.Analyze(req, 0, 272000, 90, []string{"/repo/AGENTS.md", "/repo/svc/AGENTS.md"})
+	u := contextusage.Analyze(req, 0, 272000, compaction.Settings{Percent: 90}, []string{"/repo/AGENTS.md", "/repo/svc/AGENTS.md"})
 
 	assert.True(t, u.Estimated)
 	assert.Equal(t, int64(27200), u.Buffer, "90% leaves a tenth of the window for compaction")
@@ -49,7 +50,7 @@ func TestAnalyze(t *testing.T) {
 		assert.Positive(t, names[c].Tokens, c)
 	}
 
-	scaled := contextusage.Analyze(req, 10000, 272000, 0, nil)
+	scaled := contextusage.Analyze(req, 10000, 272000, compaction.Settings{}, nil)
 	assert.False(t, scaled.Estimated)
 	var sum int64
 	for _, c := range scaled.Categories {

@@ -62,8 +62,10 @@ type Options struct {
 	// decides what needs approval ("": the engine's configured sandbox).
 	Mode approval.Mode
 	// Compact compacts the context before the run's first model request
-	// (needs Capabilities.Compaction).
-	Compact bool
+	// (needs Capabilities.Compaction). CompactFocus is what the summary
+	// should focus on, as /compact <instructions>.
+	Compact      bool
+	CompactFocus string
 	// Clear drops the context before the run's first model request, as
 	// /clear does (needs Capabilities.Compaction).
 	Clear bool
@@ -103,9 +105,10 @@ type Run interface {
 	// SetMode changes the permission mode from the next command and the
 	// next model request (ErrUnsupported without LiveMode).
 	SetMode(mode approval.Mode) error
-	// Compact compacts the context before the next model request
-	// (ErrUnsupported without Compaction).
-	Compact() error
+	// Compact compacts the context before the next model request, with
+	// the summary focused on focus when it is not empty (ErrUnsupported
+	// without Compaction).
+	Compact(focus string) error
 	// Clear drops the context before the next model request: the model
 	// starts fresh in the same session (ErrUnsupported without Compaction).
 	Clear() error

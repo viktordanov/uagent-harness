@@ -19,7 +19,7 @@ func (s *Session) startRun(inputs []core.UserInput) {
 	s.markSent(inputs)
 	req := s.settings.request(s.id, inputs)
 	opts := engine.Options{
-		ServiceTier: s.settings.ServiceTier, Mode: s.settings.Mode, Compact: s.compactPending, Clear: s.clearPending,
+		ServiceTier: s.settings.ServiceTier, Mode: s.settings.Mode, Compact: s.compactPending, CompactFocus: s.compactFocus, Clear: s.clearPending,
 		Ask: s.askFunc(false), AskAnytime: s.askFunc(true), Notify: s.notify, Inject: s.Inject,
 	}
 	sink := func(e core.Event) { s.in <- evRun{event: e} }
