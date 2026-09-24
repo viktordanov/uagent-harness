@@ -17,6 +17,9 @@ Asked for by the owner after item 28; these come first.
 | 33 | The process engine made solid, with the behavior both engines share in one place | lane process | done |
 | 34 | On quit, print how to resume the session, as Codex does | main session | done |
 | 35 | Research spike: Codex subscription usage (rate limits) on the openai-codex backend, isolated from the rest | lane usage | doing |
+| 36 | The composer's λ on its first row only | main session | done |
+| 37 | Paste images into the prompt, as Codex and Claude Code do (ctrl+v on macOS; the Linux key to be found); first check what the runner and uagent allow | lane images | doing |
+| 38 | `!` shell mode in the composer: run a command yourself, and its result joins the conversation | lane shell | doing |
 
 ### 34. The resume hint on quit
 
@@ -25,6 +28,14 @@ When the TUI quits with a session open, it prints the command that continues it,
 ### 35. Codex usage (spike)
 
 A research spike on how Codex reads the ChatGPT subscription's usage and rate limits (what it calls, what it shows, and when), whether uah can read the same through the openai-codex credentials, and a plan. Any code stays in its own package, wired to nothing, until the plan is accepted.
+
+### 37. Pasting images
+
+Codex and Claude Code let you paste an image from the clipboard into the prompt (ctrl+v on macOS, where cmd+v pastes text) and attach image files, and send it to the model with the message. First: how both do it (the keys on macOS and Linux, how they read the clipboard, how the image shows in the composer, what they send), and whether unreal-agent-runner and uagent can carry an image in a user message at all (the runner's inbox, `core.UserInput`, the session store, the Responses request). Then the plan, and the build if nothing upstream blocks it; a change the runner would need is written down, not made, since the runner stays unchanged.
+
+### 38. `!` shell mode
+
+Typing `!` at the start of an empty composer switches it to shell mode: the λ becomes `!`, and enter runs the line as a command in the workspace (in the session's sandbox and permission mode) instead of sending it to the agent. The command and its output, whether it succeeded or failed, join the conversation as a message, so the agent sees them on its next turn, as Claude Code's `!` and Codex's user shell commands do. Backspace on an empty line, or esc, leaves shell mode. Research both first: how each shows it, what exactly goes into the conversation and when (at once, or with the next message), output limits, and whether a running agent is interrupted.
 
 ### 29. MCP approvals
 
