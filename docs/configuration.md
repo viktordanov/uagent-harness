@@ -106,7 +106,7 @@ Every key may be set in the user file and in a trusted project file, except `[pr
 
 ### Review
 
-`[review]` configures the auto-reviewer's model call ([approvals](../README.md#approvals-and-rules)):
+`[review]` configures the auto-reviewer's model call ([approvals](../internal/approval/README.md)):
 
 | Key | Type | Default | Merge | Meaning |
 | --- | --- | --- | --- | --- |
