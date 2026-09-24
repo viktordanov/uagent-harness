@@ -171,6 +171,7 @@ command = "osascript -e 'display notification \"uah is idle\"'"
 | `PreToolUse` | Before each tool call, on the embedded engine | Deny it (exit 2 or `permissionDecision: "deny"`); the reason is the tool's error result. Rewrite it (`updatedInput`) |
 | `PostToolUse` | After each tool call | Observe only |
 | `Stop` | The agent finished and nothing is queued | Keep it going: `"decision":"block"` with a `reason` sends the reason as the next message (at most 5 times in a row; `stop_hook_active` is true after the first) |
+| `PermissionRequest` | Before the user is asked to approve an escalated command, a `prompt` rule, or an MCP call (`tool_name` is `Bash` or the `mcp__` name) | Answer for the user with `permissionDecision` `"allow"` or `"deny"` (exit 2 denies); works headless too |
 | `PreCompact` | A compaction is about to start (`trigger`: manual or auto), on the embedded engine | Stop it (exit 2 or `"decision":"block"`) |
 | `SessionEnd` | The session closes | Observe only, with at most a second |
 
@@ -200,7 +201,7 @@ url = "https://mcp.example.com/mcp"
 bearer_token_env_var = "TRACKER_TOKEN"
 ```
 
-Servers start on the first run (or `/mcp`) and stop when the session closes; a stdio server gets only `HOME`, `PATH`, `USER`, and a few other basic variables unless `env` or `env_vars` adds more, as in Codex. A server that fails to start is left out (`required = true` fails the run instead). A call runs in the background, so the model keeps working while it runs; a call past its timeout, or to a server that crashed, returns an error to the model. Results reach the model as text and images; structured content arrives as JSON text. Disabled tools are hidden. Until uah can ask for approval, a tool whose `approval_mode` needs it (`prompt`, or `writes` for a tool not marked read-only) is refused with a reason. PreToolUse hook matchers see the `mcp__` names. `/mcp` lists each server, its state, and its tools. The process engine does not run MCP servers and says so. Unsupported Codex keys (OAuth, `bearer_token`, `http_headers_helper`) are errors ([plan](docs/design/mcp.md)).
+Servers start on the first run (or `/mcp`) and stop when the session closes; a stdio server gets only `HOME`, `PATH`, `USER`, and a few other basic variables unless `env` or `env_vars` adds more, as in Codex. A server that fails to start is left out (`required = true` fails the run instead). A call runs in the background, so the model keeps working while it runs; a call past its timeout, or to a server that crashed, returns an error to the model. Results reach the model as text and images; structured content arrives as JSON text. Disabled tools are hidden. A tool whose `approval_mode` needs approval asks through the same prompt as sandbox escalations, as in Codex: `prompt` always, `writes` unless the tool is read-only, and `auto` (the default) unless its annotations say it is read-only, or both non-destructive and closed-world. Headless runs and `approval_policy = "never"` refuse such calls with a reason. PreToolUse hook matchers see the `mcp__` names. `/mcp` lists each server, its state, and its tools. The process engine does not run MCP servers and says so. Unsupported Codex keys (OAuth, `bearer_token`, `http_headers_helper`) are errors ([plan](docs/design/mcp.md)).
 
 <!-- /memoria:section -->
 

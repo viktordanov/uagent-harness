@@ -15,6 +15,7 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
+	"github.com/viktordanov/uagent-harness/internal/approval"
 	"github.com/viktordanov/uagent-harness/internal/mcp"
 	"github.com/viktordanov/uagent-harness/internal/sandbox"
 )
@@ -48,7 +49,8 @@ func (w *wiring) tools(ctx context.Context, req core.Request, sessionID session.
 	if err != nil {
 		return nil, err
 	}
-	registry = withMCP(registry, mcpTools, req.DisallowedTools)
+	never := w.e.cfg.Approver != nil && w.e.cfg.Approver.Policy() == approval.Never
+	registry = withMCP(registry, mcpTools, req.DisallowedTools, mcpGate{ctx: ctx, ask: w.ask, never: never})
 	req.SessionID = string(sessionID)
 
 	return withPreToolUse(ctx, registry, w.e.cfg.Hooks, req, w.l.SessionsDir), nil

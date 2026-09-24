@@ -32,7 +32,7 @@ Status: `todo`, `doing`, `done`, `cut` (with a reason).
 | 6 | Session storage index and the `/status` activity heatmap | D | 1 | done |
 | 7 | `/` menu and `@` mentions | D | 1 | done |
 | 8 | AGENTS.md and skills parity with Codex | B | 4 | done |
-| 9 | Hooks for the new features | main session | 2, 4, 5 | doing |
+| 9 | Hooks for the new features | main session | 2, 4, 5 | done |
 | 10 | Configuration reference and `uah config` | main session | 2, 5 | todo |
 | 11 | `uah doctor`, content-based hook trust, crash-recovery test | C | 5 | todo |
 | 12 | Subagents: research and plan | any free lane | — | done |
@@ -122,3 +122,4 @@ One line per merge or decision: time, item, what landed, commit.
 - 04:47 · 9 (part) · PreCompact hook: runs before each compaction with the session and trigger; a block stops it. Remaining for 9: PermissionRequest (after item 2), MCP names already reach tool hooks (lane C).
 - 04:50 · 5 · Merged lane/mcp: internal/mcp on the official Go SDK (stdio and streamable HTTP), [mcp_servers.<name>] in Codex's format, tools as mcp__server__tool running as the runner's remote jobs (never blocking the coordinator), approval_mode per tool (prompt/writes refused until wired to the approver), /mcp. Also fixed the flaky picker test (wait for idle before /new).
 - 04:52 · 2 · Merged lane/approvals: internal/rules (Codex prefix_rule via go.starlark.net, commands split with mvdan.cc/sh), internal/approval (on-request/never, forbidden > prompt > allow, "don't ask again" writes default.rules), session ApprovalRequested/Resolved and Resolve, the Codex-style TUI overlay, [approvals] allow/forbid, approval_policy, --ask; escalated commands run unsandboxed after approval; headless denies with a reason.
+- 04:57 · 9 · PermissionRequest hook (answers approvals, also headless); MCP approval_mode wired to the approver prompt with Codex's annotation rule for auto; MCP names reach PreToolUse/PostToolUse (lane C). Item 9 complete with PreCompact.
