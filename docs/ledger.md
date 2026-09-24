@@ -37,7 +37,7 @@ Status: `todo`, `doing`, `done`, `cut` (with a reason).
 | 11 | `uah doctor`, content-based hook trust, crash-recovery test | C | 5 | done |
 | 12 | Subagents: research and plan | any free lane | — | done (built) |
 | 13 | `/context` like Claude Code | main session | 4 | done |
-| 14 | Shell completion: bash, zsh, fish | main session | — | done |
+| 14 | Shell completion: bash, zsh, fish, pwsh | main session | — | done |
 | 15 | Module READMEs; root README as getting started, config surface, common tasks | main session + docs lane | 16–18 | done |
 | 16 | Compaction validated for production | lane v-compaction | 4 | done |
 | 17 | Subagents validated for production; children identical to the main agent except their nested session ID | lane v-subagents | 12 | done |
@@ -226,7 +226,7 @@ Ideas that come up while working go here, not into the items.
 - Compaction: the process engine cannot compact. On a switch to a model with a smaller window, Codex first compacts with the previous model (`turn.rs:1342`); uah compacts with the new one, which trims the oldest history. Claude Code's "Compact Instructions" in CLAUDE.md steer every summary; uah has `compact_prompt` only.
 - `/config`: Claude Code's `/config key=value` form, a search field, and more rows (the sandbox's network access, the reviewer).
 - Crash cleanup kills recorded process groups; a reused process group ID after a reboot could hit an unrelated process (uagent's end-of-run cleanup has the same risk).
-- `uah config` does not list `[agents]`, `[review]`, and MCP servers yet.
+- `uah config` does not list `[agents]` yet.
 - `compaction.ContextWindow` reads the model catalog through a process-wide default (`models.SetDefault`), which the TUI's pure reducer then depends on. Better: the session reports the resolved window with its settings. It works today because one process has one catalog.
 - The render theme is package-level state (`SetTheme`), so render tests cannot run in parallel and one process cannot draw two themes. Better: a styles value in the render cache. Not needed while one TUI draws one theme.
 
@@ -259,5 +259,5 @@ Done: all twelve items. The quality pass; the sandbox finished with approvals, C
 
 Cut or unfinished: nothing on the list. The open edges each lane recorded are under Later.
 
-First thing next: try it — `uah` in a repository, ask for work that needs an escalation and a subagent, and read `uah doctor`; then pick from Later, starting with the subagent edges (resume_agent, interrupts) if subagents get real use.
+First thing next (at the time): try it — `uah` in a repository, ask for work that needs an escalation and a subagent, and read `uah doctor`. The subagent edges named then (resume_agent, interrupts) were built in item 17.
 
