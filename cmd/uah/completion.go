@@ -15,6 +15,7 @@ import (
 
 	"github.com/viktordanov/uagent-harness/internal/app"
 	"github.com/viktordanov/uagent-harness/internal/approval"
+	"github.com/viktordanov/uagent-harness/internal/models"
 	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/internal/store"
 )
@@ -74,6 +75,8 @@ func completionValues(ctx context.Context, cmd *cli.Command, prev string) []stri
 		return slices.Sorted(maps.Keys(app.LogLevels))
 	case "session", "s":
 		return sessionIDs(ctx, cmd)
+	case "model", "m":
+		return modelIDs(cmd)
 	}
 	if cmd.Name == "show" {
 		return sessionIDs(ctx, cmd)
@@ -82,18 +85,51 @@ func completionValues(ctx context.Context, cmd *cli.Command, prev string) []stri
 	return nil
 }
 
+// completionFlag is a flag's value in completion mode, which skips flag
+// sources, so the variable is read directly.
+func completionFlag(cmd *cli.Command, name, env, fallback string) string {
+	v := cmd.String(name)
+	if e := os.Getenv(env); e != "" && !cmd.IsSet(name) {
+		v = e
+	}
+	if v == "" {
+		v = fallback
+	}
+
+	return v
+}
+
+// completionStateDir is the state directory, absolute ("" when it cannot be).
+func completionStateDir(cmd *cli.Command) string {
+	abs, err := filepath.Abs(completionFlag(cmd, "state-dir", "UAGENT_STATE_DIR", harness.DefaultStateDir()))
+	if err != nil {
+		return ""
+	}
+
+	return abs
+}
+
+// modelIDs are the provider's models from the cache at any age, else the
+// bundled list: no credentials are read and no request is made.
+func modelIDs(cmd *cli.Command) []string {
+	provider := completionFlag(cmd, "provider", app.EnvProvider, app.CodexProvider)
+	dir := completionStateDir(cmd)
+	if dir != "" {
+		dir = models.CacheDir(dir)
+	}
+	m := models.New(models.Options{Dir: dir})
+	ids := m.Cached(provider).IDs()
+	if ids == nil {
+		return []string{}
+	}
+
+	return ids
+}
+
 // sessionIDs are the known sessions' short IDs, most recent first.
 func sessionIDs(ctx context.Context, cmd *cli.Command) []string {
-	// Completion mode skips flag sources, so read the variable directly.
-	dir := cmd.String("state-dir")
-	if v := os.Getenv("UAGENT_STATE_DIR"); v != "" && !cmd.IsSet("state-dir") {
-		dir = v
-	}
-	if dir == "" {
-		dir = harness.DefaultStateDir()
-	}
-	abs, err := filepath.Abs(dir)
-	if err != nil {
+	abs := completionStateDir(cmd)
+	if abs == "" {
 		return []string{}
 	}
 	infos, err := store.List(ctx, abs)

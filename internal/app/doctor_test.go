@@ -3,6 +3,7 @@ package app_test
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/viktordanov/uagent-harness/internal/app"
 	"github.com/viktordanov/uagent-harness/internal/hooks"
+	"github.com/viktordanov/uagent-harness/internal/models/modelstest"
 	"github.com/viktordanov/uagent-harness/testing/harnesstest"
 )
 
@@ -32,7 +34,7 @@ func find(t *testing.T, checks []app.Check, name string) app.Check {
 
 func TestDoctor_Healthy(t *testing.T) {
 	_, in := setupEnv(t)
-	checks := app.Doctor(context.Background(), in, app.DoctorOptions{HookTrustFile: filepath.Join(t.TempDir(), "trust.json")})
+	checks := app.Doctor(context.Background(), in, doctorOptions(t, filepath.Join(t.TempDir(), "trust.json")))
 
 	names := make([]string, 0, len(checks))
 	for _, c := range checks {
@@ -42,7 +44,7 @@ func TestDoctor_Healthy(t *testing.T) {
 		}
 		assert.Equal(t, app.CheckOK, c.Status, "%s: %s", c.Name, c.Detail)
 	}
-	assert.Equal(t, []string{"config", "runner", "workspace", "credentials", "sandbox", "instructions", "hooks", "mcp", "state"}, names)
+	assert.Equal(t, []string{"config", "runner", "workspace", "credentials", "models", "sandbox", "instructions", "hooks", "mcp", "state"}, names)
 	assert.True(t, app.Healthy(checks))
 	assert.Contains(t, find(t, checks, "credentials").Detail, "openai-codex credentials found")
 }
@@ -126,7 +128,7 @@ func TestDoctor_Problems(t *testing.T) {
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
 			e, in := setupEnv(t)
-			opts := app.DoctorOptions{HookTrustFile: filepath.Join(t.TempDir(), "trust.json")}
+			opts := doctorOptions(t, filepath.Join(t.TempDir(), "trust.json"))
 			c.prepare(t, e, &in, &opts)
 			checks := app.Doctor(context.Background(), in, opts)
 			got := find(t, checks, c.check)
@@ -151,7 +153,7 @@ func TestDoctor_Hooks(t *testing.T) {
 	require.NoError(t, trust.Allow(e.Workspace, "./check.sh"))
 	writeFile(t, filepath.Join(e.Workspace, "check.sh"), "exit 0 # changed\n")
 
-	checks := app.Doctor(context.Background(), in, app.DoctorOptions{HookTrustFile: trustFile})
+	checks := app.Doctor(context.Background(), in, doctorOptions(t, trustFile))
 	assert.Equal(t, "3 configured: 1 user, 2 project (0 trusted)", find(t, checks, "hooks").Detail)
 	var untrusted []string
 	for _, c := range checks {
@@ -173,7 +175,7 @@ func TestDoctor_MCP(t *testing.T) {
 	writeConfig(t, &in, "[mcp_servers.test]\ncommand = \""+harnesstest.MCPServer(t)+"\"\n\n"+
 		"[mcp_servers.broken]\ncommand = \"/nonexistent/server\"\nstartup_timeout_sec = 2\n")
 
-	checks := app.Doctor(context.Background(), in, app.DoctorOptions{HookTrustFile: filepath.Join(t.TempDir(), "trust.json")})
+	checks := app.Doctor(context.Background(), in, doctorOptions(t, filepath.Join(t.TempDir(), "trust.json")))
 	good := find(t, checks, "mcp test")
 	assert.Equal(t, app.CheckOK, good.Status, good.Detail)
 	assert.Regexp(t, `^started, \d+ tools \(startup timeout 30s\)$`, good.Detail)
@@ -199,4 +201,49 @@ func writeToken(t *testing.T, e *harnesstest.Env, d time.Duration) {
 	t.Helper()
 	claims := `{"exp":` + strconv.FormatInt(time.Now().Add(d).Unix(), 10) + `,"https://api.openai.com/auth":{"chatgpt_account_id":"a"}}`
 	writeFile(t, filepath.Join(e.CodexHome, "auth.json"), `{"tokens":{"access_token":"x.`+base64.RawURLEncoding.EncodeToString([]byte(claims))+`.y"}}`)
+}
+
+// doctorOptions are the options with a model list served without the network.
+func doctorOptions(t *testing.T, trustFile string) app.DoctorOptions {
+	t.Helper()
+
+	return app.DoctorOptions{
+		HookTrustFile: trustFile,
+		Models:        modelstest.Manager(t, app.CodexProvider, modelstest.Source{Models: modelstest.IDs(app.DefaultCodexModel, "gpt-6-luna")}),
+	}
+}
+
+// TestDoctor_Models reports how many models the login can use, where the
+// list came from, and whether the configured model is in it.
+func TestDoctor_Models(t *testing.T) {
+	cases := map[string]struct {
+		model  string
+		src    modelstest.Source
+		status app.CheckStatus
+		detail string
+	}{
+		"the model is listed": {
+			src: modelstest.Source{Models: modelstest.IDs("gpt-6-sol", "gpt-6-luna")}, status: app.CheckOK,
+			detail: "2 models available to this login (live list from openai-codex); gpt-6-sol is in it",
+		},
+		"an unknown model is a warning with near misses": {
+			model: "gpt-luna-6", src: modelstest.Source{Models: modelstest.IDs("gpt-6-sol", "gpt-6-luna")}, status: app.CheckWarn,
+			detail: "gpt-luna-6 is not available on openai-codex; did you mean gpt-6-luna?",
+		},
+		"a failed refresh falls back to the bundled list": {
+			src: modelstest.Source{Err: errors.New("connection refused")}, status: app.CheckWarn,
+			detail: "openai-codex did not list its models (connection refused); using the bundled list",
+		},
+	}
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			_, in := setupEnv(t)
+			in.Model = c.model
+			opts := doctorOptions(t, filepath.Join(t.TempDir(), "trust.json"))
+			opts.Models = modelstest.Manager(t, app.CodexProvider, c.src)
+			got := find(t, app.Doctor(context.Background(), in, opts), "models")
+			assert.Equal(t, c.status, got.Status, got.Detail)
+			assert.Contains(t, got.Detail, c.detail)
+		})
+	}
 }
