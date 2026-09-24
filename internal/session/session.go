@@ -189,6 +189,12 @@ func (s *Session) SteerNow(text string) (core.UserInput, error) {
 	return s.submit(text, true)
 }
 
+// SteerQueued sends every queued message now, in order, as SteerNow sends
+// one (ctrl+enter on an empty composer). It reports how many there were.
+func (s *Session) SteerQueued() (int, error) {
+	return call[int](s, cmdSteerQueued{})
+}
+
 // Interrupt stops the live run gracefully. Queued messages stay queued.
 func (s *Session) Interrupt() error {
 	_, err := call[struct{}](s, cmdInterrupt{})

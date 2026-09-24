@@ -23,6 +23,9 @@ type AgentWatch struct {
 	// Send gives the agent a message, as the parent's send_input does; now
 	// steers it into the agent's live run, as ctrl+enter does.
 	Send func(text string, now bool) error
+	// SteerQueued sends the agent's queued messages now, in order, as
+	// ctrl+enter on an empty composer does.
+	SteerQueued func() error
 	// Interrupt stops the agent's current work, and its own subagents',
 	// as esc esc does for the main agent. It stays open for more messages.
 	Interrupt func()

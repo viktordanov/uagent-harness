@@ -205,6 +205,11 @@ func (s *State) onIntent(ev any) (State, []Effect) { //nolint:gocyclo // a dispa
 		return *s, []Effect{EffSubmit{Text: s.withImages(text)}}
 	case Steer:
 		text := strings.TrimSpace(e.Text)
+		if text == "" && len(s.Queue) > 0 {
+			s.Scroll = 0
+
+			return *s, []Effect{EffSteerQueued{}} // an empty composer sends the queue now
+		}
 		if text == "" || strings.HasPrefix(text, "/") {
 			return s.onIntent(Submit(e))
 		}

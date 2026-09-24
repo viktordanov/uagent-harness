@@ -10,6 +10,8 @@ type (
 	EffSubmit struct{ Text string }
 	// EffSteer sends a message now.
 	EffSteer struct{ Text string }
+	// EffSteerQueued sends every queued message now, in order.
+	EffSteerQueued struct{}
 	// EffInterrupt stops the live run; queued messages stay.
 	EffInterrupt struct{}
 	// EffWithdraw takes a queued message back into the composer.
@@ -37,6 +39,7 @@ type (
 
 func (EffSubmit) effect()       {}
 func (EffSteer) effect()        {}
+func (EffSteerQueued) effect()  {}
 func (EffInterrupt) effect()    {}
 func (EffWithdraw) effect()     {}
 func (EffSetSettings) effect()  {}

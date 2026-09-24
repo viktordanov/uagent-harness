@@ -130,3 +130,19 @@ func (m Model) sendToAgent(text string, now bool) tea.Cmd {
 		return nil
 	}
 }
+
+// steerAgentQueue sends the watched agent's queued messages now.
+func (m Model) steerAgentQueue() tea.Cmd {
+	w := m.watch
+
+	return func() tea.Msg {
+		if w == nil || w.SteerQueued == nil {
+			return nil
+		}
+		if err := w.SteerQueued(); err != nil {
+			return state.Failed{Err: err}
+		}
+
+		return nil
+	}
+}

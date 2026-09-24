@@ -47,9 +47,10 @@ func (m *Manager) WatchAgent(parentID, ref string) (*session.AgentWatch, error) 
 
 	return &session.AgentWatch{
 		ID: c.id, Nickname: c.nickname, History: history, Events: events, Next: next,
-		Stop:      func() { m.unwatch(c, next) },
-		Send:      func(text string, now bool) error { _, err := m.submit(c, text, now); return err },
-		Interrupt: func() { m.interruptTree(c) },
+		Stop:        func() { m.unwatch(c, next) },
+		Send:        func(text string, now bool) error { _, err := m.submit(c, text, now); return err },
+		SteerQueued: func() error { return m.steerQueued(c) },
+		Interrupt:   func() { m.interruptTree(c) },
 	}, nil
 }
 

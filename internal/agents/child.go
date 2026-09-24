@@ -145,6 +145,34 @@ func (m *Manager) submit(c *child, message string, now bool) (string, error) {
 	return in.ID, nil
 }
 
+// steerQueued sends a child's queued messages now, as ctrl+enter on an
+// empty composer does for the main agent. A child a user interrupt left
+// idle with its queue starts work again, so it is marked running.
+func (m *Manager) steerQueued(c *child) error {
+	m.mu.Lock()
+	c.sending++
+	s := c.s
+	m.mu.Unlock()
+	n, err := s.SteerQueued()
+	m.mu.Lock()
+	c.sending--
+	resumed := n > 0 && c.status.Final()
+	if resumed {
+		c.gen++
+		c.started = time.Now()
+		c.status = Status{State: engine.AgentRunning}
+	}
+	m.mu.Unlock()
+	if err != nil {
+		return fmt.Errorf("failed to send the agent its queued messages: %w", err)
+	}
+	if resumed {
+		m.notify(c)
+	}
+
+	return nil
+}
+
 // watch follows a child's events until its session closes.
 func (m *Manager) watch(c *child) {
 	for e := range c.s.Events() {

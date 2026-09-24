@@ -58,6 +58,30 @@ func (s *Session) onWithdraw(id string) bool {
 	return true
 }
 
+// onSteerQueued sends every queued message now, in order, as a steer
+// sends one, and reports how many it sent. Messages still waiting for
+// their hooks go the same way once the hooks allow them. While idle (the
+// queue a user interrupt kept) the messages start a run together.
+func (s *Session) onSteerQueued() int {
+	for i := range s.hooks.checking {
+		s.hooks.checking[i].steer = true
+	}
+	queued := s.queue
+	s.queue = nil
+	if s.state == StateIdle {
+		if len(queued) > 0 {
+			s.startRun(queued)
+		}
+
+		return len(queued) + len(s.hooks.checking)
+	}
+	for _, in := range queued {
+		s.dispatch(in, true)
+	}
+
+	return len(queued) + len(s.hooks.checking)
+}
+
 // dispatch starts a run with the message, sends it live, or queues it.
 func (s *Session) dispatch(input core.UserInput, steer bool) {
 	switch s.state {

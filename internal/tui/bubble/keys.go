@@ -20,8 +20,8 @@ const (
 )
 
 // onKey maps keys to intents. The keys never change meaning: Enter sends
-// (queueing while the agent works), Ctrl+Enter sends now, Shift+Enter adds a
-// line.
+// (queueing while the agent works), Ctrl+Enter sends now (on an empty
+// composer, the queued messages), Shift+Enter adds a line.
 func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) { //nolint:gocyclo // a dispatch switch over a closed set; see docs/documentation/architecture.md
 	if m.st.Mode == state.ModePicker {
 		return m.onPickerKey(msg)
@@ -46,7 +46,7 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) { //nolint:gocycl
 		return m.dispatch(state.Submit{Text: draft})
 	case "ctrl+enter", "alt+enter":
 		if trimmed(draft) == "" {
-			return m, nil
+			return m.dispatch(state.Steer{}) // sends the queue now, if any
 		}
 		m.composer.Reset()
 

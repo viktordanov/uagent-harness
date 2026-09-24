@@ -11,7 +11,7 @@ Asked for by the owner after v1.0.1.
 | # | Item | Lane | Status |
 | --- | --- | --- | --- |
 | 41 | Survive a lost connection: retry model requests up to 10 attempts with exponential backoff, and show the retry in the TUI ("reconnecting, attempt 3 of 10"). Today the runner retries 5 attempts at 2, 4, 8, and 16 s (about 30 s in all), which a Wi-Fi switch can outlast, and the TUI shows nothing while it waits | | pending |
-| 42 | Ctrl+enter on an empty composer sends every queued message now, in order. Today it does nothing (an empty `Steer` becomes an empty `Submit`), so queued messages wait for the run to end | | pending |
+| 42 | Ctrl+enter on an empty composer sends every queued message now, in order. Today it does nothing (an empty `Steer` becomes an empty `Submit`), so queued messages wait for the run to end | lane queueflush | done (`Session.SteerQueued`; also the agent view's queue) |
 
 ## Pending (round 3)
 
@@ -355,6 +355,7 @@ One line per merge or decision: time, item, what landed, commit.
 - 14:45 · 24–27, 20 · Merged configurable compaction and `/config`, permission modes and saved session settings, and `apply_patch` with diffs.
 - 15:10 · 28 · A fresh review found CI red on a notification race (fixed: the note goes before the update), stale ledger lines (fixed), and no tests for the process engine (added), and suggested a complexity check (gocyclo at 20, as a backstop).
 - 15:40 · 23 (deferred) · No process-wide model catalog: `compaction.ContextWindow` takes the catalog, and `app.Setup` returns the session's. No package-level theme: a `Styles` value in each render cache, with every drawing function its method (a go/types rewrite of 38 functions).
+- 01:50 · 42 · Ctrl+enter on an empty composer steers every queued message in order (`Session.SteerQueued`: each through `dispatch` as a steer, live on the embedded engine, a restart on the process engine; one waiting for its hooks goes as a steer; a queue an interrupt kept starts a run). The agent view sends the viewed agent's own queue (`AgentWatch.SteerQueued`). Nothing queued: nothing happens.
 
 ### Final summary (05:29)
 

@@ -68,7 +68,7 @@ Keys worth knowing:
 | Key | Does |
 | --- | --- |
 | enter | Send. While the agent works, the message queues and goes out when it finishes |
-| ctrl+enter | Send now: the working agent reads it before its next model request |
+| ctrl+enter | Send now: the working agent reads it before its next model request. On an empty prompt, it sends the queued messages now, in order |
 | esc esc | Interrupt; queued messages stay |
 | `/` | Commands, such as `/model`, `/effort`, `/compact`, `/context`, `/mcp`, `/agents`, `/status`, `/resume`, and `/new` |
 | `@` | Mention a workspace file (fuzzy search) |
