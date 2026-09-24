@@ -189,3 +189,8 @@ A uah review costs about one small agent step on the same subscription, and less
 9. **No structured output.** The runner's `llm.Request` has no response-format field, so the JSON is asked for in the prompt only; Codex passes `final_output_json_schema`. Default: prompt plus strict parsing and retries.
 10. **Effort on models without reasoning.** Default: `low` is always sent. Codex sends `low` only when the model lists it; a provider that rejects the field needs `[review] effort` or a runner-side check.
 11. **Timeout.** Default: Codex's 90 s. The research suggested 30 s; `[review] timeout` changes it.
+
+## As built (phase 3)
+
+The reviewer (`internal/review`) is wired in the embedded engine (`autoreview.go`): each run builds it on the session's own model client, puts it in front of the session's asker, and resets its circuit breaker on each user message. Allow runs the action, deny refuses it with the reviewer's reason, and ask_user (breaker open) passes to PermissionRequest hooks and the user; headless runs deny then. The context comes from the session's events: up to 20 user messages and the last 20 tool calls with their status but no output. MCP calls that need approval go through the same path. Each verdict is an `engine.AutoReviewed` event, shown as a line in the TUI and in `uah run` progress.
+

@@ -1,8 +1,11 @@
 package state
 
 import (
+	"fmt"
 	"slices"
 	"strings"
+
+	"github.com/viktordanov/uagent-harness/internal/engine"
 
 	"github.com/viktordanov/uagent-harness/internal/approval"
 	"github.com/viktordanov/uagent-harness/internal/session"
@@ -84,3 +87,14 @@ func (s *State) answer(e Answer) (State, []Effect) {
 }
 
 func oneLine(text string) string { return strings.Join(strings.Fields(text), " ") }
+
+// onAutoReviewed shows the auto-reviewer's verdict: a line for what it
+// approved or denied, and nothing extra when it left the choice to the user.
+func (s *State) onAutoReviewed(e engine.AutoReviewed) {
+	switch e.Outcome {
+	case "allow":
+		s.notice(session.LevelInfo, fmt.Sprintf("auto-approved (%s risk): %s — %s", e.Risk, oneLine(e.Command), e.Reason))
+	case "deny":
+		s.notice(session.LevelWarning, fmt.Sprintf("auto-review denied (%s risk): %s — %s", e.Risk, oneLine(e.Command), e.Reason))
+	}
+}

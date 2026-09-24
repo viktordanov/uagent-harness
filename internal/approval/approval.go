@@ -6,6 +6,7 @@ package approval
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/viktordanov/uagent-harness/internal/rules"
@@ -95,6 +96,23 @@ const (
 	Decline       Answer = "decline"
 )
 
+// declinePrefix starts a decline that carries its own reason.
+const declinePrefix = "decline: "
+
+// DeclineBecause declines with a reason the model hears, such as an
+// auto-reviewer's, instead of "the user declined".
+func DeclineBecause(reason string) Answer { return Answer(declinePrefix + reason) }
+
+// Approved reports whether the answer lets the command run.
+func (a Answer) Approved() bool { return a == Approve || a == ApprovePrefix }
+
+// DeclineReason is the reason a DeclineBecause answer carries.
+func (a Answer) DeclineReason() (string, bool) {
+	reason, ok := strings.CutPrefix(string(a), declinePrefix)
+
+	return reason, ok
+}
+
 // Ask shows the prompt to the user and waits for the answer. It returns
 // Decline when the context ends first.
 type Ask func(ctx context.Context, p Prompt) Answer
@@ -158,7 +176,8 @@ func (a *Approver) Decide(ctx context.Context, req Request, ask Ask) Decision {
 	if escalation {
 		run = Unsandboxed
 	}
-	switch ask(ctx, p) {
+	answer := ask(ctx, p)
+	switch answer {
 	case Approve:
 		return Decision{Run: run}
 	case ApprovePrefix:
@@ -170,6 +189,9 @@ func (a *Approver) Decide(ctx context.Context, req Request, ask Ask) Decision {
 
 		return Decision{Run: run}
 	case Decline:
+	}
+	if reason, ok := answer.DeclineReason(); ok {
+		return Decision{Run: Deny, Reason: "not run: " + reason}
 	}
 
 	return Decision{Run: Deny, Reason: "not run: the user declined this command. Do not run it again; ask the user what to do instead."}
