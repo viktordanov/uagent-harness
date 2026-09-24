@@ -10,6 +10,7 @@ import (
 	"github.com/viktordanov/uagent/core"
 
 	"github.com/viktordanov/uagent-harness/internal/approval"
+	"github.com/viktordanov/uagent-harness/internal/contextusage"
 	"github.com/viktordanov/uagent-harness/internal/mcp"
 )
 
@@ -42,6 +43,12 @@ type Engine interface {
 type MCPLister interface {
 	// MCPServers reports each configured server, starting them if needed.
 	MCPServers() []mcp.ServerStatus
+}
+
+// ContextReporter is an engine that can break down the context of its last
+// model request, for /context.
+type ContextReporter interface {
+	ContextUsage(sessionID string) (contextusage.Usage, bool)
 }
 
 // Options are run settings that core.Request does not carry.

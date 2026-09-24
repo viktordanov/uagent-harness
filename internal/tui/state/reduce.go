@@ -38,6 +38,10 @@ func Reduce(s State, ev any) (State, []Effect) {
 		return s, nil
 	case Answer:
 		return s.answer(e)
+	case ContextShown:
+		s.onContextView(e)
+
+		return s, nil
 	case core.Event:
 		s.onEvent(e)
 

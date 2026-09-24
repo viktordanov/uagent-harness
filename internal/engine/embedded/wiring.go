@@ -89,6 +89,7 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 		return nil, err
 	}
 	w.closers = append(w.closers, sw.Close)
+	sw.seen = w.e.last.recorder(req.SessionID)
 	w.userAsk = w.ask
 	if w.e.cfg.AutoReview {
 		w.ask = w.reviewedAsk(sw, req)

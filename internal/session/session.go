@@ -17,6 +17,7 @@ import (
 	"github.com/viktordanov/uagent/core"
 
 	"github.com/viktordanov/uagent-harness/internal/approval"
+	"github.com/viktordanov/uagent-harness/internal/contextusage"
 	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/hooks"
 	"github.com/viktordanov/uagent-harness/internal/mcp"
@@ -196,6 +197,17 @@ func (s *Session) MCPServers() (servers []mcp.ServerStatus, ok bool) {
 	}
 
 	return l.MCPServers(), true
+}
+
+// ContextUsage breaks down the context of the last model request; ok is
+// false when the engine cannot or no request was sent yet.
+func (s *Session) ContextUsage() (contextusage.Usage, bool) {
+	r, ok := s.eng.(engine.ContextReporter)
+	if !ok {
+		return contextusage.Usage{}, false
+	}
+
+	return r.ContextUsage(s.id)
 }
 
 // Close interrupts a live run, waits for it to end, and closes Events. It

@@ -19,6 +19,8 @@ type switcher struct {
 	model    string
 	priority bool
 	clients  map[bool]Client
+	// seen, when set, sees each request sent and the usage reported for it.
+	seen func(llm.Request, llm.Usage)
 }
 
 func newSwitcher(model string, priority bool, build func(bool) (Client, error)) (*switcher, error) {
@@ -37,8 +39,12 @@ func (s *switcher) Respond(ctx context.Context, req llm.Request, opts llm.Reques
 	if model != "" {
 		req.Model.ID = model
 	}
+	resp, err := client.Respond(ctx, req, opts)
+	if err == nil && s.seen != nil {
+		s.seen(req, resp.Usage)
+	}
 
-	return client.Respond(ctx, req, opts) //nolint:wrapcheck // the coordinator wraps model errors
+	return resp, err //nolint:wrapcheck // the coordinator wraps model errors
 }
 
 func (s *switcher) setModel(model string) {

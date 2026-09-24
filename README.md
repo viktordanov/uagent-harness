@@ -57,7 +57,7 @@ The default view is compact, like Codex: your messages, one line per command (`�
 | mouse wheel, shift+↑ / shift+↓, pgup / pgdn | Scroll the transcript; end returns to the bottom. While the TUI reports the mouse, select text with Option (iTerm2, Terminal) or Shift (most others) held |
 | ctrl+c | Clear the composer; on an empty composer, quit (twice while a run is live) |
 
-Commands: `/model <id>`, `/effort <level>`, `/compact`, `/resume [id]`, `/new`, `/stop`, `/status` (with a 12-week activity heatmap), `/mcp`, `/agents`, `/details`, `/reasoning`, `/help`, `/quit`. `/model`, `/effort`, and `/fast` apply from the next model request on the embedded engine, and from the next run on the process engine. `/fast` needs the embedded engine and the openai or openai-codex provider.
+Commands: `/model <id>`, `/effort <level>`, `/compact`, `/context`, `/resume [id]`, `/new`, `/stop`, `/status` (with a 12-week activity heatmap), `/mcp`, `/agents`, `/details`, `/reasoning`, `/help`, `/quit`. `/model`, `/effort`, and `/fast` apply from the next model request on the embedded engine, and from the next run on the process engine. `/fast` needs the embedded engine and the openai or openai-codex provider.
 Tool calls keep their place in the transcript, so a command that finishes after later turns updates its original row. Diagnostics go to `<state-dir>/logs/uah-tui.log`.
 
 `uah run` takes the same backend, guard, and state flags as uagent (`--provider`, `-m`, `-e`, `-t`, `-C`, `--state-dir`, `--runner`, `--max-disk`, `--allow-dotenv`); `uah run --help` lists them.
@@ -77,7 +77,7 @@ Both engines share uagent's guards, session lock, and run records, and write the
 
 <!-- /memoria:section -->
 
-<!-- memoria:section id="compaction" files="internal/compaction/compaction.go internal/compaction/window.go internal/engine/embedded/compact.go internal/engine/embedded/compactlog.go internal/llmcall/llmcall.go internal/session/compact.go internal/tui/state/context.go" -->
+<!-- memoria:section id="compaction" files="internal/compaction/compaction.go internal/compaction/window.go internal/engine/embedded/compact.go internal/engine/embedded/compactlog.go internal/llmcall/llmcall.go internal/session/compact.go internal/tui/state/context.go internal/contextusage/usage.go internal/engine/embedded/context.go internal/tui/state/contextview.go internal/tui/render/contextview.go" -->
 ### Compaction
 
 On the embedded engine, uah compacts a long conversation the way Codex does. It asks the model for a handoff summary, then sends every earlier user message verbatim and in order, followed by the summary. The model's replies, reasoning, tool calls, and tool outputs before that point are dropped. Messages sent after the compaction follow the summary.
@@ -87,6 +87,8 @@ On the embedded engine, uah compacts a long conversation the way Codex does. It 
 - The window comes from Codex's model table (272,000 tokens for current models and for models it does not know). `model_context_window` overrides it.
 
 The footer shows "N% context left", computed from the last response's tokens as Codex computes it. A compaction is saved in `sessions/<id>.compaction.jsonl` next to the session file, so a resumed session keeps it. The runner's session file keeps the full history. The process engine cannot compact. The [plan](docs/design/compaction.md) lists the choices made.
+
+`/context` shows what fills the window, as Claude Code's `/context` does: a 10×10 grid, one cell per percent, colored by category, beside a legend with each category's tokens: system prompt, instruction files, skills, tools, MCP tools, your messages, agent messages, and tool calls with their results, then the free space and the auto-compact buffer. Below it, each instruction file, skill, and tool has its own line. It breaks down the last request the engine sent, after any compaction: each part is estimated at 4 bytes a token, as Codex estimates, and scaled so the parts add up to the input tokens the provider reported (`internal/contextusage`). It needs the embedded engine and one model request.
 
 <!-- /memoria:section -->
 
