@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/viktordanov/uagent-harness/internal/contextusage"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
 
@@ -19,4 +20,16 @@ func (m *Manager) ChildOptions(parentID string) session.Options {
 	defer m.mu.Unlock()
 
 	return m.childOptions(m.parents[parentID], newChild("child-id", parentID, "", "Ada"), Role{}, record{}, false)
+}
+
+// ContextUsage is /context for a child of this process.
+func (m *Manager) ContextUsage(id string) (contextusage.Usage, bool) {
+	m.mu.Lock()
+	c, ok := m.children[id]
+	m.mu.Unlock()
+	if !ok || c.s == nil {
+		return contextusage.Usage{}, false
+	}
+
+	return c.s.ContextUsage()
 }
