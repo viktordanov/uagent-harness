@@ -28,6 +28,7 @@ func Commands() []Command {
 		{Name: "resume", Args: "[id]", Help: "open the session picker, or resume a session by ID prefix", run: cmdResume},
 		{Name: "new", Aliases: []string{"clear"}, Help: "start a new session", run: func(*State, string) []Effect { return []Effect{EffOpenSession{}} }},
 		{Name: "stop", Help: "interrupt the live run; queued messages stay", WhileBusy: true, run: func(*State, string) []Effect { return []Effect{EffInterrupt{}} }},
+		{Name: "compact", Help: "summarize the context to free it; your messages stay as written (embedded engine)", WhileBusy: true, run: cmdCompact},
 		{Name: "status", Help: "session, settings, and totals", WhileBusy: true, run: cmdStatus},
 		{Name: "sandbox", Help: "what commands may do: the sandbox mode (set it with --sandbox or sandbox_mode)", WhileBusy: true, run: cmdSandbox},
 		{Name: "reasoning", Help: "show or hide reasoning summaries", WhileBusy: true, run: func(s *State, _ string) []Effect { s.ShowReasoning = !s.ShowReasoning; return nil }},

@@ -16,10 +16,10 @@ func (s *Session) startRun(inputs []core.UserInput) {
 	s.state = StateStarting
 	s.markSent(inputs)
 	req := s.settings.request(s.id, inputs)
-	tier := s.settings.ServiceTier
+	opts := engine.Options{ServiceTier: s.settings.ServiceTier, Compact: s.compactPending}
 	sink := func(e core.Event) { s.in <- evRun{event: e} }
 	go func() {
-		run, err := s.eng.Start(s.ctx, req, engine.Options{ServiceTier: tier}, sink)
+		run, err := s.eng.Start(s.ctx, req, opts, sink)
 		s.in <- evStarted{run: run, err: err, inputs: inputs}
 	}()
 }
@@ -93,6 +93,7 @@ func (s *Session) onRunEvent(e core.Event) {
 	case core.ToolFinished:
 		s.postToolUse(v)
 	}
+	s.noteCompaction(e)
 	if m, ok := e.(core.UserMessage); ok && s.sent[m.ID] {
 		delete(s.sent, m.ID)
 		s.emit(InputDelivered{At: time.Now(), ID: m.ID})

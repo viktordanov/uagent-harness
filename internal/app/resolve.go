@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/viktordanov/uagent-harness/internal/compaction"
 	"github.com/viktordanov/uagent-harness/internal/config"
 	"github.com/viktordanov/uagent-harness/internal/sandbox"
 	"github.com/viktordanov/uagent-harness/internal/session"
@@ -76,6 +77,8 @@ type Resolved struct {
 	Sandbox sandbox.Policy
 	// Env is which environment variables commands get.
 	Env sandbox.EnvPolicy
+	// AutoCompactPercent is when the embedded engine compacts (0: never).
+	AutoCompactPercent int
 }
 
 // UsageError is an error in what the user asked for, such as an invalid
@@ -129,11 +132,34 @@ func Resolve(in Inputs, resumed session.Info, cfg config.Config) (Resolved, erro
 	if err != nil {
 		return Resolved{}, err
 	}
+	percent, err := pickCompaction(cfg, &s)
+	if err != nil {
+		return Resolved{}, err
+	}
 
 	return Resolved{
 		Settings: s, Engine: eng, MaxDisk: maxDisk, Instructions: !in.NoInstructions && cfg.InstructionsEnabled(),
-		Sandbox: policy, Env: envPolicy,
+		Sandbox: policy, Env: envPolicy, AutoCompactPercent: percent,
 	}, nil
+}
+
+// pickCompaction checks the compaction keys: the automatic limit (Codex's
+// 90% by default) and the context window override, which goes into the
+// settings for the context meter.
+func pickCompaction(cfg config.Config, s *session.Settings) (int, error) {
+	percent := compaction.DefaultAutoPercent
+	if cfg.AutoCompactPercent != nil {
+		percent = *cfg.AutoCompactPercent
+	}
+	if percent < 0 || percent > 100 {
+		return 0, usage(fmt.Errorf("invalid auto_compact_percent %d (want 0 to 100)", percent))
+	}
+	if cfg.ModelContextWindow < 0 {
+		return 0, usage(fmt.Errorf("invalid model_context_window %d", cfg.ModelContextWindow))
+	}
+	s.ContextWindow = cfg.ModelContextWindow
+
+	return percent, nil
 }
 
 // pickEnv checks the configured environment policy.

@@ -33,6 +33,9 @@ type Settings struct {
 	// Sandbox is the sandbox mode commands run in, for display; the engine
 	// enforces the mode it was built with.
 	Sandbox string
+	// ContextWindow overrides the model table's context window (tokens), for
+	// the context meter; the engine was built with the same value.
+	ContextWindow int64
 }
 
 // Validate checks values without asking the provider which models exist.

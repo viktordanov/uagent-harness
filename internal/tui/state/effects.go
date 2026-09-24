@@ -26,6 +26,8 @@ type (
 	EffSetDraft struct{ Text string }
 	// EffOpenSession closes the current session and opens another ("" for a new one).
 	EffOpenSession struct{ ID string }
+	// EffCompact compacts the context.
+	EffCompact struct{}
 	// EffQuit closes the session and exits.
 	EffQuit struct{}
 )
@@ -40,4 +42,5 @@ func (EffLoadActivity) effect() {}
 func (EffLoadFiles) effect()    {}
 func (EffSetDraft) effect()     {}
 func (EffOpenSession) effect()  {}
+func (EffCompact) effect()      {}
 func (EffQuit) effect()         {}

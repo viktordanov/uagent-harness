@@ -129,6 +129,7 @@ func newEngine(r Resolved, runnerPath, stateDir string, logger *slog.Logger, opt
 	emb := embedded.New(embedded.Config{
 		StateDir: stateDir, MaxDisk: r.MaxDisk, Logger: logger, Provider: r.Settings.Provider, Hooks: opts.Hooks,
 		Sandbox: &r.Sandbox, SandboxDir: sandboxDir, Env: r.Env,
+		AutoCompactPercent: r.AutoCompactPercent, ContextWindow: r.Settings.ContextWindow,
 	})
 	if r.Settings.ServiceTier != "" && !emb.Capabilities().ServiceTier {
 		return nil, usage(errors.New("--fast needs the openai or openai-codex provider"))

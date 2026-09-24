@@ -12,13 +12,13 @@
 
 
 
+
+
 › Run `ls` and `cat a.txt`, then reply with the file contents.
 • Ran ls
 • Ran cat a.txt
 
 ● hello
-› /resume [id]      open the session picker, or resume a session by ID prefix
-  /reasoning        show or hide reasoning summaries
 ────────────────────────────────────────────────────────────────────────────────────────────────────
-› /re
- gpt-6-sol · high · /workspace/proj                 100% context left · ctrl+t details · / commands
+›
+ gpt-6-sol · high · /workspace/proj                  35% context left · ctrl+t details · / commands

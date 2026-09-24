@@ -73,6 +73,8 @@ type State struct {
 	Live   *Live
 	Busy   bool // from a message sent until the session is idle
 	Totals Totals
+	// ContextUsed is the tokens the last response used (0: unknown).
+	ContextUsed int64
 
 	ShowReasoning bool
 	// Details shows turns, run dividers, and token totals; the default is a
