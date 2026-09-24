@@ -103,6 +103,8 @@ func (s *Session) loop() {
 			}
 		case evRun:
 			s.onRunEvent(m.event)
+		case evNotify:
+			s.emit(m.event)
 		case evEnded:
 			if s.onEnded(m) {
 				return

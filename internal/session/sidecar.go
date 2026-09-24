@@ -11,10 +11,11 @@ import (
 )
 
 // Where a session was started. Codex hides scripted sessions from its resume
-// picker by default; uah does the same with SourceRun.
+// picker by default; uah does the same with SourceRun and with subagents.
 const (
-	SourceTUI = "tui"
-	SourceRun = "run"
+	SourceTUI      = "tui"
+	SourceRun      = "run"
+	SourceSubagent = "subagent"
 )
 
 // Sidecar is what uah knows about a session that the runner and uagent do not
@@ -23,6 +24,8 @@ const (
 type Sidecar struct {
 	Source  string    `json:"source"`
 	Created time.Time `json:"created"`
+	// Parent is the session that spawned this one (SourceSubagent).
+	Parent string `json:"parent,omitempty"`
 }
 
 func sidecarPath(sessionsDir, id string) string {
@@ -68,14 +71,52 @@ func writeSidecar(sessionsDir, id string, sc Sidecar) error {
 }
 
 // Interactive drops sessions started by `uah run`, as Codex's picker drops
-// `codex exec` sessions. Sessions with no sidecar (older ones, or uagent's)
-// stay.
+// `codex exec` sessions, and subagents. Sessions with no sidecar (older
+// ones, or uagent's) stay.
 func Interactive(infos []Info) []Info {
 	out := make([]Info, 0, len(infos))
 	for _, in := range infos {
-		if in.Source != SourceRun {
+		if in.Source != SourceRun && in.Source != SourceSubagent {
 			out = append(out, in)
 		}
+	}
+
+	return out
+}
+
+// Nested is a session in Tree order with its depth under its parent.
+type Nested struct {
+	Info
+
+	Depth int
+}
+
+// Tree orders subagents right after their parents, keeping the order
+// otherwise; a subagent whose parent is not listed stays where it is.
+func Tree(infos []Info) []Nested {
+	listed := map[string]bool{}
+	children := map[string][]Info{}
+	for _, in := range infos {
+		listed[in.ID] = true
+	}
+	var roots []Info
+	for _, in := range infos {
+		if in.Parent != "" && listed[in.Parent] && in.Parent != in.ID {
+			children[in.Parent] = append(children[in.Parent], in)
+		} else {
+			roots = append(roots, in)
+		}
+	}
+	out := make([]Nested, 0, len(infos))
+	var add func(in Info, depth int)
+	add = func(in Info, depth int) {
+		out = append(out, Nested{Info: in, Depth: depth})
+		for _, c := range children[in.ID] {
+			add(c, depth+1)
+		}
+	}
+	for _, r := range roots {
+		add(r, 0)
 	}
 
 	return out

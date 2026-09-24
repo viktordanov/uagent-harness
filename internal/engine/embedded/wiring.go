@@ -40,7 +40,7 @@ type backend struct{ e *Engine }
 // inbox, context builder, and coordinator. It never loads the workspace .env.
 func (b backend) Start(ctx context.Context, l harness.Launch) (harness.Process, error) {
 	start, _ := ctx.Value(startKey{}).(startValue)
-	w := &wiring{e: b.e, l: l, getenv: b.e.cfg.Getenv, emit: start.emit, ask: start.opts.Ask}
+	w := &wiring{e: b.e, l: l, getenv: b.e.cfg.Getenv, emit: start.emit, notify: start.opts.Notify, ask: start.opts.Ask}
 	a, err := w.start(ctx, start.opts)
 	if err != nil {
 		w.cleanup()
@@ -56,11 +56,16 @@ func (b backend) Start(ctx context.Context, l harness.Launch) (harness.Process, 
 // Each step that opens a resource adds its closer; once the coordinator
 // starts, its goroutine owns them.
 type wiring struct {
-	e       *Engine
-	l       harness.Launch
-	getenv  func(string) string
-	emit    func(core.Event)
-	ask     approval.Ask
+	e      *Engine
+	l      harness.Launch
+	getenv func(string) string
+	emit   func(core.Event)
+	// notify reaches the session after the run ends (nil: emit only).
+	notify func(core.Event)
+	ask    approval.Ask
+	// userAsk is ask before the auto-reviewer: children's approvals go to
+	// it, after their own auto-review.
+	userAsk approval.Ask
 	closers []func() error
 }
 
@@ -84,6 +89,7 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 		return nil, err
 	}
 	w.closers = append(w.closers, sw.Close)
+	w.userAsk = w.ask
 	if w.e.cfg.AutoReview {
 		w.ask = w.reviewedAsk(sw, req)
 	}
@@ -100,7 +106,7 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 	if err != nil {
 		return nil, err
 	}
-	operations := operation.NewLocalOperationManager(runCtx, newMCPJobs(runCtx, w.e.cfg.MCP))
+	operations := operation.NewLocalOperationManager(runCtx, newMCPJobs(runCtx, w.e.cfg.MCP), newAgentJobs(runCtx, w.e.cfg.Subagents, string(s.id)))
 	comp, err := w.compactor(ctx, s, sw, opts.Compact)
 	if err != nil {
 		return nil, err

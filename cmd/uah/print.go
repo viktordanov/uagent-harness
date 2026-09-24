@@ -104,6 +104,8 @@ func (p *printer) print(event core.Event) {
 		}
 	case engine.AutoReviewed:
 		p.say(fmt.Sprintf("auto-review: %s (%s risk) %s — %s", e.Outcome, e.Risk, oneLine(e.Command, 80), e.Reason))
+	case engine.AgentUpdated:
+		p.say(fmt.Sprintf("agent %s: %s", e.Nickname, e.State))
 	case core.RunFinished:
 		p.running = false
 		r := e.Result

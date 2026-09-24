@@ -93,6 +93,8 @@ type Resolved struct {
 	ApprovalsReviewer string
 	// Review is the auto-reviewer's model, effort, and timeout.
 	Review review.Config
+	// Agents are the subagent settings.
+	Agents Agents
 }
 
 // UsageError is an error in what the user asked for, such as an invalid
@@ -158,11 +160,15 @@ func Resolve(in Inputs, resumed session.Info, cfg config.Config) (Resolved, erro
 	if err != nil {
 		return Resolved{}, err
 	}
+	agentSettings, err := pickAgents(cfg.Agents)
+	if err != nil {
+		return Resolved{}, err
+	}
 
 	return Resolved{
 		Settings: s, Engine: eng, MaxDisk: maxDisk, Instructions: !in.NoInstructions && cfg.InstructionsEnabled(),
 		Sandbox: policy, Env: envPolicy, AutoCompactPercent: percent, Approval: approvalPolicy, Rules: configured,
-		ApprovalsReviewer: reviewer, Review: reviewCfg,
+		ApprovalsReviewer: reviewer, Review: reviewCfg, Agents: agentSettings,
 	}, nil
 }
 

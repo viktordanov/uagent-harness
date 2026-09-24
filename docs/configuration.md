@@ -177,6 +177,21 @@ Each `[mcp_servers.<name>]` table is one server, in Codex's format, so a Codex s
 
 `[mcp_servers.<name>.tools.<tool>]` sets one tool's `approval_mode`: `auto` (ask unless the annotations say read-only, or non-destructive and closed-world), `prompt` (always ask), `writes` (ask unless read-only), or `approve` (never ask).
 
+### Subagents
+
+`[agents]` (embedded engine; [README](../README.md#subagents)):
+
+| Key | Type | Default | Merge | Meaning |
+| --- | --- | --- | --- | --- |
+| `enabled` | bool | true | override, can unset | Offer `spawn_agent`, `send_input`, `wait`, and `close_agent` |
+| `max_concurrent_threads_per_session` | int | 4 | override | Open subagents per session tree; Codex's `max_threads` is an alias |
+| `max_threads` | int | none | override | Codex's older name for `max_concurrent_threads_per_session` |
+| `max_depth` | int | 1 | override | How deep subagents nest; 1 means subagents cannot spawn their own |
+| `default_subagent_model` | string | the parent's model | override | Model for subagents a role or call does not set |
+| `default_subagent_reasoning_effort` | string | the parent's effort | override | Effort for subagents a role or call does not set |
+
+Roles are Codex role files in `~/.config/uagent/agents/*.toml` and, for a trusted workspace, `<workspace>/.uagent/agents/*.toml` (a project role replaces a user role of the same name). uah reads `name`, `description`, `nickname_candidates`, `model`, `model_reasoning_effort`, and `developer_instructions`.
+
 ### TUI
 
 `[tui]`:

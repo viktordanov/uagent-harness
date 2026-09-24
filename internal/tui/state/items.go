@@ -17,6 +17,9 @@ const (
 	KindAssistant
 	KindReasoning
 	KindNotice
+	// KindAgent is a subagent: Name is its nickname, Label its role, Text
+	// its ID, Detail its state, and Started when its current work began.
+	KindAgent
 )
 
 // InputState tracks a user message from the queue to the runner.
@@ -77,5 +80,5 @@ type Item struct {
 // and must not be served from a cache.
 func (it Item) Live() bool {
 	return (it.Kind == KindTurn && it.Pending) || (it.Kind == KindTool && (it.Tool == ToolRunning || it.Tool == ToolCalled)) ||
-		(it.Kind == KindRun && it.Status == core.StatusRunning)
+		(it.Kind == KindRun && it.Status == core.StatusRunning) || (it.Kind == KindAgent && it.Detail == "running")
 }

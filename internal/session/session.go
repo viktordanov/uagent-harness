@@ -59,6 +59,11 @@ type Options struct {
 	// Interactive means a user answers approvals (ApprovalRequested and
 	// Resolve). Otherwise commands that need approval are denied.
 	Interactive bool
+	// Parent is the spawning session of a subagent, recorded in the sidecar.
+	Parent string
+	// Ask, when set, answers this session's approvals instead of its own
+	// prompts: a subagent asks through its parent.
+	Ask approval.Ask
 }
 
 // Session is safe to use from any goroutine. All state lives on one internal
@@ -93,6 +98,8 @@ type Session struct {
 	interactive    bool
 	// approvals are the pending approvals' reply channels by ID.
 	approvals map[string]chan approval.Answer
+	// askOverride is Options.Ask.
+	askOverride approval.Ask
 }
 
 // Open starts a session. Its first event is SessionOpened.
@@ -111,7 +118,7 @@ func Open(ctx context.Context, eng engine.Engine, opts Options) (*Session, error
 		ctx: runCtx, stop: stop, done: make(chan struct{}),
 		settings: opts.Settings, state: StateIdle, sent: map[string]bool{},
 		hooks:       hookState{runner: opts.Hooks, resumed: opts.Resumed, tools: map[string]core.ToolCalled{}},
-		interactive: opts.Interactive, approvals: map[string]chan approval.Answer{},
+		interactive: opts.Interactive, approvals: map[string]chan approval.Answer{}, askOverride: opts.Ask,
 	}
 	s.out <- SessionOpened{At: time.Now(), ID: id, Resumed: opts.Resumed, Engine: eng.Name(), Settings: opts.Settings}
 	if opts.Instructions != nil {
@@ -122,7 +129,7 @@ func Open(ctx context.Context, eng engine.Engine, opts Options) (*Session, error
 	if opts.SessionsDir != "" {
 		s.hooks.transcriptPath = filepath.Join(opts.SessionsDir, id+".session.jsonl")
 		if opts.Source != "" && !opts.Resumed {
-			if err := writeSidecar(opts.SessionsDir, id, Sidecar{Source: opts.Source, Created: time.Now().UTC()}); err != nil {
+			if err := writeSidecar(opts.SessionsDir, id, Sidecar{Source: opts.Source, Created: time.Now().UTC(), Parent: opts.Parent}); err != nil {
 				s.out <- Notice{At: time.Now(), Level: LevelWarning, Message: err.Error()}
 			}
 		}

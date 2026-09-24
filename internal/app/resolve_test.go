@@ -229,6 +229,20 @@ func TestResolve(t *testing.T) {
 			},
 		},
 		{
+			name: "agent keys",
+			cfg: config.Config{Agents: config.Agents{
+				Enabled: new(false), MaxThreads: new(2), MaxDepth: new(2), DefaultSubagentModel: "small", DefaultSubagentReasoningEffort: "low",
+			}},
+			want: func(r *app.Resolved) {
+				r.Agents = app.Agents{MaxThreads: 2, MaxDepth: 2, Model: "small", Effort: "low"}
+			},
+		},
+		{
+			name: "max_concurrent_threads_per_session beats Codex's alias",
+			cfg:  config.Config{Agents: config.Agents{MaxConcurrentThreadsPerSession: new(8), MaxThreads: new(2)}},
+			want: func(r *app.Resolved) { r.Agents.MaxThreads = 8 },
+		},
+		{
 			name: "compaction keys",
 			cfg:  config.Config{AutoCompactPercent: new(0), ModelContextWindow: 128_000},
 			want: func(r *app.Resolved) { r.AutoCompactPercent, r.Settings.ContextWindow = 0, 128_000 },
@@ -249,6 +263,7 @@ func TestResolve(t *testing.T) {
 				Sandbox: sandbox.Policy{Mode: sandbox.WorkspaceWrite}, AutoCompactPercent: 90, Approval: approval.OnRequest,
 				ApprovalsReviewer: review.ReviewerAuto,
 				Review:            review.Config{Model: review.CodexModel, Effort: llm.ReasoningEffortLow, Timeout: review.DefaultTimeout},
+				Agents:            app.Agents{Enabled: true, MaxThreads: 4, MaxDepth: 1},
 			}
 			tt.want(&want)
 			want.Sandbox.Workspace = want.Settings.Workspace
@@ -282,6 +297,9 @@ func TestResolveUsageErrors(t *testing.T) {
 		{name: "invalid approvals_reviewer", cfg: config.Config{ApprovalsReviewer: "robot"}, want: `invalid approvals_reviewer "robot"`},
 		{name: "invalid review effort", cfg: config.Config{Review: config.Review{Effort: "huge"}}, want: `invalid review.effort "huge"`},
 		{name: "invalid review timeout", cfg: config.Config{Review: config.Review{Timeout: "-1s"}}, want: `invalid review.timeout "-1s"`},
+		{name: "invalid agents.max_concurrent_threads_per_session", cfg: config.Config{Agents: config.Agents{MaxConcurrentThreadsPerSession: new(0)}}, want: "invalid agents.max_concurrent_threads_per_session 0"},
+		{name: "invalid agents.max_depth", cfg: config.Config{Agents: config.Agents{MaxDepth: new(-1)}}, want: "invalid agents.max_depth -1"},
+		{name: "invalid agents effort", cfg: config.Config{Agents: config.Agents{DefaultSubagentReasoningEffort: "huge"}}, want: `invalid agents.default_subagent_reasoning_effort "huge"`},
 		{name: "invalid sandbox mode", cfg: config.Config{SandboxMode: "yolo"}, want: `invalid sandbox mode "yolo"`},
 		{name: "invalid approval policy", in: func(in *app.Inputs) { in.Ask = "untrusted" }, want: `invalid approval policy "untrusted"`},
 		{name: "invalid approval prefix", cfg: config.Config{Approvals: config.Approvals{Allow: []string{"echo $HOME"}}}, want: "not a simple command prefix"},
