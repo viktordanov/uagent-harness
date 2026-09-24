@@ -135,6 +135,7 @@ In the `/config` panel, ↑/↓ choose a setting, enter or space changes it, ←
 | `/context` | Break down what fills the context window | Yes |
 | `/config` | The settings panel: change the basic settings and save them to the user file (see [/config](#config)) | Yes |
 | `/status` | Session, settings, totals, what the engine runs without (from its capabilities), a 12-week activity heatmap, and the plan's usage (see [Plan usage](#plan-usage)) | Yes |
+| `/usage` | Your plan's usage, read fresh: each limit with a bar, what is left, and when it resets, as `uah usage` prints it (openai-codex) | Yes |
 | `/mcp [verbose]` | MCP servers: state, transport, tool count, and a login hint; `verbose` (or the detailed view) adds each server's command or URL, auth, and tools with their approval mode | Yes |
 | `/agents [name]` | Subagents and their state; with a nickname or ID, that agent's live transcript (see [The agent view](#the-agent-view)) | Yes |
 | `/sandbox` | The sandbox mode and what commands may do | Yes |

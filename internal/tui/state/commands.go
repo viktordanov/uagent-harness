@@ -33,6 +33,7 @@ func Commands() []Command {
 		{Name: "context", Help: "what fills the context window: prompt, instructions, skills, tools, messages", WhileBusy: true, run: cmdContext},
 		{Name: "config", Help: "settings: auto-compact, compaction model, model, effort, fast mode, details, mouse; saved to the user file", WhileBusy: true, run: cmdConfig},
 		{Name: "status", Help: "session, settings, totals, and your plan's usage", WhileBusy: true, run: cmdStatus},
+		{Name: "usage", Help: "your plan's usage: each limit, what is left, and when it resets (openai-codex)", WhileBusy: true, run: cmdUsage},
 		{Name: "mcp", Args: "[verbose]", Help: "MCP servers: state, transport, and tool count; verbose adds auth and each tool", WhileBusy: true, run: cmdMCP},
 		{Name: cmdAgentsName, Args: "[name]", Help: "subagents the agent started, and their state; a name shows that agent's transcript as it works", WhileBusy: true, run: cmdAgents},
 		{Name: "sandbox", Help: "what commands may do: the permission mode and its sandbox (shift+tab changes it)", WhileBusy: true, run: cmdSandbox},

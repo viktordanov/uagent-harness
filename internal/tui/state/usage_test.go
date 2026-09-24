@@ -141,3 +141,14 @@ func TestUsage_LimitReached(t *testing.T) {
 	s, _ = apply(s, state.UsageLoaded{Reason: state.UsageLimit, Err: errors.New("offline")}, session.Idle{At: t0})
 	assert.Equal(t, []string{"Usage limit reached; see https://chatgpt.com/codex/settings/usage."}, notices(s, 0))
 }
+
+// TestUsage_Command is /usage: a fresh read shown as /status shows it,
+// also while the agent works.
+func TestUsage_Command(t *testing.T) {
+	s, effects := apply(opened(), state.Submit{Text: "/usage"})
+	assert.Equal(t, []state.Effect{state.EffLoadUsage{Reason: state.UsageStatus}}, effects)
+	n := len(s.Items)
+	s, _ = apply(s, state.UsageLoaded{Reason: state.UsageStatus, Snapshot: weekly(22), At: t0})
+	assert.Contains(t, notices(s, n)[0], "usage · pro plan\n")
+	assert.Contains(t, s.Suggestions("/us")[0].Label, "usage", "the menu offers it")
+}
