@@ -15,6 +15,16 @@ Asked for by the owner after item 28; these come first.
 | 31 | Custom agents as Markdown files with front matter, as Claude Code and Codex have them; subagents never start subagents | lane agents3 | done |
 | 32 | A real probe that forking a subagent reuses the provider's prompt cache | lane agents3 | done (partial reuse on openai-codex; see docs/design/subagents.md) |
 | 33 | The process engine made solid, with the behavior both engines share in one place | lane process | done |
+| 34 | On quit, print how to resume the session, as Codex does | main session | done |
+| 35 | Research spike: Codex subscription usage (rate limits) on the openai-codex backend, isolated from the rest | lane usage | doing |
+
+### 34. The resume hint on quit
+
+When the TUI quits with a session open, it prints the command that continues it, as Codex prints "To continue this session, run codex resume <id>".
+
+### 35. Codex usage (spike)
+
+A research spike on how Codex reads the ChatGPT subscription's usage and rate limits (what it calls, what it shows, and when), whether uah can read the same through the openai-codex credentials, and a plan. Any code stays in its own package, wired to nothing, until the plan is accepted.
 
 ### 29. MCP approvals
 
