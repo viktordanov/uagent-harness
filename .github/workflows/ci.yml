@@ -44,6 +44,15 @@ jobs:
   lint:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        # Lint both platforms' build-tagged files (the sandbox has darwin and
+        # linux halves); golangci-lint type-checks for GOOS.
+        goos: [linux, darwin]
+    name: lint (${{ matrix.goos }})
+    env:
+      GOOS: ${{ matrix.goos }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
