@@ -167,7 +167,7 @@ func (o *runOutput) handle(e core.Event) {
 			fmt.Fprintln(o.stdout, result.Answer)
 		}
 	case session.Notice:
-		if v.Level == "error" && o.last == nil {
+		if v.Level == session.LevelError && o.last == nil {
 			o.startError = true
 		}
 	}
