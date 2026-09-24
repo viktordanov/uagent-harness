@@ -107,6 +107,9 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) { //nolint:gocycl
 		// macOS and Linux; text pastes arrive as a bracketed paste.
 		return m.dispatch(state.PasteImage{})
 	case keyBackspace:
+		if draft == "" {
+			return m.dispatch(state.LeaveShell{}) // shell mode ends; nothing to delete
+		}
 		m.eatPlaceholder()
 	case "shift+tab":
 		return m.dispatch(state.CycleMode{})
@@ -117,7 +120,11 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) { //nolint:gocycl
 	case "ctrl+s":
 		return m.dispatch(state.OpenPicker{})
 	case keyCtrlN:
-		return m.dispatch(state.Submit{Text: "/new"})
+		return m.dispatch(state.NewSession{})
+	case "!":
+		if draft == "" {
+			return m.dispatch(state.EnterShell{})
+		}
 	case "ctrl+r":
 		return m.dispatch(state.ToggleReasoning{})
 	case "ctrl+t":

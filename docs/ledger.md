@@ -19,7 +19,7 @@ Asked for by the owner after item 28; these come first.
 | 35 | Research spike: Codex subscription usage (rate limits) on the openai-codex backend, isolated from the rest | lane usage | done (spike; see [docs/design/usage.md](design/usage.md)) |
 | 36 | The composer's λ on its first row only | main session | done |
 | 37 | Paste images into the prompt, as Codex and Claude Code do (ctrl+v on macOS; the Linux key to be found); first check what the runner and uagent allow | lane images | done (embedded engine; the image goes as a ViewImage result, since the runner's user message is text only; see docs/design/images.md) |
-| 38 | `!` shell mode in the composer: run a command yourself, and its result joins the conversation | lane shell | doing |
+| 38 | `!` shell mode in the composer: run a command yourself, and its result joins the conversation | lane shell | done |
 | 39 | Show the subscription's usage, as designed in item 35 (the owner accepted the defaults) | lane usage2 | done |
 
 ### 34. The resume hint on quit
@@ -39,6 +39,16 @@ Codex and Claude Code let you paste an image from the clipboard into the prompt 
 ### 38. `!` shell mode
 
 Typing `!` at the start of an empty composer switches it to shell mode: the λ becomes `!`, and enter runs the line as a command in the workspace (in the session's sandbox and permission mode) instead of sending it to the agent. The command and its output, whether it succeeded or failed, join the conversation as a message, so the agent sees them on its next turn, as Claude Code's `!` and Codex's user shell commands do. Backspace on an empty line, or esc, leaves shell mode. Research both first: how each shows it, what exactly goes into the conversation and when (at once, or with the next message), output limits, and whether a running agent is interrupted.
+
+- Built, after Codex rust-v0.156.1 ([shell mode design](design/shell-mode.md)):
+  - The composer's `!` mode, with the `!` prompt, the footer hint, and backspace or esc to leave.
+  - `Session.RunShell` runs the command at once on both engines, also while the agent works, with streamed output, a one-hour timeout, and esc esc to stop it.
+  - The record is Codex's `<user_shell_command>` message with the output cut to 40,000 characters. It goes with the next message, as `Inject` does, and never starts a turn.
+  - A `KindShell` item shows the command with its output folded, also in a resumed session.
+- Open, defaults taken:
+  - The command runs outside the sandbox and the rules, as in Codex and Claude Code. `user_shell_sandbox = true` runs it in the permission mode's sandbox, and a `forbid` rule refuses it.
+  - The record waits in memory for the next message, so quitting first loses it.
+  - Claude Code's reply to the output (`respondToBashCommands`), its Ctrl+B background, and its `!` completion are not built.
 
 ### 39. Subscription usage
 

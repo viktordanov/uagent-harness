@@ -46,6 +46,11 @@ type Config struct {
 	ApprovalsReviewer string `toml:"approvals_reviewer"`
 	// Review configures the auto-reviewer's model call.
 	Review Review `toml:"review"`
+	// UserShellSandbox runs the commands the user types in the TUI's shell
+	// mode (`!`) like the agent's: in the permission mode's sandbox and
+	// refused by forbid rules. Off (the default), they run as the user's
+	// own, as in Codex and Claude Code.
+	UserShellSandbox bool `toml:"user_shell_sandbox"`
 
 	// AutoCompactPercent compacts the context once a response used this
 	// share of the model's window (default 90; 0 turns it off).

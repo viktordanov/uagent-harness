@@ -106,6 +106,9 @@ type State struct {
 	Config *ConfigPanel
 	// Mouse reports the mouse to the TUI, so the wheel scrolls.
 	Mouse bool
+	// Shell is shell mode: enter runs the composer's line as a command
+	// (shell.go).
+	Shell bool
 	// Attached are the images pasted into the composer, in order; each
 	// placeholder in the draft names one (see images.go).
 	Attached []images.Image

@@ -23,6 +23,9 @@ func Reduce(s State, ev any) (State, []Effect) {
 	if s.index == nil {
 		s.index = map[string]int{}
 	}
+	if effects, ok := s.onShell(ev); ok {
+		return s, effects
+	}
 	if s.View != nil {
 		if effects, ok := s.onAgentView(ev); ok {
 			return s, effects
@@ -209,7 +212,7 @@ func (s *State) onIntent(ev any) (State, []Effect) { //nolint:gocyclo // a dispa
 
 		return *s, []Effect{EffSteer{Text: s.withImages(text)}}
 	case Esc:
-		if !s.Busy {
+		if !s.Busy && !s.ShellRunning() {
 			return *s, nil
 		}
 		if !s.escArmed.IsZero() && s.Now.Sub(s.escArmed) < confirmWindow {

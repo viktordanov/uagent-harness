@@ -81,6 +81,7 @@ Every key may be set in the user file and in a trusted project file, except `[pr
 | `sandbox_mode` | string | `workspace-write` | `--sandbox`, `UAH_SANDBOX` | override | `read-only`, `workspace-write`, or `danger-full-access` (no sandbox), as Codex names them. Without `permission_mode`, it picks the mode of the same sandbox: `read-only`, `workspace`, or `full-access` |
 | `approval_policy` | string | `on-request` | `--ask`, `UAH_ASK` | override | Who answers an escalation or a `prompt` rule: `on-request` asks the user (headless runs deny), `never` denies. In a file, Codex's `on-failure` means `on-request` |
 | `approvals_reviewer` | string | `auto_review` | none | override | `auto_review` lets the auto-reviewer judge before anyone is asked; `user` skips it |
+| `user_shell_sandbox` | bool | false | none | OR | Run the commands you type in the TUI's shell mode (`!`) like the agent's: in the permission mode's sandbox, refused by `forbidden` rules, and outside the sandbox for `allow` rules. Off, they run as your own commands, outside the sandbox and the rules, as in Codex and Claude Code ([shell mode](design/shell-mode.md)) |
 
 The process engine applies `allow` and `forbidden` rules too, in the shell the runner runs each command with, but it cannot ask: a `prompt` rule refuses the command with the reason a headless run gives, nothing escalates, and `auto` is the `workspace` sandbox without the auto-reviewer.
 
@@ -357,6 +358,7 @@ sandbox_mode = "workspace-write"   # read-only, workspace-write, danger-full-acc
 # permission_mode = "workspace"    # read-only, workspace, auto, full-access; wins over sandbox_mode
 approval_policy = "on-request"     # or never
 approvals_reviewer = "auto_review" # or user: skip the auto-reviewer
+user_shell_sandbox = false         # true: `!` commands run in the sandbox, as the agent's
 auto_compact_percent = 90          # 0 turns automatic compaction off
 model_context_window = 272000      # tokens; overrides the model catalog
 # model_auto_compact_token_limit = 200000   # compact sooner than 90% of the window
