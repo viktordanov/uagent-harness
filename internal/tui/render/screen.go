@@ -68,7 +68,8 @@ func transcript(s state.State, c *Cache, w, height int) []string {
 	need := height + s.Scroll
 	var rev [][]string
 	count := 0
-	for i := len(s.Items) - 1; i >= 0 && count < need; i-- {
+	i := len(s.Items) - 1
+	for ; i >= 0 && count < need; i-- {
 		lines := c.lines(s.Items[i], w, s.Now, view{reasoning: s.ShowReasoning, details: s.Details})
 		if len(lines) == 0 {
 			continue
@@ -79,6 +80,10 @@ func transcript(s state.State, c *Cache, w, height int) []string {
 	all := make([]string, 0, count)
 	for _, lines := range slices.Backward(rev) {
 		all = append(all, lines...)
+	}
+	c.maxScroll = -1
+	if i < 0 {
+		c.maxScroll = max(len(all)-height, 0)
 	}
 	end := len(all) - min(s.Scroll, max(len(all)-height, 0))
 	start := max(end-height, 0)
@@ -202,8 +207,14 @@ func footerLine(s state.State, w int) string {
 		}
 		left := " " + strings.Join(parts, " · ")
 		hint := "ctrl+t details · / commands "
-		if gap := w - ansi.StringWidth(left) - ansi.StringWidth(hint); gap > 0 {
-			left += strings.Repeat(" ", gap) + hint
+		if s.Scroll > 0 {
+			hint = "scrolled up · end returns "
+		}
+		// The hint wins over the left side, which is cut when the line is full.
+		room := w - ansi.StringWidth(hint)
+		if room > 0 {
+			left = ansi.Truncate(left, room-1, "…")
+			left += strings.Repeat(" ", room-ansi.StringWidth(left)) + hint
 		}
 
 		return dim.Render(ansi.Truncate(left, w, ""))

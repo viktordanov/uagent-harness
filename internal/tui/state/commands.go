@@ -161,7 +161,7 @@ func cmdHelp(s *State, _ string) []Effect {
 		fmt.Fprintf(&b, "%-18s %s\n", name, c.Help)
 	}
 	b.WriteString("\nenter send (queues while the agent works) · ctrl+enter or alt+enter send now · shift+enter or ctrl+j new line\n")
-	b.WriteString("esc esc interrupt · ↑ edit the last queued message · alt+, alt+. effort · ctrl+s sessions · ctrl+n new · ctrl+t details · ctrl+r reasoning · pgup/pgdn scroll · ctrl+c ctrl+c quit")
+	b.WriteString("esc esc interrupt · ↑ edit the last queued message · alt+, alt+. effort · ctrl+s sessions · ctrl+n new · ctrl+t details · ctrl+r reasoning · wheel, shift+↑↓, pgup/pgdn scroll (end: bottom) · ctrl+c ctrl+c quit")
 	s.notice("info", b.String())
 
 	return nil

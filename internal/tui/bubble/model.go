@@ -140,6 +140,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.composer.SetWidth(msg.Width)
 
 		return m, nil
+	case tea.MouseWheelMsg:
+		return m.onWheel(msg)
 	case tea.KeyPressMsg:
 		return m.onKey(msg)
 	case tea.PasteMsg:
@@ -245,6 +247,10 @@ func (m Model) View() tea.View {
 	})
 	v := tea.NewView(content)
 	v.AltScreen = true
+	// Wheel events scroll the transcript. Terminals still select text with
+	// the modifier they use while an app reports the mouse (Option in iTerm2
+	// and Terminal, Shift in most others).
+	v.MouseMode = tea.MouseModeCellMotion
 	v.WindowTitle = "uah"
 	if c := m.composer.Cursor(); c != nil && composerRow >= 0 {
 		c.Y += composerRow

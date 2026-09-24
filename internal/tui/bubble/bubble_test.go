@@ -228,3 +228,28 @@ func TestTUI_QueueInterruptAndEdit(t *testing.T) {
 	d.key('c', tea.ModCtrl) // quits: the session is idle
 	d.waitQuit()
 }
+
+func TestTUI_WheelScrolls(t *testing.T) {
+	d := start(t, deps(t, "simple.jsonl"))
+	d.typeText("hi")
+	d.key(tea.KeyEnter, 0)
+	d.waitFor("● hello")
+	for range 3 {
+		d.typeText("/help")
+		d.key(tea.KeyEnter, 0)
+	}
+	bottom := d.view()
+
+	d.send(tea.MouseWheelMsg{Button: tea.MouseWheelUp})
+	assert.Contains(t, d.view(), "scrolled up")
+	for range 200 {
+		d.send(tea.MouseWheelMsg{Button: tea.MouseWheelUp})
+	}
+	top := d.view()
+	assert.Contains(t, top, "› hi", "the first message is reachable")
+	d.send(tea.MouseWheelMsg{Button: tea.MouseWheelDown})
+	assert.NotEqual(t, top, d.view(), "scrolling back down moves at once: the offset stops at the top")
+
+	d.key(tea.KeyEnd, 0)
+	assert.Equal(t, bottom, d.view())
+}

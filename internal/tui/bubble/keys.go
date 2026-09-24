@@ -44,9 +44,17 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			return m.dispatch(state.EditLastQueued{})
 		}
 	case "pgup":
-		return m.dispatch(state.ScrollBy{Lines: max(m.h/2, 1)})
+		return m.scroll(max(m.h/2, 1))
 	case "pgdown":
-		return m.dispatch(state.ScrollBy{Lines: -max(m.h/2, 1)})
+		return m.scroll(-max(m.h/2, 1))
+	case "shift+up":
+		return m.scroll(1)
+	case "shift+down":
+		return m.scroll(-1)
+	case "end":
+		if draft == "" {
+			return m.dispatch(state.ScrollToBottom{})
+		}
 	case "alt+,":
 		return m.dispatch(state.StepEffort{Delta: -1})
 	case "alt+.":
@@ -92,4 +100,36 @@ func (m Model) onPickerKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+// wheelLines is how far one mouse wheel step scrolls.
+const wheelLines = 3
+
+func (m Model) onWheel(msg tea.MouseWheelMsg) (tea.Model, tea.Cmd) {
+	if m.st.Mode == state.ModePicker {
+		return m, nil
+	}
+	switch msg.Button {
+	case tea.MouseWheelUp:
+		return m.scroll(wheelLines)
+	case tea.MouseWheelDown:
+		return m.scroll(-wheelLines)
+	default:
+		return m, nil
+	}
+}
+
+// scroll moves the transcript, stopping at its first line.
+func (m Model) scroll(lines int) (tea.Model, tea.Cmd) {
+	if lines > 0 {
+		m.View() // refresh the limit: frames can lag behind a burst of wheel events
+		if limit := m.cache.MaxScroll(); limit >= 0 {
+			lines = max(min(lines, limit-m.st.Scroll), 0)
+		}
+	}
+	if lines == 0 {
+		return m, nil
+	}
+
+	return m.dispatch(state.ScrollBy{Lines: lines})
 }

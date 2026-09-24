@@ -16,7 +16,14 @@ import (
 // Cache keeps the rendered lines of finished items per width.
 type Cache struct {
 	entries map[string]cacheEntry
+	// maxScroll is how far the last frame could scroll up, or -1 when the
+	// frame did not reach the first item (the limit is not known yet).
+	maxScroll int
 }
+
+// MaxScroll is how far the last frame's transcript could scroll up, or -1
+// when unknown.
+func (c *Cache) MaxScroll() int { return c.maxScroll }
 
 type cacheEntry struct {
 	version, width     int
@@ -24,7 +31,7 @@ type cacheEntry struct {
 	lines              []string
 }
 
-func NewCache() *Cache { return &Cache{entries: map[string]cacheEntry{}} }
+func NewCache() *Cache { return &Cache{entries: map[string]cacheEntry{}, maxScroll: -1} }
 
 // view is how items are drawn: the compact default or the detailed view.
 type view struct {
@@ -78,10 +85,10 @@ func itemLines(it state.Item, w int, now time.Time, v view) []string {
 		return []string{toolLine(it, w, now)}
 	case state.KindAssistant:
 		if it.Final {
-			return append([]string{"", answer.Render("● answer")}, wrapPrefixed(it.Text, w, "  ", "  ")...)
+			return append([]string{"", answer.Render("● answer")}, markdownLines(it.Text, w, "  ", "  ")...)
 		}
 
-		return wrapPrefixed(it.Text, w, dim.Render("  · "), "    ")
+		return markdownLines(it.Text, w, dim.Render("  · "), "    ")
 	case state.KindReasoning:
 		if !reasoning {
 			return nil
@@ -135,10 +142,10 @@ func compactLines(it state.Item, w int, now time.Time) ([]string, bool) {
 		bullet := "• "
 		if it.Final {
 			bullet = answer.Render("● ")
-			return append([]string{""}, wrapPrefixed(it.Text, w, bullet, "  ")...), true
+			return append([]string{""}, markdownLines(it.Text, w, bullet, "  ")...), true
 		}
 
-		return wrapPrefixed(it.Text, w, bullet, "  "), true
+		return markdownLines(it.Text, w, bullet, "  "), true
 	case state.KindNotice:
 		if it.Level == state.LevelDebug {
 			return nil, true
