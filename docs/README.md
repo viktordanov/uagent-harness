@@ -1,4 +1,4 @@
-<!-- memoria:section id="overview" files="design/harness.md design/tui.md design/implementation.md design/state.md design/sandbox-research.md design/sandbox.md ledger.md documentation/architecture.md documentation/memoria.md" -->
+<!-- memoria:section id="overview" files="design/harness.md design/compaction.md design/tui.md design/implementation.md design/state.md design/sandbox-research.md design/sandbox.md ledger.md documentation/architecture.md documentation/memoria.md" -->
 # Documentation
 
 <!-- memoria:export id="summary" -->
@@ -13,6 +13,7 @@ Design:
 4. [State storage](design/state.md): what is stored where, and the plan for a rebuildable SQLite index.
 5. [Sandboxing and approvals: research](design/sandbox-research.md): how Codex sandboxes and approves commands, and the options for uah.
 6. [Sandboxing and approvals: plan](design/sandbox.md): the decisions (Codex's defaults), how a command runs, the packages, and the phases.
+7. [Compaction](design/compaction.md): how Codex compacts, what the runner supports, and the design with its open decisions.
 
 Work:
 
