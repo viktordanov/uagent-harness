@@ -87,6 +87,7 @@ func (s *State) runShell(text string) ([]Effect, bool) {
 		return nil, true
 	}
 	s.Shell, s.Scroll = false, 0
+	s.Attached = nil // a command carries no images
 
 	return []Effect{EffShell{Command: command}}, true
 }

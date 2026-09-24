@@ -37,7 +37,7 @@ The loop tracks where the session is in a run:
 `Open` also checks the engine's capabilities against `Options.Uses`, the features the configuration asks for: each one the engine does not run gets one `Notice` after `SessionOpened`, from the [capability table](../engine/README.md#what-each-engine-supports). The session never checks the engine's name.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="messages" files="dispatch.go runs.go inject.go shell.go" -->
+<!-- memoria:section id="messages" files="dispatch.go runs.go inject.go history.go shell.go" -->
 ## Messages: queue, steer, interrupt
 
 Every message gets an ID and is reported as `InputQueued`, then `InputSent` when it goes to the runner, and `InputDelivered` when the runner echoes it as a `UserMessage`. Messages that never reached the runner are reported as `InputFailed`.
@@ -52,6 +52,8 @@ What `dispatch` does with a message depends on the state and on whether it is a 
 | `stopping` | Queues it | Queues it; a new run starts after the stop |
 
 When a run ends, messages sent into it that it never read go back to the front of the queue. After a user interrupt (esc esc, `/stop`) the queue stays and the session goes idle; otherwise the queue starts the next run at once. `Withdraw` takes a message back while it is queued or waiting for its hooks.
+
+A message may carry images pasted in the TUI as tag lines at its end (`internal/images`: `<uah-image label="[Image #1]" ref="<sha256>.png" …/>`, the image in `<state>/images`). The session treats them as text: they queue, steer, reach the hooks and the run records, and resume with the message. The embedded engine turns them into image input for the model; `Info.FirstPrompt` and the TUI show the text without them. See the [images design](../../docs/design/images.md).
 
 `Inject` gives the agent a message without a turn of its own, as Codex's `inject_no_new_turn`: it is held and goes out before the next run's messages, and it never starts a run. It is not sent into a live run, because the runner cancels its model request when a message arrives, which would throw away a paid request. It skips the queue and the hooks. A subagent's `<subagent_notification>` reaches its parent this way (`engine.Options.Inject`).
 

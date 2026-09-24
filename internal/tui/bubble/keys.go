@@ -9,14 +9,13 @@ import (
 
 // Keys named in more than one mode.
 const (
-	keyEnter = "enter"
-	keyEsc   = "esc"
-	keyCtrlN = "ctrl+n"
-	keyCtrlC = "ctrl+c"
-	keyDown  = "down"
-	keyUp    = "up"
-	keyCtrlP = "ctrl+p"
-
+	keyEnter     = "enter"
+	keyEsc       = "esc"
+	keyCtrlN     = "ctrl+n"
+	keyCtrlC     = "ctrl+c"
+	keyDown      = "down"
+	keyUp        = "up"
+	keyCtrlP     = "ctrl+p"
 	keyBackspace = "backspace"
 )
 
@@ -58,7 +57,7 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) { //nolint:gocycl
 		if draft != "" {
 			m.composer.Reset()
 
-			return m, nil
+			return m.dispatch(state.DraftChanged{}) // drops the draft's images
 		}
 
 		return m.dispatch(state.Quit{})
@@ -103,6 +102,15 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) { //nolint:gocycl
 
 			return m.dispatch(state.SwitchAgent{Delta: delta})
 		}
+	case "ctrl+v", "alt+v":
+		// Paste the clipboard's image, as Codex and Claude Code do on
+		// macOS and Linux; text pastes arrive as a bracketed paste.
+		return m.dispatch(state.PasteImage{})
+	case keyBackspace:
+		if draft == "" {
+			return m.dispatch(state.LeaveShell{}) // shell mode ends; nothing to delete
+		}
+		m.eatPlaceholder()
 	case "shift+tab":
 		return m.dispatch(state.CycleMode{})
 	case "alt+,":
@@ -116,10 +124,6 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) { //nolint:gocycl
 	case "!":
 		if draft == "" {
 			return m.dispatch(state.EnterShell{})
-		}
-	case keyBackspace:
-		if draft == "" {
-			return m.dispatch(state.LeaveShell{})
 		}
 	case "ctrl+r":
 		return m.dispatch(state.ToggleReasoning{})
