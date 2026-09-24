@@ -27,6 +27,8 @@ type Info struct {
 	// Source is where the session started (SourceTUI or SourceRun), or ""
 	// when it has no sidecar.
 	Source string
+	// Parent is the spawning session of a subagent.
+	Parent string
 }
 
 // LoadedRun is one run of a session with its decoded runner events.
@@ -52,7 +54,7 @@ func Sessions(stateDir string) ([]Info, error) {
 	for id, runs := range bySession {
 		info := summarize(id, runs)
 		if sc, found, err := ReadSidecar(sessionsDir, id); err == nil && found {
-			info.Source = sc.Source
+			info.Source, info.Parent = sc.Source, sc.Parent
 		}
 		infos = append(infos, info)
 	}

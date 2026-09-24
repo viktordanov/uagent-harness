@@ -171,3 +171,43 @@ writable_roots = ["build"]
 	assert.Equal(t, []string{"~/.cache/go-build", "build"}, cfg.SandboxWorkspaceWrite.WritableRoots, "the project file adds writable roots")
 	assert.Equal(t, filepath.Join(ws, ".uagent", "rules"), config.ProjectRulesDir(ws))
 }
+
+func TestAgents(t *testing.T) {
+	root := t.TempDir()
+	ws := filepath.Join(root, "ws")
+	user := filepath.Join(root, "config.toml")
+	write(t, user, `
+[agents]
+max_concurrent_threads_per_session = 6
+default_subagent_model = "gpt-small"
+
+[projects."`+ws+`"]
+trusted = true
+`)
+	write(t, config.ProjectFile(ws), `
+[agents]
+enabled = false
+max_depth = 2
+default_subagent_reasoning_effort = "low"
+`)
+
+	cfg, _, err := config.Load(user, ws)
+	require.NoError(t, err)
+
+	a := cfg.Agents
+	require.NotNil(t, a.Enabled)
+	assert.False(t, *a.Enabled, "the project file turns agents off")
+	assert.Equal(t, 6, *a.MaxConcurrentThreadsPerSession)
+	assert.Equal(t, 2, *a.MaxDepth)
+	assert.Equal(t, "gpt-small", a.DefaultSubagentModel)
+	assert.Equal(t, "low", a.DefaultSubagentReasoningEffort)
+	assert.Equal(t, filepath.Join(ws, ".uagent", "agents"), config.ProjectAgentsDir(ws))
+
+	write(t, user, "[agents]\nmax_threads = 2\n")
+	cfg, _, err = config.Load(user, ws)
+	require.NoError(t, err)
+	assert.Equal(t, 2, *cfg.Agents.MaxThreadsValue(), "Codex's alias")
+	write(t, user, "[agents]\nmax_thread = 2\n")
+	_, _, err = config.Load(user, ws)
+	require.ErrorContains(t, err, `unknown key "agents.max_thread"`)
+}

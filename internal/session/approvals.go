@@ -61,8 +61,11 @@ func (s *Session) Resolve(id string, answer approval.Answer) error {
 }
 
 // askFunc is how runs ask the user: through the session's events when the
-// session is interactive, nil (deny) otherwise.
+// session is interactive, nil (deny) otherwise; Options.Ask wins over both.
 func (s *Session) askFunc() approval.Ask {
+	if s.askOverride != nil {
+		return s.askOverride
+	}
 	hooked := s.hooks.runner.Has(hooks.PermissionRequest, "")
 	if !s.interactive && !hooked {
 		return nil

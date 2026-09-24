@@ -24,6 +24,7 @@ func merge(base, over Config) Config {
 	mergeSandbox(&base, over)
 	mergeEnv(&base.ShellEnvironmentPolicy, over.ShellEnvironmentPolicy)
 	mergeInstructions(&base, over)
+	mergeAgents(&base.Agents, over.Agents)
 	base.Hooks = mergeMap(base.Hooks, over.Hooks, func(a, b []Hook) []Hook { return append(a, b...) })
 	base.MCPServers = mergeMap(base.MCPServers, over.MCPServers, func(_, b mcp.ServerConfig) mcp.ServerConfig { return b })
 
@@ -89,4 +90,21 @@ func mergeMap[V any](base, over map[string]V, combine func(a, b V) V) map[string
 	}
 
 	return base
+}
+
+func mergeAgents(base *Agents, over Agents) {
+	if over.Enabled != nil {
+		base.Enabled = over.Enabled
+	}
+	if over.MaxConcurrentThreadsPerSession != nil {
+		base.MaxConcurrentThreadsPerSession = over.MaxConcurrentThreadsPerSession
+	}
+	if over.MaxThreads != nil {
+		base.MaxThreads = over.MaxThreads
+	}
+	if over.MaxDepth != nil {
+		base.MaxDepth = over.MaxDepth
+	}
+	set(&base.DefaultSubagentModel, over.DefaultSubagentModel)
+	set(&base.DefaultSubagentReasoningEffort, over.DefaultSubagentReasoningEffort)
 }
