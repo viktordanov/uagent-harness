@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
@@ -19,7 +17,7 @@ func (m *Manager) spawn(ctx context.Context, parentID string, a spawnArgs) (spaw
 		return spawnResult{}, err
 	}
 	rec := record{Role: role.Name, Model: a.Model, Effort: a.Effort}
-	c, err := m.start(parentID, uuid.NewString(), role, rec, false) //nolint:contextcheck // children outlive the call that started them
+	c, err := m.start(parentID, session.NewSubagentID(), role, rec, false) //nolint:contextcheck // children outlive the call that started them
 	if err != nil {
 		return spawnResult{}, err
 	}
