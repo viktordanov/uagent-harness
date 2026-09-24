@@ -7,10 +7,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/unreallabsai/unreal-agent/harness/llm"
 
 	"github.com/viktordanov/uagent-harness/internal/app"
 	"github.com/viktordanov/uagent-harness/internal/approval"
 	"github.com/viktordanov/uagent-harness/internal/config"
+	"github.com/viktordanov/uagent-harness/internal/review"
 	"github.com/viktordanov/uagent-harness/internal/rules"
 	"github.com/viktordanov/uagent-harness/internal/sandbox"
 	"github.com/viktordanov/uagent-harness/internal/session"
@@ -200,6 +202,24 @@ func TestResolve(t *testing.T) {
 			want: func(r *app.Resolved) { r.Settings.BaseURL, r.Settings.AllowDotenv = "http://llm", true },
 		},
 		{
+			name: "the reviewer uses the session model off openai-codex",
+			in:   func(in *app.Inputs) { in.Provider, in.Model = "openai", "gpt-x" },
+			want: func(r *app.Resolved) {
+				r.Settings.Provider, r.Settings.Model = "openai", "gpt-x"
+				r.Review.Model = "gpt-x"
+			},
+		},
+		{
+			name: "reviewer keys",
+			cfg: config.Config{ApprovalsReviewer: "user", Review: config.Review{
+				Model: "rev", Effort: "medium", Timeout: "30s",
+			}},
+			want: func(r *app.Resolved) {
+				r.ApprovalsReviewer = review.ReviewerUser
+				r.Review = review.Config{Model: "rev", Effort: llm.ReasoningEffortMedium, Timeout: 30 * time.Second}
+			},
+		},
+		{
 			name: "compaction keys",
 			cfg:  config.Config{AutoCompactPercent: new(0), ModelContextWindow: 128_000},
 			want: func(r *app.Resolved) { r.AutoCompactPercent, r.Settings.ContextWindow = 0, 128_000 },
@@ -218,9 +238,14 @@ func TestResolve(t *testing.T) {
 				},
 				Engine: app.EngineEmbedded, MaxDisk: 5 << 30, Instructions: true,
 				Sandbox: sandbox.Policy{Mode: sandbox.WorkspaceWrite}, AutoCompactPercent: 90, Approval: approval.OnRequest,
+				ApprovalsReviewer: review.ReviewerAuto,
+				Review:            review.Config{Model: review.CodexModel, Effort: llm.ReasoningEffortLow, Timeout: review.DefaultTimeout},
 			}
 			tt.want(&want)
 			want.Sandbox.Workspace = want.Settings.Workspace
+			if want.Review.Model == review.CodexModel && want.Settings.Provider != app.CodexProvider {
+				want.Review.Model = want.Settings.Model // off openai-codex, the session model reviews
+			}
 
 			got, err := app.Resolve(in, tt.resumed, tt.cfg)
 
@@ -245,6 +270,9 @@ func TestResolveUsageErrors(t *testing.T) {
 		{name: "invalid config engine", cfg: config.Config{Engine: "turbo"}, want: "invalid engine turbo (want embedded or process)"},
 		{name: "invalid auto_compact_percent", cfg: config.Config{AutoCompactPercent: new(101)}, want: "invalid auto_compact_percent 101"},
 		{name: "invalid model_context_window", cfg: config.Config{ModelContextWindow: -1}, want: "invalid model_context_window -1"},
+		{name: "invalid approvals_reviewer", cfg: config.Config{ApprovalsReviewer: "robot"}, want: `invalid approvals_reviewer "robot"`},
+		{name: "invalid review effort", cfg: config.Config{Review: config.Review{Effort: "huge"}}, want: `invalid review.effort "huge"`},
+		{name: "invalid review timeout", cfg: config.Config{Review: config.Review{Timeout: "-1s"}}, want: `invalid review.timeout "-1s"`},
 		{name: "invalid sandbox mode", cfg: config.Config{SandboxMode: "yolo"}, want: `invalid sandbox mode "yolo"`},
 		{name: "invalid approval policy", in: func(in *app.Inputs) { in.Ask = "untrusted" }, want: `invalid approval policy "untrusted"`},
 		{name: "invalid approval prefix", cfg: config.Config{Approvals: config.Approvals{Allow: []string{"echo $HOME"}}}, want: "not a simple command prefix"},

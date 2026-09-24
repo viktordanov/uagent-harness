@@ -68,6 +68,20 @@ func TestLoad(t *testing.T) {
 		assert.Equal(t, int64(128000), cfg.ModelContextWindow)
 	})
 
+	t.Run("reviewer keys, and the project file overrides them", func(t *testing.T) {
+		root := t.TempDir()
+		ws := filepath.Join(root, "ws")
+		user := filepath.Join(root, "config.toml")
+		write(t, user, "approvals_reviewer = \"user\"\n[review]\nmodel = \"m\"\neffort = \"medium\"\ntimeout = \"30s\"\n[projects.\""+ws+"\"]\ntrusted = true\n")
+		write(t, config.ProjectFile(ws), "[review]\neffort = \"low\"\n")
+
+		cfg, _, err := config.Load(user, ws)
+
+		require.NoError(t, err)
+		assert.Equal(t, "user", cfg.ApprovalsReviewer)
+		assert.Equal(t, config.Review{Model: "m", Effort: "low", Timeout: "30s"}, cfg.Review)
+	})
+
 	t.Run("unknown keys are errors", func(t *testing.T) {
 		user := filepath.Join(t.TempDir(), "config.toml")
 		write(t, user, "efort = \"low\"\n")
