@@ -1,0 +1,21 @@
+--new-session
+--die-with-parent
+--ro-bind / /
+--dev /dev
+--bind $SYSTMP $SYSTMP
+--bind $BASE/ws $BASE/ws
+--perms 555 --tmpfs $BASE/ws/.git --remount-ro $BASE/ws/.git
+--perms 555 --tmpfs $BASE/ws/.uagent --remount-ro $BASE/ws/.uagent
+--perms 555 --tmpfs $BASE/ws/.agents --remount-ro $BASE/ws/.agents
+--perms 555 --tmpfs $BASE/ws/.codex --remount-ro $BASE/ws/.codex
+--bind $BASE/tmpdir $BASE/tmpdir
+--perms 555 --tmpfs $BASE/tmpdir/.git --remount-ro $BASE/tmpdir/.git
+--perms 555 --tmpfs $BASE/tmpdir/.uagent --remount-ro $BASE/tmpdir/.uagent
+--perms 555 --tmpfs $BASE/tmpdir/.agents --remount-ro $BASE/tmpdir/.agents
+--perms 555 --tmpfs $BASE/tmpdir/.codex --remount-ro $BASE/tmpdir/.codex
+--unshare-user
+--unshare-pid
+--unshare-ipc
+--unshare-net
+--proc /proc
+--cap-drop ALL
