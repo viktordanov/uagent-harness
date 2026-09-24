@@ -55,7 +55,7 @@ type Config struct {
 	ContextWindow int64
 	// BeforeCompact, when set, runs as each compaction starts; an error
 	// cancels the compaction. A PreCompact hook attaches here.
-	BeforeCompact func(context.Context, compaction.Trigger) error
+	BeforeCompact func(ctx context.Context, sessionID string, trigger compaction.Trigger) error
 }
 
 // Engine runs the agent in process.

@@ -12,6 +12,7 @@ import (
 
 	"github.com/viktordanov/uagent/harness"
 
+	"github.com/viktordanov/uagent-harness/internal/compaction"
 	"github.com/viktordanov/uagent-harness/internal/config"
 	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/engine/embedded"
@@ -130,12 +131,32 @@ func newEngine(r Resolved, runnerPath, stateDir string, logger *slog.Logger, opt
 		StateDir: stateDir, MaxDisk: r.MaxDisk, Logger: logger, Provider: r.Settings.Provider, Hooks: opts.Hooks,
 		Sandbox: &r.Sandbox, SandboxDir: sandboxDir, Env: r.Env,
 		AutoCompactPercent: r.AutoCompactPercent, ContextWindow: r.Settings.ContextWindow,
+		BeforeCompact: preCompactHook(opts.Hooks, r.Settings),
 	})
 	if r.Settings.ServiceTier != "" && !emb.Capabilities().ServiceTier {
 		return nil, usage(errors.New("--fast needs the openai or openai-codex provider"))
 	}
 
 	return emb, nil
+}
+
+// preCompactHook runs PreCompact hooks before each compaction; a block
+// cancels it. It is nil without such hooks.
+func preCompactHook(runner *hooks.Runner, s session.Settings) func(context.Context, string, compaction.Trigger) error {
+	if !runner.Has(hooks.PreCompact, "") {
+		return nil
+	}
+
+	return func(ctx context.Context, sessionID string, t compaction.Trigger) error {
+		d := runner.Run(ctx, hooks.Input{
+			Event: hooks.PreCompact, SessionID: sessionID, Cwd: s.Workspace, Model: s.Model, Effort: s.Effort, Trigger: string(t),
+		})
+		if d.Block {
+			return fmt.Errorf("a PreCompact hook stopped the compaction: %s", d.Reason)
+		}
+
+		return nil
+	}
 }
 
 // RealShell is the user's shell for commands: $SHELL, or /bin/sh.

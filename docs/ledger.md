@@ -26,13 +26,13 @@ Status: `todo`, `doing`, `done`, `cut` (with a reason).
 |---|---|---|---|---|
 | 1 | Quality pass | main session | — | done |
 | 2 | Sandbox phase 2: approvals, rules, configured approvals | A | 1 | doing |
-| 3 | Sandbox phase 3: auto-review and the one-shot model call | A | 2 | todo |
+| 3 | Sandbox phase 3: auto-review and the one-shot model call | A | 2 | doing |
 | 4 | Compaction, Codex's way, and the context meter | B | 1 | done |
 | 5 | MCP | C | 1 | doing |
 | 6 | Session storage index and the `/status` activity heatmap | D | 1 | done |
 | 7 | `/` menu and `@` mentions | D | 1 | done |
 | 8 | AGENTS.md and skills parity with Codex | B | 4 | done |
-| 9 | Hooks for the new features | main session | 2, 4, 5 | todo |
+| 9 | Hooks for the new features | main session | 2, 4, 5 | doing |
 | 10 | Configuration reference and `uah config` | main session | 2, 5 | todo |
 | 11 | `uah doctor`, content-based hook trust, crash-recovery test | C | 5 | todo |
 | 12 | Subagents: research and plan | any free lane | — | done |
@@ -119,3 +119,4 @@ One line per merge or decision: time, item, what landed, commit.
 - 04:40 · 7 · The composer menu (internal/tui/state/menu.go): commands and values after `/`, fuzzy workspace files after `@` (sahilm/fuzzy; git ls-files, else a walk); tab fills, ↑/↓ move, enter runs, esc closes. Fixed item 6: the shell did not route ActivityLoaded, so the heatmap never showed; a shell-level test covers it now.
 - 04:44 · 8 · AGENTS.md discovery with Codex keys (project_doc_fallback_filenames, none by default so CLAUDE.md is opt-in; project_root_markers; project_doc_max_bytes; blank files skipped); skills from Codex places (.agents/skills up to the project root, $CODEX_HOME/skills, ~/.config/uagent/skills) through the runner's SkillUse. The owner's config keeps CLAUDE.md via the fallback key.
 - 04:45 · 4 · Merged lane/compaction: internal/llmcall (one-shot model call, reused by item 3), internal/compaction (Codex prompt and window table), an adapter in front of the switcher that keeps every user message verbatim and replaces the rest with a summary, persisted in sessions/<id>.compaction.jsonl; /compact, auto_compact_percent (90), model_context_window, the "N% context left" meter. The runner's own TurnCompaction is never produced by v0.1.1, so it was not usable (docs/design/compaction.md).
+- 04:47 · 9 (part) · PreCompact hook: runs before each compaction with the session and trigger; a block stops it. Remaining for 9: PermissionRequest (after item 2), MCP names already reach tool hooks (lane C).

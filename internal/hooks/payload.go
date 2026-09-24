@@ -25,6 +25,9 @@ type Input struct {
 	// Stop: true when the run was started by a Stop hook, so a hook can avoid looping.
 	StopHookActive bool `json:"stop_hook_active,omitempty"`
 
+	// PreCompact: "manual" (/compact) or "auto".
+	Trigger string `json:"trigger,omitempty"`
+
 	// SessionStart ("startup" or "resume") and SessionEnd ("exit").
 	Source string `json:"source,omitempty"`
 	Reason string `json:"reason,omitempty"`

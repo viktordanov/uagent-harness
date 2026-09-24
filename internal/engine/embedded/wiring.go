@@ -21,6 +21,7 @@ import (
 	"github.com/viktordanov/uagent/core"
 	"github.com/viktordanov/uagent/harness"
 
+	"github.com/viktordanov/uagent-harness/internal/compaction"
 	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/instructions"
 )
@@ -141,9 +142,16 @@ func (w *wiring) compactor(ctx context.Context, s runStore, sw *switcher, compac
 		emit = func(core.Event) {}
 	}
 	cfg := w.e.cfg
+	before := func(ctx context.Context, t compaction.Trigger) error {
+		if cfg.BeforeCompact == nil {
+			return nil
+		}
+
+		return cfg.BeforeCompact(ctx, string(s.id), t)
+	}
 
 	return &compactor{
-		next: sw, log: log, emit: emit, before: cfg.BeforeCompact, window: cfg.ContextWindow, percent: cfg.AutoCompactPercent,
+		next: sw, log: log, emit: emit, before: before, window: cfg.ContextWindow, percent: cfg.AutoCompactPercent,
 		record: rec, pending: compactFirst, used: used,
 	}, nil
 }
