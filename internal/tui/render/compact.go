@@ -33,6 +33,10 @@ func compactLines(it state.Item, w int, now time.Time) ([]string, bool) {
 	case state.KindFinish:
 		return []string{"", finishLine(it)}, true
 	case state.KindTool:
+		if len(it.Diff) > 0 {
+			return patchLines(it, w, now, compactDiffLines), true
+		}
+
 		return []string{compactTool(it, w, now)}, true
 	case state.KindAgent:
 		// A running subagent is drawn at the bottom, above the working line.
@@ -134,6 +138,7 @@ var toolLabels = map[string]string{
 	"Bash":        "RAN",
 	"spawn_agent": "SPAWN", "send_input": "SEND", "wait_agent": "WAIT", "wait": "WAIT",
 	"close_agent": "CLOSE", "resume_agent": "RESUME",
+	"apply_patch": "EDIT",
 }
 
 // toolLabel is a tool's column label: RAN for commands, MCP for a server's

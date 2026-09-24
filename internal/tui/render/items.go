@@ -84,6 +84,10 @@ func itemLines(it state.Item, w int, now time.Time, v view) []string {
 
 		return []string{dim.Render(fmt.Sprintf("  turn %d  %s in · %s out · %s", it.Turn, tokens(it.In), tokens(it.Out), secs(it.Duration)))}
 	case state.KindTool:
+		if len(it.Diff) > 0 {
+			return append([]string{toolLine(it, w, now), diffIndent + diffSummary(it.Diff)}, diffBlock(it.Diff, w, 0)...)
+		}
+
 		return []string{toolLine(it, w, now)}
 	case state.KindAgent:
 		lines := agentLines(it, w, now)
