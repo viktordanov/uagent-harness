@@ -218,7 +218,7 @@ func TestReduce_Commands(t *testing.T) {
 		"stop":              {from: busy, text: "/stop", effects: []state.Effect{state.EffInterrupt{}}},
 		"unknown":           {from: opened(), text: "/nope", notice: "unknown command /nope"},
 		"help":              {from: opened(), text: "/help", notice: "/model <id>"},
-		"status":            {from: opened(), text: "/status", notice: "session sess-1 · process engine"},
+		"status":            {from: opened(), text: "/status", notice: "session sess-1 · process engine", effects: []state.Effect{state.EffLoadActivity{}}},
 	}
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {

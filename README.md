@@ -10,7 +10,7 @@ Status: milestone M6: sessions, instructions, configuration, the TUI, the embedd
 2. [Development](#development)
 <!-- /memoria:section -->
 
-<!-- memoria:section id="usage" files="cmd/uah/main.go cmd/uah/run.go cmd/uah/resume.go cmd/uah/sessions.go cmd/uah/tui.go cmd/uah/print.go internal/session/history.go internal/session/sidecar.go" -->
+<!-- memoria:section id="usage" files="cmd/uah/main.go cmd/uah/run.go cmd/uah/resume.go cmd/uah/sessions.go cmd/uah/tui.go cmd/uah/print.go internal/session/history.go internal/session/sidecar.go internal/store/store.go internal/store/query.go" -->
 ## Use it
 
 ```sh
@@ -25,6 +25,7 @@ uah --fast                                                 # priority processing
 
 uah run -C ~/code/proj "Fix the failing test in pkg/foo"   # a session: progress on stderr, answers on stdout
 uah sessions                                               # this directory's sessions, most recent first (--all: every directory)
+uah sessions --search "flaky parser"                       # sessions whose prompts or answers contain the words
 uah sessions show 3f2a                                     # a transcript, by ID or unique prefix
 uah run --session 3f2a "Now update the README"             # resume with the session's model, effort, and workspace
 uah run --last -m gpt-6-luna "And the changelog"           # resume this directory's latest session with another model
@@ -53,7 +54,7 @@ The default view is compact, like Codex: your messages, one line per command (`�
 | mouse wheel, shift+↑ / shift+↓, pgup / pgdn | Scroll the transcript; end returns to the bottom. While the TUI reports the mouse, select text with Option (iTerm2, Terminal) or Shift (most others) held |
 | ctrl+c | Clear the composer; on an empty composer, quit (twice while a run is live) |
 
-Commands: `/model <id>`, `/effort <level>`, `/resume [id]`, `/new`, `/stop`, `/status`, `/details`, `/reasoning`, `/help`, `/quit`. `/model`, `/effort`, and `/fast` apply from the next model request on the embedded engine, and from the next run on the process engine. `/fast` needs the embedded engine and the openai or openai-codex provider.
+Commands: `/model <id>`, `/effort <level>`, `/resume [id]`, `/new`, `/stop`, `/status` (with a 12-week activity heatmap), `/details`, `/reasoning`, `/help`, `/quit`. `/model`, `/effort`, and `/fast` apply from the next model request on the embedded engine, and from the next run on the process engine. `/fast` needs the embedded engine and the openai or openai-codex provider.
 Tool calls keep their place in the transcript, so a command that finishes after later turns updates its original row. Diagnostics go to `<state-dir>/logs/uah-tui.log`.
 
 `uah run` takes the same backend, guard, and state flags as uagent (`--provider`, `-m`, `-e`, `-t`, `-C`, `--state-dir`, `--runner`, `--max-disk`, `--allow-dotenv`); `uah run --help` lists them.

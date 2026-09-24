@@ -1,6 +1,7 @@
 package app_test
 
 import (
+	"context"
 	"errors"
 	"io"
 	"os"
@@ -38,7 +39,7 @@ func TestSetup(t *testing.T) {
 	e, in := setupEnv(t)
 	require.NoError(t, os.WriteFile(filepath.Join(e.Workspace, "AGENTS.md"), []byte("Use tabs in Go files."), 0o600))
 
-	res, err := app.Setup(in, io.Discard)
+	res, err := app.Setup(context.Background(), in, io.Discard)
 
 	require.NoError(t, err)
 	assert.Equal(t, e.StateDir, res.StateDir)
@@ -55,7 +56,7 @@ func TestSetup(t *testing.T) {
 		in := in
 		in.NoInstructions = true
 
-		res, err := app.Setup(in, io.Discard)
+		res, err := app.Setup(context.Background(), in, io.Discard)
 
 		require.NoError(t, err)
 		assert.Nil(t, res.Options.Instructions)
@@ -89,7 +90,7 @@ func TestSetupUsageErrors(t *testing.T) {
 				require.NoError(t, os.WriteFile(in.ConfigPath, []byte(tt.config), 0o600))
 			}
 
-			_, err := app.Setup(in, io.Discard)
+			_, err := app.Setup(context.Background(), in, io.Discard)
 
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), tt.want)

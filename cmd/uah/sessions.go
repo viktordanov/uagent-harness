@@ -17,6 +17,7 @@ import (
 
 	"github.com/viktordanov/uagent-harness/internal/app"
 	"github.com/viktordanov/uagent-harness/internal/session"
+	"github.com/viktordanov/uagent-harness/internal/store"
 )
 
 // sessionsCommand is `uah sessions`: list sessions, or show one.
@@ -27,12 +28,13 @@ func sessionsCommand() *cli.Command {
 	}
 	jsonFlag := &cli.BoolFlag{Name: "json", Usage: "print JSON"}
 	all := &cli.BoolFlag{Name: flagAll, Usage: "list sessions from every directory"}
+	search := &cli.StringFlag{Name: "search", Usage: "only sessions whose prompts or answers contain these words (any directory)"}
 	workspace := &cli.StringFlag{Name: flagWorkspace, Aliases: []string{"C"}, Usage: "list this directory's sessions", DefaultText: "the current directory", TakesFile: true}
 
 	return &cli.Command{
 		Name:         "sessions",
 		Usage:        "list this directory's sessions, most recent first (--all for every directory)",
-		Flags:        []cli.Flag{stateDir, jsonFlag, all, workspace},
+		Flags:        []cli.Flag{stateDir, jsonFlag, all, workspace, search},
 		OnUsageError: onUsageError,
 		Action:       listSessions,
 		Commands: []*cli.Command{{
@@ -46,12 +48,15 @@ func sessionsCommand() *cli.Command {
 	}
 }
 
-func listSessions(_ context.Context, cmd *cli.Command) error {
+func listSessions(ctx context.Context, cmd *cli.Command) error {
 	stateDir, err := filepath.Abs(cmd.String("state-dir"))
 	if err != nil {
 		return fmt.Errorf("failed to resolve state dir: %w", err)
 	}
-	infos, err := session.Sessions(stateDir)
+	infos, err := store.List(ctx, stateDir)
+	if q := cmd.String("search"); q != "" {
+		infos, err = store.SearchIn(ctx, stateDir, q)
+	}
 	if err != nil {
 		return err
 	}
@@ -59,7 +64,7 @@ func listSessions(_ context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	showAll := cmd.Bool(flagAll)
+	showAll := cmd.Bool(flagAll) || cmd.String("search") != ""
 	if !showAll {
 		infos = session.InDir(infos, cwd)
 	}
@@ -96,7 +101,7 @@ func listSessions(_ context.Context, cmd *cli.Command) error {
 	return tw.Flush()
 }
 
-func showSession(_ context.Context, cmd *cli.Command) error {
+func showSession(ctx context.Context, cmd *cli.Command) error {
 	if cmd.Args().Len() != 1 {
 		return cli.Exit("usage: uah sessions show <id or unique prefix>", exitUsage)
 	}
@@ -104,7 +109,7 @@ func showSession(_ context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return fmt.Errorf("failed to resolve state dir: %w", err)
 	}
-	info, err := app.FindSession(stateDir, cmd.Args().First())
+	info, err := app.FindSession(ctx, stateDir, cmd.Args().First())
 	if err != nil {
 		return exitError(err)
 	}

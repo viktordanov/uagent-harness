@@ -9,6 +9,7 @@ import (
 	"github.com/urfave/cli/v3"
 
 	"github.com/viktordanov/uagent-harness/internal/session"
+	"github.com/viktordanov/uagent-harness/internal/store"
 )
 
 // flagAll turns off the current-directory filter.
@@ -40,7 +41,7 @@ func resumeAction(ctx context.Context, cmd *cli.Command) error {
 	launch := tuiLaunch{all: cmd.Bool(flagAll)}
 	switch {
 	case cmd.Bool("last"):
-		info, err := latestSession(cmd, true)
+		info, err := latestSession(ctx, cmd, true)
 		if err != nil {
 			return err
 		}
@@ -59,12 +60,12 @@ func resumeAction(ctx context.Context, cmd *cli.Command) error {
 //
 // interactiveOnly skips sessions started by `uah run`, as `codex resume` skips
 // `codex exec` sessions.
-func latestSession(cmd *cli.Command, interactiveOnly bool) (session.Info, error) {
+func latestSession(ctx context.Context, cmd *cli.Command, interactiveOnly bool) (session.Info, error) {
 	stateDir, err := filepath.Abs(cmd.String("state-dir"))
 	if err != nil {
 		return session.Info{}, fmt.Errorf("failed to resolve state dir: %w", err)
 	}
-	infos, err := session.Sessions(stateDir)
+	infos, err := store.List(ctx, stateDir)
 	if err != nil {
 		return session.Info{}, err
 	}

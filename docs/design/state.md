@@ -1,6 +1,6 @@
 # State storage: decision record
 
-Status: proposed, 2026-09-24. The sidecar is implemented (with `source` only); the index is not.
+Status: built, 2026-09-24. The sidecar (with `source`) and the index (`internal/store`, `<state>/uah.db`) are implemented. As built, the index has no `sessions` table: sessions are folded from the `runs` rows at query time, the same way the file scan folds them, and a test checks the two agree. Listing falls back to the file scan when the index cannot be opened. `/status` draws a 12-week activity heatmap from it, and `uah sessions --search` uses its full-text table.
 
 1. [What is stored today](#what-is-stored-today)
 2. [How other harnesses store state](#how-other-harnesses-store-state)

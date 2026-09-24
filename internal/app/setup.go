@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -19,6 +20,7 @@ import (
 	"github.com/viktordanov/uagent-harness/internal/instructions"
 	"github.com/viktordanov/uagent-harness/internal/sandbox"
 	"github.com/viktordanov/uagent-harness/internal/session"
+	"github.com/viktordanov/uagent-harness/internal/store"
 )
 
 // Result is everything needed to open a session.
@@ -32,7 +34,7 @@ type Result struct {
 // Setup resolves the inputs against the resumed session (in.SessionRef) and
 // the configuration, loads instructions and hooks, and builds the engine.
 // Diagnostic logs go to logOutput.
-func Setup(in Inputs, logOutput io.Writer) (Result, error) {
+func Setup(ctx context.Context, in Inputs, logOutput io.Writer) (Result, error) {
 	stateDir, err := filepath.Abs(in.StateDir)
 	if err != nil {
 		return Result{}, fmt.Errorf("failed to resolve state dir: %w", err)
@@ -40,7 +42,7 @@ func Setup(in Inputs, logOutput io.Writer) (Result, error) {
 	var resumed session.Info
 	opts := session.Options{}
 	if in.SessionRef != "" {
-		info, err := FindSession(stateDir, in.SessionRef)
+		info, err := FindSession(ctx, stateDir, in.SessionRef)
 		if err != nil {
 			return Result{}, err
 		}
@@ -70,7 +72,7 @@ func Setup(in Inputs, logOutput io.Writer) (Result, error) {
 	}
 	r.Sandbox = absPolicy(r.Sandbox, in.Workspace)
 	logger := slog.New(slog.NewTextHandler(logOutput, &slog.HandlerOptions{Level: LogLevels[in.LogLevel]}))
-	eng, err := newEngine(r, in.Runner, stateDir, logger, &opts)
+	eng, err := newEngine(r, in.Runner, stateDir, logger, &opts) //nolint:contextcheck // on Linux, the sandbox probes bwrap once per process, with its own timeout
 	if err != nil {
 		return Result{}, err
 	}
@@ -169,8 +171,8 @@ func absPolicy(p sandbox.Policy, workspace string) sandbox.Policy {
 func HookTrustFile() string { return filepath.Join(config.Dir(), "trusted-hooks.json") }
 
 // FindSession finds a session by exact ID or unique prefix.
-func FindSession(stateDir, ref string) (session.Info, error) {
-	infos, err := session.Sessions(stateDir)
+func FindSession(ctx context.Context, stateDir, ref string) (session.Info, error) {
+	infos, err := store.List(ctx, stateDir)
 	if err != nil {
 		return session.Info{}, err
 	}
