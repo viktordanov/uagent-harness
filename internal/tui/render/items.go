@@ -10,6 +10,7 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
+	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/internal/tui/state"
 )
@@ -84,6 +85,8 @@ func itemLines(it state.Item, w int, now time.Time, v view) []string {
 		return []string{dim.Render(fmt.Sprintf("  turn %d  %s in · %s out · %s", it.Turn, tokens(it.In), tokens(it.Out), secs(it.Duration)))}
 	case state.KindTool:
 		return []string{toolLine(it, w, now)}
+	case state.KindAgent:
+		return []string{agentLine(it, w, now)}
 	case state.KindAssistant:
 		if it.Final {
 			return append([]string{"", answer.Render("● answer")}, markdownLines(it.Text, w, "  ", "  ")...)
@@ -218,6 +221,27 @@ func toolLine(it state.Item, w int, now time.Time) string {
 	room := w - ansi.StringWidth(head) - ansi.StringWidth(detail) - 2
 
 	return head + ansi.Truncate(it.Label, max(room, 8), "…") + "  " + detail
+}
+
+// agentLine draws a subagent: "• agent Ada: running 0:42".
+func agentLine(it state.Item, w int, now time.Time) string {
+	name := it.Name
+	if it.Label != "" {
+		name += " (" + it.Label + ")"
+	}
+	var detail string
+	switch it.Detail {
+	case engine.AgentRunning:
+		detail = tool.Render(spin(now)) + dim.Render(" running "+clock(now.Sub(it.Started)))
+	case engine.AgentCompleted:
+		detail = ok.Render("done")
+	case engine.AgentErrored:
+		detail = bad.Render("failed")
+	default:
+		detail = dim.Render(it.Detail)
+	}
+
+	return ansi.Truncate("• agent "+tool.Render(name)+": "+detail, w, "…")
 }
 
 // wrapPrefixed wraps text to width w with first and continuation prefixes.

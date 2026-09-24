@@ -86,7 +86,8 @@ func listSessions(ctx context.Context, cmd *cli.Command) error {
 	} else {
 		fmt.Fprintln(tw, "SESSION\tACTIVE\tRUNS\tSTATUS\tMODEL\tFROM\tFIRST PROMPT")
 	}
-	for _, in := range infos {
+	// Subagents follow their parent, indented.
+	for _, in := range session.Tree(infos) {
 		dir := ""
 		if showAll {
 			dir = homeShort(in.Workspace) + "\t"
@@ -95,7 +96,11 @@ func listSessions(ctx context.Context, cmd *cli.Command) error {
 		if from == "" {
 			from = "-"
 		}
-		fmt.Fprintf(tw, "%s\t%s\t%d\t%s\t%s\t%s\t%s%s\n", short(in.ID), ago(in.LastActivity), in.Runs, in.Status, modelLabel(in.Model), from, dir, oneLine(in.FirstPrompt, 60))
+		id := short(in.ID)
+		if in.Depth > 0 {
+			id = strings.Repeat("  ", in.Depth-1) + "└ " + id
+		}
+		fmt.Fprintf(tw, "%s\t%s\t%d\t%s\t%s\t%s\t%s%s\n", id, ago(in.LastActivity), in.Runs, in.Status, modelLabel(in.Model), from, dir, oneLine(in.FirstPrompt, 60))
 	}
 
 	return tw.Flush()

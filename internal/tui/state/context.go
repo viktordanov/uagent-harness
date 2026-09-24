@@ -47,6 +47,8 @@ func (s *State) onEngineEvent(ev core.Event) bool {
 		s.notice(LevelDebug, "summary: "+e.Summary)
 	case engine.AutoReviewed:
 		s.onAutoReviewed(e)
+	case engine.AgentUpdated:
+		s.onAgentUpdated(e)
 	default:
 		return false
 	}

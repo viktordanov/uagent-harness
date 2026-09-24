@@ -83,3 +83,41 @@ func Interactive(infos []Info) []Info {
 
 	return out
 }
+
+// Nested is a session in Tree order with its depth under its parent.
+type Nested struct {
+	Info
+
+	Depth int
+}
+
+// Tree orders subagents right after their parents, keeping the order
+// otherwise; a subagent whose parent is not listed stays where it is.
+func Tree(infos []Info) []Nested {
+	listed := map[string]bool{}
+	children := map[string][]Info{}
+	for _, in := range infos {
+		listed[in.ID] = true
+	}
+	var roots []Info
+	for _, in := range infos {
+		if in.Parent != "" && listed[in.Parent] && in.Parent != in.ID {
+			children[in.Parent] = append(children[in.Parent], in)
+		} else {
+			roots = append(roots, in)
+		}
+	}
+	out := make([]Nested, 0, len(infos))
+	var add func(in Info, depth int)
+	add = func(in Info, depth int) {
+		out = append(out, Nested{Info: in, Depth: depth})
+		for _, c := range children[in.ID] {
+			add(c, depth+1)
+		}
+	}
+	for _, r := range roots {
+		add(r, 0)
+	}
+
+	return out
+}
