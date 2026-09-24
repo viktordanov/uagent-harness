@@ -31,6 +31,9 @@ func (w *wiring) openStore(ctx context.Context, requested string) (runStore, err
 	if err != nil {
 		return runStore{}, fmt.Errorf("failed to open the session store: %w", err)
 	}
+	if requested != "" {
+		killOrphans(w.l.SessionsDir, requested)
+	}
 	id, restored, err := openSession(ctx, store, requested)
 	if err != nil {
 		return runStore{}, err
