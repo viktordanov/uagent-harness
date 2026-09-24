@@ -12,6 +12,7 @@ Section IDs identify a concern within a README. Keep the ID stable when a headin
 | `instructions` | AGENTS.md discovery and the host prompt |
 | `hooks` | Hook events, contract, and trust |
 | `mcp` | MCP servers: configuration, tools, and results |
+| `patch`, `format`, `apply`, `diff`, `tool` | File edits: the patch package's README and its summary in the root README |
 | `lifecycle` | How a long-lived component starts, runs, fails, and stops |
 | `calls` | How a request flows through the components that serve it |
 | `approvals` | What asks the user before it runs, and how |

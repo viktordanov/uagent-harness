@@ -41,7 +41,7 @@ command = "osascript -e 'display notification \"uah is idle\"'"
 | `PreCompact` | Before a compaction (`trigger`: manual or auto) | Stop it (exit 2 or `"decision": "block"`) | embedded engine |
 | `SessionEnd` | When the session closes | Observe only, with at most a second | session |
 
-`matcher` applies to the tool events: `PreToolUse`, `PostToolUse`, and `PermissionRequest`. It must match the whole tool name (`^(?:matcher)$`); an empty matcher matches every tool. A PermissionRequest hook sees an escalated command or a `prompt` rule as `tool_name` `Bash` with `tool_input.command`, and an MCP call as its `mcp__<server>__<tool>` name with its arguments. The PreToolUse and PostToolUse hooks see MCP tools by the same names.
+`matcher` applies to the tool events: `PreToolUse`, `PostToolUse`, and `PermissionRequest`. It must match the whole tool name (`^(?:matcher)$`); an empty matcher matches every tool. A PermissionRequest hook sees an escalated command or a `prompt` rule as `tool_name` `Bash` with `tool_input.command`, and an MCP call as its `mcp__<server>__<tool>` name with its arguments. The PreToolUse and PostToolUse hooks see MCP tools by the same names. An `apply_patch` call is `tool_name` `apply_patch` with Codex's `tool_input` `{"command": "<patch>"}`, plus `file_path` and `file_paths`, at PreToolUse, PostToolUse, and PermissionRequest; the matchers `apply_patch`, `Edit`, and `Write` all match it, as in Codex. A PreToolUse `updatedInput` with a new `command` replaces the patch.
 
 The process engine runs no PreToolUse, PermissionRequest, or PreCompact hooks, and uah says so for PreToolUse.
 <!-- /memoria:section -->

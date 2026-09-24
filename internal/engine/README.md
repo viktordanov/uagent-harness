@@ -18,7 +18,7 @@ The choice comes from `--engine`, `UAH_ENGINE`, or `engine` in the [configuratio
 7. [Tests](#tests)
 <!-- /memoria:section -->
 
-<!-- memoria:section id="interface" files="engine.go events.go subagents.go" -->
+<!-- memoria:section id="interface" files="engine.go events.go subagents.go patch.go" -->
 ## The interface
 
 `engine.Engine` has three methods: `Name`, `Capabilities`, and `Start(ctx, request, options, sink) (Run, error)`. The sink receives `RunStarted` first and `RunFinished` last, from one goroutine at a time. A `Run` takes messages and settings while it is live (`Send`, `SetEffort`, `SetModel`, `SetServiceTier`, `SetMode`, `Compact`, `Clear`), stops (`Interrupt`, `Kill`), and ends (`Wait`). A method the engine cannot serve returns `ErrUnsupported`, and the session then applies the change from the next run.
@@ -48,7 +48,7 @@ Optional interfaces are the seams the session probes with a type assertion:
 | `Subagents` | The agent tools: `Attach` returns the tools to offer a run, `ToolNames` every name it answers, `Call` runs one, `Interrupt` stops a parent's children. The engine knows no tool name, schema, or result; [internal/agents](../agents/README.md) implements it | `internal/agents` |
 | `Forker` | `Fork` copies a parent's history into a new child session for `spawn_agent`'s `fork_context`; `SetCacheKey` gives a session another prompt cache key (every subagent uses its root session's) | embedded |
 
-The engine's own events join the run's stream: `CompactionStarted`, `Compacted`, `AutoReviewed`, `AgentUpdated`, and `AgentActivity` (a child's tool events, for the parent's view). The embedded engine's `Subagents()` returns its `Subagents`, so a session can follow one child's whole stream (`session.WatchAgent`).
+The engine's own events join the run's stream: `CompactionStarted`, `Compacted`, `AutoReviewed`, `AgentUpdated`, `AgentActivity` (a child's tool events, for the parent's view), and `PatchApplied` (the diff of an applied `apply_patch` call, `patch.go`). The embedded engine's `Subagents()` returns its `Subagents`, so a session can follow one child's whole stream (`session.WatchAgent`).
 <!-- /memoria:section -->
 
 <!-- memoria:section id="support" files="engine.go process/process.go embedded/engine.go embedded/tools.go" -->
@@ -66,6 +66,7 @@ The engine's own events join the run's stream: `CompactionStarted`, `Compacted`,
 | PreToolUse and PermissionRequest hooks | Yes | No |
 | Compaction and `/context` | Yes | No |
 | MCP servers | Yes | No; uah says so when some are configured |
+| Codex's `apply_patch` and its diffs | Yes, on openai and openai-codex models | No |
 | Subagents | Yes | No |
 | Codex skills (`.agents/skills`, `~/.config/uagent/skills`, `$CODEX_HOME/skills`) | Yes | Only the runner's `.harness/skills` |
 | `unreal-agent-runner` binary | Not needed | Required |
@@ -81,7 +82,7 @@ Both engines read the host prompt with the instruction files from the request, k
 The runner runs each command with `$SHELL`. `internal/app/setup.go` points `SHELL` at a script from `sandbox.Shell` that runs the real shell inside the sandbox, so commands are sandboxed without changing the runner. That script cannot ask for more access. `process.NewSandboxed` keeps one harness per sandbox mode, built on first use, and each run uses its permission mode's (`Options.Mode`).
 <!-- /memoria:section -->
 
-<!-- memoria:section id="embedded" files="embedded/engine.go embedded/wiring.go embedded/agent.go embedded/adapter.go embedded/client.go embedded/providers.go codexauth/codexauth.go embedded/store.go embedded/observer.go embedded/tools.go embedded/sandboxtool.go embedded/sandboxschema.go embedded/skills.go embedded/pretooluse.go embedded/autoreview.go embedded/compact.go embedded/context.go embedded/fork.go embedded/mode.go" -->
+<!-- memoria:section id="embedded" files="embedded/engine.go embedded/wiring.go embedded/agent.go embedded/adapter.go embedded/client.go embedded/providers.go codexauth/codexauth.go embedded/store.go embedded/observer.go embedded/tools.go embedded/sandboxtool.go embedded/sandboxschema.go embedded/skills.go embedded/pretooluse.go embedded/autoreview.go embedded/compact.go embedded/context.go embedded/fork.go embedded/mode.go embedded/patchtool.go" -->
 ## The embedded engine
 
 The embedded engine is a uagent `harness.Backend`. uagent still owns the run: the guards, the session lock, the run record, and the output stream. The backend (`wiring.go`) reproduces unreal-agent-runner v0.1.1's `Run` (`cmd/internal/agentrunner/run.go`) in the same order:
@@ -127,21 +128,25 @@ The coordinator calls one `llm.Adapter`. Two adapters sit in front of the provid
 2. `sandboxRegistry` (`sandboxschema.go`) adds `sandbox_permissions` and `justification` to Bash's schema when the model can ask for escalation.
 3. Skills from the Codex skill folders (`skills.go`), through the runner's `SkillUse` tool.
 4. MCP tools (`mcptool.go`), named `mcp__<server>__<tool>`.
-5. The agent tools (`agenttool.go`), when `Subagents` lets the session spawn.
-6. PreToolUse hooks (`pretooluse.go`), around every tool that a hook matches.
+5. Codex's `apply_patch` (`patchtool.go`), when the model's catalog entry has `apply_patch_tool_type`, and always on openai and openai-codex (`models.ApplyPatch`). The translator parses the patch and checks it against the files first, as Codex verifies a patch before asking, then applies the sandbox policy of the run's current permission mode: a write inside the writable roots (not a protected path) goes ahead; any other write, and every write in read only, goes to the approver as a Bash escalation would; full access applies everything. See [patches](../patch/README.md) and [the permission pipeline](../approval/README.md#patches).
+6. The agent tools (`agenttool.go`), when `Subagents` lets the session spawn.
+7. PreToolUse hooks (`pretooluse.go`), around every tool that a hook matches. A tool whose hook input differs from its arguments (`apply_patch`'s `{"command": patch}`) shapes it through `hookShaper`.
 
 A tool's static definition is what the model is offered, so a change in a layer reaches both the model and the translator.
+
+The observer (`observer.go`) writes each session item as the runner prints it. When an item completes an `apply_patch` job, it also emits `PatchApplied` with the diff from the job's handle; `session.Load` reads the same item from a run's events file, so a live and a reloaded transcript show the same diff.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="jobs" files="embedded/mcptool.go embedded/mcpjobs.go embedded/agenttool.go embedded/agentjobs.go" -->
+<!-- memoria:section id="jobs" files="embedded/mcptool.go embedded/mcpjobs.go embedded/agenttool.go embedded/agentjobs.go embedded/patchjobs.go" -->
 ## Remote jobs
 
-A slow tool must not hold up the coordinator. MCP calls and the agent tools therefore run as the runner's remote jobs: the translator returns a remote job plan, and a `RemoteJobHandler` runs it on its own goroutine and reports `awaiting`, then the result, on its updates channel. The model keeps working meanwhile.
+A slow tool must not hold up the coordinator. MCP calls, the agent tools, and patches therefore run as the runner's remote jobs: the translator returns a remote job plan, and a `RemoteJobHandler` runs it on its own goroutine and reports `awaiting`, then the result, on its updates channel. The model keeps working meanwhile.
 
 | Plan type | Handler | Runs |
 | --- | --- | --- |
 | `uah.mcp_call` (version 1) | `mcpJobs` | One MCP tool call through `internal/mcp` |
 | `uah.agent` (version 1) | `agentJobs` | Whatever tools `engine.Subagents.Attach` returned (Codex's `spawn_agent`, `send_input`, `resume_agent`, `wait_agent`, `close_agent`), each through `Subagents.Call`. The plan keeps the model's call ID, which `fork_context` needs |
+| `uah.apply_patch` (version 1) | `patchJobs` | One approved patch: it reads the files, writes the changes, and completes with Codex's summary as the result and the diff (`engine.PatchHandle`) as the handle, which the session file keeps untruncated |
 
 A job that had already started before the run stopped fails with "interrupted" when the session resumes, instead of running twice. Cancelling a job cancels its context. The calls of one model turn run at the same time, each on its own goroutine (`TestAgents_ParallelCalls`).
 <!-- /memoria:section -->

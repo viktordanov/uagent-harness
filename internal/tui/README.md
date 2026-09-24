@@ -53,7 +53,7 @@ A frame: `View` calls `render.Screen`. The transcript is virtualized: it renders
 Effects made before the first session opens (the startup prompt, for example) are held and run once it opens.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="items" files="state/items.go state/runevents.go state/agents.go state/contextview.go state/approval.go state/mcp.go render/items.go render/mcp.go" -->
+<!-- memoria:section id="items" files="state/items.go state/runevents.go state/agents.go state/contextview.go state/approval.go state/mcp.go render/items.go render/mcp.go state/patch.go" -->
 ## Transcript items
 
 The transcript is a list of `Item`s, each with a stable key. The reducer updates an item in place by key and raises its `Version`, so a tool call that finishes after later turns updates its original row.
@@ -63,7 +63,7 @@ The transcript is a list of `Item`s, each with a stable key. The reducer updates
 | `KindUser` | `msg:<input ID>` | `InputSent`, or the runner's `UserMessage` |
 | `KindRun` | `run:<run ID>` | `RunStarted`, updated by `RunFinished` |
 | `KindTurn` | `turn:<run ID>:<n>` | `TurnStarted`, updated by `ModelResponded` |
-| `KindTool` | `call:<call ID>` | `ToolCalled`, `ToolStarted`, `ToolFinished` |
+| `KindTool` | `call:<call ID>` | `ToolCalled`, `ToolStarted`, `ToolFinished`; `engine.PatchApplied` puts an `apply_patch` call's diff in `Diff` (`state/patch.go`) |
 | `KindAssistant`, `KindReasoning` | `text:<n>`, `reason:<n>` | `AssistantMessage`, `ReasoningSummary` |
 | `KindNotice` | `notice:<n>` | Session notices, hook results, command output, approvals |
 | `KindAgent` | `agent:<ID>` | `engine.AgentUpdated` (a subagent): `Name` is the nickname, `Text` the ID, `Detail` the state, and `Agent` the latest update (spawn call ID and message, model, effort, why it failed); its tool calls from `engine.AgentActivity` go into `Sub`, drawn under it in the detailed view. `State.Agents` lists them in start order without walking the transcript |
@@ -147,7 +147,7 @@ In the picker, ↑/↓ choose, enter resumes, tab switches between this director
 - An approval waiting in the session shows the session's screen until it is answered.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="look" files="render/theme.go render/compact.go render/screen.go render/markdown.go bubble/model.go" -->
+<!-- memoria:section id="look" files="render/theme.go render/compact.go render/screen.go render/markdown.go bubble/model.go render/diff.go render/words.go" -->
 ## The look
 
 The compact view is shaped like Codex's, in amber. The choices came from the style swatchbook and are listed in the [ledger](../../docs/ledger.md) (item 19).
@@ -158,6 +158,7 @@ The compact view is shaped like Codex's, in amber. The choices came from the sty
 | Banner | Codex's box at the top of the transcript: `λ uah (version)`, the model with `/model to change`, the directory | `banner` in `render/compact.go` |
 | Your messages | `λ ` and the text on the band, with a band row above and below | `userLines` |
 | Tool calls | A dim column: label, time, command (`RAN    4.1s   go test ./...`), each field six characters and a space; a live call in the accent (`RUN`), a failed one with `fail` and its detail. Agent tools read `SPAWN`, `SEND`, `WAIT`, `CLOSE`, `RESUME` with the subagents' nicknames instead of their JSON (`SPAWN  Ada · gpt-6-luna low · Summarize…`, `WAIT  Ada, Rex`; `state/agentcalls.go`); other tools the first word of their name (`SkillUse` is `SKILL`), and arguments of one string field show as that string | `compactTool`, `toolLabel`, `toolText` |
+| File edits | An `apply_patch` call as `EDIT` with Codex's `Edited path (+3 -1)` (`Added`, `Deleted`, or `Edited 2 files` with a `└ path` line per file), then the changed lines: the line number in a dim gutter, added lines tinted green and removed ones red across the whole line, the changed words inside a replaced line marked in a stronger tint, context lines dim, and `⋮` between hunks. The compact view folds after 12 lines with `… +N lines (ctrl+t to view)`; the detailed view shows the whole diff | `patchLines`, `diffBlock`, `diffLine` in `render/diff.go`; `wordDiff` in `render/words.go` |
 | Agent messages | `•` in the accent | `compactLines` |
 | Code blocks | On the band, highlighted with the theme's code colors, not wrapped | `markdownLines`, `highlight` |
 | Subagents | While running, at the bottom above the working line with a blank line before each: `AGENT Ada  42s`, and under it `└ ⠹ Read …`, its live tool call. A finished one is one line where it was spawned: `done in 1m 12s`, or `failed:` and the provider's reason; closing it afterwards keeps that | `activeAgents`, `agentLines` |
@@ -168,7 +169,7 @@ The compact view is shaped like Codex's, in amber. The choices came from the sty
 | Footer | Model and effort, fast, the permission mode (`read only mode`, `workspace mode`, `auto mode`, or `full access mode`), directory, context left, hints. The detailed view's header shows the mode too | `footerLine`, `modeText` |
 | `/context` | One dot per percent of the window in its category's color, `·` for free space, `○` for the auto-compaction buffer | `contextLines` |
 
-A `Theme` holds every color: the accent, dim text, the band, the breath's shades, the code colors, and the colors `/context` tells its categories apart with. `Amber` is for dark terminals and `AmberLight` for light ones. The shell asks the terminal for its background at start (`tea.RequestBackgroundColor`); `ThemeFor` picks the theme and tints the band from that background, as Codex tints its message background, and `SetTheme` applies it. A new theme is a new `Theme` value. Text is never colored by the theme, so it keeps the terminal's own foreground.
+A `Theme` holds every color: the accent, dim text, the band, the breath's shades, the code colors, the diff tints (Codex's dark tints in `Amber`, GitHub's light ones in `AmberLight`), and the colors `/context` tells its categories apart with. `Amber` is for dark terminals and `AmberLight` for light ones. The shell asks the terminal for its background at start (`tea.RequestBackgroundColor`); `ThemeFor` picks the theme and tints the band from that background, as Codex tints its message background, and `SetTheme` applies it. A new theme is a new `Theme` value. Text is never colored by the theme, so it keeps the terminal's own foreground.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="extending" files="state/commands.go state/contextview.go state/effects.go state/items.go render/contextview.go render/items.go bubble/effects.go bubble/model.go" -->
@@ -193,13 +194,13 @@ To add an item kind, follow `KindContext`:
 To add a key, map it to an intent in `bubble/keys.go` and handle the intent in `state.Reduce`. Keep the existing keys' meanings.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="tests" files="state/reduce_test.go state/menu_test.go state/contextview_test.go state/mode_test.go render/screen_test.go render/contextview_test.go render/mode_test.go bubble/bubble_test.go bubble/approval_test.go bubble/mode_test.go" -->
+<!-- memoria:section id="tests" files="state/reduce_test.go state/menu_test.go state/contextview_test.go state/mode_test.go render/screen_test.go render/contextview_test.go render/mode_test.go bubble/bubble_test.go bubble/approval_test.go bubble/mode_test.go render/diff_test.go" -->
 ## Tests
 
 | Test | Pins |
 | --- | --- |
 | `state/*_test.go` | The reducer: a run from a captured fixture, tools keeping their place, the queue, keys, commands, history, the picker, the menu, approvals, and `/context` |
-| `render/screen_test.go` and the other render tests | Whole screens against golden files in `render/testdata` (`go test ./internal/tui/render -update` rewrites them), and scrolling |
+| `render/screen_test.go` and the other render tests | Whole screens against golden files in `render/testdata` (with a diff in both views, `patch` and `patch-details`, and its tints in `render/diff_test.go`) (`go test ./internal/tui/render -update` rewrites them), and scrolling |
 | `bubble/bubble_test.go` | The shell end to end, with real sessions on the process engine and uagent's fake runner: sending, commands, the picker, queue and interrupt, scrolling, and the menu |
 | `bubble/approval_test.go` | Approving and declining an escalation, with real sessions on the embedded engine and `testing/fakellm` |
 | `state/mode_test.go`, `render/mode_test.go`, `bubble/mode_test.go` | shift+tab's cycle, the mode notice, the footer and header in each mode, and shift+tab through a real session |

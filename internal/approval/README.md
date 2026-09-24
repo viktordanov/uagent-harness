@@ -10,11 +10,12 @@ On the embedded engine, each command runs in the sandbox unless a rule or an app
 The pipeline follows Codex (checked against rust-v0.156.1). The decisions are recorded in the [sandbox plan](../../docs/design/sandbox.md), and the keys are in the [configuration reference](../../docs/configuration.md#sandbox-and-approvals).
 
 1. [The pipeline](#the-pipeline)
-2. [Permission modes](#permission-modes)
-3. [Defaults](#defaults)
-4. [The approver](#the-approver)
-5. [Where the rules come from](#where-the-rules-come-from)
-6. [Tests](#tests)
+2. [Patches](#patches)
+3. [Permission modes](#permission-modes)
+4. [Defaults](#defaults)
+5. [The approver](#the-approver)
+6. [Where the rules come from](#where-the-rules-come-from)
+7. [Tests](#tests)
 <!-- /memoria:section -->
 
 <!-- memoria:section id="pipeline" files="approval.go" -->
@@ -33,9 +34,24 @@ For each Bash call on the embedded engine:
 
 An approved escalation runs outside the sandbox, with network. An approved `prompt` rule on a command that did not ask for escalation runs in the sandbox. A denied command is not run, and the model gets the reason as the tool's error.
 
-The same ask (steps 6 to 8) serves MCP tools whose `approval_mode` needs approval, and subagents: a subagent runs its own auto-review, then asks its parent's user, with `agent <nickname>:` in front of the reason.
+The same ask (steps 6 to 8) serves [patches](#patches) that write outside the sandbox, MCP tools whose `approval_mode` needs approval, and subagents: a subagent runs its own auto-review, then asks its parent's user, with `agent <nickname>:` in front of the reason.
 
 The process engine has none of this: its `SHELL` sandboxes every command, and nothing can ask.
+<!-- /memoria:section -->
+
+<!-- memoria:section id="patches" files="approval.go" -->
+## Patches
+
+An `apply_patch` call (see [patches](../patch/README.md)) goes through the same pipeline, as Codex's patch approval does (`assess_patch_safety` in `codex-rs/core/src/safety.rs`). The embedded engine checks each path the patch writes, move destinations included, against the sandbox policy of the run's current permission mode (`sandbox.Policy.CanWrite`):
+
+| Mode | A write inside the writable roots | Any other write |
+| --- | --- | --- |
+| Read only | Asks | Asks |
+| Workspace | Applies | Asks |
+| Auto | Applies | The auto-reviewer decides |
+| Full access | Applies | Applies |
+
+A protected path (`.git`, `.uagent`, `.agents`, `.codex`) is not inside the writable roots, and a symlink is followed before the check. A patch that needs approval becomes a `Request` with `Command` `apply_patch <paths>` (so a rule on the prefix `apply_patch` allows or forbids such patches), `Escalated`, the reason (`the patch writes outside the writable roots`, or `the sandbox is read-only`), and `Tool` and `Input` set. PermissionRequest hooks then see `tool_name` `apply_patch` with Codex's `{"command": "<patch>"}`, and the auto-reviewer sees the patch. A decline, or no one to ask, is the tool's error, and nothing is written. A patch that cannot apply fails before anyone is asked.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="modes" files="mode.go" -->
