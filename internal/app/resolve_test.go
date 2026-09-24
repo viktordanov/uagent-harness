@@ -11,6 +11,7 @@ import (
 
 	"github.com/viktordanov/uagent-harness/internal/app"
 	"github.com/viktordanov/uagent-harness/internal/approval"
+	"github.com/viktordanov/uagent-harness/internal/compaction"
 	"github.com/viktordanov/uagent-harness/internal/config"
 	"github.com/viktordanov/uagent-harness/internal/review"
 	"github.com/viktordanov/uagent-harness/internal/rules"
@@ -284,7 +285,25 @@ func TestResolve(t *testing.T) {
 		{
 			name: "compaction keys",
 			cfg:  config.Config{AutoCompactPercent: new(0), ModelContextWindow: 128_000},
-			want: func(r *app.Resolved) { r.AutoCompactPercent, r.Settings.ContextWindow = 0, 128_000 },
+			want: func(r *app.Resolved) { r.Compaction.Percent, r.Settings.ContextWindow = 0, 128_000 },
+		},
+		{
+			name: "Codex's compaction keys and uah's summary model",
+			cfg: config.Config{
+				ModelAutoCompactTokenLimit: 200_000, CompactPrompt: "  Summarize briefly.  ", ExperimentalCompactPromptFile: "/ignored/when/inline.md",
+				CompactModel: "gpt-small", CompactEffort: "low", CompactUserMessageMaxTokens: 5000,
+			},
+			want: func(r *app.Resolved) {
+				r.Compaction = compaction.Settings{
+					Percent: 90, TokenLimit: 200_000, Model: "gpt-small", Effort: llm.ReasoningEffortLow,
+					Prompt: "Summarize briefly.", UserMessageMaxTokens: 5000,
+				}
+			},
+		},
+		{
+			name: "the prompt file is read by Setup",
+			cfg:  config.Config{ExperimentalCompactPromptFile: "/prompts/compact.md"},
+			want: func(r *app.Resolved) { r.CompactPromptFile = "/prompts/compact.md" },
 		},
 	}
 	for _, tt := range tests {
@@ -299,7 +318,7 @@ func TestResolve(t *testing.T) {
 					Workspace: "/ws", Timeout: 30 * time.Minute, Mode: approval.ModeWorkspace, Sandbox: string(sandbox.WorkspaceWrite),
 				},
 				Engine: app.EngineEmbedded, MaxDisk: 5 << 30, Instructions: true,
-				Sandbox: sandbox.Policy{Mode: sandbox.WorkspaceWrite}, AutoCompactPercent: 90, Approval: approval.OnRequest,
+				Sandbox: sandbox.Policy{Mode: sandbox.WorkspaceWrite}, Compaction: compaction.Settings{Percent: 90}, Approval: approval.OnRequest,
 				ApprovalsReviewer: review.ReviewerAuto,
 				Review:            review.Config{Model: review.CodexModel, Effort: llm.ReasoningEffortLow, Timeout: review.DefaultTimeout},
 				Agents:            app.Agents{Enabled: true, MaxThreads: 4, MaxDepth: 1},
@@ -333,6 +352,10 @@ func TestResolveUsageErrors(t *testing.T) {
 		{name: "invalid config engine", cfg: config.Config{Engine: "turbo"}, want: "invalid engine turbo (want embedded or process)"},
 		{name: "invalid auto_compact_percent", cfg: config.Config{AutoCompactPercent: new(101)}, want: "invalid auto_compact_percent 101"},
 		{name: "invalid model_context_window", cfg: config.Config{ModelContextWindow: -1}, want: "invalid model_context_window -1"},
+		{name: "invalid model_auto_compact_token_limit", cfg: config.Config{ModelAutoCompactTokenLimit: -5}, want: "invalid model_auto_compact_token_limit -5"},
+		{name: "invalid compact_effort", cfg: config.Config{CompactEffort: "huge"}, want: `invalid compact_effort "huge"`},
+		{name: "invalid compact_user_message_max_tokens", cfg: config.Config{CompactUserMessageMaxTokens: -1}, want: "invalid compact_user_message_max_tokens -1"},
+		{name: "relative experimental_compact_prompt_file", cfg: config.Config{ExperimentalCompactPromptFile: "prompt.md"}, want: `invalid experimental_compact_prompt_file "prompt.md"`},
 		{name: "invalid approvals_reviewer", cfg: config.Config{ApprovalsReviewer: "robot"}, want: `invalid approvals_reviewer "robot"`},
 		{name: "invalid review effort", cfg: config.Config{Review: config.Review{Effort: "huge"}}, want: `invalid review.effort "huge"`},
 		{name: "invalid review timeout", cfg: config.Config{Review: config.Review{Timeout: "-1s"}}, want: `invalid review.timeout "-1s"`},

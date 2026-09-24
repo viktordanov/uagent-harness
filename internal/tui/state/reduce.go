@@ -64,6 +64,9 @@ func Reduce(s State, ev any) (State, []Effect) {
 
 		return s, nil
 	}
+	if effects, ok := s.onConfig(ev); ok {
+		return s, effects
+	}
 	if effects, ok := s.onMenu(ev); ok {
 		return s, effects
 	}

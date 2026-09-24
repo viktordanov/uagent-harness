@@ -47,8 +47,8 @@ Status: `todo`, `doing`, `done`, `cut` (with a reason).
 | 21 | Model catalog from the provider, as Codex | lane models | — | done |
 | 22 | Subagent handling: steer in the view, notifications to the parent, only working agents browsable, run IDs | main session | 17 | done |
 | 23 | Quality pass over the new concepts | main session | 22 | done |
-| 24 | Compaction you can configure, and a second look at how well it works | lane settings | 16 | doing |
-| 25 | `/config`: the basic settings in the TUI, saved to the user file | lane settings | 24 | doing |
+| 24 | Compaction you can configure, and a second look at how well it works | lane settings | 16 | done |
+| 25 | `/config`: the basic settings in the TUI, saved to the user file | lane settings | 24 | done |
 | 26 | Permission modes on shift+tab, shown in the TUI | lane modes | — | done |
 | 27 | Session settings kept with the session: model, effort, fast mode, permission mode | lane modes | 26 | done |
 
@@ -173,10 +173,13 @@ A survey of the code added since item 12: rendering and the theme, notifications
 
 - Keys for what Codex lets you set and what uah fixes today: the summary model and effort (default: the session's model, as Codex), the summary prompt (Codex's `compact_prompt`, and a file form), `auto_compact_percent`, the kept-message cap (20,000 tokens), and the buffer `/context` shows.
 - A second look at the results: what the summary keeps, how a compacted session behaves on the next turns, and what Codex and Claude Code do differently, with tests for any fix.
+- Done: Codex's `compact_prompt`, `experimental_compact_prompt_file`, and `model_auto_compact_token_limit`, and uah's `compact_model`, `compact_effort`, and `compact_user_message_max_tokens`; `/compact <focus>` as Claude Code's; `/context`'s buffer follows the effective limit. The second look fixed an automatic compaction that repeated before every request when it could not get under the limit, and the kept-message cap on small windows ([design](design/compaction.md#second-look-ledger-item-24)).
 
 ### 25. `/config`
 
 Claude Code's `/config`, for the basic settings: auto-compact on or off and its percent, the compaction model, the default model and effort, fast mode, the permission mode, the details view, and the mouse. It shows each value and where it comes from (as `uah config` does), and a change is saved to the user file with the same editor `uah mcp add` uses, keeping comments.
+
+Done: `internal/config/tomledit` is the one editor for both; the model, effort, fast mode, and permission mode also change the running session, the details view and the mouse change at once, and a change that would stop a session from starting is undone ([internal/tui](../internal/tui/README.md#config)).
 
 ### 26. Permission modes on shift+tab
 
@@ -216,7 +219,8 @@ Ideas that come up while working go here, not into the items.
 - Auto-review: Codex sends only the transcript delta per review and lets the reviewer run read-only commands; uah sends the whole trimmed context each time. The openai API-key provider reviews with the session model (Codex uses gpt-5.6-luna).
 - Approvals: "No, and tell the agent what to do" has no text field; no per-session cache of approved commands; the process engine ignores rules and approvals.
 - MCP: resources, prompts, restarting a crashed server, applying `tools/list_changed`, reconnecting a server after `uah mcp login` without `/new` (docs/design/mcp.md, Open decisions).
-- Compaction: a configurable summary model and prompt (Codex's `compact_prompt`); the process engine cannot compact.
+- Compaction: the process engine cannot compact. On a switch to a model with a smaller window, Codex first compacts with the previous model (`turn.rs:1342`); uah compacts with the new one, which trims the oldest history. Claude Code's "Compact Instructions" in CLAUDE.md steer every summary; uah has `compact_prompt` only.
+- `/config`: Claude Code's `/config key=value` form, a search field, and more rows (the sandbox's network access, the reviewer).
 - Crash cleanup kills recorded process groups; a reused process group ID after a reboot could hit an unrelated process (uagent's end-of-run cleanup has the same risk).
 - `uah config` does not list `[agents]`, `[review]`, and MCP servers yet.
 - `compaction.ContextWindow` reads the model catalog through a process-wide default (`models.SetDefault`), which the TUI's pure reducer then depends on. Better: the session reports the resolved window with its settings. It works today because one process has one catalog.

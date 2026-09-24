@@ -52,9 +52,9 @@ type Config struct {
 	// Env is which environment variables commands get (the zero value is
 	// all of them). It applies when Sandbox is set.
 	Env sandbox.EnvPolicy
-	// AutoCompactPercent compacts the context before a model request once
-	// the last response used this share of the model's window (0: never).
-	AutoCompactPercent int
+	// Compaction configures automatic compaction and the summary call; its
+	// zero value never compacts automatically.
+	Compaction compaction.Settings
 	// ContextWindow overrides the model table's context window (tokens).
 	ContextWindow int64
 	// BeforeCompact, when set, runs as each compaction starts; an error
@@ -208,7 +208,7 @@ func (r *run) SetEffort(effort string) error    { return r.agent.SetEffort(effor
 func (r *run) SetModel(model string) error      { return r.agent.SetModel(model) }
 func (r *run) SetServiceTier(tier string) error { return r.agent.SetServiceTier(tier) }
 func (r *run) SetMode(m approval.Mode) error    { return r.agent.SetMode(m) }
-func (r *run) Compact() error                   { return r.agent.Compact() }
+func (r *run) Compact(focus string) error       { return r.agent.Compact(focus) }
 func (r *run) Clear() error                     { return r.agent.Clear() }
 
 // Interrupt stops the run and its session's subagents' live runs, as the

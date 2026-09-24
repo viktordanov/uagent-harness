@@ -105,6 +105,9 @@ func (p *printer) print(event core.Event) {
 			p.say("compaction failed: " + e.Err)
 		} else {
 			p.say(fmt.Sprintf("context compacted (%d-char summary)", len(e.Summary)))
+			if e.Warning != "" {
+				p.say("warning: " + e.Warning)
+			}
 		}
 	case engine.AutoReviewed:
 		p.say(fmt.Sprintf("auto-review: %s (%s risk) %s — %s", e.Outcome, e.Risk, oneLine(e.Command, 80), e.Reason))

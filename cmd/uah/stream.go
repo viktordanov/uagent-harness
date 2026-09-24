@@ -158,7 +158,8 @@ func engineEventDTO(event core.Event) (any, bool) {
 			Summary     string `json:"summary,omitempty"`
 			Error       string `json:"error,omitempty"`
 			Interrupted bool   `json:"interrupted,omitempty"`
-		}{header("compacted", e.At), string(e.Trigger), e.Summary, e.Err, e.Interrupted}, true
+			Warning     string `json:"warning,omitempty"`
+		}{header("compacted", e.At), string(e.Trigger), e.Summary, e.Err, e.Interrupted, e.Warning}, true
 	}
 
 	return nil, false

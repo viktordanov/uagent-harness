@@ -14,6 +14,8 @@ const (
 	keyCtrlN = "ctrl+n"
 	keyCtrlC = "ctrl+c"
 	keyDown  = "down"
+	keyUp    = "up"
+	keyCtrlP = "ctrl+p"
 )
 
 // onKey maps keys to intents. The keys never change meaning: Enter sends
@@ -25,6 +27,9 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	}
 	if _, ok := m.st.PendingApproval(); ok {
 		return m.onApprovalKey(msg)
+	}
+	if m.st.Config != nil {
+		return m.onConfigKey(msg)
 	}
 	draft := m.composer.Value()
 	if intent := menuIntent(m.st, msg.String(), draft); intent != nil {
@@ -138,7 +143,7 @@ func (m Model) onApprovalKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 
 func (m Model) onPickerKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "up", "ctrl+p":
+	case keyUp, keyCtrlP:
 		return m.dispatch(state.PickerMove{Delta: -1})
 	case keyDown, keyCtrlN:
 		return m.dispatch(state.PickerMove{Delta: 1})
@@ -210,7 +215,7 @@ func menuIntent(st state.State, key, draft string) any {
 		return state.MenuAccept{Draft: draft}
 	case keyEnter:
 		return state.MenuEnter{Draft: draft}
-	case "up", "ctrl+p":
+	case keyUp, keyCtrlP:
 		return state.MenuMove{Draft: draft, Delta: -1}
 	case keyDown, keyCtrlN:
 		return state.MenuMove{Draft: draft, Delta: 1}
@@ -219,4 +224,39 @@ func menuIntent(st state.State, key, draft string) any {
 	}
 
 	return nil
+}
+
+// onConfigKey drives the /config panel: ↑↓ choose, enter or space change,
+// ← → cycle back and forth, esc closes (or stops typing a value).
+func (m Model) onConfigKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	editing := m.st.Config.Editing
+	switch msg.String() {
+	case keyUp, keyCtrlP:
+		return m.dispatch(state.ConfigMove{Delta: -1})
+	case keyDown, keyCtrlN:
+		return m.dispatch(state.ConfigMove{Delta: 1})
+	case keyEnter:
+		return m.dispatch(state.ConfigEnter{})
+	case keyEsc, keyCtrlC:
+		return m.dispatch(state.ConfigEsc{})
+	case "left":
+		if !editing {
+			return m.dispatch(state.ConfigChange{Delta: -1})
+		}
+	case "right":
+		if !editing {
+			return m.dispatch(state.ConfigChange{Delta: 1})
+		}
+	case "space":
+		if !editing {
+			return m.dispatch(state.ConfigChange{Delta: 1})
+		}
+	case "backspace":
+		return m.dispatch(state.ConfigType{Text: "\b"})
+	}
+	if editing && msg.Text != "" {
+		return m.dispatch(state.ConfigType{Text: msg.Text})
+	}
+
+	return m, nil
 }

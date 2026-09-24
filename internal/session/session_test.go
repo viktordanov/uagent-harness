@@ -114,10 +114,10 @@ func (r *fakeRun) SetMode(m approval.Mode) error {
 
 	return nil
 }
-func (r *fakeRun) Compact() error { return engine.ErrUnsupported }
-func (r *fakeRun) Clear() error   { return engine.ErrUnsupported }
-func (r *fakeRun) Interrupt()     { r.finish(core.StatusInterrupted) }
-func (r *fakeRun) Kill()          { r.finish(core.StatusInterrupted) }
+func (r *fakeRun) Compact(string) error { return engine.ErrUnsupported }
+func (r *fakeRun) Clear() error         { return engine.ErrUnsupported }
+func (r *fakeRun) Interrupt()           { r.finish(core.StatusInterrupted) }
+func (r *fakeRun) Kill()                { r.finish(core.StatusInterrupted) }
 
 func (r *fakeRun) Wait() (core.Result, error) {
 	<-r.done

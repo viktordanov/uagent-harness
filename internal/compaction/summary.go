@@ -16,9 +16,13 @@ import (
 const overflowRetries = 4
 
 // SummaryRequest is what the summary call sends: the (already compacted)
-// history without its system message, then the prompt as a user message.
-// The system text is returned separately, for the call's instructions.
-func SummaryRequest(view []llm.Item) (system string, input []llm.Item) {
+// history without its system message, then the prompt as a user message
+// (Codex's when prompt is empty). The system text is returned separately,
+// for the call's instructions.
+func SummaryRequest(view []llm.Item, prompt string) (system string, input []llm.Item) {
+	if prompt == "" {
+		prompt = Prompt
+	}
 	rest := view
 	if len(view) > 0 {
 		if m, ok := view[0].Data.(llm.Message); ok && m.Role == llm.RoleSystem {
@@ -26,7 +30,7 @@ func SummaryRequest(view []llm.Item) (system string, input []llm.Item) {
 		}
 	}
 	input = append(input, rest...)
-	input = append(input, llm.Item{Type: llm.ItemMessage, Data: llm.Message{Role: llm.RoleUser, Text: Prompt}})
+	input = append(input, llm.Item{Type: llm.ItemMessage, Data: llm.Message{Role: llm.RoleUser, Text: prompt}})
 
 	return system, input
 }
@@ -64,13 +68,15 @@ type SummaryCall struct {
 	// trimmed to fit it.
 	Window   int64
 	CacheKey string
+	// Prompt ends the call ("": Codex's); see Settings.SummaryPrompt.
+	Prompt string
 }
 
-// Summarize asks the model for a summary of view with Codex's prompt and no
-// tools. A history larger than the window is trimmed from the oldest item
+// Summarize asks the model for a summary of view with the call's prompt and
+// no tools. A history larger than the window is trimmed from the oldest item
 // first, and trimmed further when the provider still reports an overflow.
 func Summarize(ctx context.Context, call SummaryCall, view []llm.Item) (string, error) {
-	system, input := SummaryRequest(view)
+	system, input := SummaryRequest(view, call.Prompt)
 	history, prompt := input[:len(input)-1], input[len(input)-1]
 	budget := call.Window - EstimateTokens([]llm.Item{prompt}) - EstimateTokens([]llm.Item{llmcall.Message(llm.RoleSystem, system)})
 	for attempt := 0; ; attempt++ {

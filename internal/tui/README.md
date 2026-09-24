@@ -14,10 +14,11 @@ The layout, screens, and framework choice are recorded in the [TUI design](../..
 3. [Transcript items](#transcript-items)
 4. [Keys](#keys)
 5. [Slash commands](#slash-commands)
-6. [The agent view](#the-agent-view)
-7. [The look](#the-look)
-8. [Extending the TUI](#extending-the-tui)
-9. [Tests](#tests)
+6. [/config](#config)
+7. [The agent view](#the-agent-view)
+8. [The look](#the-look)
+9. [Extending the TUI](#extending-the-tui)
+10. [Tests](#tests)
 <!-- /memoria:section -->
 
 <!-- memoria:section id="packages" files="state/state.go state/reduce.go state/effects.go render/screen.go render/items.go bubble/model.go bubble/effects.go bubble/keys.go" -->
@@ -104,6 +105,8 @@ The approval overlay replaces the composer keys while it is open:
 | n, esc, ctrl+c | No, and tell the agent what to do differently |
 
 In the picker, ↑/↓ choose, enter resumes, tab switches between this directory and all directories, typing filters, and esc goes back.
+
+In the `/config` panel, ↑/↓ choose a setting, enter or space changes it, ←/→ cycle back and forth, and esc closes; while a value is being typed, enter saves it and esc cancels (see [/config](#config)).
 <!-- /memoria:section -->
 
 <!-- memoria:section id="commands" files="state/commands.go state/menu.go state/models.go state/context.go state/contextview.go state/mcp.go state/agents.go state/heatmap.go" -->
@@ -120,8 +123,9 @@ In the picker, ↑/↓ choose, enter resumes, tab switches between this director
 | `/new` | Start a new session | No |
 | `/clear` | Start the agent fresh in this session: the screen clears, and the next request carries nothing from before; the session keeps its history (embedded engine) | Yes |
 | `/stop` | Interrupt the run; queued messages stay | Yes |
-| `/compact` | Compact the context before the next model request (embedded engine) | Yes |
+| `/compact [focus]` | Compact the context before the next model request; words after it tell the summary what to focus on, as Claude Code's `/compact [instructions]` (embedded engine) | Yes |
 | `/context` | Break down what fills the context window | Yes |
+| `/config` | The settings panel: change the basic settings and save them to the user file (see [/config](#config)) | Yes |
 | `/status` | Session, settings, totals, and a 12-week activity heatmap | Yes |
 | `/mcp [verbose]` | MCP servers: state, transport, tool count, and a login hint; `verbose` (or the detailed view) adds each server's command or URL, auth, and tools with their approval mode | Yes |
 | `/agents [name]` | Subagents and their state; with a nickname or ID, that agent's live transcript (see [The agent view](#the-agent-view)) | Yes |
@@ -134,6 +138,30 @@ In the picker, ↑/↓ choose, enter resumes, tab switches between this director
 `/model` offers the provider's model list after a space: the first `/model` draft loads it through an effect (`EffLoadModels`, `state/models.go`), off the update loop, from the catalog in `internal/models`. When that list came from the provider, `/model` refuses a model it lacks with the nearest names; with no list, or only the bundled one, any model passes.
 
 `/model`, `/effort`, and `/fast` apply from the next model request on the embedded engine, and from the next run on the process engine; the session's `SettingsChanged` event says which.
+<!-- /memoria:section -->
+
+<!-- memoria:section id="config" files="state/config.go state/configrows.go render/config.go bubble/keys.go bubble/effects.go" -->
+## /config
+
+`/config` opens a panel above the composer, after Claude Code's `/config`: the basic settings, one row each, with the value a session opened now would use and where it comes from, as `uah config` explains them (`app.Explain`). The selected row is in the accent band; the title names the user file changes go to.
+
+| Row | Key | Change | Applies |
+| --- | --- | --- | --- |
+| Auto-compact | `auto_compact_percent` | Cycles off, 50, 60, 70, 80, 85, 90, 95% | New sessions |
+| Auto-compact token limit | `model_auto_compact_token_limit` | Type a number; empty or 0 removes it | New sessions |
+| Compaction model | `compact_model` | Cycles the session's model and the provider's models; the session's model removes the key | New sessions |
+| Model | `model` | Cycles the provider's models, or type one when there is no list | This session too, as `/model` |
+| Effort | `effort` | Cycles low to max | This session too, as `/effort` |
+| Fast mode | `fast` | Toggles | This session too, as `/fast`, where the engine has it |
+| Permission mode | `permission_mode` | Cycles read only, workspace, auto, as shift+tab; full access stays a value for the file | This session too, as shift+tab |
+| Details view | `[tui] details` | Toggles | At once |
+| Mouse | `[tui] mouse` | Toggles | At once |
+
+The split follows the rest of the TUI:
+
+- **State** (`state/config.go`, `state/configrows.go`): `ConfigPanel` holds the loaded values, the selected row, and a value being typed. The reducer turns a change into `EffSaveConfig`, shows the new value at once with the user file as its source, and, for a setting the session takes live, adds the same `EffSetSettings` that `/model`, `/effort`, `/fast`, and shift+tab send. Opening the panel loads the values (`EffLoadConfig`) and the model list (`EffLoadModels`).
+- **Render** (`render/config.go`): the rows, the value in bold, on in the good color, the source dim, and the keys at the bottom.
+- **Effects** (`bubble/effects.go`): `Deps.Config` and `Deps.SaveConfig`, which `cmd/uah` backs with `app.Inspect` and `app.SaveSetting`. A save goes through the comment-preserving editor that `uah mcp add` uses (`internal/config/tomledit`); a change that would stop a session from starting, such as fast mode with the process engine, is undone and reported. After each save the panel reloads, and says so when a flag, the environment, or a trusted project file still sets the key and wins over the user file.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="agentview" files="state/agentview.go bubble/agentview.go render/agentview.go" -->
@@ -168,6 +196,7 @@ The compact view is shaped like Codex's, in amber. The choices came from the sty
 | Notices | Plain dim text; warnings start with `!` and errors with `✗` | `itemLines` |
 | Footer | Model and effort, fast, the permission mode (`read only mode`, `workspace mode`, `auto mode`, or `full access mode`), directory, context left, hints. The detailed view's header shows the mode too | `footerLine`, `modeText` |
 | `/context` | One dot per percent of the window in its category's color, `·` for free space, `○` for the auto-compaction buffer | `contextLines` |
+| `/config` | A title in the accent, a row per setting with the selected one in the accent band, and the keys dim at the bottom | `configLines` |
 
 A `Theme` holds every color: the accent, dim text, the band, the breath's shades, the code colors, the diff tints (Codex's dark tints in `Amber`, GitHub's light ones in `AmberLight`), and the colors `/context` tells its categories apart with. `Amber` is for dark terminals and `AmberLight` for light ones. The shell asks the terminal for its background at start (`tea.RequestBackgroundColor`); `ThemeFor` picks the theme and tints the band from that background, as Codex tints its message background, and `SetTheme` applies it. A new theme is a new `Theme` value. Text is never colored by the theme, so it keeps the terminal's own foreground.
 <!-- /memoria:section -->
@@ -194,7 +223,7 @@ To add an item kind, follow `KindContext`:
 To add a key, map it to an intent in `bubble/keys.go` and handle the intent in `state.Reduce`. Keep the existing keys' meanings.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="tests" files="state/reduce_test.go state/menu_test.go state/contextview_test.go state/mode_test.go render/screen_test.go render/contextview_test.go render/mode_test.go bubble/bubble_test.go bubble/approval_test.go bubble/mode_test.go render/diff_test.go" -->
+<!-- memoria:section id="tests" files="state/reduce_test.go state/menu_test.go state/contextview_test.go state/mode_test.go render/screen_test.go render/contextview_test.go render/mode_test.go bubble/bubble_test.go bubble/approval_test.go bubble/mode_test.go state/config_test.go bubble/config_test.go render/diff_test.go" -->
 ## Tests
 
 | Test | Pins |
@@ -204,4 +233,5 @@ To add a key, map it to an intent in `bubble/keys.go` and handle the intent in `
 | `bubble/bubble_test.go` | The shell end to end, with real sessions on the process engine and uagent's fake runner: sending, commands, the picker, queue and interrupt, scrolling, and the menu |
 | `bubble/approval_test.go` | Approving and declining an escalation, with real sessions on the embedded engine and `testing/fakellm` |
 | `state/mode_test.go`, `render/mode_test.go`, `bubble/mode_test.go` | shift+tab's cycle, the mode notice, the footer and header in each mode, and shift+tab through a real session |
+| `state/config_test.go`, `bubble/config_test.go` | `/config`: the rows and sources, toggles, cycles, typed values, what applies live, the warning when another source wins, and a real user file saved with its comments kept, with a change that would stop a session from starting undone |
 <!-- /memoria:section -->

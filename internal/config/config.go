@@ -11,8 +11,6 @@ import (
 	"slices"
 	"time"
 
-	"github.com/BurntSushi/toml"
-
 	"github.com/viktordanov/uagent-harness/internal/hooks"
 	"github.com/viktordanov/uagent-harness/internal/mcp"
 )
@@ -55,6 +53,17 @@ type Config struct {
 	// ModelContextWindow overrides the model's context window in tokens, as
 	// Codex's key does.
 	ModelContextWindow int64 `toml:"model_context_window"`
+	// Compaction keys with Codex's names: the automatic limit in tokens
+	// (the lower of it and auto_compact_percent applies) and the summary
+	// prompt, inline or from a file (compact_prompt wins).
+	ModelAutoCompactTokenLimit    int64  `toml:"model_auto_compact_token_limit"`
+	CompactPrompt                 string `toml:"compact_prompt"`
+	ExperimentalCompactPromptFile string `toml:"experimental_compact_prompt_file"`
+	// The summary call's model and effort (the session's by default), and
+	// the cap on user messages a compaction keeps (Codex's 20,000 tokens).
+	CompactModel                string `toml:"compact_model"`
+	CompactEffort               string `toml:"compact_effort"`
+	CompactUserMessageMaxTokens int    `toml:"compact_user_message_max_tokens"`
 
 	Instructions Instructions `toml:"instructions"`
 	// Codex's AGENTS.md keys: fallback file names after AGENTS.md (none by
@@ -343,18 +352,15 @@ func LoadLayers(userPath, workspace string) (Layers, error) {
 }
 
 func decode(path string, into *Config) (bool, error) {
-	meta, err := toml.DecodeFile(path, into)
+	data, err := os.ReadFile(path)
 	if errors.Is(err, fs.ErrNotExist) {
 		return false, nil
 	}
 	if err != nil {
 		return false, fmt.Errorf("failed to read %s: %w", path, err)
 	}
-	if undecoded := meta.Undecoded(); len(undecoded) > 0 {
-		return false, fmt.Errorf("%s: unknown key %q", path, undecoded[0].String())
-	}
 
-	return true, nil
+	return true, decodeBytes(path, data, into)
 }
 
 func tagHooks(byEvent map[string][]Hook, source hooks.Source) {

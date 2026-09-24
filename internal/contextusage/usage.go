@@ -72,10 +72,11 @@ var skillTag = regexp.MustCompile(`(?s)<skill><name>(.*?)</name>.*?</skill>`)
 
 // Analyze splits the request into categories. reported is the provider's
 // input token count for it (0 when unknown); estimates are scaled to it so
-// the categories add up to what the provider counted. autoPercent is the
-// auto-compaction limit (0: off). files are the instruction files the host
+// the categories add up to what the provider counted. auto is the
+// compaction configuration: the window above its automatic limit is the
+// buffer (none when automatic compaction is off). files are the instruction files the host
 // prompt holds, in order, as "## <path>" headers name them.
-func Analyze(req llm.Request, reported, window int64, autoPercent int, files []string) Usage {
+func Analyze(req llm.Request, reported, window int64, auto compaction.Settings, files []string) Usage {
 	cats := map[string]*Category{}
 	add := func(cat, item, text string) {
 		c, ok := cats[cat]
@@ -111,7 +112,7 @@ func Analyze(req llm.Request, reported, window int64, autoPercent int, files []s
 		}
 	}
 	u.Used, u.Estimated = scale(u.Categories, reported)
-	if limit := compaction.AutoLimit(window, autoPercent); limit > 0 {
+	if limit := auto.Limit(window); limit > 0 {
 		u.Buffer = window - limit
 	}
 
