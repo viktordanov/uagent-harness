@@ -32,9 +32,10 @@ uah is a pure core with well-organized infrastructure around it, not layered DDD
 
 ## Size and complexity
 
-Files stay under about 400 lines with one concern each, and functions under about 15 cyclomatic complexity. Two known exceptions are switches over closed sets, where splitting would scatter one decision table:
+Files stay under about 400 lines with one concern each, and functions under about 15 cyclomatic complexity. The known exceptions are dispatch switches over closed sets, where splitting would scatter one decision table:
 
-- `(*State).onIntent` in `internal/tui/state/reduce.go` maps each intent to its state change.
-- `(*printer).print` in `cmd/uah/print.go` maps each event to one line of progress.
+- the TUI reducer's `onIntent`, `onEvent`, and `onRunEvent` (`internal/tui/state`), the shell's `onKey` and effect runner `run` (`internal/tui/bubble`), and `itemLines` (`internal/tui/render`);
+- `(*printer).print` in `cmd/uah/print.go`, one line of progress per event;
+- the session's `loop` (`internal/session/loop.go`), one case per command and internal event.
 
 Lint runs for linux and darwin (CI matrix; locally `GOOS=linux golangci-lint run ./...`), because the sandbox has build-tagged halves.
