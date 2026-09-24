@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/viktordanov/uagent-harness/internal/contextusage"
 	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/instructions"
 	"github.com/viktordanov/uagent-harness/internal/mcp"
@@ -93,6 +94,16 @@ func (e childEngine) MCPServers() []mcp.ServerStatus {
 	return nil
 }
 
+// ContextUsage is /context for a child: its own last request on the
+// shared engine.
+func (e childEngine) ContextUsage(sessionID string) (contextusage.Usage, bool) {
+	if r, ok := e.Engine.(engine.ContextReporter); ok {
+		return r.ContextUsage(sessionID)
+	}
+
+	return contextusage.Usage{}, false
+}
+
 // Attach records the parent's run and offers the tools when the session
 // may spawn: its depth is below MaxDepth.
 func (m *Manager) Attach(p engine.AgentParent) []engine.AgentTool {
@@ -177,7 +188,7 @@ func (m *Manager) childOptions(p engine.AgentParent, c *child, role Role, rec re
 	opts.ID, opts.Resumed, opts.Source, opts.Parent = c.id, resumed, session.SourceSubagent, c.parent
 	opts.Ask, opts.Hooks = m.askFor(c), opts.Hooks.Clone()
 	s := opts.Settings.WithRequest(p.Request)
-	s.ServiceTier = p.ServiceTier
+	s.ServiceTier = m.serviceTier(p.ServiceTier, role)
 	s.Model = first(rec.Model, role.Model, m.cfg.Model, s.Model)
 	s.Effort = first(rec.Effort, role.Effort, m.cfg.Effort, s.Effort)
 	if role.DeveloperInstructions != "" {
@@ -186,6 +197,19 @@ func (m *Manager) childOptions(p engine.AgentParent, c *child, role Role, rec re
 	opts.Settings = s
 
 	return opts
+}
+
+// serviceTier is the child's service tier: the role's when the engine can
+// serve it, else the parent run's. It holds m.mu.
+func (m *Manager) serviceTier(parent string, role Role) string {
+	switch {
+	case role.ServiceTier == TierDefault:
+		return ""
+	case role.ServiceTier == TierPriority && m.eng != nil && m.eng.Capabilities().ServiceTier:
+		return TierPriority
+	}
+
+	return parent
 }
 
 // subtree is c and its open descendants, parents first. It holds m.mu.

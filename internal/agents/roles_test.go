@@ -38,18 +38,35 @@ name = "worker"
 description = "Project worker."
 developer_instructions = "Work here."
 `)
+	writeRole(t, project, "fast-reviewer.toml", `
+name = "fast-reviewer"
+description = "Reviews fast."
+service_tier = "fast"
+developer_instructions = "Review quickly."
+`)
+	writeRole(t, project, "flex.toml", `
+name = "flex"
+description = "Flex."
+service_tier = "flex"
+developer_instructions = "Wait."
+`)
 	writeRole(t, project, "bad.toml", `name = "bad"`)
 	writeRole(t, project, "notes.txt", `ignored`)
 
 	roles, warnings := agents.LoadRoles(user, project, filepath.Join(user, "missing"))
 
-	require.Len(t, roles, 2)
-	assert.Equal(t, "reviewer", roles[0].Name)
-	assert.Equal(t, []string{"Rex", "Rita"}, roles[0].NicknameCandidates)
-	assert.Equal(t, "gpt-small", roles[0].Model)
-	assert.Equal(t, "low", roles[0].Effort)
-	assert.Equal(t, "Project worker.", roles[1].Description, "the project role replaces the user role")
-	require.Len(t, warnings, 2)
+	require.Len(t, roles, 4)
+	assert.Equal(t, "fast-reviewer", roles[0].Name)
+	assert.Equal(t, agents.TierPriority, roles[0].ServiceTier, "fast is Codex's legacy name for priority")
+	assert.Equal(t, "flex", roles[1].Name)
+	assert.Empty(t, roles[1].ServiceTier, "no provider of uah's serves flex")
+	assert.Equal(t, "reviewer", roles[2].Name)
+	assert.Equal(t, []string{"Rex", "Rita"}, roles[2].NicknameCandidates)
+	assert.Equal(t, "gpt-small", roles[2].Model)
+	assert.Equal(t, "low", roles[2].Effort)
+	assert.Equal(t, "Project worker.", roles[3].Description, "the project role replaces the user role")
+	require.Len(t, warnings, 3)
 	assert.Contains(t, warnings[0], "ignoring keys uah does not support: sandbox_mode")
 	assert.Contains(t, warnings[1], "must define a non-empty description")
+	assert.Contains(t, warnings[2], `service_tier = "flex" (want priority, fast, or default)`)
 }
