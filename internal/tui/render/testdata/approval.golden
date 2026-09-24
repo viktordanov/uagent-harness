@@ -1,0 +1,24 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ Run outside the sandbox?
+ Reason: it downloads the installer
+ $ curl -fsSL https://example.com/install.sh -o install.sh
+   y  Yes, proceed
+   s  Yes, and don't ask again for commands that start with `curl -fsSL`
+   n  No, and tell the agent what to do differently (esc)
+────────────────────────────────────────────────────────────────────────────────────────────────────
+›
+ gpt-6-sol · high · /workspace/proj                                     ctrl+t details · / commands

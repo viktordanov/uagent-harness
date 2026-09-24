@@ -120,3 +120,40 @@ timeout = "5s"
 	_, err = cfg.HookList()
 	require.ErrorContains(t, err, `unknown hook event "Nope"`)
 }
+
+func TestApprovals(t *testing.T) {
+	root := t.TempDir()
+	ws := filepath.Join(root, "ws")
+	user := filepath.Join(root, "config.toml")
+	write(t, user, `
+approval_policy = "on-request"
+
+[approvals]
+allow = ["git status"]
+forbid = ["git push --force"]
+
+[sandbox_workspace_write]
+writable_roots = ["~/.cache/go-build"]
+
+[projects."`+ws+`"]
+trusted = true
+`)
+	write(t, config.ProjectFile(ws), `
+approval_policy = "never"
+
+[approvals]
+allow = ["go test"]
+
+[sandbox_workspace_write]
+writable_roots = ["build"]
+`)
+
+	cfg, _, err := config.Load(user, ws)
+	require.NoError(t, err)
+
+	assert.Equal(t, "never", cfg.ApprovalPolicy, "the project file overrides the policy")
+	assert.Equal(t, []string{"git status", "go test"}, cfg.Approvals.Allow, "the project file adds approvals")
+	assert.Equal(t, []string{"git push --force"}, cfg.Approvals.Forbid)
+	assert.Equal(t, []string{"~/.cache/go-build", "build"}, cfg.SandboxWorkspaceWrite.WritableRoots, "the project file adds writable roots")
+	assert.Equal(t, filepath.Join(ws, ".uagent", "rules"), config.ProjectRulesDir(ws))
+}

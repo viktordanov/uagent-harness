@@ -34,6 +34,11 @@ type Config struct {
 	SandboxWorkspaceWrite SandboxWorkspaceWrite `toml:"sandbox_workspace_write"`
 	// ShellEnvironmentPolicy is which environment variables commands get.
 	ShellEnvironmentPolicy ShellEnvironmentPolicy `toml:"shell_environment_policy"`
+	// ApprovalPolicy is on-request (the default) or never, as Codex's.
+	ApprovalPolicy string `toml:"approval_policy"`
+	// Approvals are command prefixes allowed or forbidden besides the
+	// rules files.
+	Approvals Approvals `toml:"approvals"`
 
 	// AutoCompactPercent compacts the context once a response used this
 	// share of the model's window (default 90; 0 turns it off).
@@ -120,6 +125,14 @@ type ShellEnvironmentPolicy struct {
 	Set                   map[string]string `toml:"set"`
 }
 
+// Approvals are simple command rules: each entry is a command prefix, such
+// as "git status". Allowed commands run outside the sandbox without asking;
+// forbidden ones never run.
+type Approvals struct {
+	Allow  []string `toml:"allow"`
+	Forbid []string `toml:"forbid"`
+}
+
 // TUI configures the terminal UI.
 type TUI struct {
 	// Details starts in the detailed view (ctrl+t toggles it).
@@ -182,6 +195,14 @@ func Dir() string {
 
 // UserFile is the user configuration file in Dir.
 func UserFile() string { return filepath.Join(Dir(), "config.toml") }
+
+// RulesDir holds the user's command rules files (*.rules).
+func RulesDir() string { return filepath.Join(Dir(), "rules") }
+
+// ProjectRulesDir holds a trusted workspace's command rules files.
+func ProjectRulesDir(workspace string) string {
+	return filepath.Join(workspace, ".uagent", "rules")
+}
 
 // ProjectFile is a workspace's project configuration file.
 func ProjectFile(workspace string) string {
@@ -250,8 +271,9 @@ func tagHooks(byEvent map[string][]Hook, source hooks.Source) {
 	}
 }
 
-// merge returns base with every value set in over replacing it. Hooks add
-// up; an MCP server replaces the one of the same name whole.
+// merge returns base with every value set in over replacing it. Hooks,
+// writable roots, and approval lists add up; an MCP server replaces the one
+// of the same name whole.
 func merge(base, over Config) Config {
 	set := func(dst *string, v string) {
 		if v != "" {
@@ -265,6 +287,9 @@ func merge(base, over Config) Config {
 	set(&base.MaxDisk, over.MaxDisk)
 	set(&base.Engine, over.Engine)
 	set(&base.SandboxMode, over.SandboxMode)
+	set(&base.ApprovalPolicy, over.ApprovalPolicy)
+	base.Approvals.Allow = append(base.Approvals.Allow, over.Approvals.Allow...)
+	base.Approvals.Forbid = append(base.Approvals.Forbid, over.Approvals.Forbid...)
 	base.SandboxWorkspaceWrite.NetworkAccess = base.SandboxWorkspaceWrite.NetworkAccess || over.SandboxWorkspaceWrite.NetworkAccess
 	base.SandboxWorkspaceWrite.WritableRoots = append(base.SandboxWorkspaceWrite.WritableRoots, over.SandboxWorkspaceWrite.WritableRoots...)
 	env, overEnv := &base.ShellEnvironmentPolicy, over.ShellEnvironmentPolicy

@@ -125,9 +125,12 @@ func headerLine(s state.State, w int) string {
 	return header.Render(left + strings.Repeat(" ", gap) + right)
 }
 
-// panelLines shows the suggestion menu while typing a command or an "@"
-// mention, else the queue.
+// panelLines shows a pending approval, the suggestion menu while typing a
+// command or an "@" mention, or else the queue.
 func panelLines(s state.State, f Frame) []string {
+	if a, ok := s.PendingApproval(); ok {
+		return approvalLines(a, f.Width)
+	}
 	if items := s.Suggestions(f.Draft); len(items) > 0 {
 		var out []string
 		for i, it := range items[:min(len(items), 6)] {

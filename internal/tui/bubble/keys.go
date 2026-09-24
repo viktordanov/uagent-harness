@@ -3,6 +3,7 @@ package bubble
 import (
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/viktordanov/uagent-harness/internal/approval"
 	"github.com/viktordanov/uagent-harness/internal/tui/state"
 )
 
@@ -11,6 +12,7 @@ const (
 	keyEnter = "enter"
 	keyEsc   = "esc"
 	keyCtrlN = "ctrl+n"
+	keyCtrlC = "ctrl+c"
 )
 
 // onKey maps keys to intents. The keys never change meaning: Enter sends
@@ -19,6 +21,9 @@ const (
 func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	if m.st.Mode == state.ModePicker {
 		return m.onPickerKey(msg)
+	}
+	if _, ok := m.st.PendingApproval(); ok {
+		return m.onApprovalKey(msg)
 	}
 	draft := m.composer.Value()
 	if m.st.MenuOpen(draft) {
@@ -52,7 +57,7 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.dispatch(state.Steer{Text: draft})
 	case keyEsc:
 		return m.dispatch(state.Esc{})
-	case "ctrl+c":
+	case keyCtrlC:
 		if draft != "" {
 			m.composer.Reset()
 
@@ -100,6 +105,21 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+// onApprovalKey answers the approval overlay: y approves, s approves and
+// allows the proposed prefix, n, esc, and ctrl+c decline. Other keys wait.
+func (m Model) onApprovalKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "y":
+		return m.dispatch(state.Answer{Answer: approval.Approve})
+	case "s", "p":
+		return m.dispatch(state.Answer{Answer: approval.ApprovePrefix})
+	case "n", keyEsc, keyCtrlC:
+		return m.dispatch(state.Answer{Answer: approval.Decline})
+	}
+
+	return m, nil
+}
+
 func (m Model) onPickerKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "up", "ctrl+p":
@@ -108,7 +128,7 @@ func (m Model) onPickerKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.dispatch(state.PickerMove{Delta: 1})
 	case keyEnter:
 		return m.dispatch(state.PickerChoose{})
-	case "ctrl+c":
+	case keyCtrlC:
 		if m.st.SessionID == "" {
 			return m.dispatch(state.Quit{}) // the startup picker: quit, as Codex does
 		}
