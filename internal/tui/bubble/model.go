@@ -67,6 +67,10 @@ type Model struct {
 	prompted bool
 	// held are effects that need a session, made before the first one opened.
 	held []state.Effect
+	// watch follows the agent the view shows; watchGen drops its events
+	// once it ends.
+	watch    *session.AgentWatch
+	watchGen int
 }
 
 // Messages from goroutines and commands.
@@ -191,6 +195,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case openedMsg:
 		return m.onOpened(msg)
+	case agentOpenedMsg:
+		return m.onAgentOpened(msg)
+	case agentEventsMsg:
+		return m.onAgentEvents(msg)
 	case withdrawnMsg:
 		m.composer.SetValue(msg.text)
 		m.composer.CursorEnd()
@@ -216,6 +224,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) onOpened(msg openedMsg) (tea.Model, tea.Cmd) {
 	m.gen++
+	m.stopWatch()
 	m.sess = msg.sess
 	m.st.Caps = msg.sess.Capabilities()
 	if len(msg.history) > 0 {
@@ -247,6 +256,11 @@ func (m Model) dispatch(intent any) (tea.Model, tea.Cmd) {
 		if d, ok := e.(state.EffSetDraft); ok {
 			m.composer.SetValue(d.Text)
 			m.composer.CursorEnd()
+
+			continue
+		}
+		if _, ok := e.(state.EffCloseAgentView); ok {
+			m.stopWatch()
 
 			continue
 		}

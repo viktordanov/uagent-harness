@@ -20,6 +20,9 @@ type Cache struct {
 	// maxScroll is how far the last frame could scroll up, or -1 when the
 	// frame did not reach the first item (the limit is not known yet).
 	maxScroll int
+	// view caches the items of the agent view, viewID's.
+	view   *Cache
+	viewID string
 }
 
 // MaxScroll is how far the last frame's transcript could scroll up, or -1

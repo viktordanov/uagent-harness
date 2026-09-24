@@ -158,8 +158,12 @@ func (m Model) onWheel(msg tea.MouseWheelMsg) (tea.Model, tea.Cmd) {
 func (m Model) scroll(lines int) (tea.Model, tea.Cmd) {
 	if lines > 0 {
 		m.View() // refresh the limit: frames can lag behind a burst of wheel events
+		scrolled := m.st.Scroll
+		if m.st.View != nil {
+			scrolled = m.st.View.St.Scroll
+		}
 		if limit := m.cache.MaxScroll(); limit >= 0 {
-			lines = max(min(lines, limit-m.st.Scroll), 0)
+			lines = max(min(lines, limit-scrolled), 0)
 		}
 	}
 	if lines == 0 {
