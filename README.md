@@ -207,7 +207,7 @@ Servers start on the first run (or `/mcp`) and stop when the session closes; a s
 
 <!-- /memoria:section -->
 
-<!-- memoria:section id="configuration" files="internal/config/config.go cmd/uah/flags.go internal/app/resolve.go internal/app/setup.go .uagent/config.toml .uagent/hooks/guard.sh" -->
+<!-- memoria:section id="configuration" files="internal/config/config.go cmd/uah/flags.go cmd/uah/config.go internal/app/resolve.go internal/app/setup.go internal/app/explain.go internal/app/explain_files.go .uagent/config.toml .uagent/hooks/guard.sh" -->
 ### Configuration
 
 Two files, both TOML:
@@ -217,42 +217,19 @@ Two files, both TOML:
 | `~/.config/uagent/config.toml` (or `$XDG_CONFIG_HOME/uagent/config.toml`, or `--config`) | Every workspace | Always |
 | `<workspace>/.uagent/config.toml` | One workspace; overrides the user file, and its hooks, `writable_roots`, and `[approvals]` lists add to the user file's | The user file lists the workspace under `[projects]` with `trusted = true`. Its hooks also need `uah hooks trust` |
 
-Flags win over the environment, which wins over a resumed session's settings, then the project file, the user file, and the defaults. The names say `uagent` because uah shares uagent's directories. This repository's own [.uagent/config.toml](.uagent/config.toml) and [guard hook](.uagent/hooks/guard.sh) are a working example of a project file. A user file:
+Flags win over the environment, which wins over a resumed session's settings, then the project file, the user file, and the defaults. The names say `uagent` because uah shares uagent's directories. The [configuration reference](docs/configuration.md) lists every key with its type, default, flag, and how a project file merges with the user file, the exceptions to this order, and a complete example of each file. `uah config` shows the effective value of each key for a workspace and where it came from (`--json` for scripts). This repository's own [.uagent/config.toml](.uagent/config.toml) and [guard hook](.uagent/hooks/guard.sh) are a working example of a project file. A short user file:
 
 ```toml
-provider = "openai-codex"
 model = "gpt-6-sol"
 effort = "high"
-timeout = "30m"
-max_disk = "5G"
-engine = "embedded"   # or "process"
-fast = false          # priority processing
-sandbox_mode = "workspace-write"   # read-only, workspace-write, danger-full-access
+sandbox_mode = "workspace-write"                 # read-only, workspace-write, danger-full-access
 project_doc_fallback_filenames = ["CLAUDE.md"]   # Codex's key: also read CLAUDE.md
-auto_compact_percent = 90          # compact at this share of the context window; 0 turns it off
-model_context_window = 272000      # tokens; overrides the model table
-approval_policy = "on-request"     # or never
-approvals_reviewer = "auto_review" # or user: skip the auto-reviewer
-
-[instructions]
-enabled = true
-max_bytes = 32768                               # or Codex's project_doc_max_bytes at the top level
-
-[sandbox_workspace_write]
-network_access = false
-writable_roots = ["~/Library/Caches/go-build"]   # ~ is home; relative paths are in the workspace
 
 [approvals]
 allow = ["go test", "git status"]   # command prefixes that run outside the sandbox without asking
-forbid = ["git push --force"]       # command prefixes that never run
-
-[shell_environment_policy]
-inherit = "all"                   # all, core, none
-ignore_default_excludes = true    # false drops *KEY*, *SECRET*, *TOKEN*
-exclude = ["AWS_*"]
 
 [tui]
-details = false   # start in the detailed view
+details = true   # start in the detailed view
 
 # A workspace's .uagent/config.toml applies only when trusted here.
 [projects."/Users/me/code/proj"]
@@ -264,7 +241,7 @@ Unknown keys are errors, so a typo fails loudly instead of being ignored.
 Design records and the documentation procedure are indexed in [docs](docs/README.md):
 
 <!-- memoria:import src="docs/README.md#summary" -->
-Design records for the harness, the TUI, state storage, sandboxing, compaction, MCP, and subagents, plus the architecture rules and documentation procedure for uagent-harness.
+The configuration reference, design records for the harness, the TUI, state storage, sandboxing, compaction, MCP, and subagents, plus the architecture rules and documentation procedure for uagent-harness.
 <!-- /memoria:import -->
 
 The [TUI framework benchmark](bench/tui/README.md) holds the measurements behind choosing Bubble Tea v2 (a separate Go module).
