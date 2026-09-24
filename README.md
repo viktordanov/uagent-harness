@@ -1,6 +1,15 @@
 <!-- memoria:section id="overview" files="cmd/uah/main.go go.mod" -->
 # uah
 
+<p align="center">
+  <a href="https://github.com/viktordanov/uagent-harness/actions/workflows/ci.yml"><img src="https://github.com/viktordanov/uagent-harness/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/viktordanov/uagent-harness/actions/workflows/memoria.yml"><img src="https://github.com/viktordanov/uagent-harness/actions/workflows/memoria.yml/badge.svg" alt="Docs checked by Memoria"></a>
+  <a href="https://github.com/viktordanov/uagent-harness/releases/latest"><img src="https://img.shields.io/github/v/release/viktordanov/uagent-harness" alt="Release"></a>
+  <a href="https://aur.archlinux.org/packages/uah-bin"><img src="https://img.shields.io/aur/version/uah-bin" alt="AUR"></a>
+  <a href="go.mod"><img src="https://img.shields.io/github/go-mod/go-version/viktordanov/uagent-harness" alt="Go version"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/viktordanov/uagent-harness" alt="License"></a>
+</p>
+
 <p align="center"><img src="docs/assets/uah.png" alt="The uah TUI: a flaky test found and fixed with a diff, then two subagents reviewing in parallel" width="900"></p>
 
 `uah` is a terminal coding agent built on [uagent](https://github.com/viktordanov/uagent), the wrapper around unreal-agent-runner. It works like Codex, with a TUI and a headless `uah run`.
@@ -43,11 +52,15 @@ More is planned: the [ledger](docs/ledger.md) tracks what is built and what is n
 <!-- memoria:section id="usage" files="cmd/uah/main.go cmd/uah/models.go cmd/uah/run.go cmd/uah/resume.go cmd/uah/sessions.go cmd/uah/tui.go cmd/uah/tuiconfig.go cmd/uah/print.go cmd/uah/completion.go cmd/uah/doctor.go internal/app/doctor.go internal/app/doctorchecks.go cmd/uah/flags.go cmd/uah/prompts.go internal/images/images.go internal/images/store.go internal/images/paths.go internal/images/clipboard/clipboard.go internal/images/clipboard/macos.go internal/images/clipboard/linux.go internal/app/usershell.go internal/usershell/usershell.go internal/usershell/record.go internal/usershell/capture.go cmd/uah/usage.go internal/app/planusage.go" -->
 ## Get started
 
-1. Install it (Go 1.27.1 or later):
+1. Install it:
 
    ```sh
-   go install github.com/viktordanov/uagent-harness/cmd/uah@latest
+   brew install viktordanov/tap/uah                                 # macOS and Linux
+   yay -S uah-bin                                                   # Arch Linux (AUR)
+   go install github.com/viktordanov/uagent-harness/cmd/uah@latest  # from source, Go 1.27.1 or later
    ```
+
+   Or download an archive from the [releases](https://github.com/viktordanov/uagent-harness/releases). Brew and the AUR also install the shell completions.
 
 2. Sign in. The default provider, `openai-codex`, uses your ChatGPT login: run `codex login`. For another provider, pass `--provider` (openai, openrouter, fireworks, or ollama) and set its API key variable.
 3. Check the setup: `uah doctor` checks the credentials, the models your login can use, your plan's usage, the sandbox, the configuration, hooks, MCP servers, and the state directory, and says how to fix each ✗.
@@ -59,7 +72,7 @@ More is planned: the [ledger](docs/ledger.md) tracks what is built and what is n
    uah "Fix the failing test in pkg/foo"     # the TUI, starting with a prompt
    ```
 
-5. Add shell completion (bash, zsh, fish, or pwsh):
+5. If you installed with `go install`, add shell completion (bash, zsh, fish, or pwsh):
 
    ```sh
    uah completion zsh > "${fpath[1]}/_uah"
@@ -477,7 +490,7 @@ golangci-lint run ./...      # lint (golangci-lint v2.13.2)
 
 The title image is [docs/assets/title.html](docs/assets/title.html), drawn in the TUI's colors and captured with headless Chrome: `chrome --headless=new --force-device-scale-factor=2 --default-background-color=00000000 --window-size=1130,1400 --screenshot=uah.png title.html`, then `magick uah.png -trim +repage uah.png`.
 
-Pushing a `v1.2.3` tag builds the release archives for macOS and Linux (arm64 and x86_64) with [scripts/package-release.sh](scripts/package-release.sh) and attaches them to the GitHub release, each with a `.sha256` file. Two builds of the same commit give the same bytes. To rebuild an existing tag, run the Release assets workflow with the tag.
+Pushing a `v1.2.3` tag builds the release archives for macOS and Linux (arm64 and x86_64) with [scripts/package-release.sh](scripts/package-release.sh) and attaches them to the GitHub release, each with a `.sha256` file. Two builds of the same commit with the same Go version give the same bytes. To rebuild an existing tag, run the Release assets workflow with the tag.
 
 CI runs the build, the race tests, and the linter on each push; the linter also fails on a function above 20 cyclomatic complexity, a backstop for the rule of about 15. Design records, the architecture rules, and the documentation procedure are in [docs](docs/README.md):
 
