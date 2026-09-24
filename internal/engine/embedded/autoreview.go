@@ -91,6 +91,9 @@ func (w *wiring) reviewedAsk(sw *switcher, req core.Request) approval.Ask {
 		if name, args, _ := strings.Cut(p.Command, " "); strings.HasPrefix(name, "mcp__") {
 			action.Tool, action.Command = name, args
 		}
+		if p.Tool != "" {
+			action.Tool, action.Command = p.Tool, string(p.Input)
+		}
 		if p.Escalation {
 			action.SandboxPermissions = permEscalated
 		}

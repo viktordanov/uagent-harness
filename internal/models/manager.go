@@ -207,6 +207,22 @@ func (m *Manager) Window(model string) (int64, bool) {
 	return 0, false
 }
 
+// ApplyPatch reports whether the provider's model gets Codex's apply_patch
+// tool, as Codex offers it when the model's catalog entry has an
+// apply_patch_tool_type (spec_plan.rs). The provider's last list answers,
+// else the bundled one; on openai and openai-codex, whose catalogs are
+// Codex's, a model no entry describes gets it too.
+func (m *Manager) ApplyPatch(provider, model string) bool {
+	if md, ok := m.Cached(provider).Metadata(model); ok && md.ApplyPatchTool != "" {
+		return true
+	}
+
+	return provider == ProviderOpenAI || provider == ProviderCodex
+}
+
+// ApplyPatch asks the default manager (Manager.ApplyPatch).
+func ApplyPatch(provider, model string) bool { return Default().ApplyPatch(provider, model) }
+
 // ErrUnavailable matches an UnavailableError.
 var ErrUnavailable = errors.New("the model is not available")
 

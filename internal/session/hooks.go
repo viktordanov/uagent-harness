@@ -13,6 +13,7 @@ import (
 	"github.com/viktordanov/uagent/core"
 
 	"github.com/viktordanov/uagent-harness/internal/hooks"
+	"github.com/viktordanov/uagent-harness/internal/patch"
 )
 
 // maxStopContinuations stops Stop hooks from keeping the agent going forever.
@@ -162,7 +163,10 @@ func (s *Session) postToolUse(f core.ToolFinished) {
 	}
 	in := s.hookInput(hooks.PostToolUse)
 	in.ToolName, in.ToolUseID = called.Name, f.CallID
-	if json.Valid([]byte(called.Arguments)) {
+	switch {
+	case called.Name == patch.ToolName:
+		in.ToolInput = patch.HookInput(called.Arguments) // Codex's {"command": patch}
+	case json.Valid([]byte(called.Arguments)):
 		in.ToolInput = json.RawMessage(called.Arguments)
 	}
 	in.ToolResponse = &hooks.ToolResponse{Success: f.OK, Detail: f.Detail, Stdout: f.OutPath, Stderr: f.ErrPath}

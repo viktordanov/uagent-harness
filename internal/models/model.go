@@ -40,6 +40,9 @@ type Model struct {
 	Plans []string `json:"plans,omitempty"`
 	// MinClientVersion is the lowest Codex client version that may use it.
 	MinClientVersion string `json:"min_client_version,omitempty"`
+	// ApplyPatchTool is Codex's apply_patch_tool_type ("freeform"): the
+	// model is trained on the apply_patch tool (empty: not known).
+	ApplyPatchTool string `json:"apply_patch_tool,omitempty"`
 }
 
 // SupportsPriority reports whether the model accepts service_tier

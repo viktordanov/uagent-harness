@@ -64,7 +64,8 @@
         "self_serve_business_usage_based",
         "team"
       ],
-      "minimal_client_version": "0.153.0"
+      "minimal_client_version": "0.153.0",
+      "apply_patch_tool_type": "freeform"
     },
     {
       "slug": "gpt-6-sol",
@@ -132,7 +133,8 @@
         "self_serve_business_usage_based",
         "team"
       ],
-      "minimal_client_version": "0.155.0"
+      "minimal_client_version": "0.155.0",
+      "apply_patch_tool_type": "freeform"
     },
     {
       "slug": "gpt-6-luna",
@@ -197,7 +199,8 @@
         "self_serve_business_usage_based",
         "team"
       ],
-      "minimal_client_version": "0.155.0"
+      "minimal_client_version": "0.155.0",
+      "apply_patch_tool_type": "freeform"
     },
     {
       "slug": "gpt-5.6-sol",
@@ -266,7 +269,8 @@
         "self_serve_business_usage_based",
         "team"
       ],
-      "minimal_client_version": "0.144.0"
+      "minimal_client_version": "0.144.0",
+      "apply_patch_tool_type": "freeform"
     },
     {
       "slug": "gpt-5.6-terra",
@@ -331,7 +335,8 @@
         "self_serve_business_usage_based",
         "team"
       ],
-      "minimal_client_version": "0.144.0"
+      "minimal_client_version": "0.144.0",
+      "apply_patch_tool_type": "freeform"
     },
     {
       "slug": "gpt-5.6-luna",
@@ -393,7 +398,8 @@
         "self_serve_business_usage_based",
         "team"
       ],
-      "minimal_client_version": "0.144.0"
+      "minimal_client_version": "0.144.0",
+      "apply_patch_tool_type": "freeform"
     },
     {
       "slug": "gpt-daybreak-blue-latest",
@@ -451,7 +457,8 @@
         "self_serve_business_usage_based",
         "team"
       ],
-      "minimal_client_version": "0.142.2"
+      "minimal_client_version": "0.142.2",
+      "apply_patch_tool_type": "freeform"
     },
     {
       "slug": "gpt-daybreak-red-latest",
@@ -509,7 +516,8 @@
         "self_serve_business_usage_based",
         "team"
       ],
-      "minimal_client_version": "0.142.2"
+      "minimal_client_version": "0.142.2",
+      "apply_patch_tool_type": "freeform"
     },
     {
       "slug": "gpt-5.5",
@@ -568,7 +576,8 @@
         "self_serve_business_usage_based",
         "team"
       ],
-      "minimal_client_version": "0.124.0"
+      "minimal_client_version": "0.124.0",
+      "apply_patch_tool_type": "freeform"
     },
     {
       "slug": "gpt-5.4",
@@ -624,7 +633,8 @@
         "self_serve_business_usage_based",
         "team"
       ],
-      "minimal_client_version": "0.98.0"
+      "minimal_client_version": "0.98.0",
+      "apply_patch_tool_type": "freeform"
     },
     {
       "slug": "codex-auto-review",
@@ -683,7 +693,8 @@
         "self_serve_business_usage_based",
         "team"
       ],
-      "minimal_client_version": "0.98.0"
+      "minimal_client_version": "0.98.0",
+      "apply_patch_tool_type": "freeform"
     }
   ]
 }

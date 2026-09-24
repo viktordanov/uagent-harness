@@ -5,6 +5,7 @@ package approval
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"sync"
@@ -51,6 +52,12 @@ type Request struct {
 	// NoSandbox means no sandbox is available: every command that no rule
 	// allows needs approval to run.
 	NoSandbox bool
+	// Tool and Input name a tool call other than Bash that needs approval,
+	// such as apply_patch, and its input for PermissionRequest hooks and
+	// the auto-reviewer; Command then describes it for the rules and the
+	// user.
+	Tool  string
+	Input json.RawMessage
 }
 
 // Run is how a decided command runs.
@@ -84,6 +91,9 @@ type Prompt struct {
 	Escalation bool
 	// ProposedPrefix, when set, offers "don't ask again" for it.
 	ProposedPrefix []string
+	// Tool and Input are Request.Tool and Request.Input: empty for Bash.
+	Tool  string
+	Input json.RawMessage
 }
 
 // Answer is the user's choice.
@@ -187,7 +197,10 @@ func byRule(req Request, rule rules.Rule, matched bool) (d Decision, done bool) 
 // prompt is what the user is asked, with a prefix for "don't ask again"
 // when no rule matched.
 func prompt(req Request, rule rules.Rule, matched bool, commands [][]string) Prompt {
-	p := Prompt{Command: req.Command, Cwd: req.Cwd, Justification: req.Justification, Escalation: req.Escalated || req.NoSandbox}
+	p := Prompt{
+		Command: req.Command, Cwd: req.Cwd, Justification: req.Justification, Escalation: req.Escalated || req.NoSandbox,
+		Tool: req.Tool, Input: req.Input,
+	}
 	if !matched {
 		p.ProposedPrefix = proposePrefix(req.PrefixRule, commands)
 	}

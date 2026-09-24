@@ -111,7 +111,7 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 	if err != nil {
 		return nil, err
 	}
-	operations := operation.NewLocalOperationManager(runCtx, newMCPJobs(runCtx, w.e.cfg.MCP), newAgentJobs(runCtx, w.e.cfg.Subagents, string(s.id)))
+	operations := operation.NewLocalOperationManager(runCtx, newMCPJobs(runCtx, w.e.cfg.MCP), newAgentJobs(runCtx, w.e.cfg.Subagents, string(s.id)), newPatchJobs(runCtx))
 	first := compaction.Trigger("")
 	switch {
 	case opts.Clear:
@@ -131,7 +131,7 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 	a.compactor = comp
 
 	builder := newContextBuilder(registry, model, req)
-	obs := &observer{sessionID: s.id, out: io.MultiWriter(s.log, w.l.Stdout), cancel: cancel}
+	obs := &observer{sessionID: s.id, out: io.MultiWriter(s.log, w.l.Stdout), cancel: cancel, emit: w.emit}
 	observerID := s.store.AddObserver(obs.observe)
 	coord := coordinator.New(coordinator.Dependencies{
 		ToolHeartbeatInterval: toolHeartbeatInterval,
