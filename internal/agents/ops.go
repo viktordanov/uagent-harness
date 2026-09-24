@@ -23,7 +23,7 @@ func (m *Manager) spawn(ctx context.Context, call engine.AgentCall, a spawnArgs)
 	if err := m.checkDepth(parentID); err != nil {
 		return spawnResult{}, err
 	}
-	if err := m.checkModel(a.Model); err != nil {
+	if err := m.checkModel(ctx, a.Model); err != nil {
 		return spawnResult{}, err
 	}
 	role, rec, err := m.spawnRole(parentID, a)

@@ -1,7 +1,9 @@
 package agents_test
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -87,20 +89,27 @@ func TestStatus_JSON(t *testing.T) {
 	assert.True(t, agents.Status{State: engine.AgentInterrupted}.Final())
 }
 
-// TestCall_UnknownModel refuses a model outside the catalog at spawn_agent,
-// with Codex's message, and the configured default model too.
+// TestCall_UnknownModel refuses a model the provider does not offer at
+// spawn_agent, and the configured default model too.
 func TestCall_UnknownModel(t *testing.T) {
-	m := agents.New(agents.Config{MaxDepth: 1, Models: agents.CodexModels})
+	known := func(_ context.Context, model string) error {
+		if model == "gpt-6-luna" {
+			return nil
+		}
+
+		return errors.New("Unknown model `" + model + "` for spawn_agent")
+	}
+	m := agents.New(agents.Config{MaxDepth: 1, Validate: known})
 	_, err := m.Call(t.Context(), engine.AgentCall{ParentID: "p", Tool: "spawn_agent", Args: json.RawMessage(`{"message":"hi","model":"gpt-luna-6"}`)})
-	require.EqualError(t, err, "Unknown model `gpt-luna-6` for spawn_agent. Available models: gpt-6-astra, gpt-6-sol, gpt-6-luna, gpt-5.6-sol, gpt-5.6-terra")
+	require.EqualError(t, err, "Unknown model `gpt-luna-6` for spawn_agent")
 	_, err = m.Call(t.Context(), engine.AgentCall{ParentID: "p", Tool: "spawn_agent", Args: json.RawMessage(`{"message":"hi","model":"gpt-6-luna"}`)})
 	require.EqualError(t, err, "subagents are not available in this session", "a known model passes the check")
 
-	withDefault := agents.New(agents.Config{MaxDepth: 1, Models: agents.CodexModels, Model: "gpt-typo"})
+	withDefault := agents.New(agents.Config{MaxDepth: 1, Validate: known, Model: "gpt-typo"})
 	_, err = withDefault.Call(t.Context(), engine.AgentCall{ParentID: "p", Tool: "spawn_agent", Args: json.RawMessage(`{"message":"hi"}`)})
 	require.ErrorContains(t, err, "Unknown model `gpt-typo`")
 
 	anyModel := agents.New(agents.Config{MaxDepth: 1})
 	_, err = anyModel.Call(t.Context(), engine.AgentCall{ParentID: "p", Tool: "spawn_agent", Args: json.RawMessage(`{"message":"hi","model":"anything"}`)})
-	require.EqualError(t, err, "subagents are not available in this session", "other providers accept any model")
+	require.EqualError(t, err, "subagents are not available in this session", "without a check any model passes")
 }

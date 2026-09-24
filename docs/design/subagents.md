@@ -146,7 +146,7 @@ Built 2026-09-24 on unreal-agent-runner v0.1.1, against Codex rust-v0.156.1. Fiv
 2. **A fork keeps the whole history.** Codex's fork keeps only system, developer, and user messages and final answers, and drops reasoning, tool calls, and their results (`C/core/src/agent/control/spawn.rs:72`, `keep_forked_rollout_item`), so its prompt prefix ends at the parent's first tool call. uah keeps every item, for the longest prefix.
 3. **A forked child keeps the spawn tools** at the depth limit and refuses the calls, so its tools match its parent's. Codex hides them, which changes the tool list.
 4. **A role's `service_tier` applies.** Codex reads it and then sets every child's tier to the root's (`child_config.rs`, `apply_spawn_agent_service_tier`; `C/core/tests/suite/subagent_service_tier.rs` spawns a `service_tier = "priority"` role under a root without a tier and expects no tier). uah honors the role, as asked; `"flex"` is ignored.
-5. **The model check** runs only on openai-codex, against the catalog bundled at rust-v0.156.1; Codex also refreshes its catalog from the backend and checks the effort against the model's levels. Other providers accept any model; their failures come back through `wait_agent`.
+5. **The model check** uses `internal/models.Validate`: the provider's live model list (cached for 300 s, as Codex caches its catalog), on every provider that has one, with Codex's message and a did-you-mean suggestion. Only a live or cached list rejects a model; the bundled fallback never does. The effort is not checked against the model's levels, as Codex does.
 6. **The view.** `/agents <name>` instead of Codex's `/subagents` picker with alt+← and alt+→; the view has no entry for the main agent (esc returns), and a grandchild cannot be viewed from the root.
 7. **`items`** (structured input) is not built.
 
@@ -156,4 +156,3 @@ Built 2026-09-24 on unreal-agent-runner v0.1.1, against Codex rust-v0.156.1. Fiv
 2. **A tool call still running** when the parent made the spawn call is canceled for the child, so the child's request differs from the parent's at that item.
 3. **The fork's first run** is marked in memory: a process that exits between the spawn and the child's first run (which follows at once) leaves a child that asks the model without its message when resumed.
 4. **Stopping a child from its view.** esc returns; the view has no interrupt of its own yet.
-5. **The catalog** is pinned to rust-v0.156.1 and needs updating with Codex.
