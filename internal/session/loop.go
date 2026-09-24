@@ -17,11 +17,12 @@ type (
 		text  string
 		steer bool
 	}
-	cmdInterrupt struct{}
-	cmdWithdraw  struct{ id string }
-	cmdSettings  struct{ settings Settings }
-	cmdClose     struct{ reply chan error }
-	request      struct {
+	cmdInterrupt   struct{}
+	cmdSteerQueued struct{}
+	cmdWithdraw    struct{ id string }
+	cmdSettings    struct{ settings Settings }
+	cmdClose       struct{ reply chan error }
+	request        struct {
 		cmd   any
 		reply chan reply
 	}
@@ -146,6 +147,8 @@ func (s *Session) handle(cmd any) (any, error) {
 		s.interruptLive()
 
 		return struct{}{}, nil
+	case cmdSteerQueued:
+		return s.onSteerQueued(), nil
 	case cmdWithdraw:
 		return s.onWithdraw(c.id), nil
 	case cmdSettings:

@@ -157,6 +157,60 @@ func TestReduce_Queue(t *testing.T) {
 	assert.Equal(t, state.InputFailed, b.Input)
 }
 
+func TestReduce_SteerTheQueue(t *testing.T) {
+	queued, _ := apply(opened(),
+		session.InputQueued{Input: core.UserInput{ID: "a", Text: "first"}},
+		session.InputSent{IDs: []string{"a"}},
+		core.RunStarted{RunID: "r"},
+		session.InputQueued{Input: core.UserInput{ID: "b", Text: "second"}},
+		session.InputQueued{Input: core.UserInput{ID: "c", Text: "third"}},
+	)
+
+	t.Run("ctrl+enter on an empty composer sends the queue now", func(t *testing.T) {
+		s, effects := apply(queued, state.ScrollBy{Lines: 5}, state.Steer{Text: "  "})
+		assert.Equal(t, []state.Effect{state.EffSteerQueued{}}, effects)
+		assert.Zero(t, s.Scroll)
+
+		s, _ = apply(s, session.InputSent{IDs: []string{"b", "c"}}, session.InputDelivered{ID: "b"})
+		assert.Empty(t, s.Queue)
+		b, _ := s.Item("msg:b")
+		c, _ := s.Item("msg:c")
+		assert.Equal(t, state.InputDelivered, b.Input)
+		assert.Equal(t, state.InputSent, c.Input)
+		assert.Equal(t, []string{"first", "second", "third"}, userTexts(s), "in their order, under their IDs")
+	})
+
+	t.Run("a queue an interrupt kept goes too", func(t *testing.T) {
+		idle, _ := apply(queued, session.Idle{})
+		_, effects := apply(idle, state.Steer{})
+		assert.Equal(t, []state.Effect{state.EffSteerQueued{}}, effects)
+	})
+
+	t.Run("nothing queued, nothing sent", func(t *testing.T) {
+		_, effects := apply(opened(), state.Steer{})
+		assert.Empty(t, effects)
+		busy, _ := apply(opened(), session.InputQueued{Input: core.UserInput{ID: "a", Text: "x"}}, session.InputSent{IDs: []string{"a"}})
+		_, effects = apply(busy, state.Steer{})
+		assert.Empty(t, effects)
+	})
+
+	t.Run("shell mode keeps its own ctrl+enter", func(t *testing.T) {
+		_, effects := apply(queued, state.EnterShell{}, state.Steer{})
+		assert.Empty(t, effects)
+	})
+}
+
+func userTexts(s state.State) []string {
+	var out []string
+	for _, it := range s.Items {
+		if it.Kind == state.KindUser {
+			out = append(out, it.Text)
+		}
+	}
+
+	return out
+}
+
 func TestReduce_Keys(t *testing.T) {
 	busy, _ := apply(opened(), session.InputQueued{Input: core.UserInput{ID: "a", Text: "x"}})
 

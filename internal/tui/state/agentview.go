@@ -57,14 +57,18 @@ type (
 		ID, Text string
 		Now      bool
 	}
+	// EffAgentSteerQueued sends the viewed agent's queued messages now,
+	// in order (ctrl+enter on an empty composer).
+	EffAgentSteerQueued struct{ ID string }
 	// EffAgentInterrupt stops the viewed agent's current work.
 	EffAgentInterrupt struct{ ID string }
 )
 
-func (EffViewAgent) effect()      {}
-func (EffCloseAgentView) effect() {}
-func (EffAgentSend) effect()      {}
-func (EffAgentInterrupt) effect() {}
+func (EffViewAgent) effect()        {}
+func (EffCloseAgentView) effect()   {}
+func (EffAgentSend) effect()        {}
+func (EffAgentSteerQueued) effect() {}
+func (EffAgentInterrupt) effect()   {}
 
 // cmdAgentsName is the /agents command's name.
 const cmdAgentsName = "agents"
@@ -146,7 +150,12 @@ func (s *State) onAgentView(ev any) ([]Effect, bool) {
 	case Submit, Steer:
 		text := strings.TrimSpace(textOf(e))
 		name, _, _ := strings.Cut(strings.TrimPrefix(text, "/"), " ")
+		_, steer := e.(Steer)
 		switch {
+		case text == "" && steer && len(v.St.Queue) > 0:
+			v.St.Scroll = 0
+
+			return []Effect{EffAgentSteerQueued{ID: v.ID}}, true
 		case text == "":
 		case strings.HasPrefix(text, "/") && (name == cmdAgentsName || name == "quit" || name == "exit"):
 			return nil, false
@@ -154,8 +163,6 @@ func (s *State) onAgentView(ev any) ([]Effect, bool) {
 			v.St.notice(session.LevelWarning, fmt.Sprintf("/%s is for the main agent; alt+← returns to it", name))
 		default:
 			v.St.Scroll = 0
-
-			_, steer := e.(Steer)
 
 			return []Effect{EffAgentSend{ID: v.ID, Text: s.withImages(text), Now: steer}}, true
 		}

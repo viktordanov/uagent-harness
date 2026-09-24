@@ -42,7 +42,7 @@ A key press:
 
 1. `bubble.onKey` maps the key to an intent, such as `state.Submit{Text}` for enter. The approval overlay and the picker have their own key maps (`onApprovalKey`, `onPickerKey`), and an open menu takes tab, enter, ↑/↓, and esc first (`menuIntent`).
 2. `Model.dispatch` calls `state.Reduce`, which returns the new state and a list of effects, such as `EffSubmit{Text}`.
-3. `Model.run` (`bubble/effects.go`) turns each effect into a `tea.Cmd` that calls the session (`Submit`, `SteerNow`, `Interrupt`, `Resolve`, `Compact`, `SetSettings`) or a dependency (`Deps.Sessions`, `Deps.Activity`) off the update loop.
+3. `Model.run` (`bubble/effects.go`) turns each effect into a `tea.Cmd` that calls the session (`Submit`, `SteerNow`, `SteerQueued`, `Interrupt`, `Resolve`, `Compact`, `SetSettings`) or a dependency (`Deps.Sessions`, `Deps.Activity`) off the update loop.
 4. An effect that produces data returns it as a message, such as `state.ContextShown`. `Model.Update` routes these message types back to `dispatch`, so the reducer handles them like any other input.
 
 A session event:
@@ -84,7 +84,7 @@ The compact view draws one line per tool call, as Codex does; the detailed view 
 | Key | Action |
 | --- | --- |
 | enter | Send. While the agent works, the message queues and goes out when the run ends |
-| ctrl+enter, alt+enter | Send now. The embedded engine gives the message to the running agent before its next model request; the process engine restarts the run with the queue and the message |
+| ctrl+enter, alt+enter | Send now. The embedded engine gives the message to the running agent before its next model request; the process engine restarts the run with the queue and the message. On an empty composer it sends the queued messages now, in order, the same way, also a queue an interrupt kept (`EffSteerQueued`, `Session.SteerQueued`); with nothing queued it does nothing |
 | shift+enter, ctrl+j | New line |
 | esc esc | Interrupt the run (the second esc within 2 seconds); queued messages stay. It also stops a running shell-mode command |
 | `!` on an empty composer | Shell mode (see below) |
@@ -180,7 +180,7 @@ The split follows the rest of the TUI:
 
 - `state.AgentView` holds a second `State` for the agent, reduced from its events by the same reducer and drawn by the same renderer, with a cache of its own. The session's own events keep reducing into the main state meanwhile.
 - The shell follows the agent with `Session.WatchAgent` (see [internal/session](../session/README.md)): its earlier runs become a `HistoryLoaded`, then its events arrive in 16 ms batches as `state.AgentEvents`, like the session's.
-- A message typed in the view goes to the agent (`EffAgentSend`), as the parent's `send_input` does. `/agents` and `/quit` work as usual; ctrl+enter steers the viewed agent's live run (`EffAgentSend.Now`), as it does the main agent's. Other commands are for the main agent and say so. esc esc interrupts the viewed agent while it works (`EffAgentInterrupt`, which stops its own subagents too), as it does the main agent; alt+← back to the main agent, or opening another agent, ends the view. The clock keeps ticking while any subagent runs, so their spinners move while the main agent is idle.
+- A message typed in the view goes to the agent (`EffAgentSend`), as the parent's `send_input` does. `/agents` and `/quit` work as usual; ctrl+enter steers the viewed agent's live run (`EffAgentSend.Now`), as it does the main agent's, and on an empty composer sends the agent's own queued messages now (`EffAgentSteerQueued`). Other commands are for the main agent and say so. esc esc interrupts the viewed agent while it works (`EffAgentInterrupt`, which stops its own subagents too), as it does the main agent; alt+← back to the main agent, or opening another agent, ends the view. The clock keeps ticking while any subagent runs, so their spinners move while the main agent is idle.
 - An approval waiting in the session shows the session's screen until it is answered.
 <!-- /memoria:section -->
 
@@ -261,7 +261,7 @@ To add an item kind, follow `KindContext`:
 To add a key, map it to an intent in `bubble/keys.go` and handle the intent in `state.Reduce`. Keep the existing keys' meanings.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="tests" files="state/images_test.go bubble/images_test.go state/reduce_test.go state/menu_test.go state/contextview_test.go state/mode_test.go render/screen_test.go render/contextview_test.go render/mode_test.go bubble/bubble_test.go bubble/approval_test.go bubble/mode_test.go state/config_test.go bubble/config_test.go render/diff_test.go state/shell_test.go render/shell_test.go bubble/shell_test.go state/usage_test.go render/usage_test.go bubble/usage_test.go" -->
+<!-- memoria:section id="tests" files="state/images_test.go bubble/images_test.go state/reduce_test.go state/menu_test.go state/contextview_test.go state/mode_test.go render/screen_test.go render/contextview_test.go render/mode_test.go bubble/bubble_test.go bubble/approval_test.go bubble/mode_test.go state/config_test.go bubble/config_test.go render/diff_test.go state/shell_test.go render/shell_test.go bubble/shell_test.go state/usage_test.go render/usage_test.go bubble/usage_test.go state/agents_test.go bubble/steer_test.go" -->
 ## Tests
 
 | Test | Pins |
@@ -269,6 +269,7 @@ To add a key, map it to an intent in `bubble/keys.go` and handle the intent in `
 | `state/*_test.go` | The reducer: a run from a captured fixture, tools keeping their place, the queue, keys, commands, history, the picker, the menu, approvals, and `/context` |
 | `render/screen_test.go` and the other render tests | Whole screens against golden files in `render/testdata` (with a diff in both views, `patch` and `patch-details`, and its tints in `render/diff_test.go`) (`go test ./internal/tui/render -update` rewrites them), and scrolling |
 | `bubble/bubble_test.go` | The shell end to end, with real sessions on the process engine and uagent's fake runner: sending, commands, the picker, queue and interrupt, scrolling, and the menu |
+| `state/reduce_test.go`, `state/agents_test.go`, `bubble/steer_test.go` | ctrl+enter on an empty composer: the queue goes now in order under its IDs, also a queue an interrupt kept, nothing without a queue or in shell mode, the viewed agent's own queue, and a real embedded session whose working agent reads both queued messages before its next model request |
 | `bubble/approval_test.go` | Approving and declining an escalation, with real sessions on the embedded engine and `testing/fakellm` |
 | `state/mode_test.go`, `render/mode_test.go`, `bubble/mode_test.go` | shift+tab's cycle, the mode notice, the footer and header in each mode, and shift+tab through a real session |
 | `state/images_test.go`, `bubble/images_test.go` | Images: placeholders and their numbers, removal by deleting the placeholder or with one backspace, what a message sends, the transcript with placeholders live and resumed, pasted and dropped paths, `@` image files, the process engine's notice, and a real embedded session whose model request carries the image, with a fake clipboard |

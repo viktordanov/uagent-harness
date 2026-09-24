@@ -158,6 +158,17 @@ func TestReduce_FinishedAgentsAndNotifications(t *testing.T) {
 	s, _ = apply(s, state.AgentViewOpened{ID: "subagent-aaaaaaaa-1", Nickname: "Ada"})
 	_, eff = apply(s, state.Steer{Text: "faster"})
 	assert.Equal(t, []state.Effect{state.EffAgentSend{ID: "subagent-aaaaaaaa-1", Text: "faster", Now: true}}, eff, "ctrl+enter steers the agent")
+
+	_, eff = apply(s, state.Steer{})
+	assert.Empty(t, eff, "nothing queued for the agent")
+	s, _ = apply(s,
+		session.InputQueued{Input: core.UserInput{ID: "q1", Text: "main agent's"}},
+		state.AgentEvents{ID: "subagent-aaaaaaaa-1", Events: []core.Event{session.InputQueued{Input: core.UserInput{ID: "a1", Text: "later"}}}},
+	)
+	_, eff = apply(s, state.Steer{})
+	assert.Equal(t, []state.Effect{state.EffAgentSteerQueued{ID: "subagent-aaaaaaaa-1"}}, eff, "ctrl+enter on an empty composer sends the agent's queue")
+	_, eff = apply(s, state.Submit{})
+	assert.Empty(t, eff, "enter on an empty composer does nothing")
 }
 
 func TestReduce_CallLabels(t *testing.T) {
