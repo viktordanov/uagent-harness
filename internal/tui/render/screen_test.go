@@ -17,6 +17,8 @@ import (
 	uaharness "github.com/viktordanov/uagent/harness"
 	"github.com/viktordanov/uagent/testing/fixtures"
 
+	"github.com/viktordanov/uagent-harness/internal/compaction"
+	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/internal/tui/render"
 	"github.com/viktordanov/uagent-harness/internal/tui/state"
@@ -122,6 +124,16 @@ func TestScreens(t *testing.T) {
 
 	t.Run("command completion", func(t *testing.T) {
 		golden(t, "completion", screen(finishedRun(t), "/re"))
+	})
+
+	t.Run("context meter and compaction", func(t *testing.T) {
+		s := apply(finishedRun(t), core.ModelResponded{At: t0, Turn: 3, Usage: core.Tokens{InputTokens: 180_000, OutputTokens: 2_000}})
+		golden(t, "context-meter", screen(s, ""))
+		s = apply(s,
+			engine.CompactionStarted{At: t0, Trigger: compaction.TriggerAuto, Tokens: 182_000},
+			engine.Compacted{At: t0, Trigger: compaction.TriggerAuto, Summary: "Listed the files and read a.txt."},
+		)
+		golden(t, "compacted-details", screen(apply(s, state.ToggleDetails{}), ""))
 	})
 
 	t.Run("session picker", func(t *testing.T) {

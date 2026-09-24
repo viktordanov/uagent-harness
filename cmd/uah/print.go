@@ -9,6 +9,7 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
+	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
 
@@ -93,6 +94,14 @@ func (p *printer) print(event core.Event) {
 		}
 	case core.RunnerError:
 		p.say("error: " + e.Message)
+	case engine.CompactionStarted:
+		p.say(fmt.Sprintf("compacting the context (%s, %s tokens in use)", e.Trigger, commas(e.Tokens)))
+	case engine.Compacted:
+		if e.Err != "" {
+			p.say("compaction failed: " + e.Err)
+		} else {
+			p.say(fmt.Sprintf("context compacted (%d-char summary)", len(e.Summary)))
+		}
 	case core.RunFinished:
 		p.running = false
 		r := e.Result

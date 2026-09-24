@@ -96,7 +96,9 @@ func (s *State) onEvent(ev core.Event) {
 	case session.Notice:
 		s.notice(e.Level, e.Message)
 	default:
-		s.onRunEvent(ev)
+		if !s.onEngineEvent(ev) {
+			s.onRunEvent(ev)
+		}
 	}
 }
 
@@ -122,6 +124,7 @@ func (s *State) onRunEvent(ev core.Event) {
 		if s.Live != nil {
 			s.Live.TurnSince = time.Time{}
 		}
+		s.noteUsage(e)
 		s.update(turnKey(s.Live, e.Turn), func(it *Item) {
 			it.Pending, it.In, it.Out, it.Duration = false, e.Usage.InputTokens, e.Usage.OutputTokens, e.Duration
 		})
@@ -371,7 +374,7 @@ func (s *State) nextKey(prefix string) string {
 }
 
 func (s *State) resetTranscript() {
-	s.Items, s.index, s.Totals, s.Scroll, s.Files = nil, map[string]int{}, Totals{}, 0, nil
+	s.Items, s.index, s.Totals, s.Scroll, s.Files, s.ContextUsed = nil, map[string]int{}, Totals{}, 0, nil, 0
 }
 
 func turnKey(live *Live, turn int) string {
