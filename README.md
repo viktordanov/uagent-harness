@@ -10,7 +10,7 @@ Status: milestone M6: sessions, instructions, configuration, the TUI, the embedd
 2. [Development](#development)
 <!-- /memoria:section -->
 
-<!-- memoria:section id="usage" files="cmd/uah/main.go cmd/uah/run.go cmd/uah/resume.go cmd/uah/sessions.go cmd/uah/tui.go cmd/uah/print.go internal/session/history.go internal/session/sidecar.go internal/store/store.go internal/store/query.go" -->
+<!-- memoria:section id="usage" files="cmd/uah/main.go cmd/uah/run.go cmd/uah/resume.go cmd/uah/sessions.go cmd/uah/tui.go cmd/uah/print.go cmd/uah/doctor.go internal/app/doctor.go internal/app/doctorchecks.go internal/session/history.go internal/session/sidecar.go internal/store/store.go internal/store/query.go" -->
 ## Use it
 
 ```sh
@@ -22,6 +22,7 @@ uah resume                                                 # pick a session of t
 uah resume --last                                          # resume this directory's most recent session
 uah --session 3f2a                                         # the TUI, resuming a session with its transcript
 uah --fast                                                 # priority processing (openai and openai-codex)
+uah doctor                                                 # check the runner, credentials, sandbox, config, hooks, MCP servers, and state (--json; exit 1 on a ✗)
 
 uah run -C ~/code/proj "Fix the failing test in pkg/foo"   # a session: progress on stderr, answers on stdout
 uah sessions                                               # this directory's sessions, most recent first (--all: every directory)
@@ -151,7 +152,7 @@ For simple cases, `[approvals]` in `config.toml` lists command prefixes: `allow`
 
 <!-- /memoria:section -->
 
-<!-- memoria:section id="hooks" files="internal/hooks/hooks.go internal/hooks/exec.go internal/hooks/payload.go internal/hooks/trust.go internal/engine/embedded/pretooluse.go internal/engine/embedded/tools.go cmd/uah/hooks.go internal/app/setup.go internal/session/hooks.go" -->
+<!-- memoria:section id="hooks" files="internal/hooks/hooks.go internal/hooks/exec.go internal/hooks/payload.go internal/hooks/trust.go internal/hooks/script.go internal/engine/embedded/pretooluse.go internal/engine/embedded/tools.go cmd/uah/hooks.go internal/app/setup.go internal/session/hooks.go" -->
 ### Hooks
 
 Hooks run a command at a session event, with Claude Code's contract: the event arrives as JSON on stdin, exit 0 continues (optionally printing JSON), exit 2 blocks with stderr as the reason, and any other exit is reported and ignored.
