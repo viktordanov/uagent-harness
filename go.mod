@@ -16,7 +16,9 @@ require (
 	github.com/unreallabsai/unreal-agent v0.1.1
 	github.com/urfave/cli/v3 v3.13.0
 	github.com/viktordanov/uagent v0.4.1
+	go.starlark.net v0.0.0-20260908191801-89a6a09411d5
 	modernc.org/sqlite v1.59.0
+	mvdan.cc/sh/v3 v3.14.1
 )
 
 require (

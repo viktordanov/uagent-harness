@@ -16,6 +16,7 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
+	"github.com/viktordanov/uagent-harness/internal/approval"
 	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/hooks"
 	"github.com/viktordanov/uagent-harness/internal/mcp"
@@ -55,6 +56,9 @@ type Options struct {
 	// Source (SourceTUI or SourceRun) is recorded in a new session's sidecar
 	// in SessionsDir when set.
 	Source string
+	// Interactive means a user answers approvals (ApprovalRequested and
+	// Resolve). Otherwise commands that need approval are denied.
+	Interactive bool
 }
 
 // Session is safe to use from any goroutine. All state lives on one internal
@@ -86,6 +90,9 @@ type Session struct {
 	// compactPending is a /compact the engine has not started yet.
 	compactPending bool
 	hooks          hookState
+	interactive    bool
+	// approvals are the pending approvals' reply channels by ID.
+	approvals map[string]chan approval.Answer
 }
 
 // Open starts a session. Its first event is SessionOpened.
@@ -103,7 +110,8 @@ func Open(ctx context.Context, eng engine.Engine, opts Options) (*Session, error
 		in: make(chan any, eventBuffer), out: make(chan core.Event, eventBuffer),
 		ctx: runCtx, stop: stop, done: make(chan struct{}),
 		settings: opts.Settings, state: StateIdle, sent: map[string]bool{},
-		hooks: hookState{runner: opts.Hooks, resumed: opts.Resumed, tools: map[string]core.ToolCalled{}},
+		hooks:       hookState{runner: opts.Hooks, resumed: opts.Resumed, tools: map[string]core.ToolCalled{}},
+		interactive: opts.Interactive, approvals: map[string]chan approval.Answer{},
 	}
 	s.out <- SessionOpened{At: time.Now(), ID: id, Resumed: opts.Resumed, Engine: eng.Name(), Settings: opts.Settings}
 	if opts.Instructions != nil {

@@ -1,6 +1,6 @@
 # Sandboxing and approvals: plan
 
-Status: decided 2026-09-24, not built. The research and the options are in [sandbox-research.md](sandbox-research.md); Codex facts are from openai/codex at rust-v0.156.1.
+Status: decided 2026-09-24; phases 1 and 2 built (see [As built](#as-built-phase-1)). The research and the options are in [sandbox-research.md](sandbox-research.md); Codex facts are from openai/codex at rust-v0.156.1.
 
 The rule for every choice below: do what Codex does, unless uah's runner forces a difference.
 
@@ -96,6 +96,23 @@ Each phase ships on its own: after phase 1, commands are sandboxed and escalatio
 - **bubblewrap** follows Codex without its seccomp helper; `--unshare-net` isolates the network. A missing protected name is not protected on Linux (Codex creates an empty mount point on the host, which breaks git in subdirectories of a repository and races with parallel commands). CI installs bwrap and runs the real tests.
 - **Denials** use Codex's keywords plus DNS and "network is unreachable" messages, because bwrap's network namespace fails that way.
 - **go build** works in workspace-write: Go ignores cache writes it cannot make, so builds are slower rather than broken. `writable_roots = ["~/Library/Caches/go-build"]` restores the cache.
+
+## As built (phase 2)
+
+- **Packages.** `internal/rules` parses `.rules` files with `go.starlark.net` (`prefix_rule`; `host_executable` and `network_rule` load but do nothing) and splits commands with `mvdan.cc/sh/v3/syntax`: plain words and quotes joined by `&&`, `||`, `;`, and `|`. Anything else matches no rule, so the default policy applies, as with Codex's tree-sitter parser. An absolute program path also matches its base name. `internal/approval` holds the approver: `Decide(ctx, Request, Ask) Decision`, where `Request` has the command, cwd, escalation flag, justification, and the model's `prefix_rule`, and `Decision` is deny (with the reason for the model), sandboxed, or unsandboxed.
+- **Order in `Translate`.** PreToolUse hooks, then rules (`forbidden` denies with the justification; `allow` runs unsandboxed without asking, also headless), then the policy: an escalation or a `prompt` rule asks, unless the policy is `never` or no one can answer (`uah run`), which deny with a reason. An approved `prompt` rule without escalation runs sandboxed, as in Codex. The unsandboxed shell is a second runner Bash translator whose shell is the real one (with the environment policy); the sandbox hint is added only to commands that ran in the sandbox.
+- **Asking.** `engine.Options.Ask` carries the session's asker into each run, so the engine never imports the session. The session emits `ApprovalRequested` and waits for `Session.Resolve(id, answer)`; pending approvals live in a loop-owned map. An interrupt, the run's end, `Close`, or the run's context declines them (`ApprovalResolved` with `decline`). `session.Options.Interactive` is set by the TUI only.
+- **"Don't ask again".** It proposes the model's `prefix_rule` when it covers every command and is not on Codex's banned list, else the whole command when it is one simple command, else nothing. The chosen prefix is appended to `~/.config/uagent/rules/default.rules` and applies at once; if the file cannot be written, it still applies for the session and the error is logged.
+- **Without a sandbox** on the embedded engine (Linux without bwrap), each command asks unless a rule allows it (S12). `danger-full-access` offers no escalation, but rules still apply.
+- **Configuration.** `approval_policy` (and `--ask`, `UAH_ASK`); `[approvals] allow` and `forbid` are command prefixes that become rules. A trusted project may set the policy and adds prefixes, rules files, and writable roots.
+- **TUI.** The overlay replaces the queue panel: "Run outside the sandbox?" (or "Run this command?" for a `prompt` rule), the reason, `$ command`, and `y`, `s`, `n`/esc. The answer is recorded as a transcript line.
+
+### Open (defaults taken)
+
+- "No, and tell the agent what to do differently" declines with a fixed reason; the user types the instruction as the next message. Codex opens a text field.
+- There is no session cache of approved commands ("don't ask again for this command in this session"); only prefix rules persist.
+- `[approvals]` has no `prompt` list; a `prompt` rule needs a `.rules` file.
+- A project's `[approvals] allow` and `.rules` `allow` rules run commands unsandboxed; they apply only to trusted projects, as hooks do, but need no separate trust step.
 
 ## Tests
 

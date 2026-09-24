@@ -12,6 +12,7 @@ import (
 
 	"github.com/viktordanov/uagent/harness"
 
+	"github.com/viktordanov/uagent-harness/internal/approval"
 	"github.com/viktordanov/uagent-harness/internal/compaction"
 	"github.com/viktordanov/uagent-harness/internal/config"
 	"github.com/viktordanov/uagent-harness/internal/engine"
@@ -78,7 +79,11 @@ func Setup(ctx context.Context, in Inputs, logOutput io.Writer) (Result, error) 
 	if err != nil {
 		return Result{}, err
 	}
-	eng, err := newEngine(r, in.Runner, stateDir, logger, servers, &opts) //nolint:contextcheck // on Linux, the sandbox probes bwrap once per process, with its own timeout
+	approver, err := newApprover(r, cfg, in.Workspace)
+	if err != nil {
+		return Result{}, err
+	}
+	eng, err := newEngine(r, in.Runner, stateDir, logger, servers, &opts, approver) //nolint:contextcheck // on Linux, the sandbox probes bwrap once per process, with its own timeout
 	if err != nil {
 		return Result{}, err
 	}
@@ -109,7 +114,7 @@ func loadHooks(cfg config.Config, workspace string) (*hooks.Runner, error) {
 }
 
 // newEngine builds the resolved engine and adds its notices to opts.
-func newEngine(r Resolved, runnerPath, stateDir string, logger *slog.Logger, servers *mcp.Manager, opts *session.Options) (engine.Engine, error) {
+func newEngine(r Resolved, runnerPath, stateDir string, logger *slog.Logger, servers *mcp.Manager, opts *session.Options, approver *approval.Approver) (engine.Engine, error) {
 	sandboxDir := filepath.Join(stateDir, "sandbox")
 	if r.Engine == EngineProcess {
 		runner, err := harness.FindRunner(runnerPath)
@@ -137,7 +142,7 @@ func newEngine(r Resolved, runnerPath, stateDir string, logger *slog.Logger, ser
 	}
 	emb := embedded.New(embedded.Config{
 		StateDir: stateDir, MaxDisk: r.MaxDisk, Logger: logger, Provider: r.Settings.Provider, Hooks: opts.Hooks,
-		Sandbox: &r.Sandbox, SandboxDir: sandboxDir, Env: r.Env, MCP: servers,
+		Sandbox: &r.Sandbox, SandboxDir: sandboxDir, Env: r.Env, MCP: servers, Approver: approver,
 		AutoCompactPercent: r.AutoCompactPercent, ContextWindow: r.Settings.ContextWindow,
 		BeforeCompact: preCompactHook(opts.Hooks, r.Settings),
 	})

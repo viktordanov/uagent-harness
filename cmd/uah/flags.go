@@ -14,6 +14,7 @@ import (
 	"github.com/viktordanov/uagent/harness"
 
 	"github.com/viktordanov/uagent-harness/internal/app"
+	"github.com/viktordanov/uagent-harness/internal/approval"
 	"github.com/viktordanov/uagent-harness/internal/config"
 	"github.com/viktordanov/uagent-harness/internal/sandbox"
 	"github.com/viktordanov/uagent-harness/internal/session"
@@ -53,6 +54,10 @@ func sessionFlags() []cli.Flag {
 		&cli.StringFlag{
 			Name: "sandbox", Usage: "where commands may write: read-only, workspace-write, or danger-full-access (no sandbox)",
 			DefaultText: "workspace-write", Sources: cli.EnvVars("UAH_SANDBOX"), Validator: oneOf("sandbox", sandboxModes()),
+		},
+		&cli.StringFlag{
+			Name: "ask", Usage: "approval policy: on-request (ask before running a command outside the sandbox) or never (deny such commands)",
+			DefaultText: "on-request", Sources: cli.EnvVars("UAH_ASK"), Validator: oneOf("ask", approval.Policies),
 		},
 		&cli.StringFlag{
 			Name: "runner", Usage: "path to unreal-agent-runner, for the process engine", DefaultText: "~/.local/bin, then PATH",
@@ -123,6 +128,7 @@ func inputs(cmd *cli.Command) app.Inputs {
 		Fast:           cmd.Bool("fast"),
 		FastSet:        cmd.IsSet("fast"),
 		Sandbox:        cmd.String("sandbox"),
+		Ask:            cmd.String("ask"),
 		AllowDotenv:    cmd.Bool("allow-dotenv"),
 		NoInstructions: cmd.Bool("no-instructions"),
 	}

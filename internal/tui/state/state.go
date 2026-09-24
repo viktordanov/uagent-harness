@@ -69,10 +69,12 @@ type State struct {
 	Items []Item
 	index map[string]int
 
-	Queue  []Queued
-	Live   *Live
-	Busy   bool // from a message sent until the session is idle
-	Totals Totals
+	Queue []Queued
+	// Approvals are commands waiting for the user, in order.
+	Approvals []Approval
+	Live      *Live
+	Busy      bool // from a message sent until the session is idle
+	Totals    Totals
 	// ContextUsed is the tokens the last response used (0: unknown).
 	ContextUsed int64
 

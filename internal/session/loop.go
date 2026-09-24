@@ -6,6 +6,7 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
+	"github.com/viktordanov/uagent-harness/internal/approval"
 	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/hooks"
 )
@@ -119,6 +120,10 @@ func (s *Session) loop() {
 			s.onPromptChecked(m)
 		case evStopChecked:
 			s.onStopChecked(m)
+		case cmdAsk:
+			s.onAsk(m)
+		case cmdAskGone:
+			s.answer(m.id, approval.Decline)
 		}
 	}
 }
@@ -141,6 +146,8 @@ func (s *Session) handle(cmd any) (any, error) {
 		return s.onSettings(c.settings), nil
 	case cmdCompact:
 		return struct{}{}, s.onCompact()
+	case cmdResolve:
+		return struct{}{}, s.onResolve(c)
 	}
 
 	return nil, fmt.Errorf("unknown session command %T", cmd)

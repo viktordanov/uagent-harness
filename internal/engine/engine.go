@@ -9,6 +9,7 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
+	"github.com/viktordanov/uagent-harness/internal/approval"
 	"github.com/viktordanov/uagent-harness/internal/mcp"
 )
 
@@ -50,6 +51,9 @@ type Options struct {
 	// Compact compacts the context before the run's first model request
 	// (needs Capabilities.Compaction).
 	Compact bool
+	// Ask asks the user to approve a command; nil means no one can, as in
+	// a headless run. Only the embedded engine asks.
+	Ask approval.Ask
 }
 
 // Run is a started run.

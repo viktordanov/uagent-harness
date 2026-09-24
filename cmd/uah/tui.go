@@ -62,7 +62,7 @@ func openTUI(ctx context.Context, cmd *cli.Command, launch tuiLaunch) error {
 			if err != nil {
 				return nil, nil, err
 			}
-			setup.Options.Source = session.SourceTUI
+			setup.Options.Source, setup.Options.Interactive = session.SourceTUI, true
 			s, err := session.Open(context.WithoutCancel(ctx), setup.Engine, setup.Options)
 			if err != nil {
 				return nil, nil, err

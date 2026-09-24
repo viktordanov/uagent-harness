@@ -11,8 +11,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/viktordanov/uagent-harness/internal/approval"
 	"github.com/viktordanov/uagent-harness/internal/compaction"
 	"github.com/viktordanov/uagent-harness/internal/config"
+	"github.com/viktordanov/uagent-harness/internal/rules"
 	"github.com/viktordanov/uagent-harness/internal/sandbox"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
@@ -59,6 +61,8 @@ type Inputs struct {
 	FastSet    bool
 	// Sandbox is the --sandbox mode.
 	Sandbox string
+	// Ask is the --ask approval policy.
+	Ask string
 
 	AllowDotenv    bool
 	NoInstructions bool
@@ -79,6 +83,11 @@ type Resolved struct {
 	Env sandbox.EnvPolicy
 	// AutoCompactPercent is when the embedded engine compacts (0: never).
 	AutoCompactPercent int
+	// Approval is when the user is asked to approve a command.
+	Approval approval.Policy
+	// Rules are the configured [approvals] prefixes; Setup adds the rules
+	// files.
+	Rules []rules.Rule
 }
 
 // UsageError is an error in what the user asked for, such as an invalid
@@ -136,10 +145,14 @@ func Resolve(in Inputs, resumed session.Info, cfg config.Config) (Resolved, erro
 	if err != nil {
 		return Resolved{}, err
 	}
+	approvalPolicy, configured, err := pickApprovals(in, cfg)
+	if err != nil {
+		return Resolved{}, err
+	}
 
 	return Resolved{
 		Settings: s, Engine: eng, MaxDisk: maxDisk, Instructions: !in.NoInstructions && cfg.InstructionsEnabled(),
-		Sandbox: policy, Env: envPolicy, AutoCompactPercent: percent,
+		Sandbox: policy, Env: envPolicy, AutoCompactPercent: percent, Approval: approvalPolicy, Rules: configured,
 	}, nil
 }
 

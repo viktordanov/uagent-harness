@@ -2,7 +2,6 @@ package embedded
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -29,9 +28,14 @@ func (w *wiring) tools(ctx context.Context, req core.Request, sessionID session.
 	if err != nil {
 		return nil, err
 	}
+	b, sandboxed := translators.Bash.(sandboxedBash)
+	if sandboxed {
+		b.ctx = ctx // approvals wait on the run
+		translators.Bash = b
+	}
 	skills, skillErrs := discoverSkills(req.Workspace, w.getenv)
 	registry := tool.NewRegistry(translators, toolNames(req, len(skills) > 0)...)
-	if b, ok := translators.Bash.(sandboxedBash); ok {
+	if sandboxed && b.canEscalate() {
 		registry = sandboxRegistry{Registry: registry, policy: w.policy(req, b.mode)}
 	}
 	if err := registerSkills(registry, skills); err != nil {
@@ -63,20 +67,10 @@ func (w *wiring) translators(req core.Request, sessionID session.ID) (tool.Stati
 		shell = "/bin/sh"
 	}
 	run := bash.New(bash.Config{Shell: shell, Directory: req.Workspace, BaseDirectory: opsDir})
-	if p := w.e.cfg.Sandbox; p != nil {
-		sandboxed, err := sandbox.Shell(w.e.cfg.SandboxDir, w.policy(req, p.Mode), w.e.cfg.Env, shell)
-		switch {
-		case errors.Is(err, sandbox.ErrUnavailable):
-			_, _ = fmt.Fprintf(w.l.Stderr, "embedded: %v; commands run without one\n", err)
-		case err != nil:
+	if w.e.cfg.Sandbox != nil {
+		var err error
+		if run, err = w.sandboxedBash(req, opsDir, shell); err != nil {
 			return tool.StaticTranslators{}, err
-		case p.Mode == sandbox.FullAccess:
-			run = bash.New(bash.Config{Shell: sandboxed, Directory: req.Workspace, BaseDirectory: opsDir})
-		default:
-			run = sandboxedBash{
-				Translator: bash.New(bash.Config{Shell: sandboxed, Directory: req.Workspace, BaseDirectory: opsDir}),
-				mode:       p.Mode,
-			}
 		}
 	}
 
