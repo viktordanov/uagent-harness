@@ -58,6 +58,9 @@ type Options struct {
 	// Compact compacts the context before the run's first model request
 	// (needs Capabilities.Compaction).
 	Compact bool
+	// Clear drops the context before the run's first model request, as
+	// /clear does (needs Capabilities.Compaction).
+	Clear bool
 	// Ask asks the user to approve a command; nil means no one can, as in
 	// a headless run. Only the embedded engine asks.
 	Ask approval.Ask
@@ -84,6 +87,9 @@ type Run interface {
 	// Compact compacts the context before the next model request
 	// (ErrUnsupported without Compaction).
 	Compact() error
+	// Clear drops the context before the next model request: the model
+	// starts fresh in the same session (ErrUnsupported without Compaction).
+	Clear() error
 	// Interrupt stops the run gracefully.
 	Interrupt()
 	// Kill stops the run at once.

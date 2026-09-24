@@ -33,6 +33,7 @@ shell_environment_policy.exclude                  []                            
 shell_environment_policy.include_only             []                            default
 shell_environment_policy.set                      {}                            default
 tui.details                                       false                         default
+tui.mouse                                         false                         default
 hooks.Stop                                        [notify]                      user file
 mcp_servers.docs                                  https://docs.example.com/mcp  project file
 projects.<workspace>.trusted                      true                          user file

@@ -70,3 +70,19 @@ func TestReduce_ReloadedCompactionAndInterrupt(t *testing.T) {
 	s, _ = apply(s, engine.Compacted{At: t0, Trigger: compaction.TriggerManual, Err: "interrupted: context canceled", Interrupted: true})
 	assert.Equal(t, "Compaction interrupted", s.Items[len(s.Items)-1].Text)
 }
+
+func TestReduce_ClearStaysInTheSession(t *testing.T) {
+	s := opened()
+	s.Caps = engine.Capabilities{Compaction: true}
+	s, _ = apply(s, state.Submit{Text: "hello"})
+	id := s.SessionID
+	s, effects := apply(s, state.Submit{Text: "/clear"})
+	assert.Equal(t, []state.Effect{state.EffClear{}}, effects, "no new session")
+	assert.Equal(t, id, s.SessionID)
+	assert.Len(t, s.Items, 1, "the screen clears to one notice")
+	assert.Contains(t, s.Items[0].Text, "Context cleared")
+
+	s, _ = apply(s, engine.CompactionStarted{At: t0, Trigger: compaction.TriggerClear}, engine.Compacted{At: t0, Trigger: compaction.TriggerClear})
+	assert.Len(t, s.Items, 2, "the engine's report is a debug line only")
+	assert.Equal(t, state.LevelDebug, s.Items[1].Level)
+}

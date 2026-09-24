@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/viktordanov/uagent-harness/internal/contextusage"
@@ -14,24 +13,16 @@ import (
 // Claude Code draws it.
 const gridSide = 10
 
-var (
-	cellUsed   = "⛁"
-	cellFree   = "⛶"
-	cellBuffer = "⛝"
-	// categoryColors follow contextusage.Order.
-	categoryColors = map[string]lipgloss.Style{
-		contextusage.SystemPrompt: lipgloss.NewStyle().Foreground(lipgloss.Color("8")),
-		contextusage.Instructions: lipgloss.NewStyle().Foreground(lipgloss.Color("13")),
-		contextusage.Skills:       lipgloss.NewStyle().Foreground(lipgloss.Color("11")),
-		contextusage.Tools:        lipgloss.NewStyle().Foreground(lipgloss.Color("6")),
-		contextusage.MCPTools:     lipgloss.NewStyle().Foreground(lipgloss.Color("14")),
-		contextusage.UserMessages: lipgloss.NewStyle().Foreground(lipgloss.Color("12")),
-		contextusage.Assistant:    lipgloss.NewStyle().Foreground(lipgloss.Color("10")),
-		contextusage.ToolResults:  lipgloss.NewStyle().Foreground(lipgloss.Color("3")),
-	}
-	// breakdowns are the categories whose items are listed below the grid.
-	breakdowns = []string{contextusage.Instructions, contextusage.Skills, contextusage.MCPTools, contextusage.Tools}
+// The grid's cells: a filled dot per used percent in its category's color,
+// a dim dot for free space, and a ring for the auto-compaction buffer.
+const (
+	cellUsed   = "●"
+	cellFree   = "·"
+	cellBuffer = "○"
 )
+
+// breakdowns are the categories whose items are listed below the grid.
+var breakdowns = []string{contextusage.Instructions, contextusage.Skills, contextusage.MCPTools, contextusage.Tools}
 
 // contextLines draws /context: the grid with the legend beside it, then the
 // items of the categories that have named parts.

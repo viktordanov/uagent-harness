@@ -221,6 +221,7 @@ Roles are Codex role files in `~/.config/uagent/agents/*.toml` and, for a truste
 | Key | Type | Default | Merge | Meaning |
 | --- | --- | --- | --- | --- |
 | `details` | bool | false | OR | Start in the detailed view; ctrl+t toggles it |
+| `mouse` | bool | false | OR | Report the mouse to the TUI so the wheel scrolls the transcript; selecting text then needs Option (iTerm2, Terminal) or Shift held. Off, the terminal selects text as usual and its wheel sends ↑ and ↓, which scroll the transcript while the composer is empty |
 
 ### Projects
 
@@ -305,6 +306,7 @@ timeout = "90s"
 
 [tui]
 details = false
+mouse = false
 
 [[hooks.PreToolUse]]               # embedded engine only
 matcher = "Bash"                   # the whole tool name, as a regular expression

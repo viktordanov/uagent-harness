@@ -148,6 +148,8 @@ func (s *Session) handle(cmd any) (any, error) {
 		return s.onSettings(c.settings), nil
 	case cmdCompact:
 		return struct{}{}, s.onCompact()
+	case cmdClear:
+		return struct{}{}, s.onClear()
 	case cmdResolve:
 		return struct{}{}, s.onResolve(c)
 	}

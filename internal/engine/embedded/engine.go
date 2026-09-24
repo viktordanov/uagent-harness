@@ -195,6 +195,7 @@ func (r *run) SetEffort(effort string) error    { return r.agent.SetEffort(effor
 func (r *run) SetModel(model string) error      { return r.agent.SetModel(model) }
 func (r *run) SetServiceTier(tier string) error { return r.agent.SetServiceTier(tier) }
 func (r *run) Compact() error                   { return r.agent.Compact() }
+func (r *run) Clear() error                     { return r.agent.Clear() }
 
 // Interrupt stops the run and its session's subagents' live runs, as the
 // user expects of an interrupt.

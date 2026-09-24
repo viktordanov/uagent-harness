@@ -42,11 +42,41 @@ func (s *Session) onCompact() error {
 	return nil
 }
 
-// noteCompaction clears a pending /compact once the engine starts it, so a
-// request that a run could not serve moves on to the next run.
+type cmdClear struct{}
+
+// Clear drops the context, as /clear does, and stays in the same session:
+// the model's next request starts fresh after the system prompt, while the
+// session file keeps the history. It applies before the live run's next
+// model request, or before the next run's first one when the session is
+// idle. The engine reports it as a compaction with the clear trigger.
+func (s *Session) Clear() error {
+	_, err := call[struct{}](s, cmdClear{})
+
+	return err
+}
+
+func (s *Session) onClear() error {
+	if !s.caps.Compaction {
+		return ErrNoCompaction
+	}
+	s.clearPending = true
+	if s.state == StateRunning && s.run != nil {
+		_ = s.run.Clear() // a run that ended already leaves it to the next
+	}
+
+	return nil
+}
+
+// noteCompaction clears a pending /compact or /clear once the engine starts
+// it, so a request that a run could not serve moves on to the next run.
 func (s *Session) noteCompaction(e core.Event) {
-	if v, ok := e.(engine.CompactionStarted); ok && v.Trigger == compaction.TriggerManual {
+	v, ok := e.(engine.CompactionStarted)
+	switch {
+	case !ok:
+	case v.Trigger == compaction.TriggerManual:
 		s.compactPending = false
+	case v.Trigger == compaction.TriggerClear:
+		s.clearPending = false
 	}
 }
 

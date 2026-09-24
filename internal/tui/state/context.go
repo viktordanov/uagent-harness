@@ -31,6 +31,9 @@ func (s *State) noteUsage(e core.ModelResponded) {
 func (s *State) onEngineEvent(ev core.Event) bool {
 	switch e := ev.(type) {
 	case engine.CompactionStarted:
+		if e.Trigger == compaction.TriggerClear {
+			return true // /clear already said so
+		}
 		text := "Compacting the context"
 		if e.Trigger == compaction.TriggerAuto {
 			text += " (automatic: the context is nearly full)"
@@ -43,11 +46,16 @@ func (s *State) onEngineEvent(ev core.Event) bool {
 			return true
 		}
 		if e.Err != "" {
-			s.notice(session.LevelWarning, "compaction failed: "+e.Err)
+			s.notice(session.LevelWarning, e.Trigger.Verb()+" failed: "+e.Err)
 
 			return true
 		}
 		s.ContextUsed = 0
+		if e.Trigger == compaction.TriggerClear {
+			s.notice(LevelDebug, "context cleared")
+
+			return true
+		}
 		s.notice(session.LevelInfo, "Context compacted; your messages stay as written")
 		s.notice(LevelDebug, "summary: "+e.Summary)
 	case engine.AutoReviewed:
@@ -61,6 +69,21 @@ func (s *State) onEngineEvent(ev core.Event) bool {
 	}
 
 	return true
+}
+
+// cmdClear drops the context and stays in the same session: the screen
+// clears, and the agent's next request starts fresh. /new starts a new
+// session instead.
+func cmdClear(s *State, _ string) []Effect {
+	if !s.Caps.Compaction {
+		s.notice(session.LevelWarning, "/clear needs the embedded engine; /new starts a new session")
+
+		return nil
+	}
+	s.Items, s.index, s.Scroll, s.ContextUsed = nil, map[string]int{}, 0, 0
+	s.notice(session.LevelInfo, "Context cleared: the agent starts fresh in this session. The session keeps its history; /new starts a new session")
+
+	return []Effect{EffClear{}}
 }
 
 func cmdCompact(s *State, _ string) []Effect {

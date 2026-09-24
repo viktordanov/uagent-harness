@@ -11,6 +11,8 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/alecthomas/chroma/v2"
 	"github.com/charmbracelet/x/ansi"
+
+	"github.com/viktordanov/uagent-harness/internal/contextusage"
 )
 
 // Theme is every color the TUI draws with. Text is left to the terminal,
@@ -20,6 +22,8 @@ type Theme struct {
 	Accent, Dim, Bad, Warn color.Color
 	// Good marks what is ready or passed, such as an MCP server.
 	Good color.Color
+	// Info and Extra tell /context's categories apart.
+	Info, Extra color.Color
 	// Band is the background of your messages, the composer, and code.
 	Band color.Color
 	// Breath runs from dim to bright: the working λ's frames.
@@ -28,20 +32,23 @@ type Theme struct {
 	Keyword, Name, String, Number, Comment color.Color
 }
 
-// Amber is the default theme, for dark terminals.
+// Amber is the default theme, for dark terminals: a saturated amber for
+// the λ, live commands, and marks, on dim text that stays warm.
 var Amber = Theme{
-	Accent: hex("#ffc014"), Dim: hex("#8c7c58"), Bad: hex("#ff6b4a"), Warn: hex("#ffc014"), Good: hex("#b8c98a"),
+	Accent: hex("#ffc400"), Dim: hex("#a08c64"), Bad: hex("#ff5a3c"), Warn: hex("#ffc400"), Good: hex("#9be564"),
+	Info: hex("#5cc8ff"), Extra: hex("#d49bff"),
 	Band:    hex("#2a2a2a"),
-	Breath:  []color.Color{hex("#4a3a10"), hex("#6b5214"), hex("#8c6a16"), hex("#b08618"), hex("#d6a31a"), hex("#ffc014"), hex("#ffd75a")},
-	Keyword: hex("#ffc014"), Name: hex("#ecc56a"), String: hex("#b8c98a"), Number: hex("#e8a15a"), Comment: hex("#7a7466"),
+	Breath:  []color.Color{hex("#5a4200"), hex("#806000"), hex("#a67c00"), hex("#cc9900"), hex("#e6b000"), hex("#ffc400"), hex("#ffe066")},
+	Keyword: hex("#ffc400"), Name: hex("#ffd75e"), String: hex("#9be564"), Number: hex("#ff9f43"), Comment: hex("#8a8272"),
 }
 
-// AmberLight is Amber for light terminals: dark amber ink.
+// AmberLight is Amber for light terminals: deep amber ink.
 var AmberLight = Theme{
-	Accent: hex("#a35f00"), Dim: hex("#a38f6e"), Bad: hex("#c0392b"), Warn: hex("#a35f00"), Good: hex("#5f7a1f"),
+	Accent: hex("#b86e00"), Dim: hex("#8f7b58"), Bad: hex("#d0301c"), Warn: hex("#b86e00"), Good: hex("#4f8a10"),
+	Info: hex("#0a7bc2"), Extra: hex("#8a4fd6"),
 	Band:    hex("#efe9dc"),
-	Breath:  []color.Color{hex("#e6d3b0"), hex("#d9b986"), hex("#c99a55"), hex("#b98030"), hex("#a86b12"), hex("#a35f00"), hex("#7a4500")},
-	Keyword: hex("#a35f00"), Name: hex("#8a5200"), String: hex("#5f7a1f"), Number: hex("#b4501e"), Comment: hex("#a39a88"),
+	Breath:  []color.Color{hex("#ecd9b0"), hex("#e0bf80"), hex("#d4a24c"), hex("#c88a22"), hex("#bd7a08"), hex("#b86e00"), hex("#8a4f00")},
+	Keyword: hex("#b86e00"), Name: hex("#9a5c00"), String: hex("#4f8a10"), Number: hex("#c4501a"), Comment: hex("#9a917f"),
 }
 
 // ThemeFor picks Amber or AmberLight for the terminal's background and
@@ -74,6 +81,8 @@ var (
 	bandOn    string
 	breath    []lipgloss.Style
 	codeStyle *chroma.Style
+	// categoryColors color /context's categories.
+	categoryColors map[string]lipgloss.Style
 )
 
 func init() { SetTheme(Amber) }
@@ -93,6 +102,16 @@ func SetTheme(t Theme) {
 	ok = lipgloss.NewStyle().Foreground(t.Good)
 	codeSpan = lipgloss.NewStyle().Foreground(t.Name)
 	quoteBar = dim.Render("│ ")
+	categoryColors = map[string]lipgloss.Style{
+		contextusage.SystemPrompt: dim,
+		contextusage.Instructions: lipgloss.NewStyle().Foreground(t.Name),
+		contextusage.Skills:       lipgloss.NewStyle().Foreground(t.Good),
+		contextusage.Tools:        lipgloss.NewStyle().Foreground(t.Accent),
+		contextusage.MCPTools:     lipgloss.NewStyle().Foreground(t.Number),
+		contextusage.UserMessages: lipgloss.NewStyle().Foreground(t.Info),
+		contextusage.Assistant:    lipgloss.NewStyle().Foreground(t.Extra),
+		contextusage.ToolResults:  lipgloss.NewStyle().Foreground(t.Bad),
+	}
 	r, g, b := rgb(t.Band)
 	bandOn = fmt.Sprintf("\x1b[48;2;%d;%d;%dm", r, g, b)
 	breath = breath[:0]

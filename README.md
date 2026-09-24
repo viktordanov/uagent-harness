@@ -48,7 +48,7 @@ The keys to know in the TUI:
 | `@` | Mention a workspace file (fuzzy search) |
 | ctrl+t | The detailed view: turns, tokens, and each tool's result |
 
-The [TUI README](internal/tui/README.md) lists every key and command.
+Text selects with the mouse as in any terminal, and the wheel or ↑/↓ on an empty composer scrolls. The [TUI README](internal/tui/README.md) lists every key and command.
 
 ## Common tasks
 
@@ -131,7 +131,7 @@ developer_instructions = "Review only; do not edit files. List each finding with
 
 ### Keep a long session going
 
-uah compacts automatically at 90% of the context window. `/compact` compacts now, and `/context` shows what fills the window.
+uah compacts automatically at 90% of the context window. `/compact` compacts now, and `/context` shows what fills the window. `/clear` starts the agent fresh in the same session: its next request carries nothing from before, while the session keeps its history. `/new` starts a new session.
 
 ### Run a command at an event
 
@@ -173,7 +173,7 @@ Every key, by group. The [configuration reference](docs/configuration.md) gives 
 | Hooks | `[[hooks.<Event>]]` `matcher`, `command`, `timeout` |
 | MCP servers | `[mcp_servers.<name>]` `command`, `args`, `env`, `env_vars`, `cwd`, `url`, `bearer_token_env_var`, `http_headers`, `env_http_headers`, `enabled`, `required`, `startup_timeout_sec`, `tool_timeout_sec`, `enabled_tools`, `disabled_tools`, `supports_parallel_tool_calls`, `default_tools_approval_mode`, `tools.<tool>.approval_mode`, `auth`, `scopes`, `oauth_resource`, `[oauth]`; `mcp_oauth_credentials_store`, `mcp_oauth_callback_port`, `mcp_oauth_callback_url` |
 | Subagents | `[agents]` `enabled`, `max_concurrent_threads_per_session`, `max_depth`, `default_subagent_model`, `default_subagent_reasoning_effort` |
-| TUI | `[tui]` `details` |
+| TUI | `[tui]` `details`, `mouse` |
 | Projects | `[projects."<path>"]` `trusted` |
 
 A short user file:

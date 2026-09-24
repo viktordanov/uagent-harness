@@ -28,6 +28,8 @@ type (
 	EffOpenSession struct{ ID string }
 	// EffCompact compacts the context.
 	EffCompact struct{}
+	// EffClear drops the context in the same session.
+	EffClear struct{}
 	// EffQuit closes the session and exits.
 	EffQuit struct{}
 )
@@ -43,4 +45,5 @@ func (EffLoadFiles) effect()    {}
 func (EffSetDraft) effect()     {}
 func (EffOpenSession) effect()  {}
 func (EffCompact) effect()      {}
+func (EffClear) effect()        {}
 func (EffQuit) effect()         {}

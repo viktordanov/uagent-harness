@@ -110,7 +110,14 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 		return nil, err
 	}
 	operations := operation.NewLocalOperationManager(runCtx, newMCPJobs(runCtx, w.e.cfg.MCP), newAgentJobs(runCtx, w.e.cfg.Subagents, string(s.id)))
-	comp, err := w.compactor(runCtx, s, sw, opts.Compact)
+	first := compaction.Trigger("")
+	switch {
+	case opts.Clear:
+		first = compaction.TriggerClear
+	case opts.Compact:
+		first = compaction.TriggerManual
+	}
+	comp, err := w.compactor(runCtx, s, sw, first)
 	if err != nil {
 		return nil, err
 	}
@@ -143,7 +150,7 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 // compactor wraps the switcher with the session's compactions and seeds the
 // context in use from the session's last response. ctx is the run's: a
 // compaction lives until the run ends.
-func (w *wiring) compactor(ctx context.Context, s runStore, sw *switcher, compactFirst bool) (*compactor, error) {
+func (w *wiring) compactor(ctx context.Context, s runStore, sw *switcher, first compaction.Trigger) (*compactor, error) {
 	log := compaction.OpenLog(w.l.SessionsDir, string(s.id))
 	rec, corrupt, err := log.Last()
 	if err != nil {
@@ -174,7 +181,7 @@ func (w *wiring) compactor(ctx context.Context, s runStore, sw *switcher, compac
 
 	return &compactor{
 		ctx: ctx, next: sw, log: log, emit: emit, before: before, window: cfg.ContextWindow, percent: cfg.AutoCompactPercent,
-		record: rec, pending: compactFirst, used: used,
+		record: rec, pending: first, used: used,
 	}, nil
 }
 

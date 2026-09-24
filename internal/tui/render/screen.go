@@ -41,6 +41,7 @@ func Screen(s state.State, c *Cache, f Frame) (string, int) {
 	panel := panelLines(s, f)
 	bottom := make([]string, 0, len(panel)+f.ComposerHeight+3)
 	if !s.Details {
+		bottom = append(bottom, activeAgents(s, f.Width)...)
 		if line := statusLine(s, f.Width); line != "" {
 			bottom = append(bottom, "", line)
 		}

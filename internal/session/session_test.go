@@ -104,6 +104,7 @@ func (r *fakeRun) SetEffort(e string) error {
 func (r *fakeRun) SetModel(string) error       { return engine.ErrUnsupported }
 func (r *fakeRun) SetServiceTier(string) error { return engine.ErrUnsupported }
 func (r *fakeRun) Compact() error              { return engine.ErrUnsupported }
+func (r *fakeRun) Clear() error                { return engine.ErrUnsupported }
 func (r *fakeRun) Interrupt()                  { r.finish(core.StatusInterrupted) }
 func (r *fakeRun) Kill()                       { r.finish(core.StatusInterrupted) }
 

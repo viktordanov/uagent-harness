@@ -48,10 +48,12 @@ type compactor struct {
 	window  int64 // the configured window; 0 uses the model table
 	percent int   // automatic compaction limit; 0 turns it off
 
-	mu      sync.Mutex
-	record  *compaction.Record
-	stale   bool // the record does not match the history; reported once
-	pending bool
+	mu     sync.Mutex
+	record *compaction.Record
+	stale  bool // the record does not match the history; reported once
+	// pending is the compaction asked for, "" when none: manual (/compact)
+	// or clear (/clear), which wins over manual.
+	pending compaction.Trigger
 	used    int64 // the last response's total tokens; 0 when unknown
 	job     *compactionJob
 	// autoFailures counts failed automatic compactions in a row.
@@ -66,11 +68,13 @@ type compactionJob struct {
 	interrupted bool
 }
 
-// requestCompaction compacts before the next model request.
-func (c *compactor) requestCompaction() {
+// requestCompaction compacts (or clears) before the next model request.
+func (c *compactor) requestCompaction(t compaction.Trigger) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.pending = true
+	if c.pending != compaction.TriggerClear {
+		c.pending = t
+	}
 }
 
 // interrupt cancels a compaction in progress.
@@ -134,7 +138,7 @@ func (c *compactor) startOrJoin(req llm.Request, opts llm.RequestOptions) *compa
 	if !ok {
 		return nil
 	}
-	c.pending = false
+	c.pending = ""
 	ctx, cancel := context.WithCancel(c.ctx)
 	job := &compactionJob{done: make(chan struct{}), cancel: cancel}
 	c.job = job
@@ -156,8 +160,8 @@ func (c *compactor) dueLocked(input []llm.Item) (compaction.Trigger, int64, bool
 		}
 	}
 	used := compaction.InUse(view, c.used)
-	if c.pending {
-		return compaction.TriggerManual, used, true
+	if c.pending != "" {
+		return c.pending, used, true
 	}
 	limit := compaction.AutoLimit(compaction.ContextWindow(c.next.currentModel(), c.window), c.percent)
 	if limit == 0 || used < limit || c.autoFailures >= maxAutoFailures || compaction.Coverable(input) <= covered {
@@ -197,6 +201,9 @@ func (c *compactor) run(ctx context.Context, job *compactionJob, req llm.Request
 }
 
 func (c *compactor) compact(ctx context.Context, req llm.Request, opts llm.RequestOptions, trigger compaction.Trigger) (compaction.Record, error) {
+	if trigger == compaction.TriggerClear {
+		return c.clear(req.Input)
+	}
 	if c.before != nil {
 		if err := c.before(ctx, trigger); err != nil {
 			return compaction.Record{}, fmt.Errorf("compaction was stopped: %w", err)
@@ -215,6 +222,29 @@ func (c *compactor) compact(ctx context.Context, req llm.Request, opts llm.Reque
 		return compaction.Record{}, err
 	}
 	rec, err := compaction.NewRecord(req.Input, summary, trigger, c.next.currentModel(), time.Now().UTC())
+	if err != nil {
+		return compaction.Record{}, err
+	}
+	// What a /clear dropped stays dropped.
+	c.mu.Lock()
+	if c.record != nil && !c.stale {
+		rec.Floor = min(c.record.Floor, rec.Covered)
+	}
+	c.mu.Unlock()
+	if err := c.log.Append(rec); err != nil {
+		return compaction.Record{}, err
+	}
+
+	return rec, nil
+}
+
+// clear records a /clear: every item so far is dropped from what the model
+// sees, with no summary and no model call. The session file keeps them.
+func (c *compactor) clear(input []llm.Item) (compaction.Record, error) {
+	if compaction.Coverable(input) == 0 {
+		return compaction.Record{}, errNothingToCompact
+	}
+	rec, err := compaction.NewClear(input, time.Now().UTC())
 	if err != nil {
 		return compaction.Record{}, err
 	}

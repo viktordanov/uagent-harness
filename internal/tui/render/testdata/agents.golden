@@ -6,7 +6,6 @@
 
 
 
-
 ╭────────────────────────────────────────────────╮
 │ λ uah                                          │
 │                                                │
@@ -14,9 +13,10 @@
 │ directory: /workspace/proj                     │
 ╰────────────────────────────────────────────────╯
 
+  AGENT Rex reviewer  done
+
   AGENT Ada  0s
     └ ⠋ thinking
-  AGENT Rex reviewer  done
 
 
 λ
