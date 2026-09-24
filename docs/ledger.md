@@ -25,17 +25,17 @@ Status: `todo`, `doing`, `done`, `cut` (with a reason).
 | # | Item | Lane | Depends on | Status |
 |---|---|---|---|---|
 | 1 | Quality pass | main session | — | done |
-| 2 | Sandbox phase 2: approvals, rules, configured approvals | A | 1 | todo |
+| 2 | Sandbox phase 2: approvals, rules, configured approvals | A | 1 | doing |
 | 3 | Sandbox phase 3: auto-review and the one-shot model call | A | 2 | todo |
-| 4 | Compaction, Codex's way, and the context meter | B | 1 | todo |
-| 5 | MCP | C | 1 | todo |
+| 4 | Compaction, Codex's way, and the context meter | B | 1 | doing |
+| 5 | MCP | C | 1 | doing |
 | 6 | Session storage index and the `/status` activity heatmap | D | 1 | todo |
 | 7 | `/` menu and `@` mentions | D | 1 | todo |
 | 8 | AGENTS.md and skills parity with Codex | B | 4 | todo |
 | 9 | Hooks for the new features | main session | 2, 4, 5 | todo |
 | 10 | Configuration reference and `uah config` | main session | 2, 5 | todo |
 | 11 | `uah doctor`, content-based hook trust, crash-recovery test | C | 5 | todo |
-| 12 | Subagents: research and plan | any free lane | — | todo |
+| 12 | Subagents: research and plan | any free lane | — | done |
 
 Order of starting: 1 alone (it touches everything). Then lanes A (2), B (4), C (5) in parallel. D (6, 7) starts when a lane frees up. 9 and 10 come after their dependencies merge.
 
@@ -114,3 +114,4 @@ Ideas that come up while working go here, not into the items.
 One line per merge or decision: time, item, what landed, commit.
 
 - 04:30 · 1 · CI lints for linux and darwin (matrix); go mod tidy; audit recorded in architecture.md (files ≤ 400 lines; the reducer and printer switches kept as decision tables). No other findings: the earlier split of session, app, and embedded already fixed the grab-bags.
+- 04:30 · 12 · docs/design/subagents.md: Codex v1 tool set (spawn_agent, send_input, wait, close_agent), [agents] config and role files, children as uah sessions; build after items 2–5.
