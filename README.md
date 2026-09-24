@@ -142,7 +142,7 @@ To watch a subagent work, type `/agents <name>` (tab completes the names): the T
 
 ### Keep a long session going
 
-uah compacts automatically at 90% of the context window. `/compact` compacts now, and `/context` shows what fills the window. `/clear` starts the agent fresh in the same session: its next request carries nothing from before, while the session keeps its history. `/new` starts a new session.
+uah compacts automatically at 90% of the context window. `/compact` compacts now, and `/compact keep the failing test names` tells the summary what to focus on. `/context` shows what fills the window. The summary model, its prompt, and when compaction starts are [configurable](docs/configuration.md#compaction). `/clear` starts the agent fresh in the same session: its next request carries nothing from before, while the session keeps its history. `/new` starts a new session.
 
 ### Run a command at an event
 
@@ -154,6 +154,10 @@ command = "osascript -e 'display notification \"uah is idle\"'"
 ```
 
 Hooks in a project's `.uagent/config.toml` run only after `uah hooks trust`; `uah hooks` lists them and whether each runs.
+
+### Change settings
+
+Type `/config` in the TUI. It lists auto-compact and its token limit, the compaction model, the default model and effort, fast mode, the details view, and the mouse, each with its value and where the value comes from. ↑↓ choose a setting; enter or space changes it (toggles, cycles, or opens a value to type); ←→ cycle back and forth; esc closes. Each change is saved at once to your user file, keeping its comments. The model, effort, and fast mode also change the running session, the details view and the mouse change at once, and the compaction settings apply to sessions opened afterwards (`/new`, `/resume`). A flag or a trusted project file that sets the same key still wins; `/config` says so.
 
 ### See what is configured
 
@@ -172,14 +176,14 @@ Two TOML files:
 
 A flag wins over the environment, which wins over a resumed session's settings, then the project file, the user file, and the defaults. Unknown keys are errors, so a typo fails loudly. The names say `uagent` because uah shares uagent's directories.
 
-Every key, by group. The [configuration reference](docs/configuration.md) gives each one's type, default, flag, and merge rule, and the environment variables.
+`/config` in the TUI changes the basic settings in the user file (see [Change settings](#change-settings)). Every key, by group. The [configuration reference](docs/configuration.md) gives each one's type, default, flag, and merge rule, and the environment variables.
 
 | Group | Keys |
 | --- | --- |
 | Model and engine | `provider`, `model`, `effort`, `fast`, `engine`, `timeout`, `max_disk` |
 | Sandbox | `sandbox_mode`; `[sandbox_workspace_write]` `network_access`, `writable_roots`; `[shell_environment_policy]` `inherit`, `ignore_default_excludes`, `exclude`, `include_only`, `set` |
 | Approvals | `approval_policy`, `approvals_reviewer`; `[approvals]` `allow`, `forbid`; `[review]` `model`, `effort`, `timeout` |
-| Compaction | `auto_compact_percent`, `model_context_window` |
+| Compaction | `auto_compact_percent`, `model_auto_compact_token_limit`, `model_context_window`, `compact_model`, `compact_effort`, `compact_prompt`, `experimental_compact_prompt_file`, `compact_user_message_max_tokens` |
 | Instructions and skills | `project_doc_fallback_filenames`, `project_root_markers`, `project_doc_max_bytes`; `[instructions]` `enabled`, `max_bytes` |
 | Hooks | `[[hooks.<Event>]]` `matcher`, `command`, `timeout` |
 | MCP servers | `[mcp_servers.<name>]` `command`, `args`, `env`, `env_vars`, `cwd`, `url`, `bearer_token_env_var`, `http_headers`, `env_http_headers`, `enabled`, `required`, `startup_timeout_sec`, `tool_timeout_sec`, `enabled_tools`, `disabled_tools`, `supports_parallel_tool_calls`, `default_tools_approval_mode`, `tools.<tool>.approval_mode`, `auth`, `scopes`, `oauth_resource`, `[oauth]`; `mcp_oauth_credentials_store`, `mcp_oauth_callback_port`, `mcp_oauth_callback_url` |
