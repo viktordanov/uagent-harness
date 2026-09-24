@@ -73,7 +73,9 @@ type Session struct {
 	sent     map[string]bool
 	// live are messages sent into a running run, in order; the ones it had
 	// not read when it ended go out again with the next run.
-	live                 []core.UserInput
+	live []core.UserInput
+	// startSteers are steers made while a live-input run was starting.
+	startSteers          []core.UserInput
 	run                  engine.Run
 	restartAfterStop     bool
 	interruptWhenStarted bool
@@ -467,11 +469,20 @@ func (s *Session) dispatch(input core.UserInput, steer bool) {
 			s.restartAfterStop = true
 			s.interruptLive()
 		}
-	case StateStarting, StateStopping:
+	case StateStarting:
+		if steer && s.caps.LiveInput {
+			s.startSteers = append(s.startSteers, input) // sent live once the run starts
+			return
+		}
 		s.queue = append(s.queue, input)
 		if steer {
 			s.restartAfterStop = true
 			s.interruptLive()
+		}
+	case StateStopping:
+		s.queue = append(s.queue, input)
+		if steer {
+			s.restartAfterStop = true
 		}
 	case StateClosed:
 	}
@@ -541,10 +552,11 @@ func (s *Session) markSent(inputs []core.UserInput) {
 func (s *Session) onStarted(m evStarted) bool {
 	if m.err != nil {
 		ids := make([]string, 0, len(m.inputs))
-		for _, in := range m.inputs {
+		for _, in := range slices.Concat(m.inputs, s.startSteers) {
 			delete(s.sent, in.ID)
 			ids = append(ids, in.ID)
 		}
+		s.startSteers = nil
 		s.emit(InputFailed{At: time.Now(), IDs: ids, Reason: m.err.Error()})
 		s.emit(Notice{At: time.Now(), Level: "error", Message: m.err.Error()})
 		s.interruptWhenStarted, s.restartAfterStop = false, false
@@ -564,6 +576,17 @@ func (s *Session) onStarted(m evStarted) bool {
 		result, err := m.run.Wait()
 		s.in <- evEnded{result: result, err: err}
 	}()
+	steers := s.startSteers
+	s.startSteers = nil
+	for _, in := range steers {
+		if err := s.run.Send(in); err != nil {
+			s.queue = append(s.queue, in)
+
+			continue
+		}
+		s.markSent([]core.UserInput{in})
+		s.live = append(s.live, in)
+	}
 	if s.interruptWhenStarted || s.closeReply != nil {
 		s.interruptWhenStarted = false
 		s.interruptLive()
