@@ -1,6 +1,7 @@
 package agents
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"slices"
@@ -32,9 +33,10 @@ type Config struct {
 	Model  string
 	Effort string
 	Roles  []Role
-	// Models are the models spawn_agent may name, as Codex checks them
-	// against its catalog; empty accepts any (see CodexModels).
-	Models []Model
+	// Validate refuses a model spawn_agent may not use, as Codex checks
+	// the model against its catalog (internal/models.Validate); nil
+	// accepts any.
+	Validate func(ctx context.Context, model string) error
 }
 
 // Manager implements engine.Subagents. Children are ordinary sessions on the

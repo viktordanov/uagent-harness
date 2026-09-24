@@ -1,11 +1,13 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"slices"
 
 	"github.com/viktordanov/uagent-harness/internal/agents"
 	"github.com/viktordanov/uagent-harness/internal/config"
+	"github.com/viktordanov/uagent-harness/internal/models"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
 
@@ -70,13 +72,13 @@ func newAgents(r Resolved, cfg config.Config, workspace string, opts *session.Op
 		opts.Notices = append(opts.Notices, warnings...)
 	}
 
-	var models []agents.Model
-	if r.Settings.Provider == CodexProvider { // a ChatGPT account runs only Codex's models
-		models = agents.CodexModels
-	}
+	// spawn_agent checks a model against the provider's live list, as Codex
+	// checks it against its catalog; children run on the root's provider.
+	provider := r.Settings.Provider
+	validate := func(ctx context.Context, model string) error { return models.Validate(ctx, provider, model) }
 
 	return agents.New(agents.Config{
 		MaxThreads: r.Agents.MaxThreads, MaxDepth: depth, Model: r.Agents.Model, Effort: r.Agents.Effort,
-		Roles: roles, Models: models,
+		Roles: roles, Validate: validate,
 	})
 }
