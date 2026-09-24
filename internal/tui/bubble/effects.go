@@ -65,6 +65,19 @@ func (m Model) run(e state.Effect) tea.Cmd {
 
 			return state.SessionsLoaded{Sessions: infos, Local: local, All: m.deps.AllSessions || m.deps.Cwd == ""}
 		}
+	case state.EffLoadActivity:
+		if m.deps.Activity == nil {
+			return nil
+		}
+
+		return func() tea.Msg {
+			counts, err := m.deps.Activity()
+			if err != nil {
+				return fail(err)
+			}
+
+			return state.ActivityLoaded{Counts: counts}
+		}
 	case state.EffOpenSession:
 		return m.switchTo(e.ID)
 	case state.EffQuit:

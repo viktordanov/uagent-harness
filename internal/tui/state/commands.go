@@ -149,7 +149,7 @@ func cmdStatus(s *State, _ string) []Effect {
 	s.notice(session.LevelInfo, fmt.Sprintf("%d runs · %d turns · %d tool calls (max %d parallel) · %d in / %d out tokens · tools overlapped the model %s", t.Runs, t.Turns, t.ToolCalls, t.MaxParallel, t.Tokens.InputTokens, t.Tokens.OutputTokens, t.Overlap.Round(100_000_000)))
 	s.notice(session.LevelInfo, "instructions: "+files)
 
-	return nil
+	return []Effect{EffLoadActivity{}}
 }
 
 func cmdHelp(s *State, _ string) []Effect {

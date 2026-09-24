@@ -133,6 +133,10 @@ type (
 		Local    []session.Info
 		All      bool
 	}
+	// ActivityLoaded carries runs per day (YYYY-MM-DD) for /status.
+	ActivityLoaded struct {
+		Counts map[string]int
+	}
 	// PickerToggleAll switches between this directory and all sessions.
 	PickerToggleAll struct{}
 	// PickerMove moves the picker selection.

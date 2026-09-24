@@ -29,7 +29,7 @@ Status: `todo`, `doing`, `done`, `cut` (with a reason).
 | 3 | Sandbox phase 3: auto-review and the one-shot model call | A | 2 | todo |
 | 4 | Compaction, Codex's way, and the context meter | B | 1 | doing |
 | 5 | MCP | C | 1 | doing |
-| 6 | Session storage index and the `/status` activity heatmap | D | 1 | todo |
+| 6 | Session storage index and the `/status` activity heatmap | D | 1 | done |
 | 7 | `/` menu and `@` mentions | D | 1 | todo |
 | 8 | AGENTS.md and skills parity with Codex | B | 4 | todo |
 | 9 | Hooks for the new features | main session | 2, 4, 5 | todo |
@@ -115,3 +115,4 @@ One line per merge or decision: time, item, what landed, commit.
 
 - 04:30 · 1 · CI lints for linux and darwin (matrix); go mod tidy; audit recorded in architecture.md (files ≤ 400 lines; the reducer and printer switches kept as decision tables). No other findings: the earlier split of session, app, and embedded already fixed the grab-bags.
 - 04:30 · 12 · docs/design/subagents.md: Codex v1 tool set (spawn_agent, send_input, wait, close_agent), [agents] config and role files, children as uah sessions; build after items 2–5.
+- 04:36 · 6 · internal/store: SQLite index (modernc.org/sqlite, WAL, FTS5) reconciled from run records, equal to the file scan by test; listing, --last, and the picker use it with a file-scan fallback; `uah sessions --search`; `/status` 12-week heatmap. Context threaded through app.Setup and FindSession.

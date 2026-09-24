@@ -18,6 +18,8 @@ type (
 	EffSetSettings struct{ Settings session.Settings }
 	// EffLoadSessions lists sessions for the picker.
 	EffLoadSessions struct{}
+	// EffLoadActivity counts recent runs per day for /status.
+	EffLoadActivity struct{}
 	// EffOpenSession closes the current session and opens another ("" for a new one).
 	EffOpenSession struct{ ID string }
 	// EffQuit closes the session and exits.
@@ -30,5 +32,6 @@ func (EffInterrupt) effect()    {}
 func (EffWithdraw) effect()     {}
 func (EffSetSettings) effect()  {}
 func (EffLoadSessions) effect() {}
+func (EffLoadActivity) effect() {}
 func (EffOpenSession) effect()  {}
 func (EffQuit) effect()         {}

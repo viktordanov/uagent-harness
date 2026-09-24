@@ -31,6 +31,8 @@ type Deps struct {
 	Open func(ctx context.Context, id string) (*session.Session, []session.LoadedRun, error)
 	// Sessions lists sessions for the picker.
 	Sessions func() ([]session.Info, error)
+	// Activity counts recent runs per day for /status (optional).
+	Activity func() (map[string]int, error)
 	// SessionID is the session to open first ("" for a new one).
 	SessionID string
 	// Prompt, when set, is sent once the first session is open.

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -81,10 +82,10 @@ func sessionFlags() []cli.Flag {
 
 // setupFor sets up a session for ref ("" starts a new one) from the flags,
 // mapping usage errors to exitUsage.
-func setupFor(cmd *cli.Command, logOutput io.Writer, ref string) (app.Result, error) {
+func setupFor(ctx context.Context, cmd *cli.Command, logOutput io.Writer, ref string) (app.Result, error) {
 	in := inputs(cmd)
 	in.SessionRef = ref
-	st, err := app.Setup(in, logOutput)
+	st, err := app.Setup(ctx, in, logOutput)
 	if err != nil {
 		return app.Result{}, exitError(err)
 	}

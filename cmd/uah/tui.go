@@ -6,10 +6,12 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/urfave/cli/v3"
 
 	"github.com/viktordanov/uagent-harness/internal/session"
+	"github.com/viktordanov/uagent-harness/internal/store"
 	"github.com/viktordanov/uagent-harness/internal/tui/bubble"
 )
 
@@ -34,7 +36,7 @@ func openTUI(ctx context.Context, cmd *cli.Command, launch tuiLaunch) error {
 	if !isTerminal(os.Stdin) || !isTerminal(os.Stdout) {
 		return cli.Exit("the TUI needs a terminal; for scripts and pipes use uah run", exitUsage)
 	}
-	st, err := setupFor(cmd, os.Stderr, launch.sessionRef) // validates flags before the screen takes over
+	st, err := setupFor(ctx, cmd, os.Stderr, launch.sessionRef) // validates flags before the screen takes over
 	if err != nil {
 		return err
 	}
@@ -56,7 +58,7 @@ func openTUI(ctx context.Context, cmd *cli.Command, launch tuiLaunch) error {
 		AllSessions: launch.all,
 		Details:     st.Config.TUI.Details,
 		Open: func(ctx context.Context, id string) (*session.Session, []session.LoadedRun, error) {
-			setup, err := setupFor(cmd, logFile, id)
+			setup, err := setupFor(ctx, cmd, logFile, id)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -77,8 +79,9 @@ func openTUI(ctx context.Context, cmd *cli.Command, launch tuiLaunch) error {
 
 			return s, history, nil
 		},
+		Activity: func() (map[string]int, error) { return store.ActivityIn(ctx, st.StateDir, time.Now(), 7*12) },
 		Sessions: func() ([]session.Info, error) {
-			infos, err := session.Sessions(st.StateDir)
+			infos, err := store.List(ctx, st.StateDir)
 
 			return session.Interactive(infos), err
 		},

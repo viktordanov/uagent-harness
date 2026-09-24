@@ -262,6 +262,8 @@ func (s *State) onIntent(ev any) (State, []Effect) {
 		return s.stepEffort(e.Delta)
 	case OpenPicker:
 		return *s, []Effect{EffLoadSessions{}}
+	case ActivityLoaded:
+		s.notice(session.LevelInfo, Heatmap(e.Counts, s.Now, heatmapWeeks))
 	case SessionsLoaded:
 		s.Mode, s.Picker = ModePicker, Picker{Sessions: e.Sessions, Local: e.Local, All: e.All}
 	case PickerToggleAll:

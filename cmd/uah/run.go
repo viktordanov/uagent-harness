@@ -54,13 +54,13 @@ func runAction(ctx context.Context, cmd *cli.Command) error {
 	}
 	ref := cmd.String("session")
 	if cmd.Bool("last") {
-		info, err := latestSession(cmd, false)
+		info, err := latestSession(ctx, cmd, false)
 		if err != nil {
 			return err
 		}
 		ref = info.ID
 	}
-	st, err := setupFor(cmd, os.Stderr, ref)
+	st, err := setupFor(ctx, cmd, os.Stderr, ref)
 	if err != nil {
 		return err
 	}
