@@ -12,7 +12,7 @@
 The [ledger](docs/ledger.md) tracks what is built and what is next.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="usage" files="cmd/uah/main.go cmd/uah/models.go cmd/uah/run.go cmd/uah/resume.go cmd/uah/sessions.go cmd/uah/tui.go cmd/uah/tuiconfig.go cmd/uah/print.go cmd/uah/completion.go cmd/uah/doctor.go internal/app/doctor.go internal/app/doctorchecks.go cmd/uah/flags.go cmd/uah/prompts.go internal/images/images.go internal/images/store.go internal/images/paths.go internal/images/clipboard/clipboard.go internal/images/clipboard/macos.go internal/images/clipboard/linux.go" -->
+<!-- memoria:section id="usage" files="cmd/uah/main.go cmd/uah/models.go cmd/uah/run.go cmd/uah/resume.go cmd/uah/sessions.go cmd/uah/tui.go cmd/uah/tuiconfig.go cmd/uah/print.go cmd/uah/completion.go cmd/uah/doctor.go internal/app/doctor.go internal/app/doctorchecks.go cmd/uah/usage.go internal/app/planusage.go cmd/uah/flags.go cmd/uah/prompts.go internal/images/images.go internal/images/store.go internal/images/paths.go internal/images/clipboard/clipboard.go internal/images/clipboard/macos.go internal/images/clipboard/linux.go" -->
 ## Get started
 
 1. Install it (Go 1.27.1 or later):
@@ -22,7 +22,7 @@ The [ledger](docs/ledger.md) tracks what is built and what is next.
    ```
 
 2. Sign in. The default provider, `openai-codex`, uses your ChatGPT login: run `codex login`. For another provider, pass `--provider` (openai, openrouter, fireworks, or ollama) and set its API key variable.
-3. Check the setup: `uah doctor` checks the credentials, the models your login can use, the sandbox, the configuration, hooks, MCP servers, and the state directory, and says how to fix each ✗.
+3. Check the setup: `uah doctor` checks the credentials, the models your login can use, your plan's usage, the sandbox, the configuration, hooks, MCP servers, and the state directory, and says how to fix each ✗.
 4. Start in a repository:
 
    ```sh
@@ -97,6 +97,22 @@ To remove an image, delete its placeholder: one backspace at its end removes it 
 - At start: `uah -m gpt-6-luna -e medium`, and `--fast` for priority processing.
 - For every session: `model` and `effort` in the [configuration](#configuration).
 - See what the provider offers: `uah models` (`--json`, `--refresh`), `/model ` then tab in the TUI, or tab after `-m`. A model the provider does not list is refused with the nearest names ("gpt-luna-6 is not available on openai-codex; did you mean gpt-6-luna?").
+
+### See your plan's usage
+
+With the default provider, `openai-codex`, uah shows how much of your ChatGPT plan's usage is left, as Codex does:
+
+```sh
+uah usage          # pro plan (openai-codex)
+                   # weekly  [███████████████░░░░░]  22% used · 78% left · resets 15:44 on 26 Sep
+uah usage --json   # the same for scripts
+```
+
+- In the TUI, `/status` shows a row per window, and the footer shows the tightest one beside the context meter (`weekly 78% left · 64% context left`).
+- A notice warns once when a window passes 75, 90, and 95% used. When a run stops at the limit, a notice says when to try again.
+- `uah doctor` warns from 90% used.
+
+Windows are named by their length (5h, daily, weekly), because a plan can have only a weekly window. uah reads the usage when you ask and after each run, never on a timer. Other providers have no usage to show.
 
 ### Let a command run without asking
 
@@ -394,6 +410,15 @@ uah asks the provider which models the login can use, as Codex does: the list co
 <!-- /memoria:import -->
 
 `/model`, `-m` completion, `uah models`, and `uah doctor` read the catalog, and the context window comes from it when the provider gives one. Read more: [the model catalog](internal/models/README.md).
+<!-- /memoria:section -->
+
+<!-- memoria:section id="plan-usage" files="internal/app/planusage.go cmd/uah/usage.go internal/app/setup.go" -->
+### Plan usage
+
+<!-- memoria:import src="internal/usage/README.md#summary" -->
+<!-- /memoria:import -->
+
+`app.Setup` builds one reader per session, next to the model catalog, and the TUI gets it through `bubble.Deps`. `uah usage`, `/status`, the footer, the warnings, and `uah doctor` read through it. Read more: [plan usage](internal/usage/README.md), and the [design](docs/design/usage.md).
 <!-- /memoria:section -->
 
 <!-- memoria:section id="development" files=".github/workflows/ci.yml .golangci.yml testing/fakellm/fakellm.go testing/harnesstest/harnesstest.go" -->

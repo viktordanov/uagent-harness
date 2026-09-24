@@ -1,6 +1,6 @@
 # Subscription usage: research and plan
 
-Status: spike, 2026-09-24. Ledger item 35. The design is not built. A prototype package, `internal/usage`, is used by nothing. Codex facts are from openai/codex at `rust-v0.156.1` (paths under `codex-rs/`, written `C/`). Runner facts are from unreal-agent v0.1.1 (written `R/`). uah paths are relative to the repository root.
+Status: built, 2026-09-24. Ledger item 35 was the spike; item 39 built the recommended design with the default of each open decision (see [As built](#as-built)). Codex facts are from openai/codex at `rust-v0.156.1` (paths under `codex-rs/`, written `C/`). Runner facts are from unreal-agent v0.1.1 (written `R/`). uah paths are relative to the repository root.
 
 **Answer.** Yes, uah can show the ChatGPT subscription's usage as Codex does. The same credentials give it through two channels:
 
@@ -17,6 +17,7 @@ A real read on the owner's machine confirmed both channels (see [Probes](#probes
 6. [Options](#options)
 7. [Recommended design](#recommended-design)
 8. [Open decisions](#open-decisions)
+9. [As built](#as-built)
 
 ## How Codex reads usage
 
@@ -152,3 +153,20 @@ Each decision has a default, which the plan above uses.
 5. **Headers (B).** Default: later. It needs an engine change to build the default-tier client in uah.
 6. **Warning thresholds.** Default: 75%, 90%, and 95%. Codex also warns at 50% and filters the thresholds by plan (`usage_notice::warning_threshold`), and uah does not copy that table.
 7. **Extra fields.** Default: ignore `code_review_rate_limit`, `model_usage`, `rate_limit_reset_credits`, `spend_control`, and `promo` until a use appears. Codex 0.156.1 uses reset credits and spend control for features that uah does not have.
+
+## As built
+
+Ledger item 39 built option A with every default above. The code is in `internal/usage` (see its [README](../../internal/usage/README.md)).
+
+- **Reader.** `usage.For(provider, opts)` gives a `CodexReader` for openai-codex and, for other providers, a reader whose error wraps `usage.ErrUnsupported` ("usage is not available for ollama"). The Codex reader loads the credentials on each read, sends one request at a time, keeps the last snapshot, and serves it within the max age. It returns the last snapshot with an error. `app.Setup` builds it once per session (`Result.Usage`) beside the model catalog, and `cmd/uah` passes it to the TUI in `bubble.Deps.Usage`. There is no global.
+- **Identity.** The GET sends the engine's headers, with `originator` and `User-Agent` set to `unreal-agent`.
+- **`uah usage`** (`--json`). It prints the plan and one line per window, named by its length: `weekly  [███████████████░░░░░]  22% used · 78% left · resets 15:44 on 26 Sep`, then credits and "the usage limit is reached" when they apply. `--base-url` points it at a loopback server, as for `uah models`. For another provider it fails with "usage is not available for <provider>".
+- **`/status`.** A notice with the plan and a row per window (bar, "N% left (resets …)"). When the read fails, it shows the error and the last snapshot, marked stale after 15 minutes. It reads with max age 0 through `EffLoadUsage` and `UsageLoaded`, like `EffLoadActivity`.
+- **Footer.** The tightest window of the ordinary limit, before the context meter: `weekly 78% left · 64% context left`. It is hidden until the first read and for a provider without usage.
+- **Refresh.** On each `/status`, `uah usage`, and `uah doctor`, and after each run ends (`RunFinished`, max age 60 s). There is no timer. Session events can now return effects in the TUI; this read is the first such effect.
+- **Warnings.** One notice per window per threshold (75, 90, and 95% used), with the highest threshold crossed since the last read. A window that falls back below a threshold, after its reset, warns again. The read for `/status` records the thresholds without a warning.
+- **Limit reached.** The runner reports a failed model call as text only: `responses API request failed with status 429: <message>`, or `responses API error <code>: <message>`, in a `RunnerError` or a model failure. `APIError` drops the body's `type` and `resets_at`. `usage.LimitReachedIn` accepts `usage_limit_reached`, or 429 with "usage limit", and takes `resets_at` from the text when the body survived in it. Otherwise the TUI reads the usage and names the latest reset among the windows at 100%, else the tightest window's reset: "Usage limit reached; try again at 15:44 on 26 Sep." The notice shows once per run. The error text itself was not seen for real; the parser is written for the forms above.
+- **Doctor.** A `usage` check after `models`: `ok` with the plan and the tightest window ("pro · weekly 78% left (resets 15:44 on 26 Sep)"), `warn` from 90% used or when the read fails, and `fail` when a limit is reached or the backend rejects the login. It is left out for other providers.
+- **Tests.** The reader, `uah usage`, `uah doctor`, and the TUI run against loopback servers with the fixtures; no test calls the backend. One real `uah usage` by hand on 2026-09-24 printed `pro plan (openai-codex)` and `weekly  [███████████████░░░░░]  22% used · 78% left · resets 15:44 on 26 Sep`.
+
+Still open: option B (the headers), which needs uah to build the default-tier openai-codex client; the extra fields (decision 7); and a config switch for the footer (decision 3), which nobody has asked for.

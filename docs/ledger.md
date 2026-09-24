@@ -20,7 +20,7 @@ Asked for by the owner after item 28; these come first.
 | 36 | The composer's λ on its first row only | main session | done |
 | 37 | Paste images into the prompt, as Codex and Claude Code do (ctrl+v on macOS; the Linux key to be found); first check what the runner and uagent allow | lane images | done (embedded engine; the image goes as a ViewImage result, since the runner's user message is text only; see docs/design/images.md) |
 | 38 | `!` shell mode in the composer: run a command yourself, and its result joins the conversation | lane shell | doing |
-| 39 | Show the subscription's usage, as designed in item 35 (the owner accepted the defaults) | lane usage2 | doing |
+| 39 | Show the subscription's usage, as designed in item 35 (the owner accepted the defaults) | lane usage2 | done |
 
 ### 34. The resume hint on quit
 
@@ -43,6 +43,9 @@ Typing `!` at the start of an empty composer switches it to shell mode: the λ b
 ### 39. Subscription usage
 
 Build docs/design/usage.md's recommended design with its defaults, which the owner accepted: read the openai-codex plan's usage from `/wham/usage` (read-only, uah's own identity, on demand and after each run, cached for 60 s, no polling); `uah usage` (`--json`); `/status` rows with each window's percent left and reset time; the tightest window in the footer beside the context meter; warnings at 75, 90, and 95% used; "try again at …" when a run hits the limit; a `usage` check in `uah doctor`. Other providers say usage is not available.
+
+- Built: `usage.Reader` (`For`, `CodexReader`: one request at a time, a 60 s cache for the read after each run, credentials loaded per read), built once per session in `app.Setup` and passed in `bubble.Deps.Usage`; `uah usage [--json]`; `/status` rows with a bar and a stale mark; the footer's `weekly 78% left`; warnings at 75, 90, and 95% used; "Usage limit reached; try again at …" from the failure text or a fresh read; the doctor's `usage` check. See [As built](design/usage.md#as-built).
+- Open, default taken: the doctor check also fails when a limit is reached or the backend rejects the login, as the design's table says. The 429's exact text through the runner was not seen for real, so `usage.LimitReachedIn` accepts both forms the runner can produce. Option B (the headers) stays for later.
 
 ### 29. MCP approvals
 
