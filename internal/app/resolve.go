@@ -5,6 +5,7 @@ package app
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
 	"strconv"
 	"strings"
@@ -73,6 +74,8 @@ type Resolved struct {
 	// Sandbox is the policy commands run under. Its Workspace and
 	// WritableRoots are as given; Setup makes them absolute.
 	Sandbox sandbox.Policy
+	// Env is which environment variables commands get.
+	Env sandbox.EnvPolicy
 }
 
 // UsageError is an error in what the user asked for, such as an invalid
@@ -122,7 +125,29 @@ func Resolve(in Inputs, resumed session.Info, cfg config.Config) (Resolved, erro
 	}
 	s.Sandbox = string(policy.Mode)
 
-	return Resolved{Settings: s, Engine: eng, MaxDisk: maxDisk, Instructions: !in.NoInstructions && cfg.InstructionsEnabled(), Sandbox: policy}, nil
+	envPolicy, err := pickEnv(cfg.ShellEnvironmentPolicy)
+	if err != nil {
+		return Resolved{}, err
+	}
+
+	return Resolved{
+		Settings: s, Engine: eng, MaxDisk: maxDisk, Instructions: !in.NoInstructions && cfg.InstructionsEnabled(),
+		Sandbox: policy, Env: envPolicy,
+	}, nil
+}
+
+// pickEnv checks the configured environment policy.
+func pickEnv(c config.ShellEnvironmentPolicy) (sandbox.EnvPolicy, error) {
+	switch c.Inherit {
+	case "", sandbox.InheritAll, sandbox.InheritCore, sandbox.InheritNone:
+	default:
+		return sandbox.EnvPolicy{}, usage(fmt.Errorf("invalid shell_environment_policy.inherit %q (want all, core, or none)", c.Inherit))
+	}
+
+	return sandbox.EnvPolicy{
+		Inherit: c.Inherit, IgnoreDefaultExcludes: c.IgnoreDefaultExcludes,
+		Exclude: c.Exclude, IncludeOnly: c.IncludeOnly, Set: c.Set,
+	}, nil
 }
 
 // pickSandbox is the --sandbox flag, the configured sandbox_mode, or

@@ -131,3 +131,10 @@ func wildmatch(pattern, s string) bool {
 
 	return px == len(pattern)
 }
+
+// isDefault reports whether the policy passes the environment through
+// unchanged.
+func (p EnvPolicy) isDefault() bool {
+	return (p.Inherit == "" || p.Inherit == InheritAll) && (p.IgnoreDefaultExcludes == nil || *p.IgnoreDefaultExcludes) &&
+		len(p.Exclude) == 0 && len(p.Set) == 0 && len(p.IncludeOnly) == 0
+}

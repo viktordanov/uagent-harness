@@ -17,7 +17,7 @@ func wrap(p Policy, argv []string) ([]string, error) {
 	if err != nil {
 		return nil, ErrUnavailable
 	}
-	args, _ := bwrapLayout(p, canMountProc(bwrap))
+	args := bwrapLayout(p, canMountProc(bwrap))
 	out := append([]string{bwrap}, args...)
 	out = append(out, "--")
 

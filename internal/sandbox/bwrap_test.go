@@ -1,7 +1,6 @@
 package sandbox_test
 
 import (
-	"flag"
 	"os"
 	"path/filepath"
 	"slices"
@@ -13,8 +12,6 @@ import (
 
 	"github.com/viktordanov/uagent-harness/internal/sandbox"
 )
-
-var update = flag.Bool("update", false, "rewrite golden files")
 
 func TestBwrapArgs(t *testing.T) {
 	cases := []struct {
@@ -60,23 +57,14 @@ func TestBwrapArgs(t *testing.T) {
 	}
 }
 
-func TestBwrapMountTargets(t *testing.T) {
+func TestBwrapLeavesMissingNamesAlone(t *testing.T) {
 	base := goldenBase(t)
 	t.Setenv("TMPDIR", "")
 	ws := mkdir(t, base, "ws", ".agents")
-	got := sandbox.BwrapMountTargets(sandbox.Policy{Mode: sandbox.WorkspaceWrite, Workspace: ws})
-	for _, name := range []string{".git", ".uagent", ".codex"} {
-		assert.Contains(t, got, filepath.Join(ws, name))
-	}
-	assert.NotContains(t, got, filepath.Join(ws, ".agents"))
-	systmp, err := filepath.EvalSymlinks("/tmp")
-	require.NoError(t, err)
 	args := sandbox.BwrapArgs(sandbox.Policy{Mode: sandbox.WorkspaceWrite, Workspace: ws})
-	for _, name := range sandbox.ProtectedNames {
-		// Protected either way: bound read-only, or an empty read-only tmpfs.
-		assert.Contains(t, args, filepath.Join(systmp, name))
-	}
-	assert.Empty(t, sandbox.BwrapMountTargets(sandbox.Policy{Mode: sandbox.ReadOnly, Workspace: ws}))
+	assert.Contains(t, args, filepath.Join(ws, ".agents"), "an existing protected directory is bound read-only")
+	assert.NotContains(t, args, filepath.Join(ws, ".git"), "a missing one creates no mount point on the host")
+	assert.NotContains(t, args, "--tmpfs")
 }
 
 // goldenBase returns a directory outside /tmp, so /tmp stays a separate

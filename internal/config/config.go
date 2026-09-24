@@ -31,6 +31,8 @@ type Config struct {
 	// danger-full-access; the names match Codex's.
 	SandboxMode           string                `toml:"sandbox_mode"`
 	SandboxWorkspaceWrite SandboxWorkspaceWrite `toml:"sandbox_workspace_write"`
+	// ShellEnvironmentPolicy is which environment variables commands get.
+	ShellEnvironmentPolicy ShellEnvironmentPolicy `toml:"shell_environment_policy"`
 
 	Instructions Instructions `toml:"instructions"`
 	TUI          TUI          `toml:"tui"`
@@ -90,6 +92,16 @@ type SandboxWorkspaceWrite struct {
 	// WritableRoots are extra writable directories; ~ is the home directory,
 	// and relative paths are relative to the workspace.
 	WritableRoots []string `toml:"writable_roots"`
+}
+
+// ShellEnvironmentPolicy is Codex's [shell_environment_policy]. Empty, it
+// passes the whole environment to commands, as Codex does.
+type ShellEnvironmentPolicy struct {
+	Inherit               string            `toml:"inherit"` // all, core, or none
+	IgnoreDefaultExcludes *bool             `toml:"ignore_default_excludes"`
+	Exclude               []string          `toml:"exclude"`
+	IncludeOnly           []string          `toml:"include_only"`
+	Set                   map[string]string `toml:"set"`
 }
 
 // TUI configures the terminal UI.
@@ -221,6 +233,19 @@ func merge(base, over Config) Config {
 	set(&base.SandboxMode, over.SandboxMode)
 	base.SandboxWorkspaceWrite.NetworkAccess = base.SandboxWorkspaceWrite.NetworkAccess || over.SandboxWorkspaceWrite.NetworkAccess
 	base.SandboxWorkspaceWrite.WritableRoots = append(base.SandboxWorkspaceWrite.WritableRoots, over.SandboxWorkspaceWrite.WritableRoots...)
+	env, overEnv := &base.ShellEnvironmentPolicy, over.ShellEnvironmentPolicy
+	set(&env.Inherit, overEnv.Inherit)
+	if overEnv.IgnoreDefaultExcludes != nil {
+		env.IgnoreDefaultExcludes = overEnv.IgnoreDefaultExcludes
+	}
+	env.Exclude = append(env.Exclude, overEnv.Exclude...)
+	env.IncludeOnly = append(env.IncludeOnly, overEnv.IncludeOnly...)
+	for k, v := range overEnv.Set {
+		if env.Set == nil {
+			env.Set = map[string]string{}
+		}
+		env.Set[k] = v
+	}
 	base.Fast = base.Fast || over.Fast
 	base.TUI.Details = base.TUI.Details || over.TUI.Details
 	for event, list := range over.Hooks {

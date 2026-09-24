@@ -1,7 +1,9 @@
 // Package sandbox runs shell commands inside the operating system's sandbox,
 // as Codex does: Seatbelt (sandbox-exec) on macOS and bubblewrap on Linux.
 // A Policy says what a command may write and whether it has network; Wrap
-// turns a command line into one that runs under the policy.
+// turns a command line into one that runs under the policy, and Shell writes
+// a script the runner can use as its shell. Denied recognizes a command the
+// sandbox blocked, and EnvPolicy is Codex's shell_environment_policy.
 package sandbox
 
 import (

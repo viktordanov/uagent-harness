@@ -155,8 +155,8 @@ func TestTUI_CommandsAndPrompt(t *testing.T) {
 
 	d.typeText("/re")
 	assert.Contains(t, d.view(), "/resume [id]", "typing a command shows completions")
-	d.key('u', tea.ModCtrl) // no effect; clear the draft with ctrl+c instead
-	d.key('c', tea.ModCtrl)
+	d.key('c', tea.ModCtrl) // clears the draft, not quits
+	assert.Contains(t, d.view(), "message · / for commands", "the composer is empty again")
 	assert.NotContains(t, d.view(), "/resume [id]")
 
 	d.typeText("/effort low")

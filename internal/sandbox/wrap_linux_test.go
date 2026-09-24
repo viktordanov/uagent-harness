@@ -62,17 +62,10 @@ func (r linuxRun) policy(mode sandbox.Mode, network bool) sandbox.Policy {
 	return sandbox.Policy{Mode: mode, Workspace: r.ws, Network: network}
 }
 
-// run runs script with sh inside the sandbox and returns its exit code and
-// output, removing the mount points bwrap left behind.
+// run runs name with args inside the sandbox and returns its exit code and
+// output.
 func run(t *testing.T, p sandbox.Policy, stdout *os.File, name string, args ...string) (code int, output string) {
 	t.Helper()
-	// The mount points bwrap will create, listed before it creates them.
-	targets := sandbox.BwrapMountTargets(p)
-	t.Cleanup(func() {
-		for _, target := range targets {
-			_ = os.Remove(target)
-		}
-	})
 	argv, err := p.Wrap(append([]string{name}, args...))
 	require.NoError(t, err)
 	cmd := exec.Command(argv[0], argv[1:]...)
@@ -121,9 +114,14 @@ func TestLinuxWorkspaceWrite(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "[core]\n", string(data))
 
+	require.NoError(t, os.Mkdir(filepath.Join(r.ws, ".uagent"), 0o700))
 	code, out = sh(t, p, "mkdir .uagent/rules")
 	assert.NotEqual(t, 0, code)
 	assert.True(t, sandbox.Denied(code, out), out)
+
+	// A protected name that does not exist yet is not protected on Linux.
+	code, out = sh(t, p, "mkdir .codex")
+	assert.Equal(t, 0, code, out)
 }
 
 func TestLinuxReadOnly(t *testing.T) {
