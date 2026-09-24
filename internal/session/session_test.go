@@ -20,6 +20,8 @@ import (
 // fakeEngine scripts runs: each run echoes its messages (unless noEcho) and
 // ends when the test finishes it or it is interrupted.
 type fakeEngine struct {
+	// gate, when set, holds Start until it is closed.
+	gate     chan struct{}
 	caps     engine.Capabilities
 	noEcho   bool
 	startErr error
@@ -34,6 +36,9 @@ func (e *fakeEngine) Name() string                      { return "fake" }
 func (e *fakeEngine) Capabilities() engine.Capabilities { return e.caps }
 
 func (e *fakeEngine) Start(_ context.Context, req core.Request, _ engine.Options, sink core.Sink) (engine.Run, error) {
+	if e.gate != nil {
+		<-e.gate
+	}
 	if e.startErr != nil {
 		return nil, e.startErr
 	}
@@ -429,4 +434,26 @@ func TestSession_RequeuesLiveMessagesTheRunNeverRead(t *testing.T) {
 	for _, e := range h.events {
 		assert.NotEqual(t, "session.InputFailed", fmt.Sprintf("%T", e))
 	}
+}
+
+func TestSession_SteerWhileStartingGoesLive(t *testing.T) {
+	h := newHarness(t, engine.Capabilities{LiveInput: true})
+	h.eng.gate = make(chan struct{})
+	_, err := h.s.Submit("work")
+	require.NoError(t, err)
+	steer, err := h.s.SteerNow("and this")
+	require.NoError(t, err)
+	close(h.eng.gate)
+
+	run := h.nextRun()
+	h.until(func(e core.Event) bool {
+		d, ok := e.(session.InputDelivered)
+
+		return ok && d.ID == steer.ID
+	})
+	assert.Equal(t, []string{"and this"}, texts(run.sent), "sent live once the run started, not by a restart")
+	assert.Equal(t, core.Status(""), run.result.Status, "the starting run was not interrupted")
+	run.finish(core.StatusOK)
+	h.until(isType[session.Idle])
+	assert.Empty(t, h.eng.started, "no second run")
 }
