@@ -17,7 +17,7 @@ import (
 func (s *State) onAgentUpdated(e engine.AgentUpdated) {
 	key := "agent:" + e.ID
 	set := func(it *Item) {
-		it.Detail, it.Started = e.State, e.Started
+		it.Detail, it.Started, it.Agent = e.State, e.Started, &e
 		if e.State != engine.AgentRunning {
 			for i := range it.Sub {
 				if it.Sub[i].Tool == ToolCalled || it.Sub[i].Tool == ToolRunning {
@@ -80,6 +80,9 @@ func cmdAgents(s *State, _ string) []Effect {
 			fmt.Fprintf(&b, " (%s)", it.Label)
 		}
 		fmt.Fprintf(&b, " · %s", it.Detail)
+		if it.Agent != nil && it.Agent.Message != "" {
+			fmt.Fprintf(&b, ": %s", it.Agent.Message)
+		}
 		if it.Detail == engine.AgentRunning {
 			fmt.Fprintf(&b, " %s", time.Since(it.Started).Round(time.Second))
 		}

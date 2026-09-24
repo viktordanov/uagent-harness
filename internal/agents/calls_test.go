@@ -86,3 +86,21 @@ func TestStatus_JSON(t *testing.T) {
 	assert.False(t, agents.Status{State: engine.AgentPendingInit}.Final())
 	assert.True(t, agents.Status{State: engine.AgentInterrupted}.Final())
 }
+
+// TestCall_UnknownModel refuses a model outside the catalog at spawn_agent,
+// with Codex's message, and the configured default model too.
+func TestCall_UnknownModel(t *testing.T) {
+	m := agents.New(agents.Config{MaxDepth: 1, Models: agents.CodexModels})
+	_, err := m.Call(t.Context(), engine.AgentCall{ParentID: "p", Tool: "spawn_agent", Args: json.RawMessage(`{"message":"hi","model":"gpt-luna-6"}`)})
+	require.EqualError(t, err, "Unknown model `gpt-luna-6` for spawn_agent. Available models: gpt-6-astra, gpt-6-sol, gpt-6-luna, gpt-5.6-sol, gpt-5.6-terra")
+	_, err = m.Call(t.Context(), engine.AgentCall{ParentID: "p", Tool: "spawn_agent", Args: json.RawMessage(`{"message":"hi","model":"gpt-6-luna"}`)})
+	require.EqualError(t, err, "subagents are not available in this session", "a known model passes the check")
+
+	withDefault := agents.New(agents.Config{MaxDepth: 1, Models: agents.CodexModels, Model: "gpt-typo"})
+	_, err = withDefault.Call(t.Context(), engine.AgentCall{ParentID: "p", Tool: "spawn_agent", Args: json.RawMessage(`{"message":"hi"}`)})
+	require.ErrorContains(t, err, "Unknown model `gpt-typo`")
+
+	anyModel := agents.New(agents.Config{MaxDepth: 1})
+	_, err = anyModel.Call(t.Context(), engine.AgentCall{ParentID: "p", Tool: "spawn_agent", Args: json.RawMessage(`{"message":"hi","model":"anything"}`)})
+	require.EqualError(t, err, "subagents are not available in this session", "other providers accept any model")
+}

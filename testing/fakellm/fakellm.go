@@ -39,6 +39,9 @@ type Reply struct {
 	// as the Responses API error code, as a provider rejects a request.
 	Fail     int
 	FailCode string
+	// FailBody, when set, is the error answer's body as sent, such as the
+	// ChatGPT backend's {"detail":"..."}.
+	FailBody string
 	// NoUsage leaves the usage out of the response, as some providers do.
 	NoUsage bool
 }
@@ -285,6 +288,9 @@ func failWith(w http.ResponseWriter, reply Reply) {
 	}})
 	if err != nil {
 		panic(err) // a map of strings always encodes
+	}
+	if reply.FailBody != "" {
+		body = []byte(reply.FailBody)
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(reply.Fail)
