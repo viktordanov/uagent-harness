@@ -225,7 +225,7 @@ Unknown keys are errors, so a typo fails loudly instead of being ignored.
 Design records and the documentation procedure are indexed in [docs](docs/README.md):
 
 <!-- memoria:import src="docs/README.md#summary" -->
-Design records for the harness, the TUI, state storage, sandboxing, and MCP, plus the architecture rules and documentation procedure for uagent-harness.
+Design records for the harness, the TUI, state storage, sandboxing, compaction, MCP, and subagents, plus the architecture rules and documentation procedure for uagent-harness.
 <!-- /memoria:import -->
 
 The [TUI framework benchmark](bench/tui/README.md) holds the measurements behind choosing Bubble Tea v2 (a separate Go module).
