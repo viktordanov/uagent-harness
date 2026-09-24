@@ -9,6 +9,7 @@ import (
 	"github.com/viktordanov/uagent/core"
 
 	"github.com/viktordanov/uagent-harness/internal/mcp"
+	"github.com/viktordanov/uagent-harness/internal/patch"
 )
 
 // Kind is what a transcript item shows.
@@ -90,6 +91,8 @@ type Item struct {
 	Label  string
 	Tool   ToolState
 	Detail string
+	// Diff is what an applied apply_patch call changed (engine.PatchApplied).
+	Diff []patch.FileDiff
 
 	// KindContext
 	Context *contextusage.Usage

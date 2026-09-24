@@ -30,6 +30,9 @@ type Theme struct {
 	Breath []color.Color
 	// Code colors code blocks: keywords, names, strings, numbers, comments.
 	Keyword, Name, String, Number, Comment color.Color
+	// DiffAdd and DiffDel tint added and removed diff lines across the
+	// whole line; DiffAddWord and DiffDelWord mark the changed words in them.
+	DiffAdd, DiffDel, DiffAddWord, DiffDelWord color.Color
 }
 
 // Amber is the default theme, for dark terminals: a saturated amber for
@@ -40,6 +43,8 @@ var Amber = Theme{
 	Band:    hex("#2a2a2a"),
 	Breath:  []color.Color{hex("#5a4200"), hex("#806000"), hex("#a67c00"), hex("#cc9900"), hex("#e6b000"), hex("#ffc400"), hex("#ffe066")},
 	Keyword: hex("#ffc400"), Name: hex("#ffd75e"), String: hex("#9be564"), Number: hex("#ff9f43"), Comment: hex("#8a8272"),
+	// Codex's dark diff tints, and stronger ones for the changed words.
+	DiffAdd: hex("#212922"), DiffDel: hex("#3c170f"), DiffAddWord: hex("#2f5a32"), DiffDelWord: hex("#6e2a18"),
 }
 
 // AmberLight is Amber for light terminals: deep amber ink.
@@ -49,6 +54,8 @@ var AmberLight = Theme{
 	Band:    hex("#efe9dc"),
 	Breath:  []color.Color{hex("#ecd9b0"), hex("#e0bf80"), hex("#d4a24c"), hex("#c88a22"), hex("#bd7a08"), hex("#b86e00"), hex("#8a4f00")},
 	Keyword: hex("#b86e00"), Name: hex("#9a5c00"), String: hex("#4f8a10"), Number: hex("#c4501a"), Comment: hex("#9a917f"),
+	// GitHub's light diff colors, as Codex uses on light terminals.
+	DiffAdd: hex("#e6ffec"), DiffDel: hex("#ffebe9"), DiffAddWord: hex("#abf2bc"), DiffDelWord: hex("#ffc1c0"),
 }
 
 // ThemeFor picks Amber or AmberLight for the terminal's background and
@@ -83,6 +90,8 @@ var (
 	codeStyle *chroma.Style
 	// categoryColors color /context's categories.
 	categoryColors map[string]lipgloss.Style
+	// diffStyles draw added and removed diff lines.
+	diffStyles map[string]diffStyle
 )
 
 func init() { SetTheme(Amber) }
@@ -112,6 +121,7 @@ func SetTheme(t Theme) {
 		contextusage.Assistant:    lipgloss.NewStyle().Foreground(t.Extra),
 		contextusage.ToolResults:  lipgloss.NewStyle().Foreground(t.Bad),
 	}
+	diffStyles = newDiffStyles(t)
 	r, g, b := rgb(t.Band)
 	bandOn = fmt.Sprintf("\x1b[48;2;%d;%d;%dm", r, g, b)
 	breath = breath[:0]

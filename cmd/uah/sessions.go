@@ -17,6 +17,7 @@ import (
 
 	"github.com/viktordanov/uagent-harness/internal/app"
 	"github.com/viktordanov/uagent-harness/internal/engine"
+	"github.com/viktordanov/uagent-harness/internal/patch"
 	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/internal/store"
 )
@@ -173,7 +174,13 @@ func printTranscript(w io.Writer, info session.Info, runs []session.LoadedRun) {
 			case core.UserMessage:
 				fmt.Fprintf(w, "› %s\n", m.Text)
 			case core.ToolCalled:
-				fmt.Fprintf(w, "  → %s  %s\n", m.Name, m.Label)
+				label := m.Label
+				if files := patch.Describe(m.Arguments); m.Name == patch.ToolName && files != "" {
+					label = files
+				}
+				fmt.Fprintf(w, "  → %s  %s\n", m.Name, label)
+			case engine.PatchApplied:
+				fmt.Fprint(w, patch.Plain(m.Files, "    "))
 			case core.AssistantMessage:
 				if m.Final {
 					fmt.Fprintf(w, "✓ %s\n", m.Text)

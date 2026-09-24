@@ -1,0 +1,24 @@
+
+  EDIT           Edited 2 files (+11 -1)
+  └ pkg/foo/foo.go (+1 -1)
+    11  func Answer() int {
+    12 -    return 41 // the answer
+    12 +    return 42 // the answer
+    13  }
+  └ pkg/foo/doc.md (+10 -0)
+     1 +line 1 of the notes
+     2 +line 2 of the notes
+     3 +line 3 of the notes
+     4 +line 4 of the notes
+     5 +line 5 of the notes
+     6 +line 6 of the notes
+     7 +line 7 of the notes
+     8 +line 8 of the notes
+    … +2 lines (ctrl+t to view)
+
+  12:00 AM · worked 1s
+
+
+λ
+
+ gpt-6-sol high · /workspace/proj                                       ctrl+t details · / commands
