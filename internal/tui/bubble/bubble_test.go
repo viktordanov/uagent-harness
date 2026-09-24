@@ -263,6 +263,15 @@ func TestTUI_WheelScrolls(t *testing.T) {
 
 	d.key(tea.KeyEnd, 0)
 	assert.Equal(t, bottom, d.view())
+
+	// The terminal's wheel as ↑ and ↓ scrolls with a prompt typed too: a
+	// one-line prompt has no row above or below for the cursor.
+	d.typeText("half a thought")
+	d.key(tea.KeyUp, 0)
+	assert.Contains(t, d.view(), "scrolled up")
+	assert.Contains(t, d.view(), "half a thought", "the prompt stays")
+	d.key(tea.KeyDown, 0)
+	assert.NotContains(t, d.view(), "scrolled up")
 }
 
 func TestTUI_MenuCompletes(t *testing.T) {

@@ -93,7 +93,7 @@ The compact view draws one line per tool call, as Codex does; the detailed view 
 | alt+← / alt+→ (alt+b / alt+f on an empty composer) | Switch between the main agent and its subagents, in the order they started |
 | ctrl+t | Compact or detailed view |
 | ctrl+r | Show or hide reasoning summaries |
-| ↑ / ↓ on an empty composer, the mouse wheel, shift+↑ / shift+↓, pgup / pgdn | Scroll the transcript; end returns to the bottom. The TUI leaves the mouse to the terminal, so text selects as usual and the wheel arrives as ↑ and ↓. `[tui] mouse = true` reports the mouse instead: the wheel then scrolls directly, and selecting needs Option (iTerm2, Terminal) or Shift (most others) |
+| ↑ on the composer's first row and ↓ on its last (always, for a one-line prompt), the mouse wheel, shift+↑ / shift+↓, pgup / pgdn | Scroll the transcript; end returns to the bottom. The TUI leaves the mouse to the terminal, so text selects as usual and the wheel arrives as ↑ and ↓. `[tui] mouse = true` reports the mouse instead: the wheel then scrolls directly, and selecting needs Option (iTerm2, Terminal) or Shift (most others) |
 | ctrl+c | Clear the composer; on an empty composer, quit (twice while a run is live) |
 
 The approval overlay replaces the composer keys while it is open:

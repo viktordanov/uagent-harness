@@ -65,12 +65,13 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			return m.dispatch(state.EditLastQueued{})
 		}
 		// The terminal's wheel arrives as ↑ and ↓ when the mouse is not
-		// reported: an empty composer scrolls the transcript.
-		if draft == "" {
+		// reported: ↑ on the composer's first row scrolls the transcript,
+		// as there is nowhere above to move the cursor.
+		if m.onFirstRow() {
 			return m.scroll(1)
 		}
 	case keyDown:
-		if draft == "" {
+		if m.onLastRow() {
 			return m.scroll(-1)
 		}
 	case "pgup":
@@ -259,4 +260,18 @@ func (m Model) onConfigKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+// onFirstRow reports whether the composer's cursor is on its first visual
+// row, so ↑ has no line to move to.
+func (m Model) onFirstRow() bool {
+	return m.composer.Line() == 0 && m.composer.LineInfo().RowOffset == 0
+}
+
+// onLastRow reports whether the cursor is on the composer's last visual
+// row, so ↓ has no line to move to.
+func (m Model) onLastRow() bool {
+	info := m.composer.LineInfo()
+
+	return m.composer.Line() == m.composer.LineCount()-1 && info.RowOffset >= info.Height-1
 }
