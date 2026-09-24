@@ -7,6 +7,7 @@ require (
 	charm.land/bubbletea/v2 v2.0.9
 	charm.land/lipgloss/v2 v2.0.6
 	github.com/BurntSushi/toml v1.6.0
+	github.com/alecthomas/chroma/v2 v2.19.0
 	github.com/charmbracelet/x/ansi v0.11.8
 	github.com/google/uuid v1.6.0
 	github.com/stretchr/testify v1.12.1
@@ -16,7 +17,6 @@ require (
 )
 
 require (
-	github.com/alecthomas/chroma/v2 v2.19.0 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/charmbracelet/colorprofile v0.4.3 // indirect

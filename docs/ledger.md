@@ -24,7 +24,7 @@ Status: `todo`, `doing`, `done`, `cut` (with a reason).
 
 | # | Item | Lane | Depends on | Status |
 |---|---|---|---|---|
-| 1 | Quality pass | main session | — | todo |
+| 1 | Quality pass | main session | — | done |
 | 2 | Sandbox phase 2: approvals, rules, configured approvals | A | 1 | todo |
 | 3 | Sandbox phase 3: auto-review and the one-shot model call | A | 2 | todo |
 | 4 | Compaction, Codex's way, and the context meter | B | 1 | todo |
@@ -112,3 +112,5 @@ Ideas that come up while working go here, not into the items.
 ## Log
 
 One line per merge or decision: time, item, what landed, commit.
+
+- 04:30 · 1 · CI lints for linux and darwin (matrix); go mod tidy; audit recorded in architecture.md (files ≤ 400 lines; the reducer and printer switches kept as decision tables). No other findings: the earlier split of session, app, and embedded already fixed the grab-bags.

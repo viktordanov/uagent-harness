@@ -24,3 +24,12 @@ uah is a pure core with well-organized infrastructure around it, not layered DDD
 - Files are the source of truth for state: the runner's session files, uagent's run records, and uah's sidecars (see `docs/design/state.md`).
 - Wrap errors with `fmt.Errorf("failed to <action>: %w", err)`, and log with `slog` to stderr or the TUI log file.
 - Test through real code paths: the fake runner, the real runner built from go.mod, and `fakellm`, instead of mocks.
+
+## Size and complexity
+
+Files stay under about 400 lines with one concern each, and functions under about 15 cyclomatic complexity. Two known exceptions are switches over closed sets, where splitting would scatter one decision table:
+
+- `(*State).onIntent` in `internal/tui/state/reduce.go` maps each intent to its state change.
+- `(*printer).print` in `cmd/uah/print.go` maps each event to one line of progress.
+
+Lint runs for linux and darwin (CI matrix; locally `GOOS=linux golangci-lint run ./...`), because the sandbox has build-tagged halves.
