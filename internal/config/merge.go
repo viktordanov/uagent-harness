@@ -33,6 +33,11 @@ func merge(base, over Config) Config {
 	mergeAgents(&base.Agents, over.Agents)
 	base.Hooks = mergeMap(base.Hooks, over.Hooks, func(a, b []Hook) []Hook { return slices.Concat(a, b) })
 	base.MCPServers = mergeMap(base.MCPServers, over.MCPServers, func(_, b mcp.ServerConfig) mcp.ServerConfig { return b })
+	set(&base.MCPOAuthCredentialsStore, over.MCPOAuthCredentialsStore)
+	set(&base.MCPOAuthCallbackURL, over.MCPOAuthCallbackURL)
+	if over.MCPOAuthCallbackPort != 0 {
+		base.MCPOAuthCallbackPort = over.MCPOAuthCallbackPort
+	}
 
 	return base
 }

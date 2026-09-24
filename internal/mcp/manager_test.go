@@ -42,6 +42,7 @@ func names(tools []mcp.Tool) []string {
 
 func TestToolsAndCalls(t *testing.T) {
 	cfg := stdio(t)
+	cfg.EnabledTools = []string{"echo", "fail", "image", "sleep", "structured", "crash"}
 	cfg.DisabledTools = []string{"crash"}
 	m := newManager(t, map[string]mcp.ServerConfig{"test-srv": cfg})
 	tools, err := m.Tools(context.Background())
@@ -110,6 +111,7 @@ func TestCrashingServer(t *testing.T) {
 	assert.Contains(t, m.Status()[0].Error, "the server stopped")
 	_, err = m.Call(context.Background(), "s", "echo", nil)
 	require.ErrorContains(t, err, "the MCP server s failed: the server stopped")
+	require.NoError(t, m.Close(), "the crash was reported already; closing does not report it again")
 }
 
 func TestStartupFailures(t *testing.T) {
@@ -134,7 +136,7 @@ func TestStartupFailures(t *testing.T) {
 	assert.Equal(t, mcp.StateFailed, byName["missing"].State)
 	assert.Equal(t, mcp.StateDisabled, byName["disabled"].State)
 	assert.Equal(t, mcp.StateReady, byName["ok"].State)
-	assert.Contains(t, byName["ok"].Tools, "mcp__ok__echo")
+	assert.Contains(t, names(byName["ok"].Tools), "mcp__ok__echo")
 
 	required := newManager(t, map[string]mcp.ServerConfig{"missing": {Command: "/nonexistent/mcp-server", Required: true}})
 	_, err = required.Tools(context.Background())
@@ -152,6 +154,10 @@ func TestValidate(t *testing.T) {
 		"stdio key":     {cfg: mcp.ServerConfig{URL: "http://x", Args: []string{"a"}}, want: "args is not supported for streamable_http"},
 		"approval mode": {cfg: mcp.ServerConfig{Command: "x", Tools: map[string]mcp.ToolConfig{"t": {ApprovalMode: "deny"}}}, want: "unknown approval mode"},
 		"timeout":       {cfg: mcp.ServerConfig{Command: "x", ToolTimeoutSec: ptr(0.0)}, want: "positive"},
+		"stdio oauth":   {cfg: mcp.ServerConfig{Command: "x", Scopes: []string{"a"}}, want: "scopes is not supported for stdio"},
+		"auth":          {cfg: mcp.ServerConfig{URL: "http://x", Auth: "chatgpt"}, want: `auth "chatgpt" is not supported`},
+		"port":          {cfg: mcp.ServerConfig{URL: "http://x", OAuth: &mcp.OAuthConfig{CallbackPort: ptr(0)}}, want: "not a port"},
+		"callback":      {cfg: mcp.ServerConfig{URL: "http://x", OAuth: &mcp.OAuthConfig{CallbackURL: "/cb"}}, want: "not an http(s) URL"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			require.ErrorContains(t, tc.cfg.Validate(), tc.want)

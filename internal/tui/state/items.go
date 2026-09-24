@@ -6,6 +6,8 @@ import (
 	"github.com/viktordanov/uagent-harness/internal/contextusage"
 
 	"github.com/viktordanov/uagent/core"
+
+	"github.com/viktordanov/uagent-harness/internal/mcp"
 )
 
 // Kind is what a transcript item shows.
@@ -24,6 +26,9 @@ const (
 	KindAgent
 	// KindContext is a /context breakdown in Context.
 	KindContext
+	// KindMCP is the /mcp panel: MCP holds the servers, and Final asks for
+	// the verbose form.
+	KindMCP
 )
 
 // InputState tracks a user message from the queue to the runner.
@@ -72,6 +77,9 @@ type Item struct {
 	Pending  bool
 	Started  time.Time
 	Duration time.Duration
+
+	// KindMCP
+	MCP []mcp.ServerStatus
 
 	// KindTool
 	Name   string

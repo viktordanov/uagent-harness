@@ -12,6 +12,11 @@ Section IDs identify a concern within a README. Keep the ID stable when a headin
 | `instructions` | AGENTS.md discovery and the host prompt |
 | `hooks` | Hook events, contract, and trust |
 | `mcp` | MCP servers: configuration, tools, and results |
+| `lifecycle` | How a long-lived component starts, runs, fails, and stops |
+| `calls` | How a request flows through the components that serve it |
+| `approvals` | What asks the user before it runs, and how |
+| `auth` | Authorization, logins, and where credentials are stored |
+| `extending` | Where and how to add to a package |
 | `subagents` | Subagent tools, `[agents]` keys, and role files |
 | `configuration` | Configuration files and precedence |
 | `development` | Building, testing, linting, and CI |

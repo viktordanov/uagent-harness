@@ -9,7 +9,7 @@ uah is a pure core with well-organized infrastructure around it, not layered DDD
 | `internal/instructions` | AGENTS.md discovery and the host prompt, following Codex. |
 | `internal/config` | TOML configuration: the user file and trusted project files. |
 | `internal/hooks` | Hook contract, execution, and the trust store (commands, and the content of a local script a command runs). |
-| `internal/mcp` | MCP servers in Codex's configuration format: starting them, naming their tools, and calling them, through the official Go SDK. |
+| `internal/mcp` | MCP servers in Codex's configuration format, through the official Go SDK: starting and watching them, naming and calling their tools, OAuth logins and their storage, and editing `[mcp_servers]` in the user file. Its own README describes it. |
 | `internal/sandbox` | Sandbox policies and the sandboxing shell: Seatbelt on macOS, bubblewrap on Linux. |
 | `internal/rules` | Codex's `.rules` files (Starlark `prefix_rule`) and command splitting for matching. |
 | `internal/approval` | The approver: rules and the approval policy decide whether a command runs sandboxed, unsandboxed, or not, and ask the user through the session. |
@@ -21,8 +21,8 @@ uah is a pure core with well-organized infrastructure around it, not layered DDD
 | `internal/tui/render` | Pure drawing of state to lines, with a per-item cache. |
 | `internal/tui/bubble` | The Bubble Tea shell: keys to intents, effects to commands, and frames. |
 | `internal/app` | Session setup: `Resolve` picks settings from flags, the resumed session, the configuration, and defaults with no I/O; `Explain` reports each effective value and its source the same way; `Setup` loads files and builds the engine; `Doctor` runs the same steps as checks for `uah doctor`. |
-| `cmd/uah` | The CLI: flags, `run`, `resume`, `sessions`, `hooks`, `config`, `doctor`, and the TUI launcher. |
-| `testing` | `harnesstest` (fake and real runners, isolated state), `fakellm` (a scripted Responses API), and `mcpserver` (a stdio MCP server). |
+| `cmd/uah` | The CLI: flags, `run`, `resume`, `sessions`, `hooks`, `config`, `doctor`, `mcp`, and the TUI launcher. |
+| `testing` | `harnesstest` (fake and real runners, isolated state), `fakellm` (a scripted Responses API), `mcpserver` (a stdio MCP server), and `oauthserver` (an MCP server behind a small OAuth authorization server). |
 
 ## Rules
 
