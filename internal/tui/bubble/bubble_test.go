@@ -288,6 +288,7 @@ func TestTUI_MenuCompletes(t *testing.T) {
 	d.typeText("hi")
 	d.key(tea.KeyEnter, 0)
 	d.waitFor("• hello")
+	d.waitIdle() // esc below must find no live run
 
 	d.typeText("/eff")
 	d.key(tea.KeyTab, 0)

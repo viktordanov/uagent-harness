@@ -134,8 +134,8 @@ Press shift+tab in the TUI. It cycles three modes, and the footer shows the curr
 
 | Mode | Commands can | What needs approval |
 | --- | --- | --- |
-| read only | Read files, write nothing | The auto-reviewer, then you |
-| workspace (default) | Write the workspace | The auto-reviewer, then you |
+| read only | Read files, write nothing | You |
+| workspace (default) | Write the workspace | You |
 | auto | Write the workspace | The auto-reviewer decides; you are not asked |
 
 - On the embedded engine, a change applies from the next command, even mid-run. On the process engine, it applies from the next run.
