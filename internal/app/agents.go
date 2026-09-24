@@ -2,7 +2,6 @@ package app
 
 import (
 	"fmt"
-	"path/filepath"
 	"slices"
 
 	"github.com/viktordanov/uagent-harness/internal/agents"
@@ -52,7 +51,7 @@ func pickAgents(c config.Agents) (Agents, error) {
 // which cannot run subagents. With agents off it offers no tools but still
 // answers a resumed session's past calls. Role file warnings become
 // notices.
-func newAgents(r Resolved, cfg config.Config, workspace, stateDir string, opts *session.Options) *agents.Manager {
+func newAgents(r Resolved, cfg config.Config, workspace string, opts *session.Options) *agents.Manager {
 	if r.Engine != EngineEmbedded {
 		return nil
 	}
@@ -73,6 +72,6 @@ func newAgents(r Resolved, cfg config.Config, workspace, stateDir string, opts *
 
 	return agents.New(agents.Config{
 		MaxThreads: r.Agents.MaxThreads, MaxDepth: depth, Model: r.Agents.Model, Effort: r.Agents.Effort,
-		Roles: roles, SessionsDir: filepath.Join(stateDir, "sessions"), Base: r.Settings, Hooks: opts.Hooks,
+		Roles: roles,
 	})
 }

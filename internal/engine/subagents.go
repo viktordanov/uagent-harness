@@ -33,9 +33,10 @@ type Subagents interface {
 // AgentParent is a parent session's live run.
 type AgentParent struct {
 	SessionID string
-	// Request is the parent run's request: the children's default
-	// provider, model, effort, workspace, and host prompt.
-	Request core.Request
+	// Request and ServiceTier are the parent run's: its children start
+	// with the same settings.
+	Request     core.Request
+	ServiceTier string
 	// Ask asks the parent's user, also after the parent's run ends (nil:
 	// no one can, so children are declined).
 	Ask approval.Ask

@@ -16,6 +16,7 @@ import (
 	"github.com/viktordanov/uagent-harness/internal/agents"
 	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/engine/embedded"
+	"github.com/viktordanov/uagent-harness/internal/hooks"
 	"github.com/viktordanov/uagent-harness/internal/sandbox"
 	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/testing/fakellm"
@@ -29,6 +30,8 @@ type env struct {
 	llm *fakellm.Server
 	cfg agents.Config
 	mgr *agents.Manager
+	// hooks, when set, are the sessions' hooks.
+	hooks *hooks.Runner
 }
 
 // newEnv starts one fake model for the parent (the main script) and its
@@ -36,7 +39,6 @@ type env struct {
 func newEnv(t *testing.T, cfg agents.Config, replies ...fakellm.Reply) *env {
 	t.Helper()
 	e := &env{Env: harnesstest.NewEnv(t), llm: fakellm.New(t, replies...)}
-	cfg.SessionsDir = filepath.Join(e.StateDir, "sessions")
 	if cfg.MaxDepth == 0 {
 		cfg.MaxDepth = agents.DefaultMaxDepth
 	}
@@ -45,6 +47,8 @@ func newEnv(t *testing.T, cfg agents.Config, replies ...fakellm.Reply) *env {
 
 	return e
 }
+
+func (e *env) sessionsDir() string { return filepath.Join(e.StateDir, "sessions") }
 
 func (e *env) getenv(key string) string {
 	switch key {
@@ -71,17 +75,22 @@ func (e *env) openID(t *testing.T, id string, interactive bool, configure ...fun
 	for _, c := range configure {
 		c(&cfg)
 	}
+	cfg.Hooks = e.hooks
 	eng := embedded.New(cfg)
-	e.mgr.Bind(eng)
-	s, err := session.Open(context.Background(), eng, session.Options{
-		ID: id, Resumed: id != "",
-		Settings:    session.Settings{Provider: "openai", Model: "gpt-test", Effort: "high", Workspace: e.Workspace, BaseURL: e.llm.URL},
-		SessionsDir: filepath.Join(e.StateDir, "sessions"), Source: session.SourceTUI, Interactive: interactive,
-	})
+	opts := session.Options{
+		ID: id, Resumed: id != "", Settings: e.settings(), Hooks: e.hooks,
+		SessionsDir: e.sessionsDir(), Source: session.SourceTUI, Interactive: interactive,
+	}
+	e.mgr.Bind(eng, opts)
+	s, err := session.Open(context.Background(), eng, opts)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = s.Close() })
 
 	return s, &events{t: t, s: s}
+}
+
+func (e *env) settings() session.Settings {
+	return session.Settings{Provider: "openai", Model: "gpt-test", Effort: "high", Workspace: e.Workspace, BaseURL: e.llm.URL}
 }
 
 // sandboxed configures the workspace-write sandbox, or skips the test

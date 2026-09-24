@@ -143,16 +143,15 @@ func (r *Runner) TrustState(h Hook) (bool, string) {
 	return r.trust.Check(r.workspace, h.Command)
 }
 
-// Only returns a runner with this runner's hooks for the events, its trust,
-// and its own OnResult, such as a subagent's session with only its tool
-// hooks. A nil runner stays nil.
-func (r *Runner) Only(events ...Event) *Runner {
+// Clone returns a runner with the same hooks and trust and its own
+// OnResult, for another session of the process, such as a subagent's. A nil
+// runner stays nil.
+func (r *Runner) Clone() *Runner {
 	if r == nil {
 		return nil
 	}
-	hooks := slices.DeleteFunc(slices.Clone(r.hooks), func(h Hook) bool { return !slices.Contains(events, h.Event) })
 
-	return &Runner{hooks: hooks, trust: r.trust, workspace: r.workspace}
+	return &Runner{hooks: slices.Clone(r.hooks), trust: r.trust, workspace: r.workspace}
 }
 
 // OnResult sets a function that sees every result, from any goroutine.
