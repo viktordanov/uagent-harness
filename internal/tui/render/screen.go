@@ -37,36 +37,36 @@ func Screen(s state.State, c *Cache, f Frame) (string, int) {
 		c.entries = map[string]cacheEntry{} // /clear, /new, or a reload: the old lines go
 	}
 	if s.Mode == state.ModePicker {
-		return picker(s, f), -1
+		return c.styles.picker(s, f), -1
 	}
 	if s.View != nil && len(s.Approvals) == 0 { // an approval is the session's: it shows there
 		return agentScreen(s, c, f)
 	}
 	var top []string
 	if s.Details {
-		top = append(top, headerLine(s, f.Width))
+		top = append(top, c.styles.headerLine(s, f.Width))
 	}
-	panel := panelLines(s, f)
+	panel := c.styles.panelLines(s, f)
 	bottom := make([]string, 0, len(panel)+f.ComposerHeight+3)
 	if !s.Details {
-		bottom = append(bottom, activeAgents(s, f.Width)...)
-		if line := statusLine(s, f.Width); line != "" {
+		bottom = append(bottom, c.styles.activeAgents(s, f.Width)...)
+		if line := c.styles.statusLine(s, f.Width); line != "" {
 			bottom = append(bottom, "", line)
 		}
 	}
 	bottom = append(bottom, panel...)
 	// The composer sits on the band, with a band row above and below.
-	bottom = append(bottom, "", band("", f.Width))
+	bottom = append(bottom, "", c.styles.band("", f.Width))
 	composerTop := len(bottom)
 	for l := range strings.SplitSeq(f.Composer, "\n") {
-		bottom = append(bottom, band(l, f.Width))
+		bottom = append(bottom, c.styles.band(l, f.Width))
 	}
-	bottom = append(bottom, band("", f.Width), footerLine(s, f.Width))
+	bottom = append(bottom, c.styles.band("", f.Width), c.styles.footerLine(s, f.Width))
 
 	height := max(f.Height-len(top)-len(bottom), 1)
 	var head []string
 	if !s.Details && s.SessionID != "" {
-		head = banner(s, f.Version, f.Width)
+		head = c.styles.banner(s, f.Version, f.Width)
 	}
 	body := transcript(s, c, f.Width, height, head)
 	lines := make([]string, 0, f.Height)
@@ -122,7 +122,7 @@ func transcript(s state.State, c *Cache, w, height int, head []string) []string 
 	return out
 }
 
-func headerLine(s state.State, w int) string {
+func (st *Styles) headerLine(s state.State, w int) string {
 	left := fmt.Sprintf(" uah · %s · %s/%s · %s · %s · %s", session.ShortID(s.SessionID), s.Settings.Provider, s.Settings.Model, s.Settings.Effort, cmp.Or(modeText(s), "sandbox none"), home(s.Settings.Workspace))
 	var right string
 	switch {
@@ -143,25 +143,25 @@ func headerLine(s state.State, w int) string {
 		gap = max(w-ansi.StringWidth(left)-ansi.StringWidth(right), 0)
 	}
 
-	return header.Render(left + strings.Repeat(" ", gap) + right)
+	return st.header.Render(left + strings.Repeat(" ", gap) + right)
 }
 
 // panelLines shows a pending approval, the /config panel, the suggestion
 // menu while typing a command or an "@" mention, or else the queue.
-func panelLines(s state.State, f Frame) []string {
+func (st *Styles) panelLines(s state.State, f Frame) []string {
 	if a, ok := s.PendingApproval(); ok {
-		return approvalLines(a, f.Width)
+		return st.approvalLines(a, f.Width)
 	}
 	if s.Config != nil {
-		return configLines(s, f.Width)
+		return st.configLines(s, f.Width)
 	}
 	if items := s.Suggestions(f.Draft); len(items) > 0 {
 		var out []string
 		for i, it := range items[:min(len(items), 6)] {
 			label := fmt.Sprintf("%-16s", it.Label)
-			line := "  " + bold.Render(label) + "  " + dim.Render(it.Help)
+			line := "  " + st.bold.Render(label) + "  " + st.dim.Render(it.Help)
 			if i == s.Menu.Index {
-				line = selected.Render("› "+label) + "  " + dim.Render(it.Help)
+				line = st.selected.Render("› "+label) + "  " + st.dim.Render(it.Help)
 			}
 			out = append(out, ansi.Truncate(line, f.Width, "…"))
 		}
@@ -173,22 +173,22 @@ func panelLines(s state.State, f Frame) []string {
 	}
 	var out []string
 	if s.Details {
-		out = append(out, dim.Render(ansi.Truncate("queued · sent when the agent is ready · ctrl+enter sends now · ↑ edits the last", f.Width, "…")))
+		out = append(out, st.dim.Render(ansi.Truncate("queued · sent when the agent is ready · ctrl+enter sends now · ↑ edits the last", f.Width, "…")))
 	}
 	for i, q := range s.Queue {
 		if i == 3 {
-			out = append(out, dim.Render(fmt.Sprintf("  … %d more", len(s.Queue)-3)))
+			out = append(out, st.dim.Render(fmt.Sprintf("  … %d more", len(s.Queue)-3)))
 
 			break
 		}
 		if s.Details {
 			out = append(out, ansi.Truncate(fmt.Sprintf("  %d. %s", i+1, oneLine(q.Text)), f.Width, "…"))
 		} else {
-			out = append(out, dim.Render(ansi.Truncate("  ↳ queued: ", f.Width, ""))+ansi.Truncate(oneLine(q.Text), max(f.Width-12, 8), "…"))
+			out = append(out, st.dim.Render(ansi.Truncate("  ↳ queued: ", f.Width, ""))+ansi.Truncate(oneLine(q.Text), max(f.Width-12, 8), "…"))
 		}
 	}
 	if !s.Details {
-		out = append(out, dim.Render("    ctrl+enter sends now · ↑ edits"))
+		out = append(out, st.dim.Render("    ctrl+enter sends now · ↑ edits"))
 	}
 
 	return out
@@ -197,26 +197,26 @@ func panelLines(s state.State, f Frame) []string {
 // statusLine is the compact view's activity line above the composer: the
 // breathing λ and what the agent does, as Codex's "Working (12s • esc to
 // interrupt)".
-func statusLine(s state.State, w int) string {
+func (st *Styles) statusLine(s state.State, w int) string {
 	switch {
 	case s.Status != "":
-		return warn.Render(ansi.Truncate(s.Status, w, "…"))
+		return st.warn.Render(ansi.Truncate(s.Status, w, "…"))
 	case s.SessionID == "":
-		return ansi.Truncate(workingLine(s.Now, "Opening the session", time.Time{}), w, "…")
+		return ansi.Truncate(st.workingLine(s.Now, "Opening the session", time.Time{}), w, "…")
 	case s.Live != nil && !s.Live.TurnSince.IsZero():
-		return ansi.Truncate(workingLine(s.Now, "Thinking", s.Live.Started), w, "…")
+		return ansi.Truncate(st.workingLine(s.Now, "Thinking", s.Live.Started), w, "…")
 	case s.Live != nil && s.Live.Tools > 0:
-		return ansi.Truncate(workingLine(s.Now, "Running "+plural(s.Live.Tools, "command"), s.Live.Started), w, "…")
+		return ansi.Truncate(st.workingLine(s.Now, "Running "+plural(s.Live.Tools, "command"), s.Live.Started), w, "…")
 	case s.Live != nil:
-		return ansi.Truncate(workingLine(s.Now, "Working", s.Live.Started), w, "…")
+		return ansi.Truncate(st.workingLine(s.Now, "Working", s.Live.Started), w, "…")
 	case s.Busy:
-		return ansi.Truncate(workingLine(s.Now, "Starting", time.Time{}), w, "…")
+		return ansi.Truncate(st.workingLine(s.Now, "Starting", time.Time{}), w, "…")
 	}
 
 	return ""
 }
 
-func footerLine(s state.State, w int) string {
+func (st *Styles) footerLine(s state.State, w int) string {
 	if !s.Details {
 		var parts []string
 		fast := ""
@@ -246,10 +246,10 @@ func footerLine(s state.State, w int) string {
 			left += strings.Repeat(" ", room-ansi.StringWidth(left)) + hint
 		}
 
-		return dim.Render(ansi.Truncate(left, w, ""))
+		return st.dim.Render(ansi.Truncate(left, w, ""))
 	}
 	if s.Status != "" {
-		return warn.Render(ansi.Truncate(" "+s.Status, w, "…"))
+		return st.warn.Render(ansi.Truncate(" "+s.Status, w, "…"))
 	}
 	t := s.Totals
 	text := fmt.Sprintf(" %s in (%s cached) · %s out · %s · %s (∥%d)", tokens(t.Tokens.InputTokens), tokens(t.Tokens.CachedInputTokens),
@@ -266,7 +266,7 @@ func footerLine(s state.State, w int) string {
 		text += strings.Repeat(" ", gap) + hint
 	}
 
-	return dim.Render(ansi.Truncate(text, w, ""))
+	return st.dim.Render(ansi.Truncate(text, w, ""))
 }
 
 // modeText is the permission mode, which shift+tab changes, as the footer
@@ -283,19 +283,19 @@ func modeText(s state.State) string {
 	return m.Label() + " mode"
 }
 
-func picker(s state.State, f Frame) string {
+func (st *Styles) picker(s state.State, f Frame) string {
 	scope := "this directory · tab: all"
 	if s.Picker.All {
 		scope = "all directories · tab: this directory"
 	}
-	lines := []string{header.Render(ansi.Truncate(fmt.Sprintf(" Resume a session · %s · filter: %s▏", scope, s.Picker.Filter)+strings.Repeat(" ", f.Width), f.Width, ""))}
+	lines := []string{st.header.Render(ansi.Truncate(fmt.Sprintf(" Resume a session · %s · filter: %s▏", scope, s.Picker.Filter)+strings.Repeat(" ", f.Width), f.Width, ""))}
 	list := s.Picker.Filtered()
 	if len(list) == 0 {
 		empty := "  no sessions match"
 		if !s.Picker.All && s.Picker.Filter == "" {
 			empty = "  no sessions in this directory · tab shows all · esc starts a new one"
 		}
-		lines = append(lines, "", dim.Render(empty))
+		lines = append(lines, "", st.dim.Render(empty))
 	}
 	room := f.Height - 3
 	start := max(0, min(s.Picker.Selected-room/2, len(list)-room))
@@ -308,14 +308,14 @@ func picker(s state.State, f Frame) string {
 		row += oneLine(in.FirstPrompt)
 		row = ansi.Truncate(row, f.Width, "…")
 		if i == s.Picker.Selected {
-			row = selected.Render(row + strings.Repeat(" ", max(f.Width-ansi.StringWidth(row), 0)))
+			row = st.selected.Render(row + strings.Repeat(" ", max(f.Width-ansi.StringWidth(row), 0)))
 		}
 		lines = append(lines, row)
 	}
 	for len(lines) < f.Height-1 {
 		lines = append(lines, "")
 	}
-	lines = append(lines, dim.Render(" type to filter · ↑↓ choose · enter resume · tab this directory/all · esc back"))
+	lines = append(lines, st.dim.Render(" type to filter · ↑↓ choose · enter resume · tab this directory/all · esc back"))
 
 	return strings.Join(lines, "\n")
 }

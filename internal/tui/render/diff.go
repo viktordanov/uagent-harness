@@ -46,30 +46,30 @@ func newDiffStyles(t Theme) map[string]diffStyle {
 
 // patchLines draws an apply_patch call with its diff: the tool line with
 // Codex's summary, then the diff, folded after limit lines (0: unfolded).
-func patchLines(it state.Item, w int, now time.Time, limit int) []string {
+func (st *Styles) patchLines(it state.Item, w int, now time.Time, limit int) []string {
 	head := it
 	head.Label = ""
-	out := []string{ansi.Truncate(compactTool(head, w, now)+diffSummary(it.Diff), w, "…")}
+	out := []string{ansi.Truncate(st.compactTool(head, w, now)+st.diffSummary(it.Diff), w, "…")}
 
-	return append(out, diffBlock(it.Diff, w, limit)...)
+	return append(out, st.diffBlock(it.Diff, w, limit)...)
 }
 
 // diffSummary is Codex's header: "Edited a.go (+3 -1)", "Added b.go
 // (+2 -0)", or "Edited 2 files (+5 -1)".
-func diffSummary(files []patch.FileDiff) string {
+func (st *Styles) diffSummary(files []patch.FileDiff) string {
 	added, removed := 0, 0
 	for _, f := range files {
 		added, removed = added+f.Added, removed+f.Removed
 	}
 	if len(files) != 1 {
-		return dim.Render(fmt.Sprintf("Edited %d files ", len(files))) + counts(added, removed)
+		return st.dim.Render(fmt.Sprintf("Edited %d files ", len(files))) + st.counts(added, removed)
 	}
 	verb := map[string]string{"add": "Added", "delete": "Deleted"}[files[0].Op]
 	if verb == "" {
 		verb = "Edited"
 	}
 
-	return dim.Render(verb+" ") + diffPath(files[0]) + " " + counts(added, removed)
+	return st.dim.Render(verb+" ") + diffPath(files[0]) + " " + st.counts(added, removed)
 }
 
 func diffPath(f patch.FileDiff) string {
@@ -81,21 +81,21 @@ func diffPath(f patch.FileDiff) string {
 }
 
 // counts is "(+3 -1)" with the numbers in the diff's colors.
-func counts(added, removed int) string {
-	return dim.Render("(") + ok.Render(fmt.Sprintf("+%d", added)) + " " + bad.Render(fmt.Sprintf("-%d", removed)) + dim.Render(")")
+func (st *Styles) counts(added, removed int) string {
+	return st.dim.Render("(") + st.ok.Render(fmt.Sprintf("+%d", added)) + " " + st.bad.Render(fmt.Sprintf("-%d", removed)) + st.dim.Render(")")
 }
 
 // diffBlock draws the files' changed lines, each file under its own header
 // when there are several. With limit > 0 it stops after that many lines
 // and says how many more ctrl+t shows.
-func diffBlock(files []patch.FileDiff, w, limit int) []string {
+func (st *Styles) diffBlock(files []patch.FileDiff, w, limit int) []string {
 	gw := gutterWidth(files)
 	var out []string
 	shown, total := 0, 0
 	for _, f := range files {
 		total += f.Omitted
 		if len(files) > 1 && (limit == 0 || shown < limit) {
-			out = append(out, dim.Render("  └ ")+diffPath(f)+" "+counts(f.Added, f.Removed))
+			out = append(out, st.dim.Render("  └ ")+diffPath(f)+" "+st.counts(f.Added, f.Removed))
 		}
 		for i, h := range f.Hunks {
 			total += len(h.Lines)
@@ -103,9 +103,9 @@ func diffBlock(files []patch.FileDiff, w, limit int) []string {
 				continue
 			}
 			if i > 0 {
-				out = append(out, diffIndent+dim.Render(strings.Repeat(" ", gw)+" ⋮"))
+				out = append(out, diffIndent+st.dim.Render(strings.Repeat(" ", gw)+" ⋮"))
 			}
-			lines := hunkLines(h, gw, w)
+			lines := st.hunkLines(h, gw, w)
 			if limit > 0 {
 				lines = lines[:min(len(lines), limit-shown)]
 			}
@@ -115,9 +115,9 @@ func diffBlock(files []patch.FileDiff, w, limit int) []string {
 	}
 	switch {
 	case total > shown && limit > 0:
-		out = append(out, diffIndent+dim.Render(fmt.Sprintf("… +%d lines (ctrl+t to view)", total-shown)))
+		out = append(out, diffIndent+st.dim.Render(fmt.Sprintf("… +%d lines (ctrl+t to view)", total-shown)))
 	case total > shown:
-		out = append(out, diffIndent+dim.Render(fmt.Sprintf("… %d more lines not kept", total-shown)))
+		out = append(out, diffIndent+st.dim.Render(fmt.Sprintf("… %d more lines not kept", total-shown)))
 	}
 
 	return out
@@ -139,7 +139,7 @@ func gutterWidth(files []patch.FileDiff) int {
 
 // hunkLines draws a hunk, marking the changed words of each removed line
 // that an added line replaced.
-func hunkLines(h patch.DiffHunk, gw, w int) []string {
+func (st *Styles) hunkLines(h patch.DiffHunk, gw, w int) []string {
 	segs := make([][]seg, len(h.Lines))
 	for i := 0; i < len(h.Lines); {
 		dels := run(h.Lines, i, "-")
@@ -151,7 +151,7 @@ func hunkLines(h patch.DiffHunk, gw, w int) []string {
 	}
 	out := make([]string, 0, len(h.Lines))
 	for i, l := range h.Lines {
-		out = append(out, diffLine(l, segs[i], gw, w))
+		out = append(out, st.diffLine(l, segs[i], gw, w))
 	}
 
 	return out
@@ -169,15 +169,15 @@ func run(lines []patch.DiffLine, i int, kind string) int {
 
 // diffLine draws "  12 +text", tinted to the full width for an added or
 // removed line; segs, when set, mark its changed words.
-func diffLine(l patch.DiffLine, segs []seg, gw, w int) string {
-	st, known := diffStyles[l.Kind]
+func (st *Styles) diffLine(l patch.DiffLine, segs []seg, gw, w int) string {
+	ds, known := st.diffStyles[l.Kind]
 	if !known {
-		st = diffStyles[" "]
+		ds = st.diffStyles[" "]
 	}
 	if segs == nil {
 		segs = []seg{{text: untab(l.Text)}}
 	}
-	head := diffIndent + st.gutter.Render(fmt.Sprintf("%*d ", gw, l.Line())) + st.sign.Render(l.Kind)
+	head := diffIndent + ds.gutter.Render(fmt.Sprintf("%*d ", gw, l.Line())) + ds.sign.Render(l.Kind)
 	room := max(w-ansi.StringWidth(head), 1)
 	var b strings.Builder
 	used := 0
@@ -186,9 +186,9 @@ func diffLine(l patch.DiffLine, segs []seg, gw, w int) string {
 		if width := ansi.StringWidth(text); used+width > room {
 			text = ansi.Truncate(text, room-used, "…")
 		}
-		style := st.line
+		style := ds.line
 		if s.changed {
-			style = st.word
+			style = ds.word
 		}
 		b.WriteString(style.Render(text))
 		if used += ansi.StringWidth(text); used >= room {
@@ -196,7 +196,7 @@ func diffLine(l patch.DiffLine, segs []seg, gw, w int) string {
 		}
 	}
 	if l.Kind != " " {
-		b.WriteString(st.line.Render(strings.Repeat(" ", max(room-used, 0))))
+		b.WriteString(ds.line.Render(strings.Repeat(" ", max(room-used, 0))))
 	}
 
 	return head + b.String()

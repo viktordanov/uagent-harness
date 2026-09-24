@@ -57,8 +57,7 @@ func TestScreens_Diff(t *testing.T) {
 }
 
 func TestDiff_TintsWholeLinesAndChangedWords(t *testing.T) {
-	render.SetTheme(render.Amber)
-	out, _ := render.Screen(patchedRun(t), render.NewCache(), render.Frame{Width: 100, Height: 40, Composer: "λ ", ComposerHeight: 1})
+	out, _ := render.Screen(patchedRun(t), render.NewCache(render.Amber), render.Frame{Width: 100, Height: 40, Composer: "λ ", ComposerHeight: 1})
 	var removed, added string
 	for line := range strings.SplitSeq(out, "\n") {
 		switch plain := ansi.Strip(line); {
@@ -73,4 +72,19 @@ func TestDiff_TintsWholeLinesAndChangedWords(t *testing.T) {
 	assert.Contains(t, added, "48;2;33;41;34", "an added line is tinted with Codex's green")
 	assert.Contains(t, added, "48;2;47;90;50", "its changed word is marked")
 	assert.Regexp(t, `48;2;33;41;34m +\x1b\[m$`, added, "the tint runs to the edge")
+}
+
+// TestScreen_TwoThemesAtOnce draws the same state with the dark and the
+// light theme side by side: each cache carries its own styles, so neither
+// frame depends on the other or on what was drawn before.
+func TestScreen_TwoThemesAtOnce(t *testing.T) {
+	t.Parallel()
+	s := patchedRun(t)
+	frame := render.Frame{Width: 100, Height: 40, Composer: "λ ", ComposerHeight: 1}
+	dark, _ := render.Screen(s, render.NewCache(render.Amber), frame)
+	light, _ := render.Screen(s, render.NewCache(render.AmberLight), frame)
+	again, _ := render.Screen(s, render.NewCache(render.Amber), frame)
+	assert.NotEqual(t, dark, light, "the themes draw different colors")
+	assert.Equal(t, dark, again, "a theme's frame does not depend on another cache")
+	assert.Equal(t, ansi.Strip(dark), ansi.Strip(light), "and the same text")
 }

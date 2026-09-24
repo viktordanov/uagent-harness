@@ -26,13 +26,13 @@ var breakdowns = []string{contextusage.Instructions, contextusage.Skills, contex
 
 // contextLines draws /context: the grid with the legend beside it, then the
 // items of the categories that have named parts.
-func contextLines(u *contextusage.Usage, w int) []string {
+func (st *Styles) contextLines(u *contextusage.Usage, w int) []string {
 	if u == nil || u.Window <= 0 {
 		return nil
 	}
-	grid := contextGrid(*u)
-	legend := contextLegend(*u)
-	out := []string{"", bold.Render("● Context Usage")}
+	grid := st.contextGrid(*u)
+	legend := st.contextLegend(*u)
+	out := []string{"", st.bold.Render("● Context Usage")}
 	for i := range max(len(grid), len(legend)) {
 		line := "  "
 		if i < len(grid) {
@@ -46,12 +46,12 @@ func contextLines(u *contextusage.Usage, w int) []string {
 		out = append(out, ansi.Truncate(line, w, "…"))
 	}
 
-	return append(out, contextItems(*u, w)...)
+	return append(out, st.contextItems(*u, w)...)
 }
 
 // contextGrid colors one cell per percent: categories in order, then free
 // space, then the auto-compaction buffer at the end.
-func contextGrid(u contextusage.Usage) []string {
+func (st *Styles) contextGrid(u contextusage.Usage) []string {
 	total := gridSide * gridSide
 	cells := make([]string, 0, total)
 	for _, c := range u.Categories {
@@ -61,16 +61,16 @@ func contextGrid(u contextusage.Usage) []string {
 		}
 		for range n {
 			if len(cells) < total {
-				cells = append(cells, categoryColors[c.Name].Render(cellUsed))
+				cells = append(cells, st.categoryColors[c.Name].Render(cellUsed))
 			}
 		}
 	}
 	buffer := int((u.Buffer*int64(total) + u.Window/2) / u.Window)
 	for len(cells) < total-buffer {
-		cells = append(cells, dim.Render(cellFree))
+		cells = append(cells, st.dim.Render(cellFree))
 	}
 	for len(cells) < total {
-		cells = append(cells, dim.Render(cellBuffer))
+		cells = append(cells, st.dim.Render(cellBuffer))
 	}
 	rows := make([]string, 0, gridSide)
 	for r := range gridSide {
@@ -80,7 +80,7 @@ func contextGrid(u contextusage.Usage) []string {
 	return rows
 }
 
-func contextLegend(u contextusage.Usage) []string {
+func (st *Styles) contextLegend(u contextusage.Usage) []string {
 	est := ""
 	if u.Estimated {
 		est = " (estimated)"
@@ -90,28 +90,28 @@ func contextLegend(u contextusage.Usage) []string {
 		"",
 	}
 	for _, c := range u.Categories {
-		lines = append(lines, fmt.Sprintf("%s %s: %s tokens (%s)", categoryColors[c.Name].Render(cellUsed), c.Name, tokens(c.Tokens), pct(c.Tokens, u.Window)))
+		lines = append(lines, fmt.Sprintf("%s %s: %s tokens (%s)", st.categoryColors[c.Name].Render(cellUsed), c.Name, tokens(c.Tokens), pct(c.Tokens, u.Window)))
 	}
-	lines = append(lines, fmt.Sprintf("%s Free space: %s tokens (%s)", dim.Render(cellFree), tokens(u.Free()), pct(u.Free(), u.Window)))
+	lines = append(lines, fmt.Sprintf("%s Free space: %s tokens (%s)", st.dim.Render(cellFree), tokens(u.Free()), pct(u.Free(), u.Window)))
 	if u.Buffer > 0 {
-		lines = append(lines, fmt.Sprintf("%s Auto-compact buffer: %s tokens (%s)", dim.Render(cellBuffer), tokens(u.Buffer), pct(u.Buffer, u.Window)))
+		lines = append(lines, fmt.Sprintf("%s Auto-compact buffer: %s tokens (%s)", st.dim.Render(cellBuffer), tokens(u.Buffer), pct(u.Buffer, u.Window)))
 	}
 
 	return lines
 }
 
 // contextItems lists each named part of the categories that have them.
-func contextItems(u contextusage.Usage, w int) []string {
+func (st *Styles) contextItems(u contextusage.Usage, w int) []string {
 	var out []string
 	for _, name := range breakdowns {
 		for _, c := range u.Categories {
 			if c.Name != name || len(c.Items) == 0 {
 				continue
 			}
-			out = append(out, "", "  "+bold.Render(c.Name))
+			out = append(out, "", "  "+st.bold.Render(c.Name))
 			for _, it := range c.Items {
 				line := fmt.Sprintf("  └ %s: %s tokens", it.Name, tokens(it.Tokens))
-				out = append(out, dim.Render(ansi.Truncate(line, w, "…")))
+				out = append(out, st.dim.Render(ansi.Truncate(line, w, "…")))
 			}
 		}
 	}
