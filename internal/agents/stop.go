@@ -1,7 +1,6 @@
 package agents
 
 import (
-	"context"
 	"path/filepath"
 	"strings"
 
@@ -26,8 +25,9 @@ type stopCheck struct {
 func (m *Manager) checkStop(c *child, check stopCheck) {
 	m.mu.Lock()
 	in := m.stopInput(c, check.status.Message)
+	ctx := c.asks // closing or interrupting the child ends its hooks too
 	m.mu.Unlock()
-	d := m.template().Hooks.Run(context.Background(), in)
+	d := m.template().Hooks.Run(ctx, in)
 
 	m.mu.Lock()
 	if c.closed || c.gen != check.gen {

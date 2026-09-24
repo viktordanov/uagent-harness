@@ -5,7 +5,7 @@
 uah compacts a long conversation as Codex does: the earlier user messages stay verbatim and in order, up to the newest 20,000 tokens of them, and the rest is replaced by a model-written handoff summary. The session file keeps the full history; only what goes to the model changes, and a compaction is saved next to the session so a resumed session keeps it.
 <!-- /memoria:export -->
 
-This package holds everything about compaction that does not depend on the engine: the request rewrite, the summary call over any runner `llm.Adapter`, the token estimates, the context window table, and the compaction log. The embedded engine (`internal/engine/embedded/compact.go`) decides when to compact, runs the summary call, and emits the events. The facts about Codex were checked against Codex `rust-v0.156.1`, and the facts about the runner against unreal-agent v0.1.1.
+This package holds everything about compaction that does not depend on the engine: the request rewrite, the summary call over any runner `llm.Adapter`, the token estimates, the context window lookup, and the compaction log. The embedded engine (`internal/engine/embedded/compact.go`) decides when to compact, runs the summary call, and emits the events. The facts about Codex were checked against Codex `rust-v0.156.1`, and the facts about the runner against unreal-agent v0.1.1.
 
 1. [The request rewrite](#the-request-rewrite)
 2. [The summary call](#the-summary-call)
@@ -81,7 +81,7 @@ The log is also the source for a reloaded transcript: `session.Load` adds each r
 
 The context in use is Codex's measure (`InUse`, after `get_total_token_usage`): the last response's total tokens plus an estimate of the items added after the last item the model produced, such as tool outputs and new messages. When the last response reported no usage (a provider without usage, or the first request after a compaction), the whole request is estimated. The estimate is Codex's: the model-visible bytes divided by four, 7,373 bytes for an image, and three quarters of the encoded length less 650 for encrypted reasoning.
 
-The window comes from `ContextWindow`, the one function every caller uses: `model_context_window` when set, else the model catalog's value (the provider's list, cached, or Codex's bundled catalog; see `internal/models`), else this package's table, else 272,000 tokens.
+The window comes from `ContextWindow`, the one function every caller uses: `model_context_window` when set, else the model catalog's value (the provider's list, cached, or Codex's bundled catalog; see `internal/models`), else 272,000 tokens.
 
 The engine runs a compaction as a job under the run, not under the request. The runner cancels a model request when a message arrives; the next request then waits for the same job instead of starting a second summary. An interrupt cancels the job, and the request that waited does not go out.
 <!-- /memoria:section -->

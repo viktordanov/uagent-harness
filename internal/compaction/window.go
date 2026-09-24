@@ -13,24 +13,14 @@ const DefaultAutoPercent = 90
 // prompt and tools), so a fresh session shows 100% left.
 const baselineTokens = 12_000
 
-// windows are the fallback when the model catalog does not know the model:
-// context windows from Codex's model table (codex-rs/models-manager/models.json).
-var windows = map[string]int64{
-	"gpt-daybreak-red-latest": 372_000,
-}
-
 // ContextWindow is the model's context window in tokens: override
 // (model_context_window) when it is positive, else the model catalog's value
-// (the provider's list, cached, or bundled), else the table's, else
-// DefaultContextWindow. Everything that needs a window calls this.
+// (the provider's list, cached, or bundled), else DefaultContextWindow. Everything that needs a window calls this.
 func ContextWindow(model string, override int64) int64 {
 	if override > 0 {
 		return override
 	}
 	if w, ok := models.Window(model); ok {
-		return w
-	}
-	if w, ok := windows[model]; ok {
 		return w
 	}
 

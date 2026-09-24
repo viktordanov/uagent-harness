@@ -102,6 +102,7 @@ func openFence(line string) (fence, lang string, ok bool) {
 
 // highlight colors code with chroma; lines are not wrapped, as in Codex.
 func highlight(code, lang string) []string {
+	code = untab(code)
 	lexer := lexers.Get(lang)
 	if lexer == nil {
 		lexer = lexers.Analyse(code)

@@ -80,6 +80,12 @@ type Options struct {
 	Inject func(text string)
 }
 
+// Forgetter is an engine that keeps per-session state across runs; the
+// session calls Forget when it closes, so the state does not outlive it.
+type Forgetter interface {
+	Forget(sessionID string)
+}
+
 // Run is a started run.
 type Run interface {
 	// Send delivers a message to the live run (ErrUnsupported without LiveInput).
