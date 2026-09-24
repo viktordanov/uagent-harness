@@ -10,7 +10,7 @@ Status: the [ledger](docs/ledger.md) tracks the work: sessions, the TUI, both en
 2. [Development](#development)
 <!-- /memoria:section -->
 
-<!-- memoria:section id="usage" files="cmd/uah/main.go cmd/uah/run.go cmd/uah/resume.go cmd/uah/sessions.go cmd/uah/tui.go cmd/uah/print.go cmd/uah/doctor.go internal/app/doctor.go internal/app/doctorchecks.go internal/session/history.go internal/session/sidecar.go internal/store/store.go internal/store/query.go" -->
+<!-- memoria:section id="usage" files="cmd/uah/main.go cmd/uah/run.go cmd/uah/resume.go cmd/uah/sessions.go cmd/uah/tui.go cmd/uah/print.go cmd/uah/completion.go cmd/uah/doctor.go internal/app/doctor.go internal/app/doctorchecks.go internal/session/history.go internal/session/sidecar.go internal/store/store.go internal/store/query.go" -->
 ## Use it
 
 ```sh
@@ -28,6 +28,7 @@ uah run -C ~/code/proj "Fix the failing test in pkg/foo"   # a session: progress
 uah sessions                                               # this directory's sessions, most recent first (--all: every directory)
 uah sessions --search "flaky parser"                       # sessions whose prompts or answers contain the words
 uah sessions show 3f2a                                     # a transcript, by ID or unique prefix
+uah completion zsh > "${fpath[1]}/_uah"                    # shell completion: bash, zsh, fish, pwsh
 uah run --session 3f2a "Now update the README"             # resume with the session's model, effort, and workspace
 uah run --last -m gpt-6-luna "And the changelog"           # resume this directory's latest session with another model
 printf 'first\nsecond\n' | uah run --stdin                  # each line is a message; lines queue while the agent works
