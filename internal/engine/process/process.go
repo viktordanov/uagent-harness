@@ -21,6 +21,9 @@ type Engine struct {
 	// build is the harness configuration for a sandbox mode (nil: h
 	// serves every mode).
 	build func(sandbox.Mode) (harness.Config, error)
+	// caps are the engine's capabilities: only whether it applies rules
+	// varies.
+	caps engine.Capabilities
 
 	mu sync.Mutex
 	h  *harness.Harness
@@ -35,21 +38,27 @@ func New(cfg harness.Config) *Engine {
 
 // NewSandboxed returns an engine whose runs use build's configuration for
 // their permission mode's sandbox (the runner's $SHELL sandboxes each
-// command), and mode's when a run names none. A mode change applies from
-// the next run.
-func NewSandboxed(mode sandbox.Mode, build func(sandbox.Mode) (harness.Config, error)) (*Engine, error) {
+// command, see Shells), and mode's when a run names none. A mode change
+// applies from the next run. rules says whether those shells apply the
+// command rules (Shells.Gate).
+func NewSandboxed(mode sandbox.Mode, rules bool, build func(sandbox.Mode) (harness.Config, error)) (*Engine, error) {
 	cfg, err := build(mode)
 	if err != nil {
 		return nil, err
 	}
 	h := harness.New(cfg)
 
-	return &Engine{build: build, h: h, byMode: map[sandbox.Mode]*harness.Harness{mode: h}}, nil
+	return &Engine{build: build, h: h, byMode: map[sandbox.Mode]*harness.Harness{mode: h}, caps: Capabilities(rules)}, nil
 }
 
 func (e *Engine) Name() string { return "process" }
 
-func (e *Engine) Capabilities() engine.Capabilities { return engine.Capabilities{} }
+func (e *Engine) Capabilities() engine.Capabilities { return e.caps }
+
+// Capabilities are the process engine's: none of the live ones, since the
+// runner reads its request once, and the command rules when its shells
+// apply them (rules). engine.Table says what it lacks.
+func Capabilities(rules bool) engine.Capabilities { return engine.Capabilities{Rules: rules} }
 
 func (e *Engine) Start(ctx context.Context, req core.Request, opts engine.Options, sink core.Sink) (engine.Run, error) {
 	h, err := e.harness(opts)

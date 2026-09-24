@@ -96,14 +96,15 @@ func Doctor(ctx context.Context, in Inputs, opts DoctorOptions) []Check {
 		cfg = config.Config{}
 	}
 	r.Sandbox = absPolicy(r.Sandbox, in.Workspace)
-	checks = append(checks, checkRunner(r.Engine, in.Runner))
+	caps := engineCapabilities(r, in.Gate)
+	checks = append(checks, checkRunner(r.Engine, in.Runner), checkEngine(r, cfg, in.Workspace, caps))
 	checks = append(checks, checkCredentials(r, stateDir, opts.Getenv)...)
 	if opts.Models == nil {
 		opts.Models = NewModels(stateDir, r.Settings, opts.Getenv)
 	}
 	checks = append(checks, checkModels(ctx, opts.Models, r.Settings.Model), checkSandbox(ctx, r.Sandbox), checkInstructions(r, cfg, in.Workspace))
 	checks = append(checks, checkHooks(cfg, in.Workspace, opts.HookTrustFile)...)
-	checks = append(checks, checkMCP(ctx, cfg, r.Engine, in.Workspace, opts.Stderr)...)
+	checks = append(checks, checkMCP(ctx, cfg, caps, in.Workspace, opts.Stderr)...)
 
 	return append(checks, checkState(ctx, stateDir))
 }
