@@ -45,6 +45,8 @@ type (
 		id     string
 		prompt approval.Prompt
 		reply  chan approval.Answer
+		// anytime is a prompt that may stay open while no run is live.
+		anytime bool
 	}
 	cmdAskGone struct{ id string }
 	cmdResolve struct {
@@ -60,9 +62,17 @@ func (s *Session) Resolve(id string, answer approval.Answer) error {
 	return err
 }
 
+// pending is an open approval: where its answer goes, and whether it may
+// outlive the run (engine.Options.AskAnytime).
+type pending struct {
+	reply   chan approval.Answer
+	anytime bool
+}
+
 // askFunc is how runs ask the user: through the session's events when the
 // session is interactive, nil (deny) otherwise; Options.Ask wins over both.
-func (s *Session) askFunc() approval.Ask {
+// With anytime, the prompt may stay open after the run ends.
+func (s *Session) askFunc(anytime bool) approval.Ask {
 	if s.askOverride != nil {
 		return s.askOverride
 	}
@@ -86,7 +96,7 @@ func (s *Session) askFunc() approval.Ask {
 			return approval.Decline
 		}
 
-		return s.ask(ctx, p)
+		return s.ask(ctx, p, anytime)
 	}
 }
 
@@ -113,11 +123,11 @@ func permissionInput(in hooks.Input, p approval.Prompt) hooks.Input {
 
 // ask runs on the engine's goroutine: it hands the prompt to the loop and
 // waits for the answer, declining when ctx ends or the session closes.
-func (s *Session) ask(ctx context.Context, p approval.Prompt) approval.Answer {
+func (s *Session) ask(ctx context.Context, p approval.Prompt, anytime bool) approval.Answer {
 	id := uuid.NewString()
 	reply := make(chan approval.Answer, 1)
 	select {
-	case s.in <- cmdAsk{id: id, prompt: p, reply: reply}:
+	case s.in <- cmdAsk{id: id, prompt: p, reply: reply, anytime: anytime}:
 	case <-ctx.Done():
 		return approval.Decline
 	case <-s.done:
@@ -136,15 +146,15 @@ func (s *Session) ask(ctx context.Context, p approval.Prompt) approval.Answer {
 }
 
 // onAsk records a pending approval and shows it, or declines at once while
-// the run is stopping or the session closing.
+// the session is closing, or, for a run's prompt, while no run is live.
 func (s *Session) onAsk(c cmdAsk) {
 	live := s.state == StateRunning || (s.state == StateStarting && !s.interruptWhenStarted)
-	if s.closeReply != nil || !live {
+	if s.closeReply != nil || (!live && !c.anytime) {
 		c.reply <- approval.Decline
 
 		return
 	}
-	s.approvals[c.id] = c.reply
+	s.approvals[c.id] = pending{reply: c.reply, anytime: c.anytime}
 	p := c.prompt
 	s.emit(ApprovalRequested{
 		At: time.Now(), ID: c.id, Command: p.Command, Cwd: p.Cwd, Justification: p.Justification,
@@ -162,19 +172,22 @@ func (s *Session) onResolve(c cmdResolve) error {
 	return nil
 }
 
-// declinePending declines every pending approval, so a waiting run can stop.
-func (s *Session) declinePending() {
-	for id := range s.approvals {
-		s.answer(id, approval.Decline)
+// declinePending declines the pending approvals, so a waiting run can stop:
+// all of them, or only the run's, which end with it.
+func (s *Session) declinePending(all bool) {
+	for id, p := range s.approvals {
+		if all || !p.anytime {
+			s.answer(id, approval.Decline)
+		}
 	}
 }
 
 func (s *Session) answer(id string, a approval.Answer) {
-	reply, ok := s.approvals[id]
+	p, ok := s.approvals[id]
 	if !ok {
 		return
 	}
 	delete(s.approvals, id)
-	reply <- a
+	p.reply <- a
 	s.emit(ApprovalResolved{At: time.Now(), ID: id, Decision: a})
 }

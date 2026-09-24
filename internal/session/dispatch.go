@@ -129,7 +129,7 @@ func (s *Session) onSettings(next Settings) Applied {
 
 // interruptLive stops the live run, or the run that is starting.
 func (s *Session) interruptLive() {
-	s.declinePending() // a run waiting for the user cannot stop
+	s.declinePending(true) // a run waiting for the user cannot stop
 	switch s.state {
 	case StateRunning:
 		s.state = StateStopping
