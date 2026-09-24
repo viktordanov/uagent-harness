@@ -36,7 +36,7 @@ An approved escalation runs outside the sandbox, with network. An approved `prom
 
 The same ask (steps 6 to 8) serves [patches](#patches) that write outside the sandbox, MCP tools whose `approval_mode` needs approval, and subagents: a subagent runs its own auto-review, then asks its parent's user, with `agent <nickname>:` in front of the reason.
 
-The process engine has none of this: its `SHELL` sandboxes every command, and nothing can ask.
+The process engine applies steps 2, 3, and 5 in the shell it gives the runner, with the same `Approver.Decide` and no one to ask ([the shell gate](../engine/README.md#the-process-engine)): `forbidden` refuses, `allow` runs outside the sandbox, `prompt` refuses with the headless reason, and the rest runs in the sandbox. It has no escalation, no auto-review, and no PermissionRequest hooks.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="patches" files="approval.go" -->

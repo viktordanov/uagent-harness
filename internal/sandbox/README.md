@@ -33,14 +33,14 @@ The mode comes from `--sandbox`, `UAH_SANDBOX`, or `sandbox_mode`. The names are
 <!-- memoria:section id="shell" files="shell.go denied.go sandbox.go" -->
 ## How a command is sandboxed
 
-`Policy.Wrap(argv)` returns the command line that runs `argv` under the policy. `Shell` builds on it: it writes a small script to `<state>/sandbox/sh-<hash>` that execs the sandbox around the real shell, so `<script> -c <command>` runs `<sandbox> <real shell> -c <command>`. Scripts are named by their content, so a session reuses one and a changed policy gets a new one.
+`Policy.Wrap(argv)` returns the command line that runs `argv` under the policy. `Shell` builds on it: it writes a small script to `<state>/sandbox/sh-<hash>` that execs the sandbox around the real shell, so `<script> -c <command>` runs `<sandbox> <real shell> -c <command>`. Scripts are named by their content (`WriteScript`), so a session reuses one and a changed policy gets a new one.
 
 The engines use the script differently:
 
 | Engine | Use |
 | --- | --- |
 | embedded | Bash has two translators: one with the sandboxing script as its shell and one with the real shell. The approver picks one per command. When a sandboxed command fails and `Denied` says the output looks like a sandbox denial (Codex's keywords, plus uah's network errors), the model is told it can ask to run the command outside the sandbox |
-| process | `SHELL` is the sandboxing script, so the runner sandboxes every command. It cannot ask for escalation |
+| process | `SHELL` is the sandboxing script, so the runner sandboxes every command. It cannot ask for escalation. With command rules, `SHELL` is the process engine's gate script instead, which applies the rules and then execs this script, or the one without a sandbox for an `allow` rule ([the process engine](../engine/README.md#the-process-engine)) |
 
 When the platform has no sandbox, `Wrap` returns `ErrUnavailable`. The embedded engine then asks for approval for every command that no rule allows; the process engine runs commands without a sandbox and says so.
 <!-- /memoria:section -->
