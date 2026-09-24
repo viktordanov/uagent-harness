@@ -1,7 +1,8 @@
 // Package usage reads the ChatGPT subscription's rate limits for the
 // openai-codex provider, as Codex does: the windows (for example 5 hours and
-// a week), the percent used, and when each resets. It is a prototype wired to
-// nothing; docs/design/usage.md has the plan.
+// a week), the percent used, and when each resets. A Reader serves uah usage,
+// /status, the TUI's footer and warnings, and uah doctor;
+// docs/design/usage.md has the design.
 package usage
 
 import (
@@ -52,10 +53,10 @@ type Window struct {
 
 // Credits is the account's extra-usage credit state.
 type Credits struct {
-	HasCredits bool
-	Unlimited  bool
+	HasCredits bool `json:"has_credits"`
+	Unlimited  bool `json:"unlimited"`
 	// Balance is the backend's string, such as "12.50"; empty when not sent.
-	Balance string
+	Balance string `json:"balance,omitempty"`
 }
 
 // Codex returns the ordinary Codex limit, the one Codex shows first.
