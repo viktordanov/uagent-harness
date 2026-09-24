@@ -62,5 +62,6 @@ func TestRunProcess_ForbidRule(t *testing.T) {
 	reqs := llm.Requests()
 	require.Len(t, reqs, 2)
 	require.Len(t, reqs[1].ToolOutputs, 2)
-	assert.Contains(t, reqs[1].ToolOutputs[0], "not run: a rule forbids this command")
+	// The two commands run at once, so their results come back in either order.
+	assert.Contains(t, strings.Join(reqs[1].ToolOutputs, "\n"), "not run: a rule forbids this command")
 }
