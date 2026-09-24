@@ -110,21 +110,22 @@ func itemLines(it state.Item, w int, now time.Time, v view) []string {
 
 		return styleLines(wrapPrefixed(it.Text, w, "  ~ ", "    "), italic)
 	case state.KindNotice:
-		style, mark := dim, "  i "
+		// Information is plain dim text; only warnings and errors get a mark.
+		style, mark, rest := dim, "  ", "  "
 		switch it.Level {
 		case session.LevelWarning:
-			style, mark = warn, "  ! "
+			style, mark, rest = warn, "  ! ", "    "
 		case session.LevelError:
-			style, mark = bad, "  ✗ "
+			style, mark, rest = bad, "  ✗ ", "    "
 		}
 		var out []string
 		i := 0
 		for part := range strings.SplitSeq(it.Text, "\n") {
-			prefix := "    "
+			prefix := rest
 			if i == 0 {
 				prefix = mark
 			}
-			out = append(out, styleLines(wrapPrefixed(part, w, prefix, "    "), style)...)
+			out = append(out, styleLines(wrapPrefixed(part, w, prefix, rest), style)...)
 			i++
 		}
 

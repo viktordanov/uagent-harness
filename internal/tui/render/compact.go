@@ -1,10 +1,12 @@
 package render
 
 import (
+	"encoding/json"
 	"fmt"
 	"slices"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/charmbracelet/x/ansi"
 
@@ -118,7 +120,7 @@ func compactTool(it state.Item, w int, now time.Time) string {
 		head = dim.Render("  " + pad(label) + pad(when) + " ")
 	}
 	room := max(w-ansi.StringWidth(head)-ansi.StringWidth(tail), 8)
-	text := ansi.Truncate(oneLine(it.Label), room, "…")
+	text := ansi.Truncate(toolText(it.Label), room, "…")
 	if live {
 		return head + text
 	}
@@ -126,15 +128,17 @@ func compactTool(it state.Item, w int, now time.Time) string {
 	return head + dim.Render(text) + tail
 }
 
-// toolLabels name the tools whose label is not their name in capitals.
+// toolLabels name the tools whose label is not their name's first word in
+// capitals.
 var toolLabels = map[string]string{
-	"Bash": "RAN", "ViewImage": "VIEW",
+	"Bash":        "RAN",
 	"spawn_agent": "SPAWN", "send_input": "SEND", "wait_agent": "WAIT", "wait": "WAIT",
 	"close_agent": "CLOSE", "resume_agent": "RESUME",
 }
 
 // toolLabel is a tool's column label: RAN for commands, MCP for a server's
-// tools, the agent tools' verbs, else the name's first word in capitals.
+// tools, the agent tools' verbs, else the first word of the name in
+// capitals ("SkillUse" is SKILL, "view_image" is VIEW).
 func toolLabel(name string) string {
 	if l, ok := toolLabels[name]; ok {
 		return l
@@ -142,9 +146,33 @@ func toolLabel(name string) string {
 	if strings.HasPrefix(name, "mcp__") {
 		return "MCP"
 	}
-	name, _, _ = strings.Cut(strings.ToUpper(name), "_")
+	name, _, _ = strings.Cut(name, "_")
+	for i, r := range name {
+		if i > 0 && unicode.IsUpper(r) {
+			name = name[:i]
+
+			break
+		}
+	}
+	name = strings.ToUpper(name)
 
 	return name[:min(len(name), labelWidth-1)]
+}
+
+// toolText is what a tool line shows after its label: the label the runner
+// gave, except that arguments of one string field show as that string
+// (`{"name":"i-have-adhd"}` is i-have-adhd).
+func toolText(label string) string {
+	var args map[string]any
+	if json.Unmarshal([]byte(label), &args) == nil && len(args) == 1 {
+		for _, v := range args {
+			if s, ok := v.(string); ok {
+				return s
+			}
+		}
+	}
+
+	return oneLine(label)
 }
 
 // agentLines draws a subagent as a tree: "  AGENT Ada  0:42", and under a
