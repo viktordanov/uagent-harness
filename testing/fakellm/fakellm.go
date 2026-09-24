@@ -20,6 +20,9 @@ import (
 type Reply struct {
 	Text     string
 	Commands []string
+	// Escalated are Bash calls that ask to run outside the sandbox, with
+	// sandbox_permissions "require_escalated" and a justification.
+	Escalated []string
 	// Gate, when set, holds the response until it is closed or the request
 	// is canceled, so a test can act while the model is "thinking".
 	Gate <-chan struct{}
@@ -36,6 +39,8 @@ type Request struct {
 	System string
 	// ToolOutputs are the tool results in the input, in order.
 	ToolOutputs []string
+	// Tools are the offered tools' parameter schemas as JSON, by name.
+	Tools map[string]string
 }
 
 // Server serves the script. When the script runs out, it answers "done".
@@ -149,12 +154,22 @@ const completed = "completed"
 
 func response(n int, reply Reply) responseBody {
 	output := []outputItem{}
-	for i, cmd := range reply.Commands {
-		args, err := json.Marshal(struct {
-			Command string `json:"command"`
-		}{cmd})
+	type bashArgs struct {
+		Command       string `json:"command"`
+		Permissions   string `json:"sandbox_permissions,omitempty"`
+		Justification string `json:"justification,omitempty"`
+	}
+	calls := make([]bashArgs, 0, len(reply.Commands)+len(reply.Escalated))
+	for _, cmd := range reply.Commands {
+		calls = append(calls, bashArgs{Command: cmd})
+	}
+	for _, cmd := range reply.Escalated {
+		calls = append(calls, bashArgs{Command: cmd, Permissions: "require_escalated", Justification: "it needs the network"})
+	}
+	for i, call := range calls {
+		args, err := json.Marshal(call)
 		if err != nil {
-			panic(err) // a struct of one string always encodes
+			panic(err) // a struct of strings always encodes
 		}
 		output = append(output, outputItem{
 			ID: fmt.Sprintf("fc-%d-%d", n, i), Type: "function_call", Status: completed,
@@ -163,7 +178,7 @@ func response(n int, reply Reply) responseBody {
 	}
 	if reply.Text != "" {
 		phase := "final_answer"
-		if len(reply.Commands) > 0 {
+		if len(calls) > 0 {
 			phase = "commentary"
 		}
 		output = append(output, outputItem{
@@ -185,6 +200,10 @@ func parseRequest(body []byte) Request {
 		Reasoning   struct {
 			Effort string `json:"effort"`
 		} `json:"reasoning"`
+		Tools []struct {
+			Name       string          `json:"name"`
+			Parameters json.RawMessage `json:"parameters"`
+		} `json:"tools"`
 		Input []struct {
 			Type    string          `json:"type"`
 			Role    string          `json:"role"`
@@ -193,7 +212,10 @@ func parseRequest(body []byte) Request {
 		} `json:"input"`
 	}
 	_ = json.Unmarshal(body, &raw)
-	req := Request{Model: raw.Model, ServiceTier: raw.ServiceTier, Effort: raw.Reasoning.Effort}
+	req := Request{Model: raw.Model, ServiceTier: raw.ServiceTier, Effort: raw.Reasoning.Effort, Tools: map[string]string{}}
+	for _, t := range raw.Tools {
+		req.Tools[t.Name] = string(t.Parameters)
+	}
 	for _, in := range raw.Input {
 		if in.Type == "function_call_output" {
 			req.ToolOutputs = append(req.ToolOutputs, strings.Join(texts(in.Output), ""))
