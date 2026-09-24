@@ -5,6 +5,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/viktordanov/uagent/core"
+
 	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
@@ -14,13 +16,53 @@ import (
 // and Detail its state.
 func (s *State) onAgentUpdated(e engine.AgentUpdated) {
 	key := "agent:" + e.ID
-	set := func(it *Item) { it.Detail, it.Started = e.State, e.Started }
+	set := func(it *Item) {
+		it.Detail, it.Started = e.State, e.Started
+		if e.State != engine.AgentRunning {
+			for i := range it.Sub {
+				if it.Sub[i].Tool == ToolCalled || it.Sub[i].Tool == ToolRunning {
+					it.Sub[i].Tool = ToolStopped
+				}
+			}
+		}
+	}
 	if s.update(key, set) {
 		return
 	}
 	it := Item{Kind: KindAgent, Key: key, Name: e.Nickname, Label: e.Role, Text: e.ID}
 	set(&it)
 	s.put(it)
+}
+
+// maxAgentTools is how many of a subagent's latest tool calls its line
+// keeps for the detailed view.
+const maxAgentTools = 30
+
+// onAgentActivity folds a subagent's tool event into its line's tool calls.
+func (s *State) onAgentActivity(e engine.AgentActivity) {
+	s.update("agent:"+e.ID, func(it *Item) {
+		switch v := e.Event.(type) {
+		case core.ToolCalled:
+			it.Sub = append(it.Sub, Item{Kind: KindTool, Key: v.CallID, Name: v.Name, Label: v.Label, Tool: ToolCalled, Started: v.At})
+			it.Sub = it.Sub[max(len(it.Sub)-maxAgentTools, 0):]
+		case core.ToolStarted:
+			subTool(it, v.CallID, func(t *Item) { t.Tool, t.Started = ToolRunning, v.At })
+		case core.ToolFinished:
+			state := ToolOK
+			if !v.OK {
+				state = ToolFailed
+			}
+			subTool(it, v.CallID, func(t *Item) { t.Tool, t.Detail, t.Duration = state, v.Detail, v.Duration })
+		}
+	})
+}
+
+func subTool(it *Item, callID string, fn func(*Item)) {
+	for i := range it.Sub {
+		if it.Sub[i].Key == callID {
+			fn(&it.Sub[i])
+		}
+	}
 }
 
 // cmdAgents lists the session's subagents with their state.

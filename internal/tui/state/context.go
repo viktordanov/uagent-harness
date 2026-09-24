@@ -49,6 +49,8 @@ func (s *State) onEngineEvent(ev core.Event) bool {
 		s.onAutoReviewed(e)
 	case engine.AgentUpdated:
 		s.onAgentUpdated(e)
+	case engine.AgentActivity:
+		s.onAgentActivity(e)
 	default:
 		return false
 	}
