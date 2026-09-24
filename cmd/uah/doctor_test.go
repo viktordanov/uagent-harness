@@ -19,7 +19,7 @@ func TestDoctor(t *testing.T) {
 	for _, line := range []string{
 		"✓ config: no configuration files", "✓ runner: ", "✓ credentials: openai-codex",
 		"✓ models: 2 models available to this login (live list from openai-codex); gpt-6-sol is in it",
-		"✓ hooks: none configured", "✓ state: ",
+		"✓ usage: pro · weekly 78% left (resets ", "✓ hooks: none configured", "✓ state: ",
 	} {
 		assert.Contains(t, "\n"+res.stdout, "\n"+line, "stdout:\n%s", res.stdout)
 	}

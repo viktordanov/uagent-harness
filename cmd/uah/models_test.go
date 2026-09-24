@@ -12,10 +12,15 @@ import (
 )
 
 // modelsServer is a loopback ChatGPT backend that lists two models and a
-// hidden one, in Codex's shape.
+// hidden one, in Codex's shape, and answers the usage endpoint.
 func modelsServer(t *testing.T) *httptest.Server {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == usagePath {
+			serveUsage(w, r)
+
+			return
+		}
 		if r.URL.Path != "/models" || r.URL.Query().Get("client_version") == "" || r.Header.Get("ChatGPT-Account-ID") != "acct-test" {
 			http.NotFound(w, r)
 

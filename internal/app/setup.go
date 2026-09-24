@@ -24,6 +24,7 @@ import (
 	"github.com/viktordanov/uagent-harness/internal/sandbox"
 	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/internal/store"
+	planusage "github.com/viktordanov/uagent-harness/internal/usage"
 )
 
 // Result is everything needed to open a session.
@@ -34,6 +35,9 @@ type Result struct {
 	Config   config.Config
 	// Models is the session provider's model catalog, loaded from the cache.
 	Models *models.Manager
+	// Usage reads the subscription's usage for the session's provider; it
+	// sends nothing until asked.
+	Usage planusage.Reader
 }
 
 // Setup resolves the inputs against the resumed session (in.SessionRef) and
@@ -103,7 +107,7 @@ func Setup(ctx context.Context, in Inputs, logOutput io.Writer) (Result, error) 
 		subagents.Bind(eng, opts) // children open exactly as this session does
 	}
 
-	return Result{StateDir: stateDir, Engine: eng, Options: opts, Config: cfg, Models: catalog}, nil
+	return Result{StateDir: stateDir, Engine: eng, Options: opts, Config: cfg, Models: catalog, Usage: NewUsage(r.Settings, os.Getenv)}, nil
 }
 
 // loadHooks builds the hook runner for the configured hooks (nil when there

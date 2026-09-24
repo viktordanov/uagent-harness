@@ -3,10 +3,8 @@ package app
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"strings"
 
-	"github.com/viktordanov/uagent-harness/internal/config"
 	"github.com/viktordanov/uagent-harness/internal/models"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
@@ -65,18 +63,7 @@ func ModelLine(m models.Model) string {
 // and returns its catalog: the cache while fresh, else the provider's list,
 // or with refresh always the provider's.
 func ListModels(ctx context.Context, in Inputs, refresh bool, getenv func(string) string) (models.Catalog, error) {
-	stateDir, err := filepath.Abs(in.StateDir)
-	if err != nil {
-		return models.Catalog{}, fmt.Errorf("failed to resolve state dir: %w", err)
-	}
-	if in.Workspace, err = filepath.Abs(workspaceFor(in, session.Info{})); err != nil {
-		return models.Catalog{}, fmt.Errorf("failed to resolve workspace: %w", err)
-	}
-	cfg, _, err := config.Load(in.ConfigPath, in.Workspace)
-	if err != nil {
-		return models.Catalog{}, usage(err)
-	}
-	r, err := Resolve(in, session.Info{}, cfg)
+	stateDir, r, err := resolveOnly(in)
 	if err != nil {
 		return models.Catalog{}, err
 	}

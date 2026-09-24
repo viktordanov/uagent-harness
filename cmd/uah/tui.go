@@ -90,6 +90,7 @@ func openTUI(ctx context.Context, cmd *cli.Command, launch tuiLaunch) error {
 			return st.Models.Catalog(ctx, provider, models.OnlineIfUncached)
 		},
 		Windows:  st.Models.Window,
+		Usage:    st.Usage, // read after each run and on /status, never on a timer
 		Activity: func() (map[string]int, error) { return store.ActivityIn(ctx, st.StateDir, time.Now(), 7*12) },
 		Sessions: func() ([]session.Info, error) {
 			infos, err := store.List(ctx, st.StateDir)
