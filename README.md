@@ -108,7 +108,7 @@ uah usage          # pro plan (openai-codex)
 uah usage --json   # the same for scripts
 ```
 
-- In the TUI, `/status` shows a row per window, and the footer shows the tightest one beside the context meter (`weekly 78% left · 64% context left`).
+- In the TUI, `/usage` shows the same, `/status` shows a row per window, and the footer shows the tightest one beside the context meter (`weekly 78% left · 64% context left`).
 - A notice warns once when a window passes 75, 90, and 95% used. When a run stops at the limit, a notice says when to try again.
 - `uah doctor` warns from 90% used.
 
