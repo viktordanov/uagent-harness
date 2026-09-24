@@ -62,6 +62,9 @@ func Reduce(s State, ev any) (State, []Effect) {
 	case core.Event:
 		s.onEvent(e)
 
+		return s, s.usageAfter(e)
+	}
+	if s.onUsage(ev) {
 		return s, nil
 	}
 	if effects, ok := s.onConfig(ev); ok {
