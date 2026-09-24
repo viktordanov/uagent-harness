@@ -67,14 +67,14 @@ Built 2026-09-24 on unreal-agent-runner v0.1.1.
 - **Status.** A child is `running` from the moment a message is sent until its session is idle with every sent message accepted; it is then `completed` with the last run's answer, or `errored`. `close_agent` and closing the parent make it `shutdown`; an unknown ID is `not_found`. `wait` returns every listed child already in a final status, as Codex's v1 does, so waiting again on a finished child returns at once.
 - **Limits.** `max_concurrent_threads_per_session` counts open children in the whole tree under the root session; finished children count until closed, as in Codex. Depth comes from the live children and then the sidecars, so a resumed child keeps its depth.
 - **Approvals.** A child's session gets `Options.Ask`, which asks through the parent's latest run with `agent <nickname>:` before the justification. The child's own run applies the auto-reviewer first; what it leaves to the user goes to the parent's session (and its PermissionRequest hooks) without a second review. With no one to ask, the child is declined with a reason.
-- **Progress.** `engine.AgentUpdated` events go into the parent run's stream; the TUI draws one line per child (`KindAgent`), `/agents` lists them, and `uah run` prints `agent <nickname>: <state>`.
+- **Progress.** `engine.AgentUpdated` events go into the parent session's stream through `engine.Options.Notify`, which the session posts to its loop, so a child that finishes after the parent's run ended still updates its line; the TUI draws one line per child (`KindAgent`), `/agents` lists them, and `uah run` prints `agent <nickname>: <state>`.
 - **Roles** load from `~/.config/uagent/agents` and a trusted workspace's `.uagent/agents` (recursive `*.toml`, later directories win). The subset read: `name`, `description`, `nickname_candidates`, `model`, `model_reasoning_effort`, `developer_instructions`, with Codex's validation; other keys produce a warning notice.
 - **Tests.** `internal/agents/agents_test.go` drives one `fakellm` server for parent and children (routes by message content, and replies built from the request for IDs): spawn, wait, and the answer; the coordinator working while a `wait` is pending; a wait timing out; depth 1; `send_input`; the limit and `close_agent`; a child's escalation shown in the parent's session; the picker hiding the child.
 
 Open:
 
 1. **Children across processes.** A child from an earlier process is resumable with `uah resume <id>`, but the parent's `send_input` and `wait` know only the children of the current process (Codex's `resume_agent` is not built).
-2. **Updates after the parent's run.** A child's progress reaches the parent's stream only while a parent run is live; after it ends, the TUI line keeps its last state until the next run's updates. `/agents` reads the same lines.
-3. **Auto-review transcript.** The auto-reviewer's transcript is per engine, so children's events join the parent's.
-4. **`SubagentStop` hook** and ctrl+t details of each child's tool lines are not built.
-5. **Interrupting the parent** does not stop its children; closing the session does.
+2. **Auto-review transcript.** The auto-reviewer's transcript is per engine, so children's events join the parent's.
+3. **`SubagentStop` hook** and ctrl+t details of each child's tool lines are not built.
+4. **Interrupting the parent** does not stop its children; closing the session does.
+5. **Approvals while the parent is idle.** The session shows approvals only during a run, so a child's escalation while its parent is idle is declined.

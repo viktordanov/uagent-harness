@@ -16,7 +16,7 @@ func (s *Session) startRun(inputs []core.UserInput) {
 	s.state = StateStarting
 	s.markSent(inputs)
 	req := s.settings.request(s.id, inputs)
-	opts := engine.Options{ServiceTier: s.settings.ServiceTier, Compact: s.compactPending, Ask: s.askFunc()}
+	opts := engine.Options{ServiceTier: s.settings.ServiceTier, Compact: s.compactPending, Ask: s.askFunc(), Notify: s.notify}
 	sink := func(e core.Event) { s.in <- evRun{event: e} }
 	go func() {
 		run, err := s.eng.Start(s.ctx, req, opts, sink)
@@ -173,6 +173,13 @@ func (s *Session) finishClose(err error) {
 }
 
 // emit sends on the ordered output stream. Only the loop goroutine calls it.
+// evNotify is an engine event from outside a run (Options.Notify).
+type evNotify struct{ event core.Event }
+
+// notify hands an engine event to the loop; it drops it once the session
+// has closed.
+func (s *Session) notify(e core.Event) { s.post(evNotify{event: e}) }
+
 func (s *Session) emit(e core.Event) {
 	s.out <- e
 }

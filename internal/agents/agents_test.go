@@ -296,6 +296,71 @@ func TestAgents_ChildApprovalAsksTheParent(t *testing.T) {
 	assert.Contains(t, strings.Join(child, "\n"), "fetched", "the approved command ran")
 }
 
+// TestAgents_ParallelSpawnsKeepTheLimit spawns three agents in one turn
+// with room for two.
+func TestAgents_ParallelSpawnsKeepTheLimit(t *testing.T) {
+	e := newEnv(t, agents.Config{MaxThreads: 2},
+		fakellm.Reply{Calls: []fakellm.Call{
+			call("spawn_agent", `{"message":"CHILD-E one"}`),
+			call("spawn_agent", `{"message":"CHILD-E two"}`),
+			call("spawn_agent", `{"message":"CHILD-E three"}`),
+		}},
+		fakellm.Reply{Text: "done"},
+	)
+	e.llm.Route("CHILD-E")
+	s, ev := e.open(t, false)
+
+	_, err := s.Submit("spawn three at once")
+	require.NoError(t, err)
+	ev.finished()
+
+	outputs := lastOutputs(e)
+	assert.Equal(t, 1, strings.Count(outputs, "agent limit reached: 2 agents are open"), outputs)
+	assert.Len(t, ids(lastParent(e)), 2)
+	assert.Contains(t, outputs, `"nickname":"Ada"`)
+	assert.Contains(t, outputs, `"nickname":"Babbage"`)
+}
+
+// TestAgents_ToolsWithoutSubagents answers a past agent call with an error
+// when the engine has no subagents, so such a session still resumes.
+func TestAgents_ToolsWithoutSubagents(t *testing.T) {
+	e := newEnv(t, agents.Config{},
+		fakellm.Reply{Calls: []fakellm.Call{call("wait", `{"ids":["x"]}`)}},
+		fakellm.Reply{Text: "done"},
+	)
+	s, ev := e.open(t, false, func(c *embedded.Config) { c.Subagents = nil })
+
+	_, err := s.Submit("wait")
+	require.NoError(t, err)
+	assert.Equal(t, "done", ev.finished().Answer)
+
+	assert.NotContains(t, e.llm.Requests()[0].Tools, "spawn_agent")
+	assert.Contains(t, lastOutputs(e), `tool "wait" is not available in this session`)
+}
+
+// TestAgents_ProgressAfterTheParentsRun reports a child that finishes after
+// its parent's run ended.
+func TestAgents_ProgressAfterTheParentsRun(t *testing.T) {
+	gate := make(chan struct{})
+	e := newEnv(t, agents.Config{},
+		fakellm.Reply{Calls: []fakellm.Call{call("spawn_agent", `{"message":"CHILD-F slow"}`)}},
+		fakellm.Reply{Text: "started it"},
+	)
+	e.llm.Route("CHILD-F", fakellm.Reply{Gate: gate, Text: "finally"})
+	s, ev := e.open(t, false)
+
+	_, err := s.Submit("start one")
+	require.NoError(t, err)
+	assert.Equal(t, "started it", ev.finished().Answer)
+	close(gate)
+	done := ev.until("the child's completion", func(x core.Event) bool {
+		u, ok := x.(engine.AgentUpdated)
+		return ok && u.State == engine.AgentCompleted
+	}).(engine.AgentUpdated)
+
+	assert.Equal(t, "Ada", done.Nickname)
+}
+
 func TestAgents_WaitUnknownID(t *testing.T) {
 	m := agents.New(agents.Config{})
 	statuses, timedOut, err := m.Wait(context.Background(), "p", []string{"missing"}, time.Millisecond)
