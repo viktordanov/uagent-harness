@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/viktordanov/uagent-harness/internal/approval"
 	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/models"
 	"github.com/viktordanov/uagent-harness/internal/session"
@@ -20,6 +21,7 @@ func configValues() map[string]state.ConfigValue {
 		"model":                          {Value: "gpt-6-sol", Source: "user file"},
 		"effort":                         {Value: "high", Source: "default"},
 		"fast":                           {Value: "false", Source: "default"},
+		"permission_mode":                {Value: "workspace", Source: "default"},
 		"tui.details":                    {Value: "false", Source: "default"},
 		"tui.mouse":                      {Value: "false", Source: "user file"},
 	}
@@ -50,7 +52,7 @@ func TestConfig_OpensAndShowsValuesWithSources(t *testing.T) {
 
 	s, _ = apply(s, state.ConfigLoaded{Path: "/cfg.toml", Values: configValues()})
 	rows := s.ConfigRows()
-	require.Len(t, rows, 8)
+	require.Len(t, rows, 9)
 	got := map[string][2]string{}
 	for _, r := range rows {
 		got[r.Label] = [2]string{r.Value, r.Source}
@@ -70,8 +72,8 @@ func TestConfig_TogglesAndAppliesLive(t *testing.T) {
 	s, effects := apply(s, state.ConfigChange{Delta: 1})
 	assert.Equal(t, []state.Effect{state.EffSaveConfig{Key: "tui.mouse", Value: true}}, effects)
 	assert.True(t, s.Mouse, "the TUI reports the mouse at once")
-	assert.Equal(t, "on", s.ConfigRows()[7].Value)
-	assert.Equal(t, state.SourceUser, s.ConfigRows()[7].Source)
+	assert.Equal(t, "on", s.ConfigRows()[8].Value)
+	assert.Equal(t, state.SourceUser, s.ConfigRows()[8].Source)
 
 	s, effects = apply(s, state.ConfigSaved{Key: "tui.mouse", Value: true})
 	assert.Equal(t, []state.Effect{state.EffLoadConfig{}}, effects, "reload the sources")
@@ -105,6 +107,17 @@ func TestConfig_ModelEffortAndFastChangeTheSession(t *testing.T) {
 	next = settings()
 	next.ServiceTier = "priority"
 	assert.Equal(t, []state.Effect{state.EffSaveConfig{Key: "fast", Value: true}, state.EffSetSettings{Settings: next}}, effects)
+}
+
+func TestConfig_CyclesThePermissionModeAsShiftTab(t *testing.T) {
+	s := openConfig(t, opened(), "Permission mode")
+	s, effects := apply(s, state.ConfigChange{Delta: 1})
+	assert.Equal(t, []state.Effect{
+		state.EffSaveConfig{Key: "permission_mode", Value: "auto"},
+		state.EffSetSettings{Settings: settings().WithMode(approval.ModeAuto)},
+	}, effects)
+	_, effects = apply(s, state.ConfigChange{Delta: 1})
+	assert.Equal(t, state.EffSaveConfig{Key: "permission_mode", Value: "read-only"}, effects[0], "full access is not in the cycle")
 }
 
 func TestConfig_CyclesAutoCompactAndTheCompactionModel(t *testing.T) {
