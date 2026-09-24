@@ -13,8 +13,8 @@ import (
 	"github.com/viktordanov/uagent/harness"
 
 	"github.com/viktordanov/uagent-harness/internal/app"
-	"github.com/viktordanov/uagent-harness/internal/sandbox"
 	"github.com/viktordanov/uagent-harness/internal/config"
+	"github.com/viktordanov/uagent-harness/internal/sandbox"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
 
