@@ -1,0 +1,38 @@
+workspace:    $ROOT/ws (flag)
+user file:    $ROOT/config/uagent/config.toml (read)
+project file: $ROOT/ws/.uagent/config.toml (read)
+
+KEY                                               VALUE                         SOURCE
+provider                                          openai-codex                  default
+model                                             gpt-6-luna                    user file
+effort                                            medium                        project file
+timeout                                           10m0s                         flag
+max_disk                                          5G                            default
+engine                                            embedded                      default
+fast                                              true                          user file
+sandbox_mode                                      read-only                     env
+approval_policy                                   on-request                    default
+model_context_window                              272000                        default
+instructions.enabled                              true                          default
+approvals_reviewer                                auto_review                   default
+review.model                                      codex-auto-review             default
+review.effort                                     low                           default
+review.timeout                                    1m30s                         default
+auto_compact_percent                              80                            project file
+instructions.max_bytes                            32768                         default
+project_doc_max_bytes                             32768                         default
+project_doc_fallback_filenames                    []                            default
+project_root_markers                              [.git]                        default
+sandbox_workspace_write.network_access            false                         default
+sandbox_workspace_write.writable_roots            []                            default
+approvals.allow                                   [go test, make]               user file + project file
+approvals.forbid                                  []                            default
+shell_environment_policy.inherit                  all                           default
+shell_environment_policy.ignore_default_excludes  true                          default
+shell_environment_policy.exclude                  []                            default
+shell_environment_policy.include_only             []                            default
+shell_environment_policy.set                      {}                            default
+tui.details                                       false                         default
+hooks.Stop                                        [notify]                      user file
+mcp_servers.docs                                  https://docs.example.com/mcp  project file
+projects.<workspace>.trusted                      true                          user file

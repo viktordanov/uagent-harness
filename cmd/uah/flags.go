@@ -25,12 +25,12 @@ func sessionFlags() []cli.Flag {
 	return []cli.Flag{
 		&cli.StringFlag{
 			Name: "provider", Usage: "LLM provider: " + strings.Join(session.Providers, ", "),
-			DefaultText: app.CodexProvider + ", or the resumed session's", Sources: cli.EnvVars("UNREAL_HARNESS_LLM_PROVIDER"),
+			DefaultText: app.CodexProvider + ", or the resumed session's", Sources: cli.EnvVars(app.EnvProvider),
 			Validator: oneOf("provider", session.Providers),
 		},
 		&cli.StringFlag{
 			Name: "model", Aliases: []string{"m"}, Usage: "model ID",
-			DefaultText: app.DefaultCodexModel + " for openai-codex, or the resumed session's", Sources: cli.EnvVars("UNREAL_HARNESS_LLM_MODEL"),
+			DefaultText: app.DefaultCodexModel + " for openai-codex, or the resumed session's", Sources: cli.EnvVars(app.EnvModel),
 		},
 		&cli.StringFlag{
 			Name: "effort", Aliases: []string{"e"}, Usage: "thinking level: " + strings.Join(session.Efforts, ", "),
@@ -48,16 +48,16 @@ func sessionFlags() []cli.Flag {
 		},
 		&cli.StringFlag{
 			Name: "engine", Usage: "embedded (the runner's packages in process: live steering, effort, model, and /fast) or process (spawn unreal-agent-runner)",
-			DefaultText: app.EngineEmbedded, Sources: cli.EnvVars("UAH_ENGINE"), Validator: oneOf("engine", app.Engines),
+			DefaultText: app.EngineEmbedded, Sources: cli.EnvVars(app.EnvEngine), Validator: oneOf("engine", app.Engines),
 		},
 		&cli.BoolFlag{Name: "fast", Usage: "priority processing (service_tier priority; embedded engine, openai and openai-codex)"},
 		&cli.StringFlag{
 			Name: "sandbox", Usage: "where commands may write: read-only, workspace-write, or danger-full-access (no sandbox)",
-			DefaultText: "workspace-write", Sources: cli.EnvVars("UAH_SANDBOX"), Validator: oneOf("sandbox", sandboxModes()),
+			DefaultText: "workspace-write", Sources: cli.EnvVars(app.EnvSandbox), Validator: oneOf("sandbox", sandboxModes()),
 		},
 		&cli.StringFlag{
 			Name: "ask", Usage: "approval policy: on-request (ask before running a command outside the sandbox) or never (deny such commands)",
-			DefaultText: "on-request", Sources: cli.EnvVars("UAH_ASK"), Validator: oneOf("ask", approval.Policies),
+			DefaultText: "on-request", Sources: cli.EnvVars(app.EnvAsk), Validator: oneOf("ask", approval.Policies),
 		},
 		&cli.StringFlag{
 			Name: "runner", Usage: "path to unreal-agent-runner, for the process engine", DefaultText: "~/.local/bin, then PATH",
@@ -77,7 +77,7 @@ func sessionFlags() []cli.Flag {
 		},
 		&cli.BoolFlag{Name: "allow-dotenv", Usage: "run even if the workspace .env sets risky variables"},
 		&cli.StringFlag{
-			Name: "config", Usage: "user configuration file", Value: config.UserFile(),
+			Name: flagConfig, Usage: "user configuration file", Value: config.UserFile(),
 			Sources: cli.EnvVars("UAGENT_CONFIG"), TakesFile: true,
 		},
 		&cli.BoolFlag{Name: "no-instructions", Usage: "do not load AGENTS.md or CLAUDE.md files"},
@@ -110,7 +110,7 @@ func exitError(err error) error {
 // inputs collects the session flags for app.Setup.
 func inputs(cmd *cli.Command) app.Inputs {
 	return app.Inputs{
-		ConfigPath:     cmd.String("config"),
+		ConfigPath:     cmd.String(flagConfig),
 		StateDir:       cmd.String("state-dir"),
 		SessionRef:     cmd.String("session"),
 		LogLevel:       cmd.String("log-level"),

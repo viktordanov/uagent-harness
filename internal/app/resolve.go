@@ -214,17 +214,25 @@ func pickSandbox(in Inputs, cfg config.Config, workspace string) (sandbox.Policy
 }
 
 // pickModel is the model for provider. A provider flag that changes the
-// resumed session's provider drops the resumed and configured models.
+// provider drops the resumed and configured models, which belong to the
+// other provider.
 func pickModel(in Inputs, resumed session.Info, cfg config.Config, provider string) string {
 	fallback := ""
 	if provider == CodexProvider {
 		fallback = DefaultCodexModel
 	}
-	if in.Provider == "" || provider == resumed.Provider {
+	if !providerChanged(in, resumed, cfg) {
 		return first(in.Model, resumed.Model, cfg.Model, fallback)
 	}
 
 	return first(in.Model, fallback)
+}
+
+// providerChanged reports whether the provider flag picks another provider
+// than the one that would apply without it: the resumed session's, the
+// configured one, or the default.
+func providerChanged(in Inputs, resumed session.Info, cfg config.Config) bool {
+	return in.Provider != "" && in.Provider != first(resumed.Provider, cfg.Provider, CodexProvider)
 }
 
 // pickTimeout is the timeout flag when given, else the configured timeout,
@@ -270,7 +278,7 @@ func pickEngine(in Inputs, cfg config.Config, fast bool) (string, error) {
 		}
 	case EngineEmbedded:
 	default:
-		return "", usage(errors.New("invalid engine " + cfg.Engine + " (want embedded or process)"))
+		return "", usage(errors.New("invalid engine " + eng + " (want embedded or process)"))
 	}
 
 	return eng, nil

@@ -33,7 +33,7 @@ Status: `todo`, `doing`, `done`, `cut` (with a reason).
 | 7 | `/` menu and `@` mentions | D | 1 | done |
 | 8 | AGENTS.md and skills parity with Codex | B | 4 | done |
 | 9 | Hooks for the new features | main session | 2, 4, 5 | done |
-| 10 | Configuration reference and `uah config` | main session | 2, 5 | doing |
+| 10 | Configuration reference and `uah config` | main session | 2, 5 | done |
 | 11 | `uah doctor`, content-based hook trust, crash-recovery test | C | 5 | doing |
 | 12 | Subagents: research and plan | any free lane | — | done |
 
@@ -127,3 +127,4 @@ One line per merge or decision: time, item, what landed, commit.
 - 05:03 · check · Real end-to-end run (uah run, embedded, gpt-6-sol low): the sandbox blocked a write outside the workspace, the model escalated, codex-auto-review allowed it (low risk, ~4.5 s), and the command ran unsandboxed.
 - 05:05 · quality · After the merges: split config merge (merge.go), approval Decide, hooks Decision.add, the TUI menu keys, and moved onRunEvent out of reduce.go (408 → 350 lines). Remaining functions above 15 are the documented dispatch switches.
 - 05:06 · 12 · Building subagents (lane/subagents) in parallel with 10 and 11, the last items above it, to use the free lane.
+- 05:13 · 10 · Merged lane/config-ref: docs/configuration.md (every key, type, default, files, merge rule, precedence; a reflection test fails when a key is missing), `uah config` with each value's source (app.Explain beside Resolve). Fixed on merge: config merging no longer changes the user file's maps or slices (it doubled hooks when merged twice); a --provider flag equal to the configured provider keeps the configured model; the invalid-engine error names the bad value.

@@ -171,3 +171,20 @@ writable_roots = ["build"]
 	assert.Equal(t, []string{"~/.cache/go-build", "build"}, cfg.SandboxWorkspaceWrite.WritableRoots, "the project file adds writable roots")
 	assert.Equal(t, filepath.Join(ws, ".uagent", "rules"), config.ProjectRulesDir(ws))
 }
+
+func TestLoadLayers(t *testing.T) {
+	root := t.TempDir()
+	ws := filepath.Join(root, "ws")
+	user := filepath.Join(root, "config.toml")
+	write(t, user, "[[hooks.Stop]]\ncommand = \"user\"\n[projects.\""+ws+"\"]\ntrusted = true\n")
+	write(t, config.ProjectFile(ws), "[[hooks.Stop]]\ncommand = \"project\"\n")
+
+	l, err := config.LoadLayers(user, ws)
+
+	require.NoError(t, err)
+	assert.True(t, l.Trusted)
+	assert.Equal(t, []string{user, config.ProjectFile(ws)}, l.Files())
+	assert.Len(t, l.Merged().Hooks["Stop"], 2)
+	assert.Len(t, l.Merged().Hooks["Stop"], 2, "merging twice adds the project hooks once")
+	assert.Len(t, l.User.Hooks["Stop"], 1, "merging leaves the user file's hooks alone")
+}
