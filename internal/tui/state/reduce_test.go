@@ -12,6 +12,7 @@ import (
 	uaharness "github.com/viktordanov/uagent/harness"
 	"github.com/viktordanov/uagent/testing/fixtures"
 
+	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/internal/tui/state"
 )
@@ -228,13 +229,30 @@ func TestReduce_Commands(t *testing.T) {
 			if tc.notice != "" {
 				last := s.Items[len(s.Items)-1]
 				if name == "status" {
-					last = s.Items[len(s.Items)-3]
+					last = s.Items[len(s.Items)-4]
 				}
 				assert.Equal(t, state.KindNotice, last.Kind)
 				assert.Contains(t, last.Text, tc.notice)
 			}
 		})
 	}
+}
+
+// TestReduce_StatusNamesTheEngineGaps: /status lists what the engine does
+// not run, from its capabilities, and says nothing for one that runs all.
+func TestReduce_StatusNamesTheEngineGaps(t *testing.T) {
+	s, _ := apply(opened(), state.Submit{Text: "/status"})
+	last := s.Items[len(s.Items)-1]
+	assert.Equal(t, "the process engine runs without: live input, live settings, fast mode, compaction, PreCompact hooks, command rules, "+
+		"prompt rules, approvals, Auto mode, PermissionRequest hooks, PreToolUse hooks, MCP servers, subagents, apply_patch, Codex skills, /context", last.Text)
+
+	all := opened()
+	all.Caps = engine.Capabilities{
+		LiveInput: true, LiveEffort: true, LiveModel: true, ServiceTier: true, Compaction: true, LiveMode: true, Rules: true,
+		Approvals: true, ToolHooks: true, MCP: true, Subagents: true, ApplyPatch: true, CodexSkills: true, ContextUsage: true,
+	}
+	s, _ = apply(all, state.Submit{Text: "/status"})
+	assert.Equal(t, "instructions: none", s.Items[len(s.Items)-1].Text)
 }
 
 func TestReduce_HistoryAndSessions(t *testing.T) {

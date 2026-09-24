@@ -67,6 +67,10 @@ type Inputs struct {
 
 	AllowDotenv    bool
 	NoInstructions bool
+	// Gate is the executable that applies the command rules to the process
+	// engine's commands: uah itself (internal/engine/process/shellgate). Empty applies
+	// none.
+	Gate string
 }
 
 // Resolved is what Resolve decides.

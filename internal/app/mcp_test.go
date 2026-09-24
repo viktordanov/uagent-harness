@@ -41,7 +41,8 @@ func TestSetupMCP(t *testing.T) {
 	in.Runner = harnesstest.FakeRunner(t)
 	res, err = app.Setup(context.Background(), in, io.Discard)
 	require.NoError(t, err)
-	assert.Contains(t, res.Options.Notices, "MCP servers need the embedded engine; they do not start on the process engine")
+	assert.Contains(t, res.Options.Uses, engine.FeatureMCP, "the session says the process engine does not start them")
+	assert.False(t, res.Engine.Capabilities().MCP)
 
 	in.Engine = app.EngineEmbedded
 	write("[mcp_servers.bad]\nurl = \"http://x\"\nargs = [\"a\"]\n")
