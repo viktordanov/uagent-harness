@@ -61,7 +61,7 @@ A flag wins over the environment (`UNREAL_HARNESS_LLM_*`, `UAGENT_*`), which win
 
 <!-- /memoria:section -->
 
-<!-- memoria:section id="engines" files="internal/engine/engine.go internal/engine/embedded/engine.go internal/engine/embedded/wiring.go internal/engine/embedded/agent.go internal/engine/embedded/providers.go internal/engine/process/process.go internal/session/session.go" -->
+<!-- memoria:section id="engines" files="internal/engine/engine.go internal/engine/embedded/engine.go internal/engine/embedded/wiring.go internal/engine/embedded/client.go internal/engine/embedded/store.go internal/engine/embedded/agent.go internal/engine/embedded/providers.go internal/engine/process/process.go internal/session/session.go" -->
 ### Engines
 
 `uah` runs the agent in one of two ways, chosen with `--engine`, `UAH_ENGINE`, or `engine` in the configuration:
@@ -85,7 +85,7 @@ Later files are more specific. The total stops at 32 KiB. `--no-instructions` tu
 
 <!-- /memoria:section -->
 
-<!-- memoria:section id="hooks" files="internal/hooks/hooks.go internal/hooks/exec.go internal/hooks/payload.go internal/hooks/trust.go internal/engine/embedded/pretooluse.go cmd/uah/hooks.go" -->
+<!-- memoria:section id="hooks" files="internal/hooks/hooks.go internal/hooks/exec.go internal/hooks/payload.go internal/hooks/trust.go internal/engine/embedded/pretooluse.go internal/engine/embedded/tools.go cmd/uah/hooks.go" -->
 ### Hooks
 
 Hooks run a command at a session event, with Claude Code's contract: the event arrives as JSON on stdin, exit 0 continues (optionally printing JSON), exit 2 blocks with stderr as the reason, and any other exit is reported and ignored.
