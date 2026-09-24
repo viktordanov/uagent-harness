@@ -41,15 +41,33 @@ func TestDiscover(t *testing.T) {
 		user := filepath.Join(root, "user", "AGENTS.md")
 		write(t, user, "user rules")
 
-		files, err := instructions.Discover(ws, []string{user, filepath.Join(root, "codex", "AGENTS.md")})
+		files, err := instructions.Discover(ws, []string{user, filepath.Join(root, "codex", "AGENTS.md")}, instructions.Options{})
 
 		require.NoError(t, err)
 		assert.Equal(t, []string{
 			user,
 			filepath.Join(repo, "AGENTS.md"),
-			filepath.Join(repo, "svc", "CLAUDE.md"),
 			filepath.Join(ws, "AGENTS.override.md"),
-		}, paths(files))
+		}, paths(files), "CLAUDE.md is not read by default, as in Codex")
+
+		files, err = instructions.Discover(ws, nil, instructions.Options{FallbackFilenames: []string{"CLAUDE.md", "../x"}})
+		require.NoError(t, err)
+		assert.Contains(t, paths(files), filepath.Join(repo, "svc", "CLAUDE.md"), "a configured fallback is read")
+	})
+
+	t.Run("root markers", func(t *testing.T) {
+		root := t.TempDir()
+		ws := filepath.Join(root, "proj", "ws")
+		write(t, filepath.Join(root, "proj", ".hg"), "")
+		write(t, filepath.Join(root, "proj", "AGENTS.md"), "project")
+		write(t, filepath.Join(ws, "AGENTS.md"), "workspace")
+
+		files, err := instructions.Discover(ws, nil, instructions.Options{RootMarkers: []string{".hg"}})
+		require.NoError(t, err)
+		assert.Len(t, files, 2)
+		files, err = instructions.Discover(ws, nil, instructions.Options{RootMarkers: []string{}})
+		require.NoError(t, err)
+		assert.Equal(t, []string{filepath.Join(ws, "AGENTS.md")}, paths(files), "no markers: the workspace only")
 	})
 
 	t.Run("outside a repository only the workspace counts", func(t *testing.T) {
@@ -58,7 +76,7 @@ func TestDiscover(t *testing.T) {
 		write(t, filepath.Join(root, "AGENTS.md"), "parent")
 		write(t, filepath.Join(ws, "AGENTS.md"), "workspace")
 
-		files, err := instructions.Discover(ws, nil)
+		files, err := instructions.Discover(ws, nil, instructions.Options{})
 
 		require.NoError(t, err)
 		assert.Equal(t, []string{filepath.Join(ws, "AGENTS.md")}, paths(files))
@@ -70,7 +88,7 @@ func TestDiscover(t *testing.T) {
 		write(t, empty, "")
 		write(t, codex, "codex rules")
 
-		files, err := instructions.Discover(filepath.Join(root, "ws"), []string{empty, codex})
+		files, err := instructions.Discover(filepath.Join(root, "ws"), []string{empty, codex}, instructions.Options{})
 
 		require.NoError(t, err)
 		assert.Equal(t, []string{codex}, paths(files))

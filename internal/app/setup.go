@@ -61,7 +61,7 @@ func Setup(ctx context.Context, in Inputs, logOutput io.Writer) (Result, error) 
 		return Result{}, err
 	}
 	if r.Instructions {
-		if opts.Instructions, r.Settings.SystemPrompt, err = loadInstructions(in.Workspace, cfg.Instructions.MaxBytes); err != nil {
+		if opts.Instructions, r.Settings.SystemPrompt, err = loadInstructions(in.Workspace, cfg); err != nil {
 			return Result{}, err
 		}
 	}
@@ -197,7 +197,8 @@ func FindSession(ctx context.Context, stateDir, ref string) (session.Info, error
 
 // loadInstructions discovers and assembles instruction files, returning the
 // event to report and the host prompt ("" when there are none).
-func loadInstructions(workspace string, maxBytes int) (*session.InstructionsLoaded, string, error) {
+func loadInstructions(workspace string, cfg config.Config) (*session.InstructionsLoaded, string, error) {
+	fallbacks, markers, maxBytes := cfg.InstructionOptions()
 	codexHome := os.Getenv("CODEX_HOME")
 	if codexHome == "" {
 		if home, err := os.UserHomeDir(); err == nil {
@@ -208,7 +209,7 @@ func loadInstructions(workspace string, maxBytes int) (*session.InstructionsLoad
 	if codexHome != "" {
 		userFiles = append(userFiles, filepath.Join(codexHome, "AGENTS.md"))
 	}
-	files, err := instructions.Discover(workspace, userFiles)
+	files, err := instructions.Discover(workspace, userFiles, instructions.Options{FallbackFilenames: fallbacks, RootMarkers: markers})
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to find instructions: %w", err)
 	}
