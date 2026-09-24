@@ -135,6 +135,21 @@ func sessionEventDTO(event core.Event) (any, bool) {
 			Level   string `json:"level"`
 			Message string `json:"message"`
 		}{header("notice", e.At), e.Level, e.Message}, true
+	case engine.Reconnecting:
+		return struct {
+			sessionHeader
+
+			Attempt     int    `json:"attempt"`
+			MaxAttempts int    `json:"max_attempts"`
+			DelayMS     int64  `json:"delay_ms"`
+			Reason      string `json:"reason"`
+		}{header("reconnecting", e.At), e.Attempt, e.MaxAttempts, e.Delay.Milliseconds(), e.Reason}, true
+	case engine.ReconnectEnded:
+		return struct {
+			sessionHeader
+
+			OK bool `json:"ok"`
+		}{header("reconnect_ended", e.At), e.OK}, true
 	}
 
 	return nil, false

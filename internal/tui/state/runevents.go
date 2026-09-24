@@ -38,7 +38,7 @@ func (s *State) onRunEvent(ev core.Event) { //nolint:gocyclo // a dispatch switc
 		s.put(Item{Kind: KindTurn, Key: turnKey(s.Live, e.Turn), Turn: e.Turn, Pending: true, Started: e.At})
 	case core.ModelResponded:
 		if s.Live != nil {
-			s.Live.TurnSince = time.Time{}
+			s.Live.TurnSince, s.Live.Reconnect = time.Time{}, nil
 		}
 		s.noteUsage(e)
 		s.update(turnKey(s.Live, e.Turn), func(it *Item) {

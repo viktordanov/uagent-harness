@@ -184,7 +184,7 @@ The split follows the rest of the TUI:
 - An approval waiting in the session shows the session's screen until it is answered.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="look" files="render/theme.go render/compact.go render/screen.go render/markdown.go bubble/model.go render/diff.go render/words.go" -->
+<!-- memoria:section id="look" files="render/theme.go render/compact.go render/screen.go render/markdown.go bubble/model.go render/diff.go render/words.go state/context.go" -->
 ## The look
 
 The compact view is shaped like Codex's, in amber. The choices came from the style swatchbook and are listed in the [ledger](../../docs/ledger.md) (item 19).
@@ -200,6 +200,7 @@ The compact view is shaped like Codex's, in amber. The choices came from the sty
 | Code blocks | On the band, highlighted with the theme's code colors, not wrapped | `markdownLines`, `highlight` |
 | Subagents | While running, at the bottom above the working line with a blank line before each: `AGENT Ada  42s`, and under it `└ ⠹ Read …`, its live tool call. A finished one is one line where it was spawned: `done in 1m 12s`, or `failed:` and the provider's reason; closing it afterwards keeps that | `activeAgents`, `agentLines` |
 | Working | A breathing `λ` (seven shades, one breath every 1.6 s) and `Working (12s • esc to interrupt)` | `workingLine`, `breathing` |
+| Reconnecting | While a model request waits to be sent again (`engine.Reconnecting`, embedded engine), the working line reads `Reconnecting, attempt 3 of 10 (retrying in 8s • esc to interrupt)`, counting down, then `(connecting • …)` while the attempt is in flight; the detailed view shows it in the footer. `State.Live.Reconnect` holds it until `engine.ReconnectEnded`, a response, or the run's end, and each retry leaves a `LevelDebug` notice with its reason | `statusLine`, `reconnectText`; `state/context.go` |
 | A finished run | `12:14 PM · worked 1m 12s`: Codex's time and Claude Code's duration; how it ended first when not ok | `finishLine` (a `KindFinish` item) |
 | Composer | `λ ` before its first row only (the rows under it line up with the text), on the band, with a band row above and below | `Screen`, `composerStyles` in `bubble/model.go` |
 | Notices | Plain dim text; warnings start with `!` and errors with `✗` | `itemLines` |
@@ -261,7 +262,7 @@ To add an item kind, follow `KindContext`:
 To add a key, map it to an intent in `bubble/keys.go` and handle the intent in `state.Reduce`. Keep the existing keys' meanings.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="tests" files="state/images_test.go bubble/images_test.go state/reduce_test.go state/menu_test.go state/contextview_test.go state/mode_test.go render/screen_test.go render/contextview_test.go render/mode_test.go bubble/bubble_test.go bubble/approval_test.go bubble/mode_test.go state/config_test.go bubble/config_test.go render/diff_test.go state/shell_test.go render/shell_test.go bubble/shell_test.go state/usage_test.go render/usage_test.go bubble/usage_test.go state/agents_test.go bubble/steer_test.go" -->
+<!-- memoria:section id="tests" files="state/images_test.go bubble/images_test.go state/reduce_test.go state/menu_test.go state/contextview_test.go state/mode_test.go render/screen_test.go render/contextview_test.go render/mode_test.go bubble/bubble_test.go bubble/approval_test.go bubble/mode_test.go state/config_test.go bubble/config_test.go render/diff_test.go state/shell_test.go render/shell_test.go bubble/shell_test.go state/usage_test.go render/usage_test.go bubble/usage_test.go state/agents_test.go bubble/steer_test.go state/reconnect_test.go render/reconnect_test.go" -->
 ## Tests
 
 | Test | Pins |
@@ -275,5 +276,6 @@ To add a key, map it to an intent in `bubble/keys.go` and handle the intent in `
 | `state/images_test.go`, `bubble/images_test.go` | Images: placeholders and their numbers, removal by deleting the placeholder or with one backspace, what a message sends, the transcript with placeholders live and resumed, pasted and dropped paths, `@` image files, the process engine's notice, and a real embedded session whose model request carries the image, with a fake clipboard |
 | `state/usage_test.go`, `render/usage_test.go`, `bubble/usage_test.go` | Plan usage: the read after each run, `/status` rows and staleness, the footer, warnings once per threshold, the limit notice, a provider without usage, and a real reader against a loopback backend |
 | `state/shell_test.go`, `render/shell_test.go`, `bubble/shell_test.go` | Shell mode: entering and leaving it, enter running the line, `/` as a path, the `!` prompt and the footer, the item from its events, the echo, and a resumed record (golden `shell`), and `!` through a real session on the process engine |
+| `state/reconnect_test.go`, `render/reconnect_test.go` | A retry held in `Live.Reconnect` until it ends, a response arrives, or the run finishes, its detail notice, and the working line's countdown, `connecting`, and the detailed footer |
 | `state/config_test.go`, `bubble/config_test.go` | `/config`: the rows and sources, toggles, cycles, typed values, what applies live, the warning when another source wins, and a real user file saved with its comments kept, with a change that would stop a session from starting undone |
 <!-- /memoria:section -->

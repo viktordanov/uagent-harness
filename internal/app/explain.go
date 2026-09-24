@@ -24,6 +24,8 @@ const (
 	EnvEngine   = "UAH_ENGINE"
 	EnvSandbox  = "UAH_SANDBOX"
 	EnvAsk      = "UAH_ASK"
+	// EnvMaxAttempts is the runner's variable for the attempt limit.
+	EnvMaxAttempts = "UNREAL_HARNESS_LLM_MAX_ATTEMPTS"
 )
 
 // Source is where an effective setting came from.
@@ -80,7 +82,7 @@ type Origins struct {
 // files, and explains the effective configuration. It builds no engine.
 func Inspect(ctx context.Context, in Inputs) (Report, error) {
 	o := Origins{Env: map[string]string{}}
-	for _, name := range []string{EnvProvider, EnvModel, EnvEngine, EnvSandbox, EnvAsk} {
+	for _, name := range []string{EnvProvider, EnvModel, EnvEngine, EnvSandbox, EnvAsk, EnvMaxAttempts} {
 		o.Env[name] = os.Getenv(name)
 	}
 	var err error
@@ -158,6 +160,7 @@ func sessionSettings(in Inputs, o Origins, r Resolved, cfg config.Config) []Sett
 		one("model", s.Model, modelSource),
 		one("effort", s.Effort, pick(input(in.Effort, "", nil), sessionValue(resumed.Effort), overrides(l, func(c config.Config) any { return c.Effort }), FromDefault)),
 		one("timeout", s.Timeout.String(), pick(given(in.TimeoutSet), overrides(l, func(c config.Config) any { return c.Timeout }), FromDefault)),
+		one("request_max_attempts", s.MaxAttempts, pick(attemptsInput(in, env), overrides(l, func(c config.Config) any { return c.RequestMaxAttempts }), FromDefault)),
 		one("max_disk", maxDisk, pick(given(in.MaxDiskSet), overrides(l, func(c config.Config) any { return c.MaxDisk }), FromDefault)),
 		one("engine", r.Engine, pick(input(in.Engine, EnvEngine, env), overrides(l, func(c config.Config) any { return c.Engine }), FromDefault)),
 		{Key: "fast", Value: s.ServiceTier != "", Sources: fastSources(in, o, cfg)},
@@ -167,6 +170,16 @@ func sessionSettings(in Inputs, o Origins, r Resolved, cfg config.Config) []Sett
 		one("model_context_window", compaction.ContextWindow(s.Model, s.ContextWindow, models.BundledWindow), pick(overrides(l, func(c config.Config) any { return c.ModelContextWindow }), FromDefault)),
 		{Key: "instructions.enabled", Value: r.Instructions, Sources: orSources(given(in.NoInstructions), []Source{overrides(l, func(c config.Config) any { return c.Instructions.Enabled })})},
 	}
+}
+
+// attemptsInput is the source of --max-attempts: its environment variable
+// when the value is the variable's ("" when unset).
+func attemptsInput(in Inputs, env map[string]string) Source {
+	if in.MaxAttempts == 0 {
+		return ""
+	}
+
+	return input(strconv.Itoa(in.MaxAttempts), EnvMaxAttempts, env)
 }
 
 // fastSources are the fast mode's: the flag, the resumed session, or the

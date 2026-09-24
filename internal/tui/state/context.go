@@ -1,6 +1,8 @@
 package state
 
 import (
+	"fmt"
+
 	"github.com/viktordanov/uagent/core"
 
 	"github.com/viktordanov/uagent-harness/internal/compaction"
@@ -61,6 +63,15 @@ func (s *State) onEngineEvent(ev core.Event) bool {
 			s.notice(session.LevelWarning, e.Warning)
 		}
 		s.notice(LevelDebug, "summary: "+e.Summary)
+	case engine.Reconnecting:
+		if s.Live != nil {
+			s.Live.Reconnect = &Reconnect{Attempt: e.Attempt, MaxAttempts: e.MaxAttempts, Retry: e.At.Add(e.Delay), Reason: e.Reason}
+		}
+		s.notice(LevelDebug, fmt.Sprintf("reconnecting, attempt %d of %d: %s", e.Attempt, e.MaxAttempts, e.Reason))
+	case engine.ReconnectEnded:
+		if s.Live != nil {
+			s.Live.Reconnect = nil
+		}
 	case engine.AutoReviewed:
 		s.onAutoReviewed(e)
 	case engine.AgentUpdated:

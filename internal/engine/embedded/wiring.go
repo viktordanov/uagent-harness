@@ -257,6 +257,7 @@ func (w *wiring) launch(ctx context.Context, a *agent, coord coordinator.Coordin
 		case a.interrupted.Load():
 			a.code = exitInterrupted
 		case err != nil:
+			err = runError(err)
 			writeError(w.l.Stdout, err)
 			_, _ = fmt.Fprintf(w.l.Stderr, "embedded: %v\n", err)
 			a.code = 1

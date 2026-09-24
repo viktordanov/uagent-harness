@@ -13,6 +13,7 @@ import (
 	"github.com/viktordanov/uagent-harness/internal/approval"
 	"github.com/viktordanov/uagent-harness/internal/compaction"
 	"github.com/viktordanov/uagent-harness/internal/config"
+	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/review"
 	"github.com/viktordanov/uagent-harness/internal/rules"
 	"github.com/viktordanov/uagent-harness/internal/sandbox"
@@ -301,6 +302,17 @@ func TestResolve(t *testing.T) {
 			},
 		},
 		{
+			name: "request_max_attempts beats the default",
+			cfg:  config.Config{RequestMaxAttempts: 20},
+			want: func(r *app.Resolved) { r.Settings.MaxAttempts = 20 },
+		},
+		{
+			name: "--max-attempts or its variable beats request_max_attempts",
+			in:   func(in *app.Inputs) { in.MaxAttempts = 3 },
+			cfg:  config.Config{RequestMaxAttempts: 20},
+			want: func(r *app.Resolved) { r.Settings.MaxAttempts = 3 },
+		},
+		{
 			name: "the prompt file is read by Setup",
 			cfg:  config.Config{ExperimentalCompactPromptFile: "/prompts/compact.md"},
 			want: func(r *app.Resolved) { r.CompactPromptFile = "/prompts/compact.md" },
@@ -316,6 +328,7 @@ func TestResolve(t *testing.T) {
 				Settings: session.Settings{
 					Provider: app.CodexProvider, Model: app.DefaultCodexModel, Effort: app.DefaultEffort,
 					Workspace: "/ws", Timeout: 30 * time.Minute, Mode: approval.ModeWorkspace, Sandbox: string(sandbox.WorkspaceWrite),
+					MaxAttempts: engine.DefaultMaxAttempts,
 				},
 				Engine: app.EngineEmbedded, MaxDisk: 5 << 30, Instructions: true,
 				Sandbox: sandbox.Policy{Mode: sandbox.WorkspaceWrite}, Compaction: compaction.Settings{Percent: 90}, Approval: approval.OnRequest,
@@ -351,6 +364,8 @@ func TestResolveUsageErrors(t *testing.T) {
 		{name: "invalid config max disk", cfg: config.Config{MaxDisk: "lots"}, want: `max_disk: invalid size "LOTS"`},
 		{name: "invalid config engine", cfg: config.Config{Engine: "turbo"}, want: "invalid engine turbo (want embedded or process)"},
 		{name: "invalid auto_compact_percent", cfg: config.Config{AutoCompactPercent: new(101)}, want: "invalid auto_compact_percent 101"},
+		{name: "invalid request_max_attempts", cfg: config.Config{RequestMaxAttempts: -1}, want: "invalid request_max_attempts -1"},
+		{name: "invalid --max-attempts", in: func(in *app.Inputs) { in.MaxAttempts = -2 }, want: "invalid --max-attempts -2"},
 		{name: "invalid model_context_window", cfg: config.Config{ModelContextWindow: -1}, want: "invalid model_context_window -1"},
 		{name: "invalid model_auto_compact_token_limit", cfg: config.Config{ModelAutoCompactTokenLimit: -5}, want: "invalid model_auto_compact_token_limit -5"},
 		{name: "invalid compact_effort", cfg: config.Config{CompactEffort: "huge"}, want: `invalid compact_effort "huge"`},

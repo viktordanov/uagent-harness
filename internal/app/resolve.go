@@ -14,6 +14,7 @@ import (
 	"github.com/viktordanov/uagent-harness/internal/approval"
 	"github.com/viktordanov/uagent-harness/internal/compaction"
 	"github.com/viktordanov/uagent-harness/internal/config"
+	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/review"
 	"github.com/viktordanov/uagent-harness/internal/rules"
 	"github.com/viktordanov/uagent-harness/internal/sandbox"
@@ -58,8 +59,10 @@ type Inputs struct {
 	TimeoutSet bool
 	MaxDisk    string
 	MaxDiskSet bool
-	Fast       bool
-	FastSet    bool
+	// MaxAttempts is --max-attempts or its environment variable (0: unset).
+	MaxAttempts int
+	Fast        bool
+	FastSet     bool
 	// Sandbox is the --sandbox mode.
 	Sandbox string
 	// Ask is the --ask approval policy.
@@ -131,6 +134,9 @@ func Resolve(in Inputs, resumed session.Info, cfg config.Config) (Resolved, erro
 		return Resolved{}, err
 	}
 	s.Timeout = timeout
+	if s.MaxAttempts, err = pickMaxAttempts(in, cfg); err != nil {
+		return Resolved{}, err
+	}
 	if pickFast(in, resumed, cfg) {
 		s.ServiceTier = "priority"
 	}
@@ -230,6 +236,23 @@ func pickTimeout(in Inputs, cfg config.Config) (time.Duration, error) {
 	}
 
 	return d, nil
+}
+
+// pickMaxAttempts is the max-attempts flag or its environment variable,
+// else request_max_attempts, else uah's default.
+func pickMaxAttempts(in Inputs, cfg config.Config) (int, error) {
+	switch {
+	case in.MaxAttempts < 0:
+		return 0, usage(fmt.Errorf("invalid --max-attempts %d (want 1 or more)", in.MaxAttempts))
+	case in.MaxAttempts > 0:
+		return in.MaxAttempts, nil
+	case cfg.RequestMaxAttempts < 0:
+		return 0, usage(fmt.Errorf("invalid request_max_attempts %d (want 1 or more)", cfg.RequestMaxAttempts))
+	case cfg.RequestMaxAttempts > 0:
+		return cfg.RequestMaxAttempts, nil
+	}
+
+	return engine.DefaultMaxAttempts, nil
 }
 
 // pickMaxDisk is the max-disk flag when given, else the configured limit,

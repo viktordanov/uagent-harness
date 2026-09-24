@@ -14,6 +14,12 @@ import (
 	"github.com/viktordanov/uagent-harness/internal/mcp"
 )
 
+// DefaultMaxAttempts is how many times a model request is sent before
+// the run fails, unless the request sets its own: the first attempt and
+// nine retries, which the runner's client spaces 2 s apart, doubling to
+// at most 30 s (about 3 minutes in all). The runner's own default is 5.
+const DefaultMaxAttempts = 10
+
 // ErrUnsupported means the engine cannot do this while a run is live.
 var ErrUnsupported = errors.New("not supported by this engine while a run is live")
 

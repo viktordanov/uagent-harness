@@ -69,6 +69,7 @@ Every key may be set in the user file and in a trusted project file, except `[pr
 | `model` | string | `gpt-6-sol` on openai-codex, else none | `-m`, `--model`, `UNREAL_HARNESS_LLM_MODEL` | override | The model ID |
 | `effort` | string | `high` | `-e`, `--effort` | override | The thinking level: low, medium, high, xhigh, or max |
 | `timeout` | duration | `30m` | `-t`, `--timeout` | override | The wall-clock limit per run, as Go durations (`90s`, `1h`); `0s` disables it |
+| `request_max_attempts` | integer | 10 | `--max-attempts`, `UNREAL_HARNESS_LLM_MAX_ATTEMPTS` | override | How many times a model request is sent before the run fails. A lost connection, a timeout, a 429, or most 5xx statuses are retried after 2 s, then 4, 8, and 16 s, and then every 30 s (less up to a fifth of jitter, or the server's `Retry-After` up to 30 s): 10 attempts wait about 3 minutes in all. The runner's own default is 5 |
 | `max_disk` | size | `5G` | `--max-disk` | override | Stop a run when tool output exceeds this size (`500M`, `5G`, bytes without a suffix); `0` disables it |
 | `engine` | string | `embedded` | `--engine`, `UAH_ENGINE` | override | `embedded` runs the runner's packages in process; `process` spawns unreal-agent-runner ([engines](../README.md#engines)) |
 | `fast` | bool | false | `--fast` | OR | Priority processing (`service_tier = "priority"`); needs the embedded engine and the openai or openai-codex provider |
@@ -319,6 +320,7 @@ developer_instructions = "Review the diff you are given. List only real bugs, ea
 | `UNREAL_HARNESS_LLM_PROVIDER` | `--provider` | `provider` | The provider |
 | `UNREAL_HARNESS_LLM_MODEL` | `--model` | `model` | The model |
 | `UNREAL_HARNESS_LLM_BASE_URL` | `--base-url` | none | The LLM base URL |
+| `UNREAL_HARNESS_LLM_MAX_ATTEMPTS` | `--max-attempts` | `request_max_attempts` | The attempts per model request. uah passes the resolved value to both engines, so the variable no longer reaches the runner directly |
 | `UAH_ENGINE` | `--engine` | `engine` | The engine |
 | `UAH_SANDBOX` | `--sandbox` | `sandbox_mode` | The sandbox mode, and the permission mode of that sandbox |
 | `UAH_ASK` | `--ask` | `approval_policy` | The approval policy |
@@ -352,6 +354,7 @@ model = "gpt-6-sol"
 effort = "high"
 timeout = "30m"                    # per run; "0s" disables
 max_disk = "5G"                    # tool output per run; "0" disables
+request_max_attempts = 10          # per model request; a lost connection is retried with backoff
 engine = "embedded"                # or "process"
 fast = false                       # priority processing
 sandbox_mode = "workspace-write"   # read-only, workspace-write, danger-full-access

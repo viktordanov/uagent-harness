@@ -1,22 +1,12 @@
 package embedded
 
 import (
-	"encoding/json/jsontext"
 	"errors"
-	"fmt"
-	"net/http"
-	"strings"
 
 	"github.com/unreallabsai/unreal-agent/harness/llm"
-	"github.com/unreallabsai/unreal-agent/harness/llm/clients/fireworks"
 	"github.com/unreallabsai/unreal-agent/harness/llm/clients/ollama"
-	"github.com/unreallabsai/unreal-agent/harness/llm/clients/openai"
 	"github.com/unreallabsai/unreal-agent/harness/llm/clients/openaicodex"
-	"github.com/unreallabsai/unreal-agent/harness/llm/clients/openrouter"
-	"github.com/unreallabsai/unreal-agent/harness/llm/responsesapi"
 	"github.com/unreallabsai/unreal-agent/harness/primitives"
-
-	"github.com/viktordanov/uagent-harness/internal/engine/codexauth"
 )
 
 // Client is a model client the engine can close.
@@ -50,114 +40,33 @@ type Provider struct {
 
 var errNoPriority = errors.New("this provider has no priority processing")
 
-// DefaultProviders are the runner's providers.
+// DefaultProviders are the runner's providers, with clients whose retries
+// the engine can watch (clients.go).
 func DefaultProviders() []Provider {
 	return []Provider{
-		{
-			Name: "ollama", BaseURL: ollama.BaseURL,
-			NewClient: func(c ClientConfig) (Client, error) {
-				if c.Priority {
-					return nil, errNoPriority
-				}
-
-				return ollama.NewClient(ollama.Config{BaseURL: c.BaseURL, MaxAttempts: &c.MaxAttempts})
-			},
-		},
+		{Name: "ollama", BaseURL: ollama.BaseURL, NewClient: noPriority(ollamaClient)},
 		{
 			Name: "openai", BaseURL: "https://api.openai.com/v1", DefaultModel: "gpt-6-astra",
-			APIKeyEnv: "OPENAI_API_KEY", Priority: true,
-			NewClient: func(c ClientConfig) (Client, error) {
-				if c.Priority {
-					return priorityClient(primitives.NewRemoteClient(), strings.TrimRight(c.BaseURL, "/")+"/responses", c.MaxAttempts,
-						map[string][]string{"Authorization": {"Bearer " + c.APIKey}, "Content-Type": {"application/json"}},
-						responsesapi.CacheKeyPlacement{UsePromptCacheKeyField: true})
-				}
-
-				return openai.NewClient(openai.Config{APIKey: c.APIKey, BaseURL: c.BaseURL, MaxAttempts: &c.MaxAttempts})
-			},
+			APIKeyEnv: "OPENAI_API_KEY", Priority: true, NewClient: openaiClient,
 		},
-		{
-			Name: "openai-codex", BaseURL: openaicodex.BaseURL, Priority: true,
-			NewClient: func(c ClientConfig) (Client, error) {
-				config, err := openaicodex.EnvironmentConfig(c.Getenv)
-				if err != nil {
-					return nil, err
-				}
-				config.BaseURL, config.MaxAttempts = c.BaseURL, &c.MaxAttempts
-				if c.Priority {
-					return codexPriorityClient(config)
-				}
-
-				return openaicodex.NewClient(config)
-			},
-		},
-		{
-			Name: "openrouter", BaseURL: "https://openrouter.ai/api/v1", APIKeyEnv: "OPENROUTER_API_KEY",
-			NewClient: func(c ClientConfig) (Client, error) {
-				if c.Priority {
-					return nil, errNoPriority
-				}
-
-				return openrouter.NewClient(openrouter.Config{APIKey: c.APIKey, BaseURL: c.BaseURL, MaxAttempts: &c.MaxAttempts})
-			},
-		},
-		{
-			Name: "fireworks", BaseURL: "https://api.fireworks.ai/inference/v1", APIKeyEnv: "FIREWORKS_API_KEY",
-			NewClient: func(c ClientConfig) (Client, error) {
-				if c.Priority {
-					return nil, errNoPriority
-				}
-
-				return fireworks.NewClient(fireworks.Config{APIKey: c.APIKey, BaseURL: c.BaseURL, MaxAttempts: &c.MaxAttempts})
-			},
-		},
+		{Name: "openai-codex", BaseURL: openaicodex.BaseURL, Priority: true, NewClient: codexClient},
+		{Name: "openrouter", BaseURL: "https://openrouter.ai/api/v1", APIKeyEnv: "OPENROUTER_API_KEY", NewClient: noPriority(openrouterClient)},
+		{Name: "fireworks", BaseURL: "https://api.fireworks.ai/inference/v1", APIKeyEnv: "FIREWORKS_API_KEY", NewClient: noPriority(fireworksClient)},
 	}
 }
 
-// codexPriorityClient is openaicodex.NewClient with service_tier "priority":
-// the same endpoint, headers, and redirect rule.
-func codexPriorityClient(config openaicodex.Config) (Client, error) {
-	creds, err := codexauth.Load(config)
-	if err != nil {
-		return nil, err
-	}
-	baseURL := strings.TrimRight(strings.TrimSpace(config.BaseURL), "/")
-	if baseURL == "" {
-		baseURL = openaicodex.BaseURL
-	}
-	transport, ok := http.DefaultTransport.(*http.Transport)
-	if !ok {
-		return nil, errors.New("the default HTTP transport is not an *http.Transport")
-	}
-	// Never forward subscription credentials through redirects.
-	remote := primitives.NewRemoteClientWithHTTPClient(&http.Client{
-		Transport:     transport.Clone(),
-		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
-	})
+// noPriority refuses priority processing, for a provider without it.
+func noPriority(build func(ClientConfig) (Client, error)) func(ClientConfig) (Client, error) {
+	return func(c ClientConfig) (Client, error) {
+		if c.Priority {
+			return nil, errNoPriority
+		}
 
-	return priorityClient(remote, baseURL+"/responses", *config.MaxAttempts, map[string][]string{
-		"Authorization":      {"Bearer " + creds.AccessToken},
-		"ChatGPT-Account-ID": {creds.AccountID},
-		"Content-Type":       {"application/json"},
-		"originator":         {"unreal-agent"},
-		"User-Agent":         {"unreal-agent"},
-	}, responsesapi.CacheKeyPlacement{UsePromptCacheKeyField: true, Header: "session-id"})
+		return build(c)
+	}
 }
 
-func priorityClient(remote *primitives.RemoteClient, endpoint string, maxAttempts int, headers map[string][]string, cache responsesapi.CacheKeyPlacement) (Client, error) {
-	adapter, err := responsesapi.NewAdapter(remote, responsesapi.Config{
-		Endpoint: endpoint, Headers: headers, CacheKeyPlacement: cache, MaxAttempts: &maxAttempts,
-		Extensions: map[string]jsontext.Value{"service_tier": jsontext.Value(`"priority"`)},
-	})
-	if err != nil {
-		_ = remote.Close()
-
-		return nil, fmt.Errorf("failed to create the priority client: %w", err)
-	}
-
-	return remoteAdapter{Adapter: adapter, remote: remote}, nil
-}
-
+// remoteAdapter is a Responses adapter and the remote client it closes.
 type remoteAdapter struct {
 	llm.Adapter
 

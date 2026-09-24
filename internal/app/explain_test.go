@@ -54,11 +54,11 @@ func TestExplainSources(t *testing.T) {
 			name: "defaults",
 			want: map[string]string{
 				"workspace": "default", "provider": "default", "model": "default", "effort": "default", "timeout": "default",
-				"engine": "default", "fast": "default", "sandbox_mode": "default", "approvals.allow": "default",
+				"engine": "default", "fast": "default", "sandbox_mode": "default", "approvals.allow": "default", "request_max_attempts": "default",
 				"projects.<workspace>.trusted": "default",
 			},
 			vals: map[string]string{
-				"workspace": "/cwd", "provider": "openai-codex", "model": "gpt-6-sol", "effort": "high", "timeout": "30m0s", "max_disk": "5G",
+				"workspace": "/cwd", "provider": "openai-codex", "model": "gpt-6-sol", "effort": "high", "timeout": "30m0s", "max_disk": "5G", "request_max_attempts": "10",
 				"sandbox_mode": "workspace-write", "approval_policy": "on-request", "approvals_reviewer": "user",
 				"review.model": "codex-auto-review", "auto_compact_percent": "90", "project_root_markers": "[.git]",
 				"shell_environment_policy.set": "{}", "approvals.allow": "[]",
@@ -116,6 +116,13 @@ func TestExplainSources(t *testing.T) {
 			vals: map[string]string{"timeout": "1m0s", "max_disk": "1G", "fast": "false", "instructions.enabled": "false"},
 		},
 		{
+			name: "--max-attempts beats request_max_attempts",
+			in:   func(in *app.Inputs) { in.MaxAttempts = 3 },
+			o:    app.Origins{Layers: config.Layers{User: config.Config{RequestMaxAttempts: 20}}},
+			want: map[string]string{"request_max_attempts": "flag"},
+			vals: map[string]string{"request_max_attempts": "3"},
+		},
+		{
 			name: "the project file overrides, adds, ORs, and replaces by name",
 			in:   func(in *app.Inputs) { in.Workspace = "/ws" },
 			o: app.Origins{Layers: trusted(
@@ -141,6 +148,19 @@ func TestExplainSources(t *testing.T) {
 				"effort": "max", "approvals.allow": "[go test, make]", "mcp_servers.docs": "npx docs", "mcp_servers.mine": "https://x",
 				"hooks.Stop": "[user-stop, project-stop]", "shell_environment_policy.set": `{A="1"}`, "projects.<workspace>.trusted": "true",
 			},
+		},
+		{
+			name: "UNREAL_HARNESS_LLM_MAX_ATTEMPTS beats request_max_attempts",
+			in:   func(in *app.Inputs) { in.MaxAttempts = 4 },
+			o:    app.Origins{Env: map[string]string{app.EnvMaxAttempts: "4"}, Layers: config.Layers{User: config.Config{RequestMaxAttempts: 20}}},
+			want: map[string]string{"request_max_attempts": "env"},
+			vals: map[string]string{"request_max_attempts": "4"},
+		},
+		{
+			name: "request_max_attempts from the user file",
+			o:    app.Origins{Layers: config.Layers{User: config.Config{RequestMaxAttempts: 20}}},
+			want: map[string]string{"request_max_attempts": "user file"},
+			vals: map[string]string{"request_max_attempts": "20"},
 		},
 		{
 			name: "project_doc_max_bytes falls back to [instructions] max_bytes",

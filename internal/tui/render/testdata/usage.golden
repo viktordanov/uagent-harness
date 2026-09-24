@@ -1,4 +1,3 @@
-
 ╭────────────────────────────────────────────────╮
 │ λ uah                                          │
 │                                                │
@@ -13,7 +12,8 @@
   instructions: none
   the process engine runs without: live input, live settings, fast mode, compaction, PreCompact
   hooks, command rules, prompt rules, approvals, Auto mode, PermissionRequest hooks, PreToolUse
-  hooks, MCP servers, subagents, apply_patch, Codex skills, /context, pasted images
+  hooks, MCP servers, subagents, apply_patch, Codex skills, /context, pasted images, reconnect
+  status
   usage · pro plan
   weekly [███████████████░░░░░] 78% left (resets 15:00 on 26 Sep)
   ! Heads up, you have less than 10% of your weekly limit left (resets 15:00 on 26 Sep)

@@ -7,6 +7,7 @@ provider                                          openai-codex                  
 model                                             gpt-6-luna                    user file
 effort                                            medium                        project file
 timeout                                           10m0s                         flag
+request_max_attempts                              10                            default
 max_disk                                          5G                            default
 engine                                            embedded                      default
 fast                                              true                          user file

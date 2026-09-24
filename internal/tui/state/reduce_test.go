@@ -298,12 +298,12 @@ func TestReduce_StatusNamesTheEngineGaps(t *testing.T) {
 	s, _ := apply(opened(), state.Submit{Text: "/status"})
 	last := s.Items[len(s.Items)-1]
 	assert.Equal(t, "the process engine runs without: live input, live settings, fast mode, compaction, PreCompact hooks, command rules, "+
-		"prompt rules, approvals, Auto mode, PermissionRequest hooks, PreToolUse hooks, MCP servers, subagents, apply_patch, Codex skills, /context, pasted images", last.Text)
+		"prompt rules, approvals, Auto mode, PermissionRequest hooks, PreToolUse hooks, MCP servers, subagents, apply_patch, Codex skills, /context, pasted images, reconnect status", last.Text)
 
 	all := opened()
 	all.Caps = engine.Capabilities{
 		LiveInput: true, LiveEffort: true, LiveModel: true, ServiceTier: true, Compaction: true, LiveMode: true, Rules: true,
-		Approvals: true, ToolHooks: true, MCP: true, Subagents: true, ApplyPatch: true, CodexSkills: true, ContextUsage: true, Images: true,
+		Approvals: true, ToolHooks: true, MCP: true, Subagents: true, ApplyPatch: true, CodexSkills: true, ContextUsage: true, Images: true, Reconnect: true,
 	}
 	s, _ = apply(all, state.Submit{Text: "/status"})
 	assert.Equal(t, "instructions: none", s.Items[len(s.Items)-1].Text)
