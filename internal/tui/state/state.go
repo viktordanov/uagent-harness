@@ -69,10 +69,12 @@ type State struct {
 	Items []Item
 	index map[string]int
 
-	Queue  []Queued
-	Live   *Live
-	Busy   bool // from a message sent until the session is idle
-	Totals Totals
+	Queue []Queued
+	// Approvals are commands waiting for the user, in order.
+	Approvals []Approval
+	Live      *Live
+	Busy      bool // from a message sent until the session is idle
+	Totals    Totals
 
 	ShowReasoning bool
 	// Details shows turns, run dividers, and token totals; the default is a

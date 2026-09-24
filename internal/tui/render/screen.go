@@ -125,8 +125,12 @@ func headerLine(s state.State, w int) string {
 	return header.Render(left + strings.Repeat(" ", gap) + right)
 }
 
-// panelLines shows command completion while typing a command, else the queue.
+// panelLines shows a pending approval, command completion while typing a
+// command, or else the queue.
 func panelLines(s state.State, f Frame) []string {
+	if a, ok := s.PendingApproval(); ok {
+		return approvalLines(a, f.Width)
+	}
 	if strings.HasPrefix(f.Draft, "/") && !strings.Contains(f.Draft, " ") {
 		matches := state.Complete(strings.TrimPrefix(f.Draft, "/"))
 		var out []string
