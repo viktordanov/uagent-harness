@@ -140,7 +140,7 @@ Discovery order and the skill folders are in the README's [Instructions and skil
 
 ### Hooks
 
-Each `[[hooks.<Event>]]` entry runs a command at an event. The events are `SessionStart`, `SessionEnd`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `Stop`, `PreCompact`, and `PermissionRequest`; the contract is in the README's [Hooks](../README.md#hooks).
+Each `[[hooks.<Event>]]` entry runs a command at an event. The events are `SessionStart`, `SessionEnd`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `Stop`, `SubagentStop`, `PreCompact`, and `PermissionRequest`; the contract is in the README's [Hooks](../README.md#hooks).
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |

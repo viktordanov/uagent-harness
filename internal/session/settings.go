@@ -86,3 +86,13 @@ func (s Settings) request(sessionID string, messages []core.UserInput) core.Requ
 		AllowDotenv:  s.AllowDotenv,
 	}
 }
+
+// WithRequest returns the settings with the fields a run's request carries
+// taken from req: the inverse of request, so a subagent starts from its
+// parent's run as it is.
+func (s Settings) WithRequest(req core.Request) Settings {
+	s.Provider, s.Model, s.Effort, s.BaseURL = req.Provider, req.Model, req.Effort, req.BaseURL
+	s.SystemPrompt, s.Workspace, s.Timeout, s.AllowDotenv = req.SystemPrompt, req.Workspace, req.Timeout, req.AllowDotenv
+
+	return s
+}

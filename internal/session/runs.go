@@ -16,7 +16,7 @@ func (s *Session) startRun(inputs []core.UserInput) {
 	s.state = StateStarting
 	s.markSent(inputs)
 	req := s.settings.request(s.id, inputs)
-	opts := engine.Options{ServiceTier: s.settings.ServiceTier, Compact: s.compactPending, Ask: s.askFunc(), Notify: s.notify}
+	opts := engine.Options{ServiceTier: s.settings.ServiceTier, Compact: s.compactPending, Ask: s.askFunc(false), AskAnytime: s.askFunc(true), Notify: s.notify}
 	sink := func(e core.Event) { s.in <- evRun{event: e} }
 	go func() {
 		run, err := s.eng.Start(s.ctx, req, opts, sink)
@@ -103,7 +103,7 @@ func (s *Session) onRunEvent(e core.Event) {
 // onEnded handles the end of a run and reports whether the session closed.
 func (s *Session) onEnded(m evEnded) bool {
 	s.run = nil
-	s.declinePending()
+	s.declinePending(false)
 	if m.err != nil {
 		s.emit(Notice{At: time.Now(), Level: LevelError, Message: m.err.Error()})
 	}

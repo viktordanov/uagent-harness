@@ -98,7 +98,7 @@ type Session struct {
 	hooks          hookState
 	interactive    bool
 	// approvals are the pending approvals' reply channels by ID.
-	approvals map[string]chan approval.Answer
+	approvals map[string]pending
 	// askOverride is Options.Ask.
 	askOverride approval.Ask
 }
@@ -119,7 +119,7 @@ func Open(ctx context.Context, eng engine.Engine, opts Options) (*Session, error
 		ctx: runCtx, stop: stop, done: make(chan struct{}),
 		settings: opts.Settings, state: StateIdle, sent: map[string]bool{},
 		hooks:       hookState{runner: opts.Hooks, resumed: opts.Resumed, tools: map[string]core.ToolCalled{}},
-		interactive: opts.Interactive, approvals: map[string]chan approval.Answer{}, askOverride: opts.Ask,
+		interactive: opts.Interactive, approvals: map[string]pending{}, askOverride: opts.Ask,
 	}
 	s.out <- SessionOpened{At: time.Now(), ID: id, Resumed: opts.Resumed, Engine: eng.Name(), Settings: opts.Settings}
 	if opts.Instructions != nil {

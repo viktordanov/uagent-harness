@@ -85,10 +85,13 @@ func Setup(ctx context.Context, in Inputs, logOutput io.Writer) (Result, error) 
 	if err != nil {
 		return Result{}, err
 	}
-	subagents := newAgents(r, cfg, in.Workspace, stateDir, &opts)
+	subagents := newAgents(r, cfg, in.Workspace, &opts)
 	eng, err := newEngine(r, in.Runner, stateDir, logger, servers, &opts, approver, subagents) //nolint:contextcheck // on Linux, the sandbox probes bwrap once per process, with its own timeout
 	if err != nil {
 		return Result{}, err
+	}
+	if subagents != nil {
+		subagents.Bind(eng, opts) // children open exactly as this session does
 	}
 
 	return Result{StateDir: stateDir, Engine: eng, Options: opts, Config: cfg}, nil
@@ -155,9 +158,6 @@ func newEngine(r Resolved, runnerPath, stateDir string, logger *slog.Logger, ser
 		ecfg.Subagents = subagents
 	}
 	emb := embedded.New(ecfg)
-	if subagents != nil {
-		subagents.Bind(emb)
-	}
 	if r.Settings.ServiceTier != "" && !emb.Capabilities().ServiceTier {
 		return nil, usage(errors.New("--fast needs the openai or openai-codex provider"))
 	}

@@ -70,7 +70,7 @@ The session gives each run an `approval.Ask` (`askFunc`), which the engine calls
 3. The user, when the session is interactive (the TUI). The ask hands the prompt to the loop, which emits `ApprovalRequested` and waits for `Resolve` with the same ID.
 4. Otherwise nil or a decline: no one can answer in `uah run`.
 
-The agent waits while an approval is open. An interrupt, the end of the run, or `Close` declines every pending approval (`ApprovalResolved` with `decline`), so a waiting run can always stop. The rules and the auto-reviewer run before this ask; see [the permission pipeline](../approval/README.md).
+The agent waits while an approval is open. An interrupt, the end of the run, or `Close` declines every pending approval of the run (`ApprovalResolved` with `decline`), so a waiting run can always stop. `engine.Options.AskAnytime` asks outside a run: a subagent's approval shows in its parent's session even while the parent is idle, and stays open until it is answered, its context ends, or the session closes. The rules and the auto-reviewer run before this ask; see [the permission pipeline](../approval/README.md).
 <!-- /memoria:section -->
 
 <!-- memoria:section id="hooks" files="hooks.go dispatch.go runs.go" -->

@@ -22,7 +22,8 @@ const (
 	KindReasoning
 	KindNotice
 	// KindAgent is a subagent: Name is its nickname, Label its role, Text
-	// its ID, Detail its state, and Started when its current work began.
+	// its ID, Detail its state, Started when its current work began, and
+	// Sub its latest tool calls (KindTool items) for the detailed view.
 	KindAgent
 	// KindContext is a /context breakdown in Context.
 	KindContext
@@ -89,6 +90,9 @@ type Item struct {
 
 	// KindContext
 	Context *contextusage.Usage
+
+	// KindAgent
+	Sub []Item
 }
 
 // Live reports whether an item changes with time (spinners, elapsed times)

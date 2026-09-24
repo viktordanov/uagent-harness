@@ -58,11 +58,12 @@ func (w *wiring) tools(ctx context.Context, req core.Request, sessionID session.
 	return withPreToolUse(ctx, registry, w.e.cfg.Hooks, req, w.l.SessionsDir), nil
 }
 
-// withAgents attaches the run to the subagents and adds the agent tools.
+// withAgents attaches the run to the subagents and adds the tools they
+// offer it.
 func (w *wiring) withAgents(registry tool.Registry, req core.Request) tool.Registry {
 	a := w.e.cfg.Subagents
 	if a == nil {
-		return withAgents(registry, false, nil, req.DisallowedTools)
+		return registry
 	}
 	emit := w.notify
 	if emit == nil {
@@ -71,9 +72,9 @@ func (w *wiring) withAgents(registry tool.Registry, req core.Request) tool.Regis
 	if emit == nil {
 		emit = func(core.Event) {}
 	}
-	offer := a.Attach(engine.AgentParent{SessionID: req.SessionID, Request: req, Ask: w.userAsk, Emit: emit})
+	offered := a.Attach(engine.AgentParent{SessionID: req.SessionID, Request: req, ServiceTier: w.tier, Ask: w.askAnytime, Emit: emit})
 
-	return withAgents(registry, offer, a.Roles(), req.DisallowedTools)
+	return withAgents(registry, offered, a.ToolNames(), req.DisallowedTools)
 }
 
 // translators returns the built-in tools. Bash runs in the workspace with

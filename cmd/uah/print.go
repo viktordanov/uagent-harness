@@ -19,10 +19,12 @@ type printer struct {
 	verbose bool
 	origin  time.Time
 	running bool
+	// agents are the subagents' nicknames by ID.
+	agents map[string]string
 }
 
 func newPrinter(w io.Writer, verbose bool) *printer {
-	return &printer{w: w, verbose: verbose, origin: time.Now()}
+	return &printer{w: w, verbose: verbose, origin: time.Now(), agents: map[string]string{}}
 }
 
 func (p *printer) print(event core.Event) {
@@ -107,7 +109,12 @@ func (p *printer) print(event core.Event) {
 	case engine.AutoReviewed:
 		p.say(fmt.Sprintf("auto-review: %s (%s risk) %s — %s", e.Outcome, e.Risk, oneLine(e.Command, 80), e.Reason))
 	case engine.AgentUpdated:
+		p.agents[e.ID] = e.Nickname
 		p.say(fmt.Sprintf("agent %s: %s", e.Nickname, e.State))
+	case engine.AgentActivity:
+		if f, ok := e.Event.(core.ToolFinished); ok && p.verbose {
+			p.say(fmt.Sprintf("  agent %s: %s  %s (%s, %.1fs)", p.agents[e.ID], f.Name, f.Label, f.Detail, f.Duration.Seconds()))
+		}
 	case core.RunFinished:
 		p.running = false
 		r := e.Result

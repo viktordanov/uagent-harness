@@ -3,6 +3,7 @@ package embedded_test
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -79,10 +80,19 @@ func TestEmbedded_AMessageDuringTheSummaryDoesNotRestartIt(t *testing.T) {
 	ev.finished()
 	ev.idle()
 
+	// Under load the steer can reach the runner just after the request that
+	// follows the summary went out; the runner then sends that request again
+	// with the steer. Either way there is one summary call.
 	reqs := e.llm.Requests()
-	require.Len(t, reqs, 3, "one summary call, not a second one for the new request")
+	summaries := 0
+	for _, r := range reqs {
+		if slices.Contains(r.UserTexts, compaction.Prompt) {
+			summaries++
+		}
+	}
+	assert.Equal(t, 1, summaries, "one summary call, not a second one for the new request")
 	assert.Equal(t, []string{"first", compaction.Prompt}, reqs[1].UserTexts)
-	assert.Equal(t, []string{"first", summaryText("KEPT"), "steer"}, reqs[2].UserTexts)
+	assert.Equal(t, []string{"first", summaryText("KEPT"), "steer"}, reqs[len(reqs)-1].UserTexts)
 	started, done := compactions(ev.all)
 	assert.Len(t, started, 1)
 	require.Len(t, done, 1)

@@ -40,7 +40,7 @@ Status: `todo`, `doing`, `done`, `cut` (with a reason).
 | 14 | Shell completion: bash, zsh, fish | main session | — | done |
 | 15 | Module READMEs; root README as getting started, config surface, common tasks | main session + docs lane | 16–18 | doing |
 | 16 | Compaction validated for production | lane v-compaction | 4 | done |
-| 17 | Subagents validated for production; children identical to the main agent except their nested session ID | lane v-subagents | 12 | doing |
+| 17 | Subagents validated for production; children identical to the main agent except their nested session ID | lane v-subagents | 12 | done |
 | 18 | MCP validated for production; `/mcp` view and OAuth login; `uah mcp` | lane v-mcp | 5 | done |
 | 19 | The chosen TUI look | main session | 17, 18 | todo |
 | 20 | Diff rendering like Codex and Claude Code | any free lane | 19 | todo |
@@ -148,8 +148,8 @@ Build it as a theme in `internal/tui/render` (styles in one place), so another t
 
 Ideas that come up while working go here, not into the items.
 
-- Subagents: `resume_agent` for children of an earlier process; `SubagentStop` hook; per-child tool lines in the detailed view; interrupting the parent stops its children; a child's approval while the parent is idle is declined today.
-- Auto-review: Codex sends only the transcript delta per review and lets the reviewer run read-only commands; uah sends the whole trimmed context each time. The openai API-key provider reviews with the session model (Codex uses gpt-5.6-luna). The engine's transcript mixes children's events into the parent's.
+- Subagents: stopping a child while the parent is idle; Codex's v2 tools, `items`, and `fork_context`; Codex's completion notification into the parent's history (see docs/design/subagents.md, Validation).
+- Auto-review: Codex sends only the transcript delta per review and lets the reviewer run read-only commands; uah sends the whole trimmed context each time. The openai API-key provider reviews with the session model (Codex uses gpt-5.6-luna).
 - Approvals: "No, and tell the agent what to do" has no text field; no per-session cache of approved commands; the process engine ignores rules and approvals.
 - MCP: resources, prompts, restarting a crashed server, applying `tools/list_changed`, reconnecting a server after `uah mcp login` without `/new` (docs/design/mcp.md, Open decisions).
 - Compaction: a configurable summary model and prompt (Codex's `compact_prompt`); the process engine cannot compact.
