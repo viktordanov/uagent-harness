@@ -10,7 +10,7 @@ Status: the [ledger](docs/ledger.md) tracks the work: sessions, the TUI, both en
 2. [Development](#development)
 <!-- /memoria:section -->
 
-<!-- memoria:section id="usage" files="cmd/uah/main.go cmd/uah/run.go cmd/uah/resume.go cmd/uah/sessions.go cmd/uah/tui.go cmd/uah/print.go cmd/uah/completion.go cmd/uah/doctor.go internal/app/doctor.go internal/app/doctorchecks.go internal/session/history.go internal/session/sidecar.go internal/store/store.go internal/store/query.go" -->
+<!-- memoria:section id="usage" files="cmd/uah/main.go cmd/uah/run.go cmd/uah/resume.go cmd/uah/sessions.go cmd/uah/tui.go cmd/uah/print.go cmd/uah/completion.go cmd/uah/doctor.go internal/app/doctor.go internal/app/doctorchecks.go cmd/uah/flags.go" -->
 ## Use it
 
 ```sh
@@ -35,45 +35,36 @@ printf 'first\nsecond\n' | uah run --stdin                  # each line is a mes
 uah run --stream "..."                                     # JSONL: uagent's run events plus session events
 ```
 
-<!-- /memoria:section -->
-
-<!-- memoria:section id="tui" files="internal/tui/state/commands.go internal/tui/state/reduce.go internal/tui/bubble/keys.go internal/tui/bubble/model.go internal/tui/render/items.go internal/tui/render/screen.go internal/tui/render/markdown.go internal/tui/state/menu.go internal/tui/bubble/files.go" -->
-### The TUI
-
-The default view is compact, like Codex: your messages, one line per command (`• Ran go test ./...`), and the answers, with Markdown drawn as Codex draws it (highlighted code blocks, `code`, bold, headings, lists). ctrl+t (or `/details`) switches to the detailed view with the header, run dividers, turns with token counts, and session totals; `[tui] details = true` starts there.
-
-| Key | Action |
-| --- | --- |
-| enter | Send. While the agent works, the message queues and goes out when the run ends |
-| ctrl+enter (or alt+enter) | Send now: on the embedded engine the running agent reads it before its next model request; on the process engine the run restarts with the queue and the message |
-| shift+enter (or ctrl+j) | New line |
-| esc esc | Interrupt the run; queued messages stay |
-| ↑ on an empty composer | Take the last queued message back to edit it |
-| alt+, / alt+. | Lower or raise the effort for the next run |
-| ctrl+s, ctrl+n | Session picker, new session |
-| `/` or `@` then tab, ↑/↓, enter, esc | The menu: commands and their values after `/`, workspace files (fuzzy) after `@`. Tab fills the selection in, enter runs a command, esc closes the menu |
-| ctrl+t | Compact or detailed view |
-| ctrl+r | Show or hide reasoning summaries |
-| mouse wheel, shift+↑ / shift+↓, pgup / pgdn | Scroll the transcript; end returns to the bottom. While the TUI reports the mouse, select text with Option (iTerm2, Terminal) or Shift (most others) held |
-| ctrl+c | Clear the composer; on an empty composer, quit (twice while a run is live) |
-
-Commands: `/model <id>`, `/effort <level>`, `/compact`, `/context`, `/resume [id]`, `/new`, `/stop`, `/status` (with a 12-week activity heatmap), `/mcp`, `/agents`, `/details`, `/reasoning`, `/help`, `/quit`. `/model`, `/effort`, and `/fast` apply from the next model request on the embedded engine, and from the next run on the process engine. `/fast` needs the embedded engine and the openai or openai-codex provider.
-Tool calls keep their place in the transcript, so a command that finishes after later turns updates its original row. Diagnostics go to `<state-dir>/logs/uah-tui.log`.
-
 `uah run` takes the same backend, guard, and state flags as uagent (`--provider`, `-m`, `-e`, `-t`, `-C`, `--state-dir`, `--runner`, `--max-disk`, `--allow-dotenv`); `uah run --help` lists them.
 A flag wins over the environment (`UNREAL_HARNESS_LLM_*`, `UAGENT_*`), which wins over the resumed session's settings and the defaults. Sessions and run records live in uagent's state directory, so `uagent` and `uah` share them.
 
+Both the TUI and `uah run` drive a [session](internal/session/README.md):
+
+<!-- memoria:import src="internal/session/README.md#summary" -->
+A session owns its settings, a message queue, at most one live run, pending approvals, and its hooks on one goroutine, and merges run events and its own events into one ordered stream. Messages queue while the agent works, a steer reaches the running agent when the engine allows it, and an interrupt keeps the queue.
+<!-- /memoria:import -->
+
 <!-- /memoria:section -->
 
-<!-- memoria:section id="engines" files="internal/engine/engine.go internal/engine/embedded/engine.go internal/engine/embedded/wiring.go internal/engine/embedded/client.go internal/engine/embedded/store.go internal/engine/embedded/agent.go internal/engine/embedded/providers.go internal/engine/process/process.go internal/session/dispatch.go internal/session/runs.go internal/app/resolve.go internal/app/setup.go" -->
+<!-- memoria:section id="tui" files="cmd/uah/tui.go" -->
+### The TUI
+
+<!-- memoria:import src="internal/tui/README.md#summary" -->
+The TUI is a pure reducer from session events and user intents to state and effects, a pure renderer from state to screen lines, and a thin Bubble Tea v2 shell that turns keys into intents and runs the effects against the session. Keys never change meaning: enter queues while the agent works, ctrl+enter sends now, and esc esc interrupts.
+<!-- /memoria:import -->
+
+The [TUI README](internal/tui/README.md) lists every key and slash command, and explains how the reducer, the renderer, and the Bubble Tea shell fit together. Diagnostics go to `<state-dir>/logs/uah-tui.log`, and `[tui] details = true` starts in the detailed view.
+
+<!-- /memoria:section -->
+
+<!-- memoria:section id="engines" files="internal/app/resolve.go internal/app/setup.go" -->
 ### Engines
 
-`uah` runs the agent in one of two ways, chosen with `--engine`, `UAH_ENGINE`, or `engine` in the configuration:
+<!-- memoria:import src="internal/engine/README.md#summary" -->
+An engine starts runs of unreal-agent-runner for a session: the embedded engine (the default) runs the runner's packages inside uah, so messages, model, effort, and fast mode reach a live run, and the process engine spawns the runner binary through uagent. Both keep uagent's guards, session lock, and run records, and write the same session files, so a session can move between them.
+<!-- /memoria:import -->
 
-- **embedded** (the default): the runner's own packages (unreal-agent v0.1.1) run inside `uah`, wired as the runner wires them. Messages, effort, model, and `--fast` reach a running agent. An interrupt is a hard stop through the runner's inbox, so the session file records the stopped tools. No `unreal-agent-runner` binary is needed.
-- **process**: `uah` spawns `unreal-agent-runner` through uagent. The runner reads its request once, so messages sent while it works wait for the next run.
-
-Both engines share uagent's guards, session lock, and run records, and write the same session files, so a session can move between them. The workspace `.env` is never loaded by the embedded engine.
+Choose one with `--engine`, `UAH_ENGINE`, or `engine` in the configuration; `embedded` is the default. The [engine README](internal/engine/README.md) has a table of what each engine supports, and explains the embedded engine's wiring and remote jobs.
 
 <!-- /memoria:section -->
 
@@ -92,96 +83,47 @@ The footer shows "N% context left", computed from the last response's tokens as 
 
 <!-- /memoria:section -->
 
-<!-- memoria:section id="instructions" files="internal/instructions/instructions.go internal/app/setup.go internal/engine/embedded/skills.go internal/config/config.go" -->
+<!-- memoria:section id="instructions" files="internal/app/setup.go internal/config/config.go" -->
 ### Instructions and skills
 
-The runner reads no instruction files, so `uah` builds them into the runner's system prompt, after the runner's own default text, the way Codex finds them (codex-rs/core/src/agents_md.rs):
+<!-- memoria:import src="internal/instructions/README.md#summary" -->
+uah finds instruction files the way Codex does: the user's AGENTS.md, then one file per directory from the project root down to the workspace (AGENTS.override.md, else AGENTS.md, else a configured fallback such as CLAUDE.md). They are joined, capped at 32 KiB, and placed after the runner's default host prompt; skills come from Codex's skill folders.
+<!-- /memoria:import -->
 
-1. The user file: `~/.config/uagent/AGENTS.md`, or else `~/.codex/AGENTS.md`.
-2. One file per directory from the project root down to the workspace: `AGENTS.override.md`, else `AGENTS.md`, else the first of `project_doc_fallback_filenames` (none by default; `["CLAUDE.md"]` reads Claude Code's files). The project root is the nearest ancestor with one of `project_root_markers` (`.git` by default; `[]` means the workspace only).
-
-Later files are more specific. Blank files are skipped, and the total stops at `project_doc_max_bytes` (32 KiB). `--no-instructions` turns this off, and the loaded files are reported as `instructions_loaded`.
-
-Skills are Codex's `<name>/SKILL.md` folders, offered through the runner's own skill tool. They are read from `.agents/skills` in each directory from the workspace up to the project root, the runner's `.harness/skills`, `~/.config/uagent/skills`, and `$CODEX_HOME/skills`; a name in a more specific place wins.
+`--no-instructions` turns this off. The [instructions README](internal/instructions/README.md) gives the discovery order, the size cap, and the skill folders.
 
 <!-- /memoria:section -->
 
-<!-- memoria:section id="sandbox" files="internal/sandbox/sandbox.go internal/sandbox/shell.go internal/sandbox/seatbelt.go internal/sandbox/bwrap.go internal/sandbox/denied.go internal/sandbox/env.go internal/engine/embedded/sandboxtool.go internal/engine/embedded/tools.go internal/app/setup.go internal/app/resolve.go" -->
+<!-- memoria:section id="sandbox" files="internal/app/setup.go internal/app/resolve.go" -->
 ### Sandbox
 
-Commands run in the operating system's sandbox, as in Codex: Seatbelt (`sandbox-exec`) on macOS and bubblewrap (`bwrap`, which must be installed) on Linux. The mode comes from `--sandbox`, `UAH_SANDBOX`, or `sandbox_mode`:
+<!-- memoria:import src="internal/sandbox/README.md#summary" -->
+Commands run in the operating system's sandbox, as in Codex: Seatbelt on macOS and bubblewrap on Linux. The default mode, workspace-write, lets commands read the whole disk and write only the workspace and temporary directories, without network, and keeps .git, .uagent, .agents, and .codex read-only.
+<!-- /memoria:import -->
 
-| Mode | Commands can |
-| --- | --- |
-| `workspace-write` (default) | Read any file; write the workspace, `/tmp`, `$TMPDIR`, and `writable_roots`, except `.git`, `.uagent`, `.agents`, and `.codex`; no network unless `network_access = true` |
-| `read-only` | Read any file; write nothing; no network |
-| `danger-full-access` | Anything your user can: no sandbox |
-
-When a command fails in a way that looks like the sandbox blocked it, the model is told so and can ask to run it outside the sandbox ([approvals](#approvals-and-rules)). On the process engine, the runner's `SHELL` is a script that sandboxes each command; it cannot ask. Where no sandbox is available, uah says so; on the embedded engine each command then asks for approval unless a rule allows it, and on the process engine commands run without one. On Linux, a protected name that does not exist yet (such as `.git` in a workspace that is not a repository root) is not protected, because bubblewrap can only cover existing paths; macOS protects it either way.
-
-Commands get the whole environment, as in Codex. `[shell_environment_policy]` narrows it with Codex's keys: `inherit` (`all`, `core`, `none`), `ignore_default_excludes = false` to drop names matching `*KEY*`, `*SECRET*`, `*TOKEN*`, `exclude` and `include_only` patterns, and `set`. `/sandbox` in the TUI shows the mode; the detailed view's header always does.
+Set the mode with `--sandbox`, `UAH_SANDBOX`, or `sandbox_mode`, and see it with `/sandbox` in the TUI. The [sandbox README](internal/sandbox/README.md) covers the modes, the protected paths, both platforms, and the environment policy.
 
 <!-- /memoria:section -->
 
-<!-- memoria:section id="approvals" files="internal/approval/approval.go internal/approval/prefix.go internal/rules/rules.go internal/rules/parse.go internal/rules/shell.go internal/rules/load.go internal/engine/embedded/sandboxtool.go internal/session/approvals.go internal/tui/state/approval.go internal/tui/render/approval.go internal/app/approvals.go internal/review/review.go internal/engine/embedded/autoreview.go internal/app/review.go" -->
+<!-- memoria:section id="approvals" files="internal/app/approvals.go internal/app/review.go" -->
 ### Approvals and rules
 
-On the embedded engine, the model can ask to run a command outside the sandbox (`sandbox_permissions: "require_escalated"` with a `justification`), as in Codex (checked against rust-v0.156.1). The approval policy (`--ask`, `UAH_ASK`, or `approval_policy`) decides who answers:
+<!-- memoria:import src="internal/approval/README.md#summary" -->
+On the embedded engine, each command runs in the sandbox unless a rule or an approval says otherwise: a command rule can allow, forbid, or ask; the model can ask to run a command outside the sandbox; and an escalation goes to the auto-reviewer, then PermissionRequest hooks, then the user. The defaults are Codex's: workspace-write, on-request, and auto-review.
+<!-- /memoria:import -->
 
-| Policy | An escalation, or a command a `prompt` rule matches |
-| --- | --- |
-| `on-request` (default) | The TUI asks: "Yes, proceed" (`y`), "Yes, and don't ask again for commands that start with `<prefix>`" (`s`, when uah can propose a prefix), or "No, and tell the agent what to do differently" (`n` or esc). `uah run` has no one to ask and denies |
-| `never` | Denied |
-
-A denied command is not run, and the model gets the reason. The agent waits while the prompt is open; an interrupt declines it. An approved escalation runs outside the sandbox, with the network.
-
-Before anyone is asked, the auto-reviewer judges the action, as Codex's `approvals_reviewer = "auto_review"` does (the default; `"user"` turns it off). It is one model call with the user's messages as trusted context, the latest tool calls without their output as untrusted context, and Codex's review policy: `codex-auto-review` at low effort on openai-codex (a real probe used about 3,500 input tokens and 6 seconds), the session's model at low effort elsewhere; `[review] model`, `effort`, and `timeout` override it. It allows or denies with a reason shown in the TUI ("auto-approved (low risk): …"); a failed review denies. After three denials in a row it steps aside and the user (or a PermissionRequest hook) decides until the next user message. The same applies to MCP calls that need approval, and in `uah run`, where the reviewer can approve without a user.
-
-Command rules are Codex's `.rules` files, Starlark `prefix_rule` calls, read from `~/.config/uagent/rules/*.rules` and, for a trusted workspace, `<workspace>/.uagent/rules/*.rules`:
-
-```python
-prefix_rule(
-    pattern = ["git", ["push", "fetch"]],         # words; a list is alternatives
-    decision = "prompt",                           # allow (default), prompt, forbidden
-    justification = "Pushing changes the remote",  # shown when asking or forbidding
-    match = ["git push origin"],                   # examples, checked when the file loads
-    not_match = ["git status"],
-)
-```
-
-A rule matches when its pattern is a prefix of the command's words. A command such as `a && b | c` is split into its simple commands; the strictest decision wins (`forbidden`, then `prompt`, then `allow`), and `allow` needs every part allowed. A command with redirects, variables, substitutions, or control flow matches no rule. `allow` runs the command outside the sandbox without asking; `forbidden` never runs it and tells the model the justification. "Don't ask again" appends `prefix_rule(pattern=[...], decision="allow")` to `~/.config/uagent/rules/default.rules` and applies it at once. It proposes the model's `prefix_rule` suggestion, or else the whole command, but never a bare shell, interpreter, `git`, `rm`, `sudo`, or `env` (Codex's list).
-
-For simple cases, `[approvals]` in `config.toml` lists command prefixes: `allow` runs them outside the sandbox without asking, and `forbid` never runs them. A trusted project file adds to the user file's lists, and its `writable_roots` add to the user's (relative roots are in the workspace).
+The [approvals README](internal/approval/README.md) walks through the whole pipeline and its defaults. The [rules README](internal/rules/README.md) gives the `.rules` format, and the [auto-review README](internal/review/README.md) explains the reviewer.
 
 <!-- /memoria:section -->
 
-<!-- memoria:section id="hooks" files="internal/hooks/hooks.go internal/hooks/exec.go internal/hooks/payload.go internal/hooks/trust.go internal/hooks/script.go internal/engine/embedded/pretooluse.go internal/engine/embedded/tools.go cmd/uah/hooks.go internal/app/setup.go internal/session/hooks.go" -->
+<!-- memoria:section id="hooks" files="cmd/uah/hooks.go internal/app/setup.go" -->
 ### Hooks
 
-Hooks run a command at a session event, with Claude Code's contract: the event arrives as JSON on stdin, exit 0 continues (optionally printing JSON), exit 2 blocks with stderr as the reason, and any other exit is reported and ignored.
+<!-- memoria:import src="internal/hooks/README.md#summary" -->
+Hooks run a command at a session event with Claude Code's contract: the event arrives as JSON on stdin, exit 0 continues, exit 2 blocks with stderr as the reason, and any other exit is reported and ignored. Project hooks run only after `uah hooks trust` records their exact commands and the content of any local script they run.
+<!-- /memoria:import -->
 
-```toml
-[[hooks.PreToolUse]]            # embedded engine only
-matcher = "Bash"                # a regular expression on the tool name
-command = "~/.config/uagent/hooks/no-rm-rf.sh"
-timeout = "10s"                 # default 60s
-
-[[hooks.Stop]]
-command = "osascript -e 'display notification \"uah is idle\"'"
-```
-
-| Event | When | What a hook can do |
-| --- | --- | --- |
-| `SessionStart` | The session opens (`source`: startup or resume) | Add context to the first message (`additionalContext` or plain stdout), show a `systemMessage` |
-| `UserPromptSubmit` | Before a message is sent | Block it (exit 2 or `"decision":"block"`), or add context (`additionalContext` or plain stdout) |
-| `PreToolUse` | Before each tool call, on the embedded engine | Deny it (exit 2 or `permissionDecision: "deny"`); the reason is the tool's error result. Rewrite it (`updatedInput`) |
-| `PostToolUse` | After each tool call | Observe only |
-| `Stop` | The agent finished and nothing is queued | Keep it going: `"decision":"block"` with a `reason` sends the reason as the next message (at most 5 times in a row; `stop_hook_active` is true after the first) |
-| `PermissionRequest` | Before the user is asked to approve an escalated command, a `prompt` rule, or an MCP call (`tool_name` is `Bash` or the `mcp__` name) | Answer for the user with `permissionDecision` `"allow"` or `"deny"` (exit 2 denies); works headless too |
-| `PreCompact` | A compaction is about to start (`trigger`: manual or auto), on the embedded engine | Stop it (exit 2 or `"decision":"block"`) |
-| `SessionEnd` | The session closes | Observe only, with at most a second |
-
-Hooks in the user file run as written. Hooks in a trusted project's `.uagent/config.toml` run only after `uah hooks trust` records their exact commands (by SHA-256, in `~/.config/uagent/trusted-hooks.json`); a changed command needs trust again. When a command runs a local script (its first word is a path to a file, absolute or relative to the workspace, such as `.uagent/hooks/check.sh` or `"$UAH_PROJECT_DIR"/check.sh`), trust also records the script's SHA-256, so an edited script is reported as untrusted ("the script changed") until `uah hooks trust` runs again. Entries trusted before uah hashed scripts still cover commands that run no script; commands that run one need trust again. `uah hooks` lists the hooks for a workspace and whether each runs. Hook runs appear in the TUI's detailed view (ctrl+t); blocks and failures appear in both views.
+`uah hooks` lists the hooks for a workspace and whether each runs, and `uah hooks trust` trusts a project's hooks. The [hooks README](internal/hooks/README.md) has every event, the payload, and the trust rules.
 
 <!-- /memoria:section -->
 
