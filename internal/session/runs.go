@@ -13,10 +13,15 @@ import (
 // startRun starts a run with the messages. The engine starts it on another
 // goroutine and the loop gets evStarted.
 func (s *Session) startRun(inputs []core.UserInput) {
+	// Injected messages that waited for a run go first (Inject).
+	inputs, s.held = slices.Concat(s.held, inputs), nil
 	s.state = StateStarting
 	s.markSent(inputs)
 	req := s.settings.request(s.id, inputs)
-	opts := engine.Options{ServiceTier: s.settings.ServiceTier, Compact: s.compactPending, Clear: s.clearPending, Ask: s.askFunc(false), AskAnytime: s.askFunc(true), Notify: s.notify}
+	opts := engine.Options{
+		ServiceTier: s.settings.ServiceTier, Compact: s.compactPending, Clear: s.clearPending,
+		Ask: s.askFunc(false), AskAnytime: s.askFunc(true), Notify: s.notify, Inject: s.Inject,
+	}
 	sink := func(e core.Event) { s.in <- evRun{event: e} }
 	go func() {
 		run, err := s.eng.Start(s.ctx, req, opts, sink)

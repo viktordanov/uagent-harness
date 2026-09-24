@@ -34,6 +34,7 @@ The choice comes from `--engine`, `UAH_ENGINE`, or `engine` in the [configuratio
 | `Clear` | Drop the context before the run's first model request (a `/clear` sent while idle) |
 | `Ask` | How the run asks the user to approve an action. Nil means no one can answer, as in `uah run` |
 | `Notify` | Adds an engine event to the session's stream, also after the run ended, such as a subagent's progress |
+| `Inject` | Gives the agent a message without a turn of its own (`Session.Inject`): a subagent's `<subagent_notification>` to its parent, through `AgentParent.Inject` |
 
 Optional interfaces are the seams the session probes with a type assertion:
 

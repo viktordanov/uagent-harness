@@ -107,6 +107,8 @@ The manager adds two engine events to the parent session's stream through the pa
 
 Waiters sleep on a channel that is closed and replaced at every change.
 
+**Notifications.** When a child reaches a final status (completed, errored, or interrupted), the parent's agent is told with Codex's v1 message, a user-role `<subagent_notification>` holding `{"agent_path": <child ID>, "status": <status>}` (Codex `core/src/agent/control.rs`, `SubagentNotification`). It goes through `AgentParent.Inject`, which is `Session.Inject`: it waits and goes out with the parent's next message, starting no run, as Codex's `inject_no_new_turn`. It is not sent into a live run, since the runner would cancel that run's model request; a parent that needs the status at once has `wait_agent`. Once per message the child was sent (`completionNote`). Two cases send none, because the parent learns the status anyway: a child the parent closed itself, and a child a pending `wait_agent` covers (`child.waiters`); Codex sends it in both, so a waiting parent there sees the status twice.
+
 Hooks come from `Config.Hooks`, the session's runner:
 
 - **SubagentStop** runs when a child completes, with Claude Code's payload: the parent's `session_id` and `transcript_path`, and the child's `agent_id`, `agent_type` (its role, or `default`), `agent_transcript_path`, and `last_assistant_message`. A block with a reason sends the reason to the child as its next message, at most 5 times in a row (`stop_hook_active` is true after the first). The child stays `running` while the hooks run; a message from the parent meanwhile makes their decision moot.

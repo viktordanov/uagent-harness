@@ -19,6 +19,11 @@ func (s *State) onRunEvent(ev core.Event) {
 	case core.UserMessage:
 		// The runner's echo delivers a message this session sent; any other
 		// message comes from history or another client.
+		if note, ok := s.agentNote(e.Text); ok {
+			s.put(Item{Kind: KindNotice, Key: "msg:" + e.ID, Text: note, Level: session.LevelInfo})
+
+			return
+		}
 		if !s.update("msg:"+e.ID, func(it *Item) { it.Input = InputDelivered }) {
 			s.put(Item{Kind: KindUser, Key: "msg:" + e.ID, Text: e.Text, Input: InputDelivered})
 		}

@@ -2,6 +2,7 @@ package state
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/viktordanov/uagent-harness/internal/engine"
@@ -86,4 +87,31 @@ func settle(prev, next string) string {
 	}
 
 	return next
+}
+
+// agentNote reads Codex's <subagent_notification>, which a subagent's end
+// sends the main agent as a message, as a line of the transcript:
+// "Ada completed; the main agent was told".
+func (s *State) agentNote(text string) (string, bool) {
+	body, ok := strings.CutPrefix(strings.TrimSpace(text), "<subagent_notification>")
+	if !ok {
+		return "", false
+	}
+	body, _ = strings.CutSuffix(body, "</subagent_notification>")
+	var n struct {
+		AgentPath string          `json:"agent_path"`
+		Status    json.RawMessage `json:"status"`
+	}
+	if json.Unmarshal([]byte(strings.TrimSpace(body)), &n) != nil {
+		return "", false
+	}
+	state := strings.Trim(string(n.Status), `"`)
+	var obj map[string]json.RawMessage
+	if json.Unmarshal(n.Status, &obj) == nil {
+		for k := range obj {
+			state = k
+		}
+	}
+
+	return fmt.Sprintf("%s %s; the main agent was told", s.agentName(n.AgentPath), state), true
 }

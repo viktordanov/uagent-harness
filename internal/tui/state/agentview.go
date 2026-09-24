@@ -48,8 +48,12 @@ type (
 	EffViewAgent struct{ ID string }
 	// EffCloseAgentView stops following it.
 	EffCloseAgentView struct{}
-	// EffAgentSend gives the viewed agent a message, as send_input does.
-	EffAgentSend struct{ ID, Text string }
+	// EffAgentSend gives the viewed agent a message, as send_input does;
+	// Now steers it into the agent's live run (ctrl+enter).
+	EffAgentSend struct {
+		ID, Text string
+		Now      bool
+	}
 	// EffAgentInterrupt stops the viewed agent's current work.
 	EffAgentInterrupt struct{ ID string }
 )
@@ -71,9 +75,16 @@ func cmdAgents(s *State, args string) []Effect {
 		return nil
 	}
 	for _, it := range s.Items {
-		if it.Kind == KindAgent && (strings.EqualFold(it.Name, args) || strings.HasPrefix(it.Text, args)) {
-			return []Effect{EffViewAgent{ID: it.Text}}
+		if it.Kind != KindAgent || (!strings.EqualFold(it.Name, args) && !strings.HasPrefix(it.Text, args)) {
+			continue
 		}
+		if !working(it) {
+			s.notice(session.LevelInfo, fmt.Sprintf("%s is %s; its transcript: uah sessions show %s", it.Name, it.Detail, session.ShortID(it.Text)))
+
+			return nil
+		}
+
+		return []Effect{EffViewAgent{ID: it.Text}}
 	}
 	s.notice(session.LevelError, fmt.Sprintf("no agent %q in this session (see /agents)", args))
 
@@ -84,7 +95,7 @@ func cmdAgents(s *State, args string) []Effect {
 func (s State) agentNames() []string {
 	var names []string
 	for _, it := range s.Items {
-		if it.Kind == KindAgent {
+		if it.Kind == KindAgent && working(it) {
 			names = append(names, it.Name)
 		}
 	}
@@ -140,7 +151,9 @@ func (s *State) onAgentView(ev any) ([]Effect, bool) {
 		default:
 			v.St.Scroll = 0
 
-			return []Effect{EffAgentSend{ID: v.ID, Text: text}}, true
+			_, steer := e.(Steer)
+
+			return []Effect{EffAgentSend{ID: v.ID, Text: text, Now: steer}}, true
 		}
 	case ScrollBy, ScrollToBottom, ToggleDetails, ToggleReasoning:
 		*v.St, _ = Reduce(*v.St, ev)
@@ -165,14 +178,16 @@ func textOf(ev any) string {
 // switchAgent moves along the main agent and the subagents, in the order
 // they started, wrapping around: the main agent is first.
 func (s *State) switchAgent(delta int) []Effect {
+	// Only working agents are stops; a finished one's answer is in the
+	// main transcript, and uah sessions show prints its whole run.
 	ids := []string{""}
 	for _, it := range s.Items {
-		if it.Kind == KindAgent {
+		if it.Kind == KindAgent && working(it) {
 			ids = append(ids, it.Text)
 		}
 	}
-	if len(ids) == 1 {
-		s.notice(session.LevelInfo, "no subagents in this session")
+	if len(ids) == 1 && s.View == nil {
+		s.notice(session.LevelInfo, "no subagent is working")
 
 		return nil
 	}
@@ -211,10 +226,16 @@ func (v *AgentView) esc(now time.Time) []Effect {
 // ticking for their spinners while the main agent is idle.
 func (s State) AgentsRunning() bool {
 	for _, it := range s.Items {
-		if it.Kind == KindAgent && it.Detail == engine.AgentRunning {
+		if it.Kind == KindAgent && working(it) {
 			return true
 		}
 	}
 
 	return false
+}
+
+// working reports whether a subagent can be viewed: it is running or
+// about to.
+func working(it Item) bool {
+	return it.Detail == engine.AgentRunning || it.Detail == engine.AgentPendingInit
 }

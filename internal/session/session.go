@@ -97,8 +97,10 @@ type Session struct {
 	compactPending bool
 	// clearPending is a /clear the engine has not started yet.
 	clearPending bool
-	hooks        hookState
-	interactive  bool
+	// held are injected messages waiting for the next run (Inject).
+	held        []core.UserInput
+	hooks       hookState
+	interactive bool
 	// approvals are the pending approvals' reply channels by ID.
 	approvals map[string]pending
 	// askOverride is Options.Ask.

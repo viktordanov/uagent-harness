@@ -45,6 +45,12 @@ Status: `todo`, `doing`, `done`, `cut` (with a reason).
 | 19 | The chosen TUI look | main session | 17, 18 | done |
 | 20 | Diff rendering like Codex and Claude Code | any free lane | 19 | todo |
 | 21 | Model catalog from the provider, as Codex | lane models | — | done |
+| 22 | Subagent handling: steer in the view, notifications to the parent, only working agents browsable, run IDs | main session | 17 | done |
+| 23 | Quality pass over the new concepts | lane quality | 22 | doing |
+| 24 | Compaction you can configure, and a second look at how well it works | lane settings | 16 | doing |
+| 25 | `/config`: the basic settings in the TUI, saved to the user file | lane settings | 24 | doing |
+| 26 | Permission modes on shift+tab, shown in the TUI | lane modes | — | doing |
+| 27 | Session settings kept with the session: model, effort, fast mode, permission mode | lane modes | 26 | doing |
 
 Order of starting: 1 alone (it touches everything). Then lanes A (2), B (4), C (5) in parallel. D (6, 7) starts when a lane frees up. 9 and 10 come after their dependencies merge.
 
@@ -150,6 +156,42 @@ Build it as a theme in `internal/tui/render` (styles in one place), so another t
 - In: `internal/models`: the provider's list at runtime (the ChatGPT backend's `/models?client_version=…` for openai-codex, `/v1/models`, OpenRouter's `/api/v1/models`, Fireworks' list, Ollama's `/api/tags`), a 300 s file cache with ETag keyed by a hashed provider and login identity, Codex's `models.json` bundled as the offline fallback, and near-miss suggestions. Wired into `/model` (menu values and "X is not available on P; did you mean Y?"), the one context-window function (`compaction.ContextWindow`), `uah doctor`, `uah models`, and `-m` completion from the cache. `models.Validate` for `spawn_agent`.
 - Out: editing `internal/agents` (the subagents lane calls `models.Validate`); a config key for the TTL.
 - Done: httptest tests per source shape, cache hit, TTL expiry, ETag 304, fallback to the cache then the bundled list, identity scoping; one real probe of the ChatGPT backend (9 models, live).
+
+### 22. Subagent handling
+
+- ctrl+enter in the agent view steers the agent's live run, as it does the main agent's.
+- A subagent that ends (completed, failed, or interrupted) tells the main agent with Codex's `<subagent_notification>`, with the next message, never starting a run (sending it into a live run would make the runner cancel a paid model request). Not when a pending `wait_agent` already returns it, or when the main agent closed it.
+- Only working subagents are stops for alt+← and alt+→ and open with `/agents <name>`; a finished one's end is a line in the main transcript.
+- Run IDs skip the `subagent-` prefix, and uagent v0.4.3 reserves a run's directory when naming it, so runs of different sessions never share one.
+
+### 23. Quality pass over the new concepts
+
+A survey of the code added since item 12: rendering and the theme, notifications and injection, subagents (forking, spawning with a model, per-agent fast mode through role files), the model catalog, `/clear`, and the agent view. It checks each against the rules (pure core, one job per package, files ≤ ~400 lines, functions ≤ ~15, no duplicated logic, errors wrapped once, tests on real paths), lists findings by severity, and fixes them after items 24–27 merge, so the fixes do not collide with that work.
+
+### 24. Compaction you can configure
+
+- Keys for what Codex lets you set and what uah fixes today: the summary model and effort (default: the session's model, as Codex), the summary prompt (Codex's `compact_prompt`, and a file form), `auto_compact_percent`, the kept-message cap (20,000 tokens), and the buffer `/context` shows.
+- A second look at the results: what the summary keeps, how a compacted session behaves on the next turns, and what Codex and Claude Code do differently, with tests for any fix.
+
+### 25. `/config`
+
+Claude Code's `/config`, for the basic settings: auto-compact on or off and its percent, the compaction model, the default model and effort, fast mode, the permission mode, the details view, and the mouse. It shows each value and where it comes from (as `uah config` does), and a change is saved to the user file with the same editor `uah mcp add` uses, keeping comments.
+
+### 26. Permission modes on shift+tab
+
+shift+tab cycles three modes, shown in the footer and changed live:
+
+| Mode | Sandbox | Escalations |
+| --- | --- | --- |
+| Read only | read-only | Ask (the auto-reviewer first) |
+| Workspace (default) | workspace-write | Ask (the auto-reviewer first) |
+| Auto | workspace-write | The auto-reviewer decides; you are not asked |
+
+Full access (danger-full-access) stays a flag and a config value, outside the cycle. The mapping follows Codex's approval presets and Claude Code's shift+tab; "Auto" is Claude Code's auto mode, with Codex's auto-reviewer as the judge.
+
+### 27. Session settings kept with the session
+
+The model, effort, fast mode, and permission mode a session last used are saved in its sidecar and restored on resume, before the configured defaults; a flag still wins.
 
 ## Later
 

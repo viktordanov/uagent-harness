@@ -117,7 +117,7 @@ func (m Model) run(e state.Effect) tea.Cmd {
 	case state.EffViewAgent:
 		return m.watchAgent(e.ID)
 	case state.EffAgentSend:
-		return m.sendToAgent(e.Text)
+		return m.sendToAgent(e.Text, e.Now)
 	case state.EffAgentInterrupt:
 		if w := m.watch; w != nil && w.Interrupt != nil {
 			w.Interrupt()

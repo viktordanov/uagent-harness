@@ -135,3 +135,27 @@ func TestReduce_AgentCallsReadAsNames(t *testing.T) {
 		}
 	}
 }
+
+func TestReduce_FinishedAgentsAndNotifications(t *testing.T) {
+	s, _ := apply(opened(),
+		engine.AgentUpdated{At: t0, ID: "subagent-aaaaaaaa-1", Nickname: "Ada", State: engine.AgentRunning, Started: t0},
+		engine.AgentUpdated{At: t0, ID: "subagent-bbbbbbbb-1", Nickname: "Rex", State: engine.AgentCompleted, Started: t0},
+	)
+	_, eff := apply(s, state.SwitchAgent{Delta: 1})
+	assert.Equal(t, []state.Effect{state.EffViewAgent{ID: "subagent-aaaaaaaa-1"}}, eff, "only a working agent is a stop")
+	_, eff = apply(s, state.SwitchAgent{Delta: -1})
+	assert.Equal(t, []state.Effect{state.EffViewAgent{ID: "subagent-aaaaaaaa-1"}}, eff)
+
+	s2, eff := apply(s, state.Submit{Text: "/agents rex"})
+	assert.Empty(t, eff)
+	assert.Contains(t, s2.Items[len(s2.Items)-1].Text, "Rex is completed; its transcript: uah sessions show subagent-bbbbbbbb")
+
+	s, _ = apply(s, core.UserMessage{At: t0, ID: "n1", Text: "<subagent_notification>\n{\"agent_path\":\"subagent-bbbbbbbb-1\",\"status\":{\"completed\":\"42\"}}\n</subagent_notification>"})
+	last := s.Items[len(s.Items)-1]
+	assert.Equal(t, state.KindNotice, last.Kind, "a notification is not drawn as your message")
+	assert.Equal(t, "Rex completed; the main agent was told", last.Text)
+
+	s, _ = apply(s, state.AgentViewOpened{ID: "subagent-aaaaaaaa-1", Nickname: "Ada"})
+	_, eff = apply(s, state.Steer{Text: "faster"})
+	assert.Equal(t, []state.Effect{state.EffAgentSend{ID: "subagent-aaaaaaaa-1", Text: "faster", Now: true}}, eff, "ctrl+enter steers the agent")
+}
