@@ -371,7 +371,7 @@ go test -race ./...          # unit and end-to-end tests
 golangci-lint run ./...      # lint (golangci-lint v2.13.2)
 ```
 
-CI runs the build, the race tests, and the linter on each push. Design records, the architecture rules, and the documentation procedure are in [docs](docs/README.md):
+CI runs the build, the race tests, and the linter on each push; the linter also fails on a function above 20 cyclomatic complexity, a backstop for the rule of about 15. Design records, the architecture rules, and the documentation procedure are in [docs](docs/README.md):
 
 <!-- memoria:import src="docs/README.md#summary" -->
 The configuration reference, design records for the harness, the TUI, state storage, sandboxing, compaction, MCP, and subagents, plus the architecture rules and documentation procedure for uagent-harness.
