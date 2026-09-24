@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/viktordanov/uagent-harness/internal/contextusage"
+	"github.com/viktordanov/uagent-harness/internal/engine"
 
 	"github.com/viktordanov/uagent/core"
 
@@ -95,6 +96,9 @@ type Item struct {
 
 	// KindAgent
 	Sub []Item
+	// Agent is the latest update of a KindAgent: its spawn call's ID and
+	// message, model, effort, and why it failed.
+	Agent *engine.AgentUpdated
 }
 
 // Live reports whether an item changes with time (spinners, elapsed times)

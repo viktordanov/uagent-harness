@@ -303,7 +303,9 @@ func trimmed(r fakellm.Request) fakellm.Request {
 func e2eRequests(s *fakellm.Server) []fakellm.Request {
 	var out []fakellm.Request
 	for _, r := range s.Requests() {
-		r.System = ""
+		// The system prompt, the raw items (with the order parallel tools
+		// finished in), and the cache key (the session's ID) differ by run.
+		r.System, r.Input, r.CacheKey = "", nil, ""
 		slices.Sort(r.ToolOutputs)
 		out = append(out, r)
 	}

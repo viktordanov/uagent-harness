@@ -6,22 +6,41 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
 
-// spawn starts a child with its first message and returns at once.
-func (m *Manager) spawn(ctx context.Context, parentID string, a spawnArgs) (spawnResult, error) {
-	role, err := m.role(a.AgentType)
+// Codex's refusals for spawn_agent.
+var (
+	errDepth    = errors.New("Agent depth limit reached. Solve the task yourself.")                                                              //nolint:staticcheck // Codex's message, word for word
+	errForkType = errors.New("Full-history forked agents inherit the parent agent type; omit agent_type, or spawn without a full-history fork.") //nolint:staticcheck // as above
+)
+
+// spawn starts a child with its first message and returns at once. With
+// fork_context, the child starts from a copy of the parent's history.
+func (m *Manager) spawn(ctx context.Context, call engine.AgentCall, a spawnArgs) (spawnResult, error) {
+	parentID := call.ParentID
+	if err := m.checkDepth(parentID); err != nil {
+		return spawnResult{}, err
+	}
+	if err := m.checkModel(a.Model); err != nil {
+		return spawnResult{}, err
+	}
+	role, rec, err := m.spawnRole(parentID, a)
 	if err != nil {
 		return spawnResult{}, err
 	}
-	rec := record{Role: role.Name, Model: a.Model, Effort: a.Effort}
-	c, err := m.start(parentID, uuid.NewString(), role, rec, false) //nolint:contextcheck // children outlive the call that started them
+	rec.CallID, rec.Task = call.CallID, a.Message
+	c, err := m.start(parentID, session.NewSubagentID(), role, rec, false) //nolint:contextcheck // children outlive the call that started them
 	if err != nil {
 		return spawnResult{}, err
+	}
+	if a.ForkContext {
+		if err := m.fork(ctx, c, call); err != nil {
+			m.closeTree(c)
+
+			return spawnResult{}, err
+		}
 	}
 	if _, err := m.submit(c, a.Message, false); err != nil {
 		m.closeTree(c)
@@ -35,6 +54,78 @@ func (m *Manager) spawn(ctx context.Context, parentID string, a spawnArgs) (spaw
 	}
 
 	return spawnResult{AgentID: c.id, Nickname: c.nickname}, nil
+}
+
+// spawnRole is the new child's role and record. A fork keeps the parent's
+// agent type, as in Codex, and none of its settings: the parent's history
+// and system prompt already carry them.
+func (m *Manager) spawnRole(parentID string, a spawnArgs) (Role, record, error) {
+	rec := record{Model: a.Model, Effort: a.Effort, Fork: a.ForkContext}
+	if !a.ForkContext {
+		role, err := m.role(a.AgentType)
+		rec.Role = role.Name
+
+		return role, rec, err
+	}
+	if a.AgentType != "" {
+		return Role{}, rec, errForkType
+	}
+	m.mu.Lock()
+	inherited := ""
+	if p, ok := m.children[parentID]; ok {
+		inherited = p.role
+	}
+	m.mu.Unlock()
+	role, err := m.role(inherited)
+	if err != nil {
+		role = Role{Name: inherited}
+	}
+	rec.Role = role.Name
+
+	return role, rec, nil
+}
+
+// checkDepth refuses a spawn or resume from a session at the depth limit.
+// Such a session is offered the tools only when it was forked, so its
+// tools match its parent's.
+func (m *Manager) checkDepth(parentID string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.depth(parentID)+1 > m.cfg.MaxDepth {
+		return errDepth
+	}
+
+	return nil
+}
+
+// forker is the engine's Forker, if it has one.
+func (m *Manager) forker() (engine.Forker, bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if ce, ok := m.eng.(childEngine); ok {
+		f, ok := ce.Engine.(engine.Forker)
+
+		return f, ok
+	}
+
+	return nil, false
+}
+
+// fork copies the parent's history, as it was when the model made the
+// spawn call, into the child's new session.
+func (m *Manager) fork(ctx context.Context, c *child, call engine.AgentCall) error {
+	f, ok := m.forker()
+	switch {
+	case !ok:
+		return errors.New("fork_context is not available on this engine")
+	case call.CallID == "":
+		return errors.New("fork_context needs the spawn call's ID")
+	}
+	if err := f.Fork(ctx, call.ParentID, c.id, call.CallID); err != nil {
+		return fmt.Errorf("failed to fork the context: %w", err)
+	}
+
+	return nil
 }
 
 // start registers a child within the limit, opens its session, and
@@ -58,12 +149,17 @@ func (m *Manager) start(parentID, id string, role Role, rec record, resumed bool
 		return nil, fmt.Errorf("agent limit reached: %d agents are open; close one with close_agent first", open)
 	}
 	c := newChild(id, parentID, role.Name, m.nickname(parentID, role, rec.Nickname))
+	c.forked, c.callID, c.task = rec.Fork, rec.CallID, rec.Task
 	if resumed {
 		c.status = Status{State: engine.AgentPendingInit}
 	}
 	m.children[id] = c
-	eng, opts := m.eng, m.childOptions(parent, c, role, rec, resumed)
+	eng, opts, key := m.eng, m.childOptions(parent, c, role, rec, resumed), m.treeRoot(parentID)
+	c.model, c.effort = opts.Settings.Model, opts.Settings.Effort
 	m.mu.Unlock()
+	if f, ok := m.forker(); ok {
+		f.SetCacheKey(id, key) // as Codex keys every agent by its tree's session
+	}
 
 	// Children outlive the call that started them; Close stops them.
 	s, err := session.Open(context.Background(), eng, opts) //nolint:contextcheck // children outlive the spawning call
@@ -218,6 +314,9 @@ func (m *Manager) closeTree(c *child) {
 // resume opens a closed child again, or one from an earlier process, as
 // long as its sidecar names this parent; an open child reports its status.
 func (m *Manager) resume(_ context.Context, parentID, id string) (Status, error) {
+	if err := m.checkDepth(parentID); err != nil {
+		return Status{State: engine.AgentNotFound}, err
+	}
 	m.mu.Lock()
 	c, ok := m.children[id]
 	if ok && c.parent == parentID && !c.closed {

@@ -114,6 +114,10 @@ func (m Model) run(e state.Effect) tea.Cmd {
 		}
 	case state.EffOpenSession:
 		return m.switchTo(e.ID)
+	case state.EffViewAgent:
+		return m.watchAgent(e.ID)
+	case state.EffAgentSend:
+		return m.sendToAgent(e.Text)
 	case state.EffQuit:
 		return func() tea.Msg {
 			if sess != nil {

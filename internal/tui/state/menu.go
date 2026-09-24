@@ -100,6 +100,8 @@ func (s State) argSuggestions(name, arg string) []Suggestion {
 		return s.modelSuggestions(arg)
 	case "effort":
 		values = session.Efforts
+	case cmdAgentsName:
+		values = s.agentNames()
 	case "resume":
 		for _, in := range s.Picker.Sessions {
 			values = append(values, in.ID[:min(8, len(in.ID))])

@@ -7,7 +7,10 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // Where a session was started. Codex hides scripted sessions from its resume
@@ -17,6 +20,29 @@ const (
 	SourceRun      = "run"
 	SourceSubagent = "subagent"
 )
+
+// SubagentIDPrefix starts the session ID of every subagent uah spawns, so a
+// child is known by its ID alone. Older children have plain UUIDs; their
+// sidecar's Parent identifies them.
+const SubagentIDPrefix = "subagent-"
+
+// NewSubagentID returns a new subagent session ID: subagent-<uuid>. The
+// runner's session store, uagent's session lock, and the run records accept
+// any ASCII letters, digits, and dashes.
+func NewSubagentID() string { return SubagentIDPrefix + uuid.NewString() }
+
+// ShortID is the ID as uah prints it in lists: the first 8 characters of
+// the UUID, after the subagent prefix when there is one. It is a prefix of
+// the ID, so it resumes the session.
+func ShortID(id string) string {
+	rest, sub := strings.CutPrefix(id, SubagentIDPrefix)
+	short := rest[:min(8, len(rest))]
+	if sub {
+		return SubagentIDPrefix + short
+	}
+
+	return short
+}
 
 // Sidecar is what uah knows about a session that the runner and uagent do not
 // record: sessions/<id>.uah.json. The file is the source of truth; see
