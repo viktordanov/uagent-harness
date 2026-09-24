@@ -72,6 +72,18 @@ type Record struct {
 	Trigger Trigger   `json:"trigger"`
 	Model   string    `json:"model,omitempty"`
 	At      time.Time `json:"at"`
+	// Keep is the cap on kept user messages in tokens (0: Codex's 20,000),
+	// saved with the record so what the model sees stays the same when the
+	// setting changes later.
+	Keep int `json:"keep,omitempty"`
+	// Focus is what the user asked the summary to focus on (/compact
+	// <instructions>).
+	Focus string `json:"focus,omitempty"`
+}
+
+// keepTokens is the record's cap on kept user messages.
+func (r Record) keepTokens() int {
+	return Settings{UserMessageMaxTokens: r.Keep}.KeepTokens()
 }
 
 // Hash fingerprints items, so a record applies only to the history it covers.
@@ -113,8 +125,8 @@ func NewRecord(input []llm.Item, summary string, trigger Trigger, model string, 
 }
 
 // Apply rewrites input, whose first item is the system message, with the
-// record: the system message, the covered user messages that Kept keeps,
-// the summary, and the items after the covered ones. A tool result whose
+// record: the system message, the covered user messages that Kept keeps (up
+// to the record's cap), the summary, and the items after the covered ones. A tool result whose
 // call was covered becomes a user-role note, so no output lacks its call.
 func Apply(input []llm.Item, rec Record) ([]llm.Item, error) {
 	if rec.Covered <= 0 || len(input) == 0 {
@@ -131,7 +143,7 @@ func Apply(input []llm.Item, rec Record) ([]llm.Item, error) {
 	if hash != rec.Hash {
 		return nil, ErrMismatch
 	}
-	kept := Kept(covered[min(rec.Floor, len(covered)):], UserMessageMaxTokens)
+	kept := Kept(covered[min(rec.Floor, len(covered)):], rec.keepTokens())
 	out := make([]llm.Item, 0, 2+len(kept)+len(tail))
 	out = append(out, input[0])
 	out = append(out, kept...)

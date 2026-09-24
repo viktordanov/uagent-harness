@@ -43,6 +43,14 @@ func TestReduce_CompactCommand(t *testing.T) {
 	s.Caps = engine.Capabilities{Compaction: true}
 	_, effects = apply(s, state.Submit{Text: "/compact"})
 	assert.Equal(t, []state.Effect{state.EffCompact{}}, effects)
+	_, effects = apply(s, state.Submit{Text: "/compact  keep the failing test names "})
+	assert.Equal(t, []state.Effect{state.EffCompact{Focus: "keep the failing test names"}}, effects, "words after /compact steer the summary")
+}
+
+func TestReduce_CompactionWarning(t *testing.T) {
+	s, _ := apply(opened(), engine.Compacted{Trigger: compaction.TriggerAuto, Summary: "S", Warning: "still full"})
+	assert.Equal(t, "still full", s.Items[len(s.Items)-2].Text)
+	assert.Equal(t, session.LevelWarning, s.Items[len(s.Items)-2].Level)
 }
 
 func TestReduce_ReloadedCompactionAndInterrupt(t *testing.T) {

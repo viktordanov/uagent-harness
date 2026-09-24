@@ -18,13 +18,16 @@ type CompactionStarted struct {
 
 // Compacted means a compaction finished. Err is empty on success; on failure
 // the request went out uncompacted. Interrupted means the user's interrupt
-// or the run's end stopped it (Err says so too).
+// or the run's end stopped it (Err says so too). Warning, on success, is
+// what the user should know, such as a context still above the automatic
+// limit.
 type Compacted struct {
 	At          time.Time
 	Trigger     compaction.Trigger
 	Summary     string
 	Err         string
 	Interrupted bool
+	Warning     string
 }
 
 func (e CompactionStarted) OccurredAt() time.Time { return e.At }

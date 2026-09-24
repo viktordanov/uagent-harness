@@ -95,6 +95,8 @@ type Session struct {
 	closeReply           chan error
 	// compactPending is a /compact the engine has not started yet.
 	compactPending bool
+	// compactFocus is what the pending /compact asked the summary to focus on.
+	compactFocus string
 	// clearPending is a /clear the engine has not started yet.
 	clearPending bool
 	// held are injected messages waiting for the next run (Inject).

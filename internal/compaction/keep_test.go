@@ -62,7 +62,7 @@ func TestApply_SummaryOfASummary(t *testing.T) {
 	history = append(history, msg(llm.RoleUser, "two"), call("b"), result("b", "y"))
 	view, err := compaction.Apply(history, first)
 	require.NoError(t, err)
-	_, input := compaction.SummaryRequest(view)
+	_, input := compaction.SummaryRequest(view, "")
 	assert.Contains(t, texts(input), "user: "+compaction.SummaryPrefix+"\nS1", "the second summary call sees the first summary")
 
 	second, err := compaction.NewRecord(history, "S2", compaction.TriggerManual, "m", time.Now())

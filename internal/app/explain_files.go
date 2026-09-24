@@ -33,7 +33,9 @@ func fileSettings(workspace string, l config.Layers, r Resolved, cfg config.Conf
 		overridden(l, "review.model", r.Review.Model, func(c config.Config) any { return c.Review.Model }),
 		overridden(l, "review.effort", string(r.Review.Effort), func(c config.Config) any { return c.Review.Effort }),
 		overridden(l, "review.timeout", r.Review.Timeout.String(), func(c config.Config) any { return c.Review.Timeout }),
-		overridden(l, "auto_compact_percent", r.AutoCompactPercent, func(c config.Config) any { return c.AutoCompactPercent }),
+	}
+	out = append(out, compactionSettings(l, r, cfg)...)
+	out = append(out, []Setting{
 		overridden(l, "instructions.max_bytes", orDefault(cfg.Instructions.MaxBytes, instructions.DefaultMaxBytes), func(c config.Config) any { return c.Instructions.MaxBytes }),
 		one("project_doc_max_bytes", maxBytes, pick(
 			overrides(l, func(c config.Config) any { return c.ProjectDocMaxBytes }),
@@ -52,7 +54,7 @@ func fileSettings(workspace string, l config.Layers, r Resolved, cfg config.Conf
 		added(l, "shell_environment_policy.set", setMap(env.Set), func(c config.Config) any { return c.ShellEnvironmentPolicy.Set }),
 		added(l, "tui.details", cfg.TUI.Details, func(c config.Config) any { return c.TUI.Details }),
 		added(l, "tui.mouse", cfg.TUI.Mouse, func(c config.Config) any { return c.TUI.Mouse }),
-	}
+	}...)
 	out = append(out, hookSettings(l, cfg)...)
 	out = append(out, mcpSettings(l, cfg)...)
 

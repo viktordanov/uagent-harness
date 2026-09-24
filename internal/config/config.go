@@ -51,6 +51,17 @@ type Config struct {
 	// ModelContextWindow overrides the model's context window in tokens, as
 	// Codex's key does.
 	ModelContextWindow int64 `toml:"model_context_window"`
+	// Compaction keys with Codex's names: the automatic limit in tokens
+	// (the lower of it and auto_compact_percent applies) and the summary
+	// prompt, inline or from a file (compact_prompt wins).
+	ModelAutoCompactTokenLimit    int64  `toml:"model_auto_compact_token_limit"`
+	CompactPrompt                 string `toml:"compact_prompt"`
+	ExperimentalCompactPromptFile string `toml:"experimental_compact_prompt_file"`
+	// The summary call's model and effort (the session's by default), and
+	// the cap on user messages a compaction keeps (Codex's 20,000 tokens).
+	CompactModel                string `toml:"compact_model"`
+	CompactEffort               string `toml:"compact_effort"`
+	CompactUserMessageMaxTokens int    `toml:"compact_user_message_max_tokens"`
 
 	Instructions Instructions `toml:"instructions"`
 	// Codex's AGENTS.md keys: fallback file names after AGENTS.md (none by

@@ -124,3 +124,21 @@ func TestSetup_Rules(t *testing.T) {
 	_, err = app.Setup(context.Background(), in, io.Discard)
 	require.ErrorContains(t, err, "default.rules")
 }
+
+func TestSetupChecksTheCompactPromptFile(t *testing.T) {
+	_, in := setupEnv(t)
+	prompt := filepath.Join(t.TempDir(), "compact.md")
+	require.NoError(t, os.MkdirAll(filepath.Dir(in.ConfigPath), 0o700))
+	require.NoError(t, os.WriteFile(in.ConfigPath, []byte(`experimental_compact_prompt_file = "`+prompt+`"`+"\n"), 0o600))
+
+	_, err := app.Setup(context.Background(), in, io.Discard)
+	require.ErrorContains(t, err, "failed to read experimental_compact_prompt_file", "a missing file stops the session, as in Codex")
+
+	require.NoError(t, os.WriteFile(prompt, []byte(" \n"), 0o600))
+	_, err = app.Setup(context.Background(), in, io.Discard)
+	require.ErrorContains(t, err, "is empty")
+
+	require.NoError(t, os.WriteFile(prompt, []byte("Summarize for a handoff.\n"), 0o600))
+	_, err = app.Setup(context.Background(), in, io.Discard)
+	require.NoError(t, err)
+}

@@ -56,8 +56,10 @@ type Options struct {
 	// ServiceTier is "" or "priority" (needs Capabilities.ServiceTier).
 	ServiceTier string
 	// Compact compacts the context before the run's first model request
-	// (needs Capabilities.Compaction).
-	Compact bool
+	// (needs Capabilities.Compaction). CompactFocus is what the summary
+	// should focus on, as /compact <instructions>.
+	Compact      bool
+	CompactFocus string
 	// Clear drops the context before the run's first model request, as
 	// /clear does (needs Capabilities.Compaction).
 	Clear bool
@@ -88,9 +90,10 @@ type Run interface {
 	SetModel(model string) error
 	// SetServiceTier changes the tier for the next model request (ErrUnsupported without ServiceTier).
 	SetServiceTier(tier string) error
-	// Compact compacts the context before the next model request
-	// (ErrUnsupported without Compaction).
-	Compact() error
+	// Compact compacts the context before the next model request, with
+	// the summary focused on focus when it is not empty (ErrUnsupported
+	// without Compaction).
+	Compact(focus string) error
 	// Clear drops the context before the next model request: the model
 	// starts fresh in the same session (ErrUnsupported without Compaction).
 	Clear() error

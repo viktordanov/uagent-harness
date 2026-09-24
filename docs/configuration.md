@@ -120,6 +120,14 @@ Every key may be set in the user file and in a trusted project file, except `[pr
 | --- | --- | --- | --- | --- |
 | `auto_compact_percent` | integer 0–100 | 90 | override, can unset | Compact before a model request once the context in use (the last response's tokens plus an estimate of what was added since) reaches this share of the context window; 0 turns automatic compaction off |
 | `model_context_window` | integer | the model catalog (the provider's list, else Codex's bundled one), else 272,000 | override | The context window in tokens, for compaction and the context meter |
+| `model_auto_compact_token_limit` | integer | none | override | Codex's key: compact once the context in use reaches this many tokens, when that comes before `auto_compact_percent` of the window. It only lowers the limit, as in Codex; `auto_compact_percent = 0` still turns automatic compaction off. `/context` shows the rest of the window as the buffer |
+| `compact_model` | string | the session's current model, as Codex | override | The model that writes the summary, on the session's provider. A model with a smaller window gets the history trimmed from the oldest item to fit |
+| `compact_effort` | string | the session's current effort | override | The summary call's effort: low, medium, high, xhigh, or max |
+| `compact_prompt` | string | Codex's summary prompt | override | Codex's key: the prompt the summary call ends with. Surrounding whitespace is trimmed; empty means the default |
+| `experimental_compact_prompt_file` | path | none | override | Codex's key: a file whose text is the summary prompt, when `compact_prompt` is not set. An absolute path or one under `~/`; a missing or empty file stops the session from starting |
+| `compact_user_message_max_tokens` | integer | 20000 | override | The cap on user messages a compaction keeps word for word, newest first; the one that crosses it is shortened in the middle. Codex fixes it at 20,000 (`COMPACT_USER_MESSAGE_MAX_TOKENS`). A compaction saves the cap it used, so changing it affects later compactions only |
+
+`/compact <instructions>` adds focus instructions to the prompt for that one summary, as in Claude Code: `/compact keep the failing test names`.
 
 ### Instructions and skills
 
@@ -300,6 +308,12 @@ approval_policy = "on-request"     # or never
 approvals_reviewer = "auto_review" # or user: skip the auto-reviewer
 auto_compact_percent = 90          # 0 turns automatic compaction off
 model_context_window = 272000      # tokens; overrides the model catalog
+# model_auto_compact_token_limit = 200000   # compact sooner than 90% of the window
+# compact_model = "gpt-6-luna"              # a cheaper summary model; default: the session's
+# compact_effort = "medium"
+# compact_prompt = "Summarize for a handoff: decisions, open work, file paths."
+# experimental_compact_prompt_file = "~/.config/uagent/compact.md"
+compact_user_message_max_tokens = 20000
 project_doc_fallback_filenames = ["CLAUDE.md"]   # also read Claude Code's files
 project_root_markers = [".git"]
 project_doc_max_bytes = 32768

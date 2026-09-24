@@ -45,10 +45,10 @@ func (r *processRun) SetModel(string) error     { return engine.ErrUnsupported }
 func (r *processRun) SetServiceTier(string) error {
 	return engine.ErrUnsupported
 }
-func (r *processRun) Compact() error { return engine.ErrUnsupported }
-func (r *processRun) Clear() error   { return engine.ErrUnsupported }
-func (r *processRun) Interrupt()     { r.run.Interrupt() }
-func (r *processRun) Kill()          { r.run.Kill() }
+func (r *processRun) Compact(string) error { return engine.ErrUnsupported }
+func (r *processRun) Clear() error         { return engine.ErrUnsupported }
+func (r *processRun) Interrupt()           { r.run.Interrupt() }
+func (r *processRun) Kill()                { r.run.Kill() }
 
 func (r *processRun) Wait() (core.Result, error) {
 	result, err := r.run.Wait()

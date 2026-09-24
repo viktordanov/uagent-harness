@@ -100,14 +100,15 @@ func (a *agent) SetModel(model string) error {
 
 func (a *agent) SetServiceTier(tier string) error { return a.llm.setPriority(tier == tierPriority) }
 
-// Compact compacts the context before the next model request.
-func (a *agent) Compact() error {
+// Compact compacts the context before the next model request, the summary
+// focused on focus when it is not empty.
+func (a *agent) Compact(focus string) error {
 	select {
 	case <-a.done:
 		return errStopped
 	default:
 	}
-	a.compactor.requestCompaction(compaction.TriggerManual)
+	a.compactor.requestCompaction(compaction.TriggerManual, focus)
 
 	return nil
 }
@@ -119,7 +120,7 @@ func (a *agent) Clear() error {
 		return errStopped
 	default:
 	}
-	a.compactor.requestCompaction(compaction.TriggerClear)
+	a.compactor.requestCompaction(compaction.TriggerClear, "")
 
 	return nil
 }

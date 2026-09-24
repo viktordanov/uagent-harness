@@ -15,24 +15,28 @@ import (
 // ErrNoCompaction means the engine cannot compact the context.
 var ErrNoCompaction = errors.New("compaction needs the embedded engine")
 
-type cmdCompact struct{}
+type cmdCompact struct{ focus string }
 
 // Compact summarizes the context, keeping every user message verbatim: before
 // the live run's next model request, or before the next run's first one when
 // the session is idle. The engine reports it with engine.CompactionStarted
 // and engine.Compacted.
-func (s *Session) Compact() error {
-	_, err := call[struct{}](s, cmdCompact{})
+func (s *Session) Compact() error { return s.CompactWith("") }
+
+// CompactWith is Compact with focus instructions for the summary, as Claude
+// Code's /compact <instructions>.
+func (s *Session) CompactWith(focus string) error {
+	_, err := call[struct{}](s, cmdCompact{focus: focus})
 
 	return err
 }
 
-func (s *Session) onCompact() error {
+func (s *Session) onCompact(focus string) error {
 	if !s.caps.Compaction {
 		return ErrNoCompaction
 	}
-	s.compactPending = true
-	if s.state == StateRunning && s.run != nil && s.run.Compact() == nil {
+	s.compactPending, s.compactFocus = true, focus
+	if s.state == StateRunning && s.run != nil && s.run.Compact(focus) == nil {
 		s.emit(Notice{At: time.Now(), Level: LevelInfo, Message: "Compacting the context before the next model request"})
 
 		return nil
@@ -74,7 +78,7 @@ func (s *Session) noteCompaction(e core.Event) {
 	switch {
 	case !ok:
 	case v.Trigger == compaction.TriggerManual:
-		s.compactPending = false
+		s.compactPending, s.compactFocus = false, ""
 	case v.Trigger == compaction.TriggerClear:
 		s.clearPending = false
 	}

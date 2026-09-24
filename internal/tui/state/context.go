@@ -57,6 +57,9 @@ func (s *State) onEngineEvent(ev core.Event) bool {
 			return true
 		}
 		s.notice(session.LevelInfo, "Context compacted; your messages stay as written")
+		if e.Warning != "" {
+			s.notice(session.LevelWarning, e.Warning)
+		}
 		s.notice(LevelDebug, "summary: "+e.Summary)
 	case engine.AutoReviewed:
 		s.onAutoReviewed(e)
@@ -86,12 +89,14 @@ func cmdClear(s *State, _ string) []Effect {
 	return []Effect{EffClear{}}
 }
 
-func cmdCompact(s *State, _ string) []Effect {
+// cmdCompact compacts; its argument is what the summary should focus on,
+// as Claude Code's /compact [instructions].
+func cmdCompact(s *State, args string) []Effect {
 	if !s.Caps.Compaction {
 		s.notice(session.LevelWarning, "/compact needs the embedded engine")
 
 		return nil
 	}
 
-	return []Effect{EffCompact{}}
+	return []Effect{EffCompact{Focus: args}}
 }

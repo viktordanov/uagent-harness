@@ -30,7 +30,7 @@ func TestAnalyze(t *testing.T) {
 		Tools: []llm.Tool{{Name: "Bash", Description: "Run a command"}, {Name: "mcp__docs__search", Description: "Search the docs"}},
 	}
 
-	u := contextusage.Analyze(req, 0, 272000, 90, []string{"/repo/AGENTS.md", "/repo/svc/AGENTS.md"})
+	u := contextusage.Analyze(req, 0, 272000, 244800, []string{"/repo/AGENTS.md", "/repo/svc/AGENTS.md"})
 
 	assert.True(t, u.Estimated)
 	assert.Equal(t, int64(27200), u.Buffer, "90% leaves a tenth of the window for compaction")
