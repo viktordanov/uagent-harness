@@ -49,6 +49,9 @@ type (
 
 func (EffLoadUsage) effect() {}
 
+// cmdUsage is /usage: the plan's usage, read fresh, as uah usage prints it.
+func cmdUsage(*State, string) []Effect { return []Effect{EffLoadUsage{Reason: UsageStatus}} }
+
 // Usage is what the TUI knows of the subscription's usage.
 type Usage struct {
 	// Snapshot is the last one read; its CapturedAt is zero before any.
