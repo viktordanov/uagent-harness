@@ -109,6 +109,14 @@ Order of starting: 1 alone (it touches everything). Then lanes A (2), B (4), C (
 
 Ideas that come up while working go here, not into the items.
 
+- Subagents: `resume_agent` for children of an earlier process; `SubagentStop` hook; per-child tool lines in the detailed view; interrupting the parent stops its children; a child's approval while the parent is idle is declined today.
+- Auto-review: Codex sends only the transcript delta per review and lets the reviewer run read-only commands; uah sends the whole trimmed context each time. The openai API-key provider reviews with the session model (Codex uses gpt-5.6-luna). The engine's transcript mixes children's events into the parent's.
+- Approvals: "No, and tell the agent what to do" has no text field; no per-session cache of approved commands; the process engine ignores rules and approvals.
+- MCP: resources, prompts, OAuth, restarting a crashed server.
+- Compaction: Codex's 20,000-token cap on kept user messages is not applied; compaction events are not in `events.jsonl` or `uah run --stream`.
+- Crash cleanup kills recorded process groups; a reused process group ID after a reboot could hit an unrelated process (uagent's end-of-run cleanup has the same risk).
+- `uah config` does not list `[agents]`, `[review]`, and MCP servers yet.
+
 ## Log
 
 One line per merge or decision: time, item, what landed, commit.
@@ -131,3 +139,12 @@ One line per merge or decision: time, item, what landed, commit.
 - 05:16 · 11 · Merged lane/doctor: `uah doctor` (config, settings, runner, workspace, credentials incl. the real client construction, a real sandbox run, instructions, hooks, MCP startup, state), hook trust that also hashes a local script the command runs, and a crash-recovery test (SIGKILL uah mid-tool, resume) that found orphaned tools surviving a crash — fixed on the embedded engine by killing recorded live groups before resuming.
 - 05:22 · 11 · Moved the crash fix into uagent v0.4.2 (harness.Start kills tools a killed run left behind, after taking the session lock), so both engines get it; removed the embedded engine's copy. The crash test still passes.
 - 05:28 · 12 · Merged lane/subagents: Codex v1 tools (spawn_agent, send_input, wait, close_agent) as the runner's remote jobs, children as resumable sessions under their parent (hidden from the picker), [agents] config and Codex role files, child approvals through the parent, progress lines and /agents in the TUI. The reference test caught the new keys; docs/configuration.md gained a Subagents section.
+
+### Final summary (05:29)
+
+Done: all twelve items. The quality pass; the sandbox finished with approvals, Codex rules, configured approvals, and auto-review on `codex-auto-review` (probed for real, ~3.5K input tokens and ~5 s per review); Codex-style compaction that keeps every user message with a context meter; MCP on the official SDK with Codex's config format and approval modes; the SQLite session index with search and the `/status` heatmap; the `/` and `@` menu; AGENTS.md and skills found as Codex finds them; hooks for PreCompact and PermissionRequest; the configuration reference with `uah config`; `uah doctor`, content-based hook trust, and a crash-recovery test whose fix went into uagent v0.4.2; and subagents with Codex's v1 tools, built beyond the research the item required.
+
+Cut or unfinished: nothing on the list. The open edges each lane recorded are under Later.
+
+First thing next: try it — `uah` in a repository, ask for work that needs an escalation and a subagent, and read `uah doctor`; then pick from Later, starting with the subagent edges (resume_agent, interrupts) if subagents get real use.
+
