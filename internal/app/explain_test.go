@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/viktordanov/uagent-harness/internal/app"
+	"github.com/viktordanov/uagent-harness/internal/approval"
 	"github.com/viktordanov/uagent-harness/internal/config"
 	"github.com/viktordanov/uagent-harness/internal/mcp"
 	"github.com/viktordanov/uagent-harness/internal/session"
@@ -80,6 +81,22 @@ func TestExplainSources(t *testing.T) {
 			o:    app.Origins{Resumed: resumed, Layers: config.Layers{User: config.Config{Provider: "openrouter", Model: "m", Timeout: "1h"}}},
 			want: map[string]string{"provider": "session", "model": "session", "effort": "session", "workspace": "session", "timeout": "user file"},
 			vals: map[string]string{"model": "gpt-resumed", "timeout": "1h0m0s"},
+		},
+		{
+			name: "the resumed session's saved fast mode and permission mode beat the files",
+			o: app.Origins{
+				Resumed: session.Info{Provider: "openai-codex", Model: "gpt-saved", Fast: new(true), Mode: approval.ModeAuto, Saved: true},
+				Layers:  config.Layers{User: config.Config{SandboxMode: "read-only", Fast: false}},
+			},
+			want: map[string]string{"model": "session", "fast": "session", "permission_mode": "session", "sandbox_mode": "session"},
+			vals: map[string]string{"fast": "true", "permission_mode": "auto", "sandbox_mode": "workspace-write"},
+		},
+		{
+			name: "permission_mode in a file sets the sandbox mode",
+			in:   func(in *app.Inputs) { in.Workspace = "/ws" },
+			o:    app.Origins{Layers: trusted(config.Config{SandboxMode: "danger-full-access"}, config.Config{PermissionMode: "read-only"})},
+			want: map[string]string{"permission_mode": "project file", "sandbox_mode": "project file"},
+			vals: map[string]string{"permission_mode": "read-only", "sandbox_mode": "read-only"},
 		},
 		{
 			name: "a provider flag that changes the resumed provider drops the resumed and configured models",

@@ -52,6 +52,9 @@ type Sidecar struct {
 	Created time.Time `json:"created"`
 	// Parent is the session that spawned this one (SourceSubagent).
 	Parent string `json:"parent,omitempty"`
+	// Settings are what the session last used, restored on resume (nil in
+	// sidecars from before uah kept them).
+	Settings *Saved `json:"settings,omitempty"`
 }
 
 func sidecarPath(sessionsDir, id string) string {

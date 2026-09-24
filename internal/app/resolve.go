@@ -124,7 +124,7 @@ func Resolve(in Inputs, resumed session.Info, cfg config.Config) (Resolved, erro
 		return Resolved{}, err
 	}
 	s.Timeout = timeout
-	if in.Fast || (!in.FastSet && cfg.Fast) {
+	if pickFast(in, resumed, cfg) {
 		s.ServiceTier = "priority"
 	}
 	if err := s.Validate(); err != nil {
@@ -138,11 +138,11 @@ func Resolve(in Inputs, resumed session.Info, cfg config.Config) (Resolved, erro
 	if err != nil {
 		return Resolved{}, err
 	}
-	policy, err := pickSandbox(in, cfg, s.Workspace)
+	mode, policy, err := pickMode(in, resumed, cfg, s.Workspace)
 	if err != nil {
 		return Resolved{}, err
 	}
-	s.Sandbox = string(policy.Mode)
+	s = s.WithMode(mode)
 
 	envPolicy, err := pickEnv(cfg.ShellEnvironmentPolicy)
 	if err != nil {
@@ -202,20 +202,6 @@ func pickEnv(c config.ShellEnvironmentPolicy) (sandbox.EnvPolicy, error) {
 	return sandbox.EnvPolicy{
 		Inherit: c.Inherit, IgnoreDefaultExcludes: c.IgnoreDefaultExcludes,
 		Exclude: c.Exclude, IncludeOnly: c.IncludeOnly, Set: c.Set,
-	}, nil
-}
-
-// pickSandbox is the --sandbox flag, the configured sandbox_mode, or
-// workspace-write, Codex's default for trusted projects.
-func pickSandbox(in Inputs, cfg config.Config, workspace string) (sandbox.Policy, error) {
-	mode, err := sandbox.ParseMode(first(in.Sandbox, cfg.SandboxMode, string(sandbox.WorkspaceWrite)))
-	if err != nil {
-		return sandbox.Policy{}, usage(err)
-	}
-
-	return sandbox.Policy{
-		Mode: mode, Workspace: workspace,
-		WritableRoots: cfg.SandboxWorkspaceWrite.WritableRoots, Network: cfg.SandboxWorkspaceWrite.NetworkAccess,
 	}, nil
 }
 

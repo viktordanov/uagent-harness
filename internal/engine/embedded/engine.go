@@ -140,7 +140,7 @@ func (e *Engine) Close() error {
 func (e *Engine) Capabilities() engine.Capabilities {
 	p, err := e.provider(e.cfg.Provider)
 
-	return engine.Capabilities{LiveInput: true, LiveEffort: true, LiveModel: true, ServiceTier: err == nil && p.Priority, Compaction: true}
+	return engine.Capabilities{LiveInput: true, LiveEffort: true, LiveModel: true, ServiceTier: err == nil && p.Priority, Compaction: true, LiveMode: true}
 }
 
 // startKey carries a run's options and event sink to the backend.
@@ -197,6 +197,7 @@ func (r *run) Send(in core.UserInput) error     { return r.agent.Send(in) }
 func (r *run) SetEffort(effort string) error    { return r.agent.SetEffort(effort) }
 func (r *run) SetModel(model string) error      { return r.agent.SetModel(model) }
 func (r *run) SetServiceTier(tier string) error { return r.agent.SetServiceTier(tier) }
+func (r *run) SetMode(m approval.Mode) error    { return r.agent.SetMode(m) }
 func (r *run) Compact() error                   { return r.agent.Compact() }
 func (r *run) Clear() error                     { return r.agent.Clear() }
 
