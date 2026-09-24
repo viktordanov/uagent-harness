@@ -117,11 +117,11 @@ func New(ctx context.Context, deps Deps) Model {
 
 	return Model{
 		ctx: ctx, deps: deps, st: st,
-		cache: render.NewCache(), composer: newComposer(),
+		cache: render.NewCache(render.Amber), composer: newComposer(render.NewStyles(render.Amber)),
 	}
 }
 
-func newComposer() textarea.Model {
+func newComposer(theme *render.Styles) textarea.Model {
 	ta := textarea.New()
 	ta.Placeholder = "Ask uah to do anything · / for commands"
 	ta.ShowLineNumbers = false
@@ -130,7 +130,7 @@ func newComposer() textarea.Model {
 	ta.MinHeight = 1
 	ta.MaxHeight = 8
 	ta.KeyMap.InsertNewline = key.NewBinding(key.WithKeys("shift+enter", "ctrl+j"))
-	ta.SetStyles(composerStyles())
+	ta.SetStyles(composerStyles(theme))
 	ta.SetVirtualCursor(false)
 	ta.Focus()
 
@@ -139,23 +139,22 @@ func newComposer() textarea.Model {
 
 // onBackground picks the theme for the terminal's background.
 func (m Model) onBackground(msg tea.BackgroundColorMsg) Model {
-	render.SetTheme(render.ThemeFor(msg.Color))
-	m.composer.SetStyles(composerStyles())
-	m.cache = render.NewCache()
+	m.cache = render.NewCache(render.ThemeFor(msg.Color))
+	m.composer.SetStyles(composerStyles(m.cache.Styles()))
 
 	return m
 }
 
 // composerStyles draw the composer in the theme: the λ in the accent, and
 // no backgrounds of its own, since the screen puts it on the band.
-func composerStyles() textarea.Styles {
+func composerStyles(theme *render.Styles) textarea.Styles {
 	styles := textarea.DefaultStyles(true)
 	for _, st := range []*textarea.StyleState{&styles.Focused, &styles.Blurred} {
 		st.Base = lipgloss.NewStyle()
 		st.Text = lipgloss.NewStyle()
 		st.CursorLine = lipgloss.NewStyle()
-		st.Prompt = render.Accent()
-		st.Placeholder = render.Dim()
+		st.Prompt = theme.Accent()
+		st.Placeholder = theme.Dim()
 	}
 
 	return styles

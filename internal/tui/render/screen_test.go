@@ -56,7 +56,7 @@ func fixtureEvents(t *testing.T, name string) []any {
 
 func screen(s state.State, draft string) string {
 	composer := "λ " + draft
-	out, _ := render.Screen(s, render.NewCache(), render.Frame{Width: 100, Height: 24, Composer: composer, ComposerHeight: 1, Draft: draft})
+	out, _ := render.Screen(s, render.NewCache(render.Amber), render.Frame{Width: 100, Height: 24, Composer: composer, ComposerHeight: 1, Draft: draft})
 	lines := strings.Split(ansi.Strip(out), "\n")
 	for i := range lines {
 		lines[i] = strings.TrimRight(lines[i], " ")

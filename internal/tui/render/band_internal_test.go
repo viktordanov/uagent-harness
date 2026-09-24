@@ -8,6 +8,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// amber are the default styles the tests draw with.
+var amber = NewStyles(Amber)
+
 func TestBand_FillsTheWidthThroughTabsAndResets(t *testing.T) {
 	for _, line := range []string{
 		"\tfunc main() {}",
@@ -15,7 +18,7 @@ func TestBand_FillsTheWidthThroughTabsAndResets(t *testing.T) {
 		"a \x1b[1;38;2;1;2;3mbold\x1b[0m b \x1b[49mno bg\x1b[m c",
 		"wide 漢字 text",
 	} {
-		out := band(line, 30)
+		out := amber.band(line, 30)
 		assert.Equal(t, 30, ansi.StringWidth(out), line)
 		assert.NotContains(t, out, "\t")
 		assert.Equal(t, 0, countUnbanded(out), "every background reset is followed by the band: %q", line)
@@ -27,7 +30,7 @@ func countUnbanded(s string) int {
 	n := 0
 	for _, loc := range sgr.FindAllStringIndex(s, -1) {
 		seq := s[loc[0]:loc[1]]
-		if (seq == "\x1b[m" || seq == "\x1b[0m" || seq == "\x1b[49m") && loc[1] < len(s) && !hasPrefixAt(s, loc[1], bandOn) {
+		if (seq == "\x1b[m" || seq == "\x1b[0m" || seq == "\x1b[49m") && loc[1] < len(s) && !hasPrefixAt(s, loc[1], amber.bandOn) {
 			n++
 		}
 	}

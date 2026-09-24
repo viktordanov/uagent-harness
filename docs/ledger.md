@@ -210,7 +210,7 @@ The survey found 3 high, 11 medium, and 12 low findings. Fixed:
 - Medium: sidecars were read under the agents lock on every spawn and run start (a session's parent is remembered); two tree walks disagreed (one); updates went to the parent while holding a lock every child shared (each parent has an ordered outbox); closed children kept their event logs, and the log trim copied it on every event; `wait` counted down on a resumed child instead of the one it counted up; views were cached across reopenings and the main cache survived `/clear`; the notification format had two hand-written codecs (`engine.SubagentNotification` and `ParseSubagentNotification`); per-frame scans of the whole transcript for agents (`State.Agents`); a timing guess in an MCP test.
 - Low: the dead window table; `/context`'s buffer uses `compaction.AutoLimit`; tool labels are shaped once in the state, not on every frame; `listAgents` uses the state's clock; `band` restores its background after any reset; a spawn that failed left a sidecar and record behind; the engine forgets a closed session's transcript, last request, fork, and cache key; SubagentStop hooks end with their child; two functions joined the documented complexity exceptions; the sleep behind a negative assertion; the flaky `TestTUI_CommandsAndPrompt`; tests for the view drain, `band`, and `ThemeFor`.
 
-Deferred to Later, with reasons below: the model catalog as a process global behind `compaction.ContextWindow`, and the theme as package-level state.
+Deferred then and done after item 28: the model catalog is passed in instead of read from a process-wide default, and the theme's styles live in the render cache instead of package-level state.
 
 ### Second-round summary
 
@@ -228,7 +228,6 @@ Ideas that come up while working go here, not into the items.
 - `/config`: Claude Code's `/config key=value` form, a search field, and more rows (the sandbox's network access, the reviewer).
 - Crash cleanup kills recorded process groups; a reused process group ID after a reboot could hit an unrelated process (uagent's end-of-run cleanup has the same risk).
 - `uah config` does not list `[agents]` yet.
-- The render theme is package-level state (`SetTheme`), so render tests cannot run in parallel and one process cannot draw two themes. Better: a styles value in the render cache. Not needed while one TUI draws one theme.
 
 ## Log
 
@@ -262,6 +261,7 @@ One line per merge or decision: time, item, what landed, commit.
 - 14:20 · 23 · Quality pass: 24 of the survey's 26 findings fixed.
 - 14:45 · 24–27, 20 · Merged configurable compaction and `/config`, permission modes and saved session settings, and `apply_patch` with diffs.
 - 15:10 · 28 · A fresh review found CI red on a notification race (fixed: the note goes before the update), stale ledger lines (fixed), and no tests for the process engine (added), and suggested a complexity check (gocyclo at 20, as a backstop).
+- 15:40 · 23 (deferred) · No process-wide model catalog: `compaction.ContextWindow` takes the catalog, and `app.Setup` returns the session's. No package-level theme: a `Styles` value in each render cache, with every drawing function its method (a go/types rewrite of 38 functions).
 
 ### Final summary (05:29)
 

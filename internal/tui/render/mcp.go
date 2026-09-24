@@ -14,36 +14,36 @@ import (
 // a failure. Verbose (/mcp verbose or the detailed view) adds the command
 // or URL, an HTTP server's auth state, and each tool with its approval
 // mode and description.
-func mcpLines(it state.Item, w int, details bool) []string {
+func (st *Styles) mcpLines(it state.Item, w int, details bool) []string {
 	verbose := details || it.Final
-	out := []string{"", bold.Render("• MCP servers")}
+	out := []string{"", st.bold.Render("• MCP servers")}
 	for _, s := range it.MCP {
-		out = append(out, ansi.Truncate(serverLine(s), w, "…"))
+		out = append(out, ansi.Truncate(st.serverLine(s), w, "…"))
 		if hint := serverHint(s); hint != "" {
-			out = append(out, styleLines(wrapPrefixed(hint, w, "      ", "      "), stateStyle(s.State))...)
+			out = append(out, styleLines(wrapPrefixed(hint, w, "      ", "      "), st.stateStyle(s.State))...)
 		}
 		if !verbose {
 			continue
 		}
 		if s.Transport == mcp.TransportHTTP {
-			out = append(out, dimLine(w, "      url: "+s.Target), dimLine(w, "      auth: "+s.Auth.Text()))
+			out = append(out, st.dimLine(w, "      url: "+s.Target), st.dimLine(w, "      auth: "+s.Auth.Text()))
 		} else {
-			out = append(out, dimLine(w, "      command: "+s.Target))
+			out = append(out, st.dimLine(w, "      command: "+s.Target))
 		}
 		for _, t := range s.Tools {
-			out = append(out, toolEntry(t, w))
+			out = append(out, st.toolEntry(t, w))
 		}
 	}
 	if !verbose {
-		out = append(out, dim.Render("  /mcp verbose (or ctrl+t) lists each tool and its approval mode"))
+		out = append(out, st.dim.Render("  /mcp verbose (or ctrl+t) lists each tool and its approval mode"))
 	}
 
 	return out
 }
 
 // serverLine is "  • docs: ready · stdio · 3 tools".
-func serverLine(s mcp.ServerStatus) string {
-	line := fmt.Sprintf("  • %s: %s · %s", tool.Render(s.Name), stateStyle(s.State).Render(stateText(s.State)), s.Transport)
+func (st *Styles) serverLine(s mcp.ServerStatus) string {
+	line := fmt.Sprintf("  • %s: %s · %s", st.tool.Render(s.Name), st.stateStyle(s.State).Render(stateText(s.State)), s.Transport)
 	if s.State == mcp.StateReady {
 		n := len(s.Tools)
 		plural := "s"
@@ -77,32 +77,32 @@ func stateText(st mcp.State) string {
 	return string(st)
 }
 
-func stateStyle(st mcp.State) interface{ Render(...string) string } {
-	switch st {
+func (st *Styles) stateStyle(state mcp.State) interface{ Render(...string) string } {
+	switch state {
 	case mcp.StateReady:
-		return ok
+		return st.ok
 	case mcp.StateFailed:
-		return bad
+		return st.bad
 	case mcp.StateNeedsLogin, mcp.StateStarting:
-		return warn
+		return st.warn
 	case mcp.StateDisabled:
 	}
 
-	return dim
+	return st.dim
 }
 
 // toolEntry is "      mcp__docs__search · approve · Search the docs.".
-func toolEntry(t mcp.Tool, w int) string {
+func (st *Styles) toolEntry(t mcp.Tool, w int) string {
 	mode := string(t.Approval)
 	if t.NeedsApproval() {
 		mode += ", asks"
 	}
-	line := "      " + t.Name + dim.Render(" · "+mode)
+	line := "      " + t.Name + st.dim.Render(" · "+mode)
 	if t.Description != "" {
-		line += dim.Render(" · " + oneLine(t.Description))
+		line += st.dim.Render(" · " + oneLine(t.Description))
 	}
 
 	return ansi.Truncate(line, w, "…")
 }
 
-func dimLine(w int, s string) string { return dim.Render(ansi.Truncate(s, w, "…")) }
+func (st *Styles) dimLine(w int, s string) string { return st.dim.Render(ansi.Truncate(s, w, "…")) }

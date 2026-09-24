@@ -79,8 +79,10 @@ func ThemeFor(bg color.Color) Theme {
 	return t
 }
 
-// The styles items draw with, set by SetTheme.
-var (
+// Styles are a theme's styles, which every drawing function is a method of.
+// A render Cache holds the Styles its frames draw with, so each renderer
+// has its own theme and nothing is shared between them.
+type Styles struct {
 	dim, bold, accent, bad, warn, italic, header, selected lipgloss.Style
 	// tool is the accent without bold; ok is Good; codeSpan is `code`.
 	tool, ok, codeSpan lipgloss.Style
@@ -94,27 +96,25 @@ var (
 	categoryColors map[string]lipgloss.Style
 	// diffStyles draw added and removed diff lines.
 	diffStyles map[string]diffStyle
-)
+}
 
-func init() { SetTheme(Amber) }
-
-// SetTheme sets the colors every later frame draws with. The shell calls it
-// once it knows the terminal's background; call it from the update loop only.
-func SetTheme(t Theme) {
-	dim = lipgloss.NewStyle().Foreground(t.Dim)
-	bold = lipgloss.NewStyle().Bold(true)
-	accent = lipgloss.NewStyle().Foreground(t.Accent).Bold(true)
-	bad = lipgloss.NewStyle().Foreground(t.Bad)
-	warn = lipgloss.NewStyle().Foreground(t.Warn)
-	italic = lipgloss.NewStyle().Foreground(t.Dim).Italic(true)
-	header = lipgloss.NewStyle().Foreground(t.Band).Background(t.Accent)
-	selected = header
-	tool = lipgloss.NewStyle().Foreground(t.Accent)
-	ok = lipgloss.NewStyle().Foreground(t.Good)
-	codeSpan = lipgloss.NewStyle().Foreground(t.Name)
-	quoteBar = dim.Render("│ ")
-	categoryColors = map[string]lipgloss.Style{
-		contextusage.SystemPrompt: dim,
+// NewStyles builds a theme's styles.
+func NewStyles(t Theme) *Styles {
+	st := &Styles{}
+	st.dim = lipgloss.NewStyle().Foreground(t.Dim)
+	st.bold = lipgloss.NewStyle().Bold(true)
+	st.accent = lipgloss.NewStyle().Foreground(t.Accent).Bold(true)
+	st.bad = lipgloss.NewStyle().Foreground(t.Bad)
+	st.warn = lipgloss.NewStyle().Foreground(t.Warn)
+	st.italic = lipgloss.NewStyle().Foreground(t.Dim).Italic(true)
+	st.header = lipgloss.NewStyle().Foreground(t.Band).Background(t.Accent)
+	st.selected = st.header
+	st.tool = lipgloss.NewStyle().Foreground(t.Accent)
+	st.ok = lipgloss.NewStyle().Foreground(t.Good)
+	st.codeSpan = lipgloss.NewStyle().Foreground(t.Name)
+	st.quoteBar = st.dim.Render("│ ")
+	st.categoryColors = map[string]lipgloss.Style{
+		contextusage.SystemPrompt: st.dim,
 		contextusage.Instructions: lipgloss.NewStyle().Foreground(t.Name),
 		contextusage.Skills:       lipgloss.NewStyle().Foreground(t.Good),
 		contextusage.Tools:        lipgloss.NewStyle().Foreground(t.Accent),
@@ -123,14 +123,14 @@ func SetTheme(t Theme) {
 		contextusage.Assistant:    lipgloss.NewStyle().Foreground(t.Extra),
 		contextusage.ToolResults:  lipgloss.NewStyle().Foreground(t.Bad),
 	}
-	diffStyles = newDiffStyles(t)
+	st.diffStyles = newDiffStyles(t)
 	r, g, b := rgb(t.Band)
-	bandOn = fmt.Sprintf("\x1b[48;2;%d;%d;%dm", r, g, b)
-	breath = breath[:0]
+	st.bandOn = fmt.Sprintf("\x1b[48;2;%d;%d;%dm", r, g, b)
+	st.breath = make([]lipgloss.Style, 0, len(t.Breath))
 	for _, c := range t.Breath {
-		breath = append(breath, lipgloss.NewStyle().Foreground(c).Bold(true))
+		st.breath = append(st.breath, lipgloss.NewStyle().Foreground(c).Bold(true))
 	}
-	codeStyle = chroma.MustNewStyle("uah", chroma.StyleEntries{
+	st.codeStyle = chroma.MustNewStyle("uah", chroma.StyleEntries{
 		chroma.Keyword:             "bold " + hexOf(t.Keyword),
 		chroma.NameFunction:        hexOf(t.Name),
 		chroma.NameClass:           hexOf(t.Name),
@@ -144,10 +144,12 @@ func SetTheme(t Theme) {
 		chroma.OperatorWord:        "bold " + hexOf(t.Keyword),
 		chroma.LiteralStringEscape: hexOf(t.Number),
 	})
+
+	return st
 }
 
 // band draws a line on the band background, padded to width w.
-func band(line string, w int) string {
+func (st *Styles) band(line string, w int) string {
 	line = ansi.Truncate(untab(line), w, "")
 	pad := strings.Repeat(" ", max(w-ansi.StringWidth(line), 0))
 	// Any SGR that resets the background (0, 49, or no parameters) would
@@ -155,13 +157,13 @@ func band(line string, w int) string {
 	line = sgr.ReplaceAllStringFunc(line, func(seq string) string {
 		params := strings.Split(seq[2:len(seq)-1], ";")
 		if slices.ContainsFunc(params, func(p string) bool { return p == "" || p == "0" || p == "49" }) {
-			return seq + bandOn
+			return seq + st.bandOn
 		}
 
 		return seq
 	})
 
-	return bandOn + line + pad + "\x1b[m"
+	return st.bandOn + line + pad + "\x1b[m"
 }
 
 // sgr matches one SGR escape sequence.
@@ -169,12 +171,12 @@ var sgr = regexp.MustCompile("\x1b\\[[0-9;]*m")
 
 // breathing is the working λ: seven shades, dim to bright and back, one
 // breath every 1.6 s, eased like a slow breath.
-func breathing(ms int64) string {
+func (st *Styles) breathing(ms int64) string {
 	const period = 1600
 	t := float64(ms%period) / period
-	i := int((1-cos2pi(t))/2*float64(len(breath)-1) + 0.5)
+	i := int((1-cos2pi(t))/2*float64(len(st.breath)-1) + 0.5)
 
-	return breath[i].Render("λ")
+	return st.breath[i].Render("λ")
 }
 
 var spinner = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
@@ -205,7 +207,7 @@ func mix(a, b color.Color, f float64) color.Color {
 func cos2pi(t float64) float64 { return math.Cos(2 * math.Pi * t) }
 
 // Accent is the style of the λ prompt, for the shell's composer.
-func Accent() lipgloss.Style { return accent }
+func (st *Styles) Accent() lipgloss.Style { return st.accent }
 
 // Dim is the style of the composer's placeholder.
-func Dim() lipgloss.Style { return dim }
+func (st *Styles) Dim() lipgloss.Style { return st.dim }

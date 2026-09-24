@@ -30,7 +30,7 @@ var (
 
 // markdownLines renders text at width w. The first line starts with first,
 // the others with rest (both already styled and of equal width).
-func markdownLines(text string, w int, first, rest string) []string {
+func (st *Styles) markdownLines(text string, w int, first, rest string) []string {
 	width := max(w-ansi.StringWidth(rest), 10)
 	var body []string
 	lines := strings.Split(strings.TrimRight(text, "\n"), "\n")
@@ -43,8 +43,8 @@ func markdownLines(text string, w int, first, rest string) []string {
 				code = append(code, lines[i])
 			}
 			// Code sits on the band, as your messages do, and is not wrapped.
-			for _, l := range highlight(strings.Join(code, "\n"), lang) {
-				body = append(body, band(" "+l, width))
+			for _, l := range st.highlight(strings.Join(code, "\n"), lang) {
+				body = append(body, st.band(" "+l, width))
 			}
 
 			continue
@@ -53,13 +53,13 @@ func markdownLines(text string, w int, first, rest string) []string {
 		case trimmed == "":
 			body = append(body, "")
 		case rule.MatchString(line):
-			body = append(body, dim.Render(strings.Repeat("─", min(width, 40))))
+			body = append(body, st.dim.Render(strings.Repeat("─", min(width, 40))))
 		case headingRe.MatchString(line):
 			m := headingRe.FindStringSubmatch(line)
-			body = append(body, wrap(heading.Render(inline(m[2])), width, "", "")...)
+			body = append(body, wrap(heading.Render(st.inline(m[2])), width, "", "")...)
 		case strings.HasPrefix(trimmed, ">"):
 			quoted := strings.TrimSpace(strings.TrimPrefix(trimmed, ">"))
-			body = append(body, wrap(dim.Render(inline(quoted)), width, quoteBar, quoteBar)...)
+			body = append(body, wrap(st.dim.Render(st.inline(quoted)), width, st.quoteBar, st.quoteBar)...)
 		case listItem.MatchString(line):
 			m := listItem.FindStringSubmatch(line)
 			indent := strings.Repeat(" ", min(len(m[1]), 8))
@@ -68,9 +68,9 @@ func markdownLines(text string, w int, first, rest string) []string {
 				marker = "•"
 			}
 			hang := indent + strings.Repeat(" ", ansi.StringWidth(marker)+1)
-			body = append(body, wrap(inline(m[3]), width, indent+dim.Render(marker)+" ", hang)...)
+			body = append(body, wrap(st.inline(m[3]), width, indent+st.dim.Render(marker)+" ", hang)...)
 		default:
-			body = append(body, wrap(inline(trimmed), width, "", "")...)
+			body = append(body, wrap(st.inline(trimmed), width, "", "")...)
 		}
 	}
 	out := make([]string, 0, len(body))
@@ -101,21 +101,21 @@ func openFence(line string) (fence, lang string, ok bool) {
 }
 
 // highlight colors code with chroma; lines are not wrapped, as in Codex.
-func highlight(code, lang string) []string {
+func (st *Styles) highlight(code, lang string) []string {
 	code = untab(code)
 	lexer := lexers.Get(lang)
 	if lexer == nil {
 		lexer = lexers.Analyse(code)
 	}
 	if lexer == nil {
-		return styleLines(strings.Split(code, "\n"), codeSpan)
+		return styleLines(strings.Split(code, "\n"), st.codeSpan)
 	}
 	it, err := chroma.Coalesce(lexer).Tokenise(nil, code)
 	if err != nil {
 		return strings.Split(code, "\n")
 	}
 	var b strings.Builder
-	if err := formatters.TTY16m.Format(&b, codeStyle, it); err != nil {
+	if err := formatters.TTY16m.Format(&b, st.codeStyle, it); err != nil {
 		return strings.Split(code, "\n")
 	}
 
@@ -123,16 +123,16 @@ func highlight(code, lang string) []string {
 }
 
 // inline styles `code`, **bold**, *italic*, and [links](url).
-func inline(s string) string {
+func (st *Styles) inline(s string) string {
 	// Code spans first, and hide them from the other rules.
 	var spans []string
 	s = inlineCode.ReplaceAllStringFunc(s, func(m string) string {
-		spans = append(spans, codeSpan.Render(m[1:len(m)-1]))
+		spans = append(spans, st.codeSpan.Render(m[1:len(m)-1]))
 
 		return "\x00" + string(rune('0'+len(spans)-1)) + "\x00"
 	})
-	s = link.ReplaceAllString(s, "$1 "+dim.Render("($2)"))
-	s = strong.ReplaceAllStringFunc(s, func(m string) string { return bold.Render(strings.Trim(m, "*_")) })
+	s = link.ReplaceAllString(s, "$1 "+st.dim.Render("($2)"))
+	s = strong.ReplaceAllStringFunc(s, func(m string) string { return st.bold.Render(strings.Trim(m, "*_")) })
 	s = emphasis.ReplaceAllStringFunc(s, func(m string) string {
 		sub := emphasis.FindStringSubmatch(m)
 		lead, text := sub[1], sub[2]

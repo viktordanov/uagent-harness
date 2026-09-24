@@ -11,15 +11,15 @@ import (
 // configLines draw the /config panel above the composer, after Claude
 // Code's settings list: a row per setting with its value and where the
 // value comes from, the selected row in the accent band, and the keys.
-func configLines(s state.State, w int) []string {
+func (st *Styles) configLines(s state.State, w int) []string {
 	p := s.Config
-	title := accent.Render(" Settings")
+	title := st.accent.Render(" Settings")
 	if p.Path != "" {
-		title += dim.Render(" · saved to " + home(p.Path))
+		title += st.dim.Render(" · saved to " + home(p.Path))
 	}
 	out := []string{ansi.Truncate(title, w, "…")}
 	if p.Values == nil {
-		return append(out, dim.Render("   loading…"))
+		return append(out, st.dim.Render("   loading…"))
 	}
 	for i, row := range s.ConfigRows() {
 		value := row.Value
@@ -27,12 +27,12 @@ func configLines(s state.State, w int) []string {
 		case i == p.Index && p.Editing:
 			value = p.Input + "▏"
 		case row.Toggle() && value == "on":
-			value = ok.Render(value)
+			value = st.ok.Render(value)
 		}
 		label := fmt.Sprintf("%-26s", row.Label)
-		line := "   " + label + " " + padTo(value, 30) + " " + dim.Render(row.Source)
+		line := "   " + label + " " + padTo(value, 30) + " " + st.dim.Render(row.Source)
 		if i == p.Index {
-			line = selected.Render(" › "+label) + " " + bold.Render(padTo(value, 30)) + " " + dim.Render(row.Source)
+			line = st.selected.Render(" › "+label) + " " + st.bold.Render(padTo(value, 30)) + " " + st.dim.Render(row.Source)
 		}
 		out = append(out, ansi.Truncate(line, w, "…"))
 	}
@@ -41,7 +41,7 @@ func configLines(s state.State, w int) []string {
 		hint = "   type a value · enter save · esc cancel"
 	}
 
-	return append(out, dim.Render(ansi.Truncate(hint, w, "…")))
+	return append(out, st.dim.Render(ansi.Truncate(hint, w, "…")))
 }
 
 // padTo pads styled text to n columns.

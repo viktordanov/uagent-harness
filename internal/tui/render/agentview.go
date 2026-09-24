@@ -12,12 +12,12 @@ import (
 func agentScreen(s state.State, c *Cache, f Frame) (string, int) {
 	v := s.View
 	if c.view == nil || c.viewID != v.ID || c.viewGen != v.Gen {
-		c.view, c.viewID, c.viewGen = NewCache(), v.ID, v.Gen
+		c.view, c.viewID, c.viewGen = &Cache{styles: c.styles, entries: map[string]cacheEntry{}, maxScroll: -1}, v.ID, v.Gen
 	}
 	f.Height = max(f.Height-1, 1)
 	out, row := Screen(*v.St, c.view, f)
 	c.maxScroll = c.view.maxScroll
-	header := " " + Accent().Render("agent "+v.Nickname) + Dim().Render(" · alt+← alt+→ switch agents · esc esc interrupts")
+	header := " " + c.styles.accent.Render("agent "+v.Nickname) + c.styles.dim.Render(" · alt+← alt+→ switch agents · esc esc interrupts")
 
 	return ansi.Truncate(header, f.Width, "") + "\n" + out, row + 1
 }
