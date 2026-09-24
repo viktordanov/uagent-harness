@@ -1,8 +1,8 @@
-<!-- memoria:section id="overview" files="design/harness.md design/tui.md design/implementation.md design/state.md design/sandbox-research.md design/sandbox.md design/subagents.md design/compaction.md design/mcp.md ledger.md documentation/architecture.md documentation/memoria.md" -->
+<!-- memoria:section id="overview" files="design/harness.md design/tui.md design/implementation.md design/state.md design/sandbox-research.md design/sandbox.md design/subagents.md design/compaction.md design/mcp.md configuration.md ledger.md documentation/architecture.md documentation/memoria.md" -->
 # Documentation
 
 <!-- memoria:export id="summary" -->
-Design records for the harness, the TUI, state storage, sandboxing, compaction, MCP, and subagents, plus the architecture rules and documentation procedure for uagent-harness.
+The configuration reference, design records for the harness, the TUI, state storage, sandboxing, compaction, MCP, and subagents, plus the architecture rules and documentation procedure for uagent-harness.
 <!-- /memoria:export -->
 
 Design:
@@ -16,6 +16,10 @@ Design:
 7. [Subagents](design/subagents.md): how Codex and Claude Code run subagents, and the plan for uah.
 8. [Compaction](design/compaction.md): how Codex compacts, what the runner supports, and the design with its open decisions.
 9. [MCP](design/mcp.md): how Codex runs MCP servers, how their tools run as the runner's remote jobs, and the open decisions.
+
+Reference:
+
+1. [Configuration](configuration.md): every configuration key with its type, default, flag, and merge rule; the files, the precedence, and complete examples.
 
 Work:
 
