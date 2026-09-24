@@ -89,6 +89,10 @@ type State struct {
 	// View, when set, shows a subagent's transcript instead of the
 	// session's (see agentview.go).
 	View *AgentView
+	// Config, when set, is the /config panel (see config.go).
+	Config *ConfigPanel
+	// Mouse reports the mouse to the TUI, so the wheel scrolls.
+	Mouse bool
 
 	// Status is a transient hint in the footer, such as a pending confirmation.
 	Status      string
