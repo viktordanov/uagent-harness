@@ -1,0 +1,173 @@
+// Package compaction rewrites a model request the way Codex compacts a
+// thread: every user message stays verbatim and in order, and everything
+// else before a point is replaced by one summary message. It holds no I/O;
+// the embedded engine decides when to compact and stores the records.
+//
+// The prompts in prompts/ are Codex's (rust-v0.156.1,
+// codex-rs/prompts/templates/compact), Apache License 2.0, Copyright 2025
+// OpenAI; see prompts/LICENSE-codex.
+package compaction
+
+import (
+	"crypto/sha256"
+	_ "embed"
+	"encoding/hex"
+	"encoding/json/v2"
+	"errors"
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/unreallabsai/unreal-agent/harness/llm"
+)
+
+var (
+	//go:embed prompts/prompt.md
+	promptFile string
+	//go:embed prompts/summary_prefix.md
+	prefixFile string
+)
+
+// Prompt asks the model for the handoff summary.
+var Prompt = strings.TrimSpace(promptFile)
+
+// SummaryPrefix starts the message that carries the summary.
+var SummaryPrefix = strings.TrimSpace(prefixFile)
+
+// Trigger says what started a compaction.
+type Trigger string
+
+const (
+	TriggerManual Trigger = "manual"
+	TriggerAuto   Trigger = "auto"
+)
+
+// ErrMismatch means the request's history is not the one the record covers.
+var ErrMismatch = errors.New("the history does not match the compaction")
+
+// Record is one compaction. It covers the first Covered items after the
+// system message of every later request the context builder produces.
+type Record struct {
+	Covered int       `json:"covered"`
+	Hash    string    `json:"hash"`
+	Summary string    `json:"summary"`
+	Trigger Trigger   `json:"trigger"`
+	Model   string    `json:"model,omitempty"`
+	At      time.Time `json:"at"`
+}
+
+// Hash fingerprints items, so a record applies only to the history it covers.
+func Hash(items []llm.Item) (string, error) {
+	sum := sha256.New()
+	for _, item := range items {
+		b, err := json.Marshal(item)
+		if err != nil {
+			return "", fmt.Errorf("failed to encode a history item: %w", err)
+		}
+		_, _ = sum.Write(b)
+		_, _ = sum.Write([]byte{'\n'})
+	}
+
+	return hex.EncodeToString(sum.Sum(nil)), nil
+}
+
+// NewRecord covers all of input after its system message.
+func NewRecord(input []llm.Item, summary string, trigger Trigger, model string, at time.Time) (Record, error) {
+	covered := max(len(input)-1, 0)
+	hash, err := Hash(input[min(1, len(input)):])
+	if err != nil {
+		return Record{}, err
+	}
+
+	return Record{Covered: covered, Hash: hash, Summary: summary, Trigger: trigger, Model: model, At: at}, nil
+}
+
+// Apply rewrites input, whose first item is the system message, with the
+// record: the system message, the covered user messages verbatim, the
+// summary, and the items after the covered ones. A tool result whose call was
+// covered becomes a user-role note, so no output lacks its call.
+func Apply(input []llm.Item, rec Record) ([]llm.Item, error) {
+	if rec.Covered <= 0 || len(input) == 0 {
+		return input, nil
+	}
+	if len(input) < 1+rec.Covered {
+		return nil, fmt.Errorf("%w: it covers %d items, the history has %d", ErrMismatch, rec.Covered, len(input)-1)
+	}
+	covered, tail := input[1:1+rec.Covered], input[1+rec.Covered:]
+	hash, err := Hash(covered)
+	if err != nil {
+		return nil, err
+	}
+	if hash != rec.Hash {
+		return nil, ErrMismatch
+	}
+	out := make([]llm.Item, 0, len(input))
+	out = append(out, input[0])
+	for _, item := range covered {
+		if IsUserMessage(item) {
+			out = append(out, item)
+		}
+	}
+	out = append(out, SummaryMessage(rec.Summary))
+	calls := map[string]bool{}
+	for _, item := range tail {
+		if c, ok := item.Data.(llm.ToolCall); ok {
+			calls[c.CallID] = true
+		}
+	}
+	for _, item := range tail {
+		if r, ok := item.Data.(llm.ToolResult); ok && !calls[r.CallID] {
+			item = orphanNote(r)
+		}
+		out = append(out, item)
+	}
+
+	return out, nil
+}
+
+// IsUserMessage reports whether the item is a user message.
+func IsUserMessage(item llm.Item) bool {
+	m, ok := item.Data.(llm.Message)
+
+	return ok && item.Type == llm.ItemMessage && m.Role == llm.RoleUser
+}
+
+// SummaryMessage is the user message that carries a summary, as in Codex.
+func SummaryMessage(summary string) llm.Item {
+	if strings.TrimSpace(summary) == "" {
+		summary = "(no summary available)"
+	}
+
+	return llm.Item{Type: llm.ItemMessage, Data: llm.Message{Role: llm.RoleUser, Text: SummaryPrefix + "\n" + summary}}
+}
+
+// orphanNote carries the output of a tool call that the summary covers.
+func orphanNote(r llm.ToolResult) llm.Item {
+	var text []string
+	for _, o := range r.Output {
+		if o.Kind == llm.ToolResultText {
+			text = append(text, o.Value)
+		}
+	}
+
+	return llm.Item{Type: llm.ItemMessage, Data: llm.Message{
+		Role: llm.RoleUser,
+		Text: fmt.Sprintf("Output of the earlier tool call %s, which the summary covers:\n%s", r.CallID, strings.Join(text, "\n")),
+	}}
+}
+
+// SummaryRequest is what the summary call sends: the (already compacted)
+// history without its system message, then the prompt as a user message.
+// The system text is returned separately, for the call's instructions.
+func SummaryRequest(view []llm.Item) (system string, input []llm.Item) {
+	rest := view
+	if len(view) > 0 {
+		if m, ok := view[0].Data.(llm.Message); ok && m.Role == llm.RoleSystem {
+			system, rest = m.Text, view[1:]
+		}
+	}
+	input = append(input, rest...)
+	input = append(input, llm.Item{Type: llm.ItemMessage, Data: llm.Message{Role: llm.RoleUser, Text: Prompt}})
+
+	return system, input
+}
