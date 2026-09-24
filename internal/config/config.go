@@ -11,8 +11,6 @@ import (
 	"slices"
 	"time"
 
-	"github.com/BurntSushi/toml"
-
 	"github.com/viktordanov/uagent-harness/internal/hooks"
 	"github.com/viktordanov/uagent-harness/internal/mcp"
 )
@@ -350,18 +348,15 @@ func LoadLayers(userPath, workspace string) (Layers, error) {
 }
 
 func decode(path string, into *Config) (bool, error) {
-	meta, err := toml.DecodeFile(path, into)
+	data, err := os.ReadFile(path)
 	if errors.Is(err, fs.ErrNotExist) {
 		return false, nil
 	}
 	if err != nil {
 		return false, fmt.Errorf("failed to read %s: %w", path, err)
 	}
-	if undecoded := meta.Undecoded(); len(undecoded) > 0 {
-		return false, fmt.Errorf("%s: unknown key %q", path, undecoded[0].String())
-	}
 
-	return true, nil
+	return true, decodeBytes(path, data, into)
 }
 
 func tagHooks(byEvent map[string][]Hook, source hooks.Source) {
