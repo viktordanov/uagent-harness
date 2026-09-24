@@ -26,6 +26,8 @@ import (
 // apply_patch, with PreToolUse hooks around them. Its static definitions are the tools the model is offered,
 // so a tool added or changed here reaches both.
 func (w *wiring) tools(ctx context.Context, req core.Request, sessionID session.ID) (tool.Registry, error) {
+	scope := w.e.scope(string(sessionID))
+	req.DisallowedTools = scope.disallow(req.DisallowedTools)
 	translators, err := w.translators(req, sessionID) //nolint:contextcheck // on Linux, the sandbox probes bwrap once per process, with its own timeout
 	if err != nil {
 		return nil, err
@@ -51,7 +53,9 @@ func (w *wiring) tools(ctx context.Context, req core.Request, sessionID session.
 		return nil, err
 	}
 	never := w.e.cfg.Approver != nil && w.e.cfg.Approver.Policy() == approval.Never
-	registry = withMCP(registry, mcpTools, req.DisallowedTools, w.mcpGate(ctx, never))
+	gate := w.mcpGate(ctx, never)
+	gate.approved = scope.approvesTool
+	registry = withMCP(registry, scope.mcpTools(mcpTools), req.DisallowedTools, gate)
 	registry = withPatch(registry, offersPatch(w.e.models, req), w.patchGate(ctx, req))
 	req.SessionID = string(sessionID)
 	registry = w.withAgents(registry, req)

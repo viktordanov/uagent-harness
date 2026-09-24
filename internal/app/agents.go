@@ -16,7 +16,8 @@ type Agents struct {
 	Enabled bool
 	// MaxThreads is how many subagents a session keeps open at once.
 	MaxThreads int
-	// MaxDepth is how deep subagents nest (1: children cannot spawn).
+	// MaxDepth is how deep subagents nest, as configured; newAgents clamps
+	// it to agents.MaxDepth (1: children cannot spawn).
 	MaxDepth int
 	// Model and Effort are the subagents' defaults ("": the parent's).
 	Model  string
@@ -60,6 +61,10 @@ func newAgents(r Resolved, cfg config.Config, workspace string, opts *session.Op
 	depth := r.Agents.MaxDepth
 	if !r.Agents.Enabled {
 		depth = 0
+	}
+	if depth > agents.MaxDepth { // subagents never start subagents
+		opts.Notices = append(opts.Notices, fmt.Sprintf("agents.max_depth = %d is above %d: subagents never start subagents, so it is %d", depth, agents.MaxDepth, agents.MaxDepth))
+		depth = agents.MaxDepth
 	}
 	var roles []agents.Role
 	if depth > 0 {

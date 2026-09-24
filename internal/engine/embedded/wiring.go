@@ -107,6 +107,9 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 	if w.e.cfg.AutoReview || w.ask != nil || w.mode.get().ReviewerDecides() {
 		w.ask = w.reviewedAsk(sw, req)
 	}
+	if sc := w.e.scope(req.SessionID); sc != nil && len(sc.Approve) > 0 {
+		w.ask = sc.ask(w.ask, w.mode.get) // before the auto-reviewer, as a rule would be
+	}
 	s, err := w.openStore(ctx, req, messages)
 	if err != nil {
 		return nil, err

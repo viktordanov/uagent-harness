@@ -21,13 +21,17 @@ const (
 	DefaultMaxDepth   = 1
 )
 
+// MaxDepth is the deepest children nest: subagents never start
+// subagents. It is a rule, not a setting; New clamps a higher MaxDepth.
+const MaxDepth = 1
+
 // Config configures the subagents of one uah process.
 type Config struct {
 	// MaxThreads is how many children a session tree keeps open at once.
 	MaxThreads int
-	// MaxDepth is how deep children nest: 1 means children cannot spawn,
-	// and 0 offers no tools at all (subagents are off), while past calls
-	// still get an answer.
+	// MaxDepth is how deep children nest: 1 (the most, see the MaxDepth
+	// constant) means children cannot spawn, and 0 offers no tools at all
+	// (subagents are off), while past calls still get an answer.
 	MaxDepth int
 	// Model and Effort are the configured defaults for children.
 	Model  string
@@ -64,6 +68,7 @@ func New(cfg Config) *Manager {
 	if cfg.MaxThreads <= 0 {
 		cfg.MaxThreads = DefaultMaxThreads
 	}
+	cfg.MaxDepth = min(cfg.MaxDepth, MaxDepth)
 
 	return &Manager{
 		cfg:     cfg,
@@ -252,6 +257,24 @@ func (m *Manager) childOptions(p engine.AgentParent, c *child, role Role, rec re
 	opts.Settings = s
 
 	return opts
+}
+
+// scope narrows a child's tools and pre-approves its actions as its role
+// says, on an engine that can (engine.Scoper). A fork keeps its parent's
+// tools, so it has none.
+func (m *Manager) scope(id string, role Role, rec record) {
+	m.mu.Lock()
+	ce, ok := m.eng.(childEngine)
+	m.mu.Unlock()
+	if !ok {
+		return
+	}
+	if s, ok := ce.Engine.(engine.Scoper); ok {
+		if rec.Fork {
+			role = Role{}
+		}
+		s.SetScope(id, engine.Scope{Tools: role.Tools, Approve: role.Approve})
+	}
 }
 
 // serviceTier is the child's service tier: the role's when the engine can
