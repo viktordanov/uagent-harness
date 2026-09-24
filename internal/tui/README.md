@@ -18,8 +18,9 @@ The layout, screens, and framework choice are recorded in the [TUI design](../..
 7. [The agent view](#the-agent-view)
 8. [The look](#the-look)
 9. [Images](#images)
-10. [Extending the TUI](#extending-the-tui)
-11. [Tests](#tests)
+10. [Plan usage](#plan-usage)
+11. [Extending the TUI](#extending-the-tui)
+12. [Tests](#tests)
 <!-- /memoria:section -->
 
 <!-- memoria:section id="packages" files="state/state.go state/reduce.go state/effects.go render/screen.go render/items.go bubble/model.go bubble/effects.go bubble/keys.go" -->
@@ -31,7 +32,7 @@ The layout, screens, and framework choice are recorded in the [TUI design](../..
 | `render` | Draws `State` into lines with lipgloss: `Screen(state, cache, frame)` returns the frame and the composer's row | Import Bubble Tea. It gets the composer's rendered view in `Frame` |
 | `bubble` | The Bubble Tea `Model`: maps keys to intents, runs effects as `tea.Cmd`s, batches session events, owns the composer textarea, and draws frames with `render` | Hold UI state of its own beyond the composer, the window size, and the open session |
 
-When the program ends, `bubble.Run` returns an `Exit` (the open session and its token totals), and `cmd/uah` prints Codex's exit summary from it: the token usage and "To continue this session, run: uah resume <id>", only for a session that ran. Because `state` and `render` have no framework code, a different terminal library would replace only `bubble`. `cmd/uah/tui.go` builds `bubble.Deps` (how to open a session, list sessions, count activity, store pasted images, and read the clipboard) and calls `bubble.Run`.
+When the program ends, `bubble.Run` returns an `Exit` (the open session and its token totals), and `cmd/uah` prints Codex's exit summary from it: the token usage and "To continue this session, run: uah resume <id>", only for a session that ran. Because `state` and `render` have no framework code, a different terminal library would replace only `bubble`. `cmd/uah/tui.go` builds `bubble.Deps` (how to open a session, list sessions, count activity, store pasted images, read the clipboard, and read the plan's usage) and calls `bubble.Run`.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="flow" files="bubble/model.go bubble/effects.go bubble/keys.go state/reduce.go state/effects.go render/screen.go render/items.go" -->
@@ -47,7 +48,7 @@ A key press:
 A session event:
 
 1. `onOpened` starts a goroutine that groups `session.Events()` into 16 ms batches, so a burst costs one update and one frame.
-2. Each batch arrives as one `eventsMsg`. `Update` reduces every event in order, then waits for the next batch; exactly one wait is pending at a time, which keeps order.
+2. Each batch arrives as one `eventsMsg`. `Update` reduces every event in order and runs the effects they return (a finished run reads the plan's usage), then waits for the next batch; exactly one wait is pending at a time, which keeps order.
 3. Each session gets a generation number. Batches from a closed session are drained and dropped.
 
 A frame: `View` calls `render.Screen`. The transcript is virtualized: it renders items from the bottom up until the window is full. Each item's lines are cached by key, version, width, and view; items that change with time (a running tool, a pending turn) are drawn fresh each frame. A 100 ms tick runs only while something moves on screen.
@@ -129,7 +130,7 @@ In the `/config` panel, ↑/↓ choose a setting, enter or space changes it, ←
 | `/compact [focus]` | Compact the context before the next model request; words after it tell the summary what to focus on, as Claude Code's `/compact [instructions]` (embedded engine) | Yes |
 | `/context` | Break down what fills the context window | Yes |
 | `/config` | The settings panel: change the basic settings and save them to the user file (see [/config](#config)) | Yes |
-| `/status` | Session, settings, totals, what the engine runs without (from its capabilities), and a 12-week activity heatmap | Yes |
+| `/status` | Session, settings, totals, what the engine runs without (from its capabilities), a 12-week activity heatmap, and the plan's usage (see [Plan usage](#plan-usage)) | Yes |
 | `/mcp [verbose]` | MCP servers: state, transport, tool count, and a login hint; `verbose` (or the detailed view) adds each server's command or URL, auth, and tools with their approval mode | Yes |
 | `/agents [name]` | Subagents and their state; with a nickname or ID, that agent's live transcript (see [The agent view](#the-agent-view)) | Yes |
 | `/sandbox` | The sandbox mode and what commands may do | Yes |
@@ -197,7 +198,7 @@ The compact view is shaped like Codex's, in amber. The choices came from the sty
 | A finished run | `12:14 PM · worked 1m 12s`: Codex's time and Claude Code's duration; how it ended first when not ok | `finishLine` (a `KindFinish` item) |
 | Composer | `λ ` before its first row only (the rows under it line up with the text), on the band, with a band row above and below | `Screen`, `composerStyles` in `bubble/model.go` |
 | Notices | Plain dim text; warnings start with `!` and errors with `✗` | `itemLines` |
-| Footer | Model and effort, fast, the permission mode (`read only mode`, `workspace mode`, `auto mode`, or `full access mode`), directory, context left, hints. The detailed view's header shows the mode too | `footerLine`, `modeText` |
+| Footer | Model and effort, fast, the permission mode (`read only mode`, `workspace mode`, `auto mode`, or `full access mode`), directory, the plan's tightest window (`weekly 78% left`, hidden without usage), context left, hints. The detailed view's header shows the mode too | `footerLine`, `modeText` |
 | `/context` | One dot per percent of the window in its category's color, `·` for free space, `○` for the auto-compaction buffer | `contextLines` |
 | `/config` | A title in the accent, a row per setting with the selected one in the accent band, and the keys dim at the bottom | `configLines` |
 
@@ -216,6 +217,21 @@ The composer takes images as Codex's does; the [images design](../../docs/design
 5. Submit and steer join the draft's images to the message as tag lines (`images.Join`). The transcript, the queue, and a resumed session show the text without them (`images.Display`), and ↑ takes a queued message back with its images (`DraftRestored`).
 
 When the engine lacks `Images` (the process engine), a pasted image or path shows the capability table's notice, and a path stays text.
+<!-- /memoria:section -->
+
+<!-- memoria:section id="usage" files="state/usage.go bubble/usage.go render/screen.go state/commands.go" -->
+## Plan usage
+
+The ChatGPT plan's usage (see [internal/usage](../usage/README.md)) shows in four places. `cmd/uah` passes the session's reader in `Deps.Usage`; without one, the TUI has no usage, as for a provider without it.
+
+| Place | Shows | Read |
+| --- | --- | --- |
+| `/status` | A notice with the plan and a row per window: `weekly [███████████████░░░░░] 78% left (resets 15:44 on 26 Sep)`. When the read fails, the error and the last snapshot, marked `stale` after 15 minutes. For another provider, "usage is not available for <provider>" | On each `/status` (max age 0) |
+| Footer | The tightest window before the context meter: `weekly 78% left · 64% context left`. Hidden before the first read and for a provider without usage | After each run (`RunFinished`), cached 60 s |
+| Warnings | "Heads up, you have less than 25% of your weekly limit left (resets …)", once per window when it passes 75, 90, and 95% used; a window that resets warns again | The read after each run |
+| Limit reached | "Usage limit reached; try again at 15:44 on 26 Sep.", once per run, when a `RunnerError` or a model failure is the usage limit (`usage.LimitReachedIn`). The time comes from the failure text when it kept it, else from a fresh read; without one, the notice links ChatGPT's usage page | On that failure (max age 0) |
+
+The state holds `State.Usage`: the last snapshot, whether the provider has none, and the thresholds already warned. The reducer asks for a read with `EffLoadUsage{Reason, MaxAge}`, from `usageAfter` (which `Reduce` calls for each session event) and from `/status`. `bubble/usage.go` calls the reader off the update loop, and the answer comes back as `UsageLoaded`, which `onUsage` handles by its reason. There is no timer.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="extending" files="state/commands.go state/contextview.go state/effects.go state/items.go render/contextview.go render/items.go bubble/effects.go bubble/model.go" -->
@@ -240,7 +256,7 @@ To add an item kind, follow `KindContext`:
 To add a key, map it to an intent in `bubble/keys.go` and handle the intent in `state.Reduce`. Keep the existing keys' meanings.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="tests" files="state/images_test.go bubble/images_test.go state/reduce_test.go state/menu_test.go state/contextview_test.go state/mode_test.go render/screen_test.go render/contextview_test.go render/mode_test.go bubble/bubble_test.go bubble/approval_test.go bubble/mode_test.go state/config_test.go bubble/config_test.go render/diff_test.go" -->
+<!-- memoria:section id="tests" files="state/usage_test.go render/usage_test.go bubble/usage_test.go state/images_test.go bubble/images_test.go state/reduce_test.go state/menu_test.go state/contextview_test.go state/mode_test.go render/screen_test.go render/contextview_test.go render/mode_test.go bubble/bubble_test.go bubble/approval_test.go bubble/mode_test.go state/config_test.go bubble/config_test.go render/diff_test.go" -->
 ## Tests
 
 | Test | Pins |
@@ -251,5 +267,6 @@ To add a key, map it to an intent in `bubble/keys.go` and handle the intent in `
 | `bubble/approval_test.go` | Approving and declining an escalation, with real sessions on the embedded engine and `testing/fakellm` |
 | `state/mode_test.go`, `render/mode_test.go`, `bubble/mode_test.go` | shift+tab's cycle, the mode notice, the footer and header in each mode, and shift+tab through a real session |
 | `state/images_test.go`, `bubble/images_test.go` | Images: placeholders and their numbers, removal by deleting the placeholder or with one backspace, what a message sends, the transcript with placeholders live and resumed, pasted and dropped paths, `@` image files, the process engine's notice, and a real embedded session whose model request carries the image, with a fake clipboard |
+| `state/usage_test.go`, `render/usage_test.go`, `bubble/usage_test.go` | Plan usage: the read after each run, `/status` rows and staleness, the footer, warnings once per threshold, the limit notice, a provider without usage, and a real reader against a loopback backend |
 | `state/config_test.go`, `bubble/config_test.go` | `/config`: the rows and sources, toggles, cycles, typed values, what applies live, the warning when another source wins, and a real user file saved with its comments kept, with a change that would stop a session from starting undone |
 <!-- /memoria:section -->
