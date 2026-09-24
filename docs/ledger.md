@@ -33,8 +33,8 @@ Status: `todo`, `doing`, `done`, `cut` (with a reason).
 | 7 | `/` menu and `@` mentions | D | 1 | done |
 | 8 | AGENTS.md and skills parity with Codex | B | 4 | done |
 | 9 | Hooks for the new features | main session | 2, 4, 5 | done |
-| 10 | Configuration reference and `uah config` | main session | 2, 5 | todo |
-| 11 | `uah doctor`, content-based hook trust, crash-recovery test | C | 5 | todo |
+| 10 | Configuration reference and `uah config` | main session | 2, 5 | doing |
+| 11 | `uah doctor`, content-based hook trust, crash-recovery test | C | 5 | doing |
 | 12 | Subagents: research and plan | any free lane | — | done |
 
 Order of starting: 1 alone (it touches everything). Then lanes A (2), B (4), C (5) in parallel. D (6, 7) starts when a lane frees up. 9 and 10 come after their dependencies merge.
