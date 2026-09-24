@@ -89,6 +89,14 @@ The names match Codex's `config.toml`, so settings carry over. `--sandbox <mode>
 
 Each phase ships on its own: after phase 1, commands are sandboxed and escalations are denied with a reason.
 
+## As built (phase 1)
+
+- **No `uah __sandbox`.** A per-session script execs `sandbox-exec` or `bwrap` around the real shell, and both engines use it as the shell: the embedded engine in its Bash translator, the process engine as the runner's `SHELL` (uagent v0.4.1's `RunnerBackend.Env`). Inherited environment variables are referenced as `"$NAME"` in it, so no value is written to disk.
+- **Seatbelt** follows Codex, plus one fix: every writable root excludes the protected paths of all roots, so a workspace under `$TMPDIR` keeps `.git` read-only. Overhead is about 7–9 ms per command.
+- **bubblewrap** follows Codex without its seccomp helper; `--unshare-net` isolates the network. A missing protected name is not protected on Linux (Codex creates an empty mount point on the host, which breaks git in subdirectories of a repository and races with parallel commands). CI installs bwrap and runs the real tests.
+- **Denials** use Codex's keywords plus DNS and "network is unreachable" messages, because bwrap's network namespace fails that way.
+- **go build** works in workspace-write: Go ignores cache writes it cannot make, so builds are slower rather than broken. `writable_roots = ["~/Library/Caches/go-build"]` restores the cache.
+
 ## Tests
 
 - **Policy tables.** The generated Seatbelt profile and bwrap arguments per mode, compared with golden files.

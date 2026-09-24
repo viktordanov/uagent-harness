@@ -18,39 +18,27 @@ import (
 //	--ro-bind / / --dev /dev                   the whole disk read-only, a minimal /dev
 //	--bind R R                                 each existing writable root, shallowest first
 //	  --ro-bind P P                            each existing protected path in R
-//	  --perms 555 --tmpfs P --remount-ro P     each missing protected name in R
 //	--ro-bind G G                              a worktree's gitdir inside a writable root, after every bind
 //	--unshare-user --unshare-pid --unshare-ipc
 //	--unshare-net                              unless the policy has network
 //	--proc /proc --cap-drop ALL
 //
-// ReadOnly, and FullAccess if asked, have no writable roots. bwrap cannot
-// mount on a missing path, so, as Codex does, a missing protected name such as
-// .git gets an empty read-only tmpfs: the command cannot create it. bwrap
-// creates that empty directory on the host as the mount point;
-// BwrapMountTargets lists these so the caller can remove them afterwards.
+// ReadOnly, and FullAccess if asked, have no writable roots.
+//
+// Unlike Codex, a protected name that does not exist yet, such as .git in a
+// workspace that is not a repository root, stays unprotected. bwrap can only
+// mount on an existing path, and Codex creates an empty directory on the host
+// for it: an empty .git breaks git in a subdirectory of a repository, and
+// removing those directories while parallel commands run would drop another
+// sandbox's mount. Seatbelt on macOS protects missing names without this.
 func BwrapArgs(p Policy) []string {
-	args, _ := bwrapLayout(p, true)
-
-	return args
-}
-
-// BwrapMountTargets returns the missing protected directories that bwrap
-// creates on the host as mount points for BwrapArgs(p), so it must be called
-// before the command runs. Codex removes them after the command exits; a
-// caller that does the same should only remove them while they are still
-// empty, as os.Remove does. Left in place, an empty directory protects as
-// well: the next run binds it read-only.
-func BwrapMountTargets(p Policy) []string {
-	_, targets := bwrapLayout(p, true)
-
-	return targets
+	return bwrapLayout(p, true)
 }
 
 // bwrapLayout builds BwrapArgs. Without mountProc it leaves out "--proc
 // /proc", Codex's fallback for containers that forbid mounting procfs.
-func bwrapLayout(p Policy, mountProc bool) (args, targets []string) {
-	args = []string{
+func bwrapLayout(p Policy, mountProc bool) []string {
+	args := []string{
 		"--new-session",
 		"--die-with-parent",
 		"--ro-bind", "/", "/",
@@ -73,7 +61,7 @@ func bwrapLayout(p Policy, mountProc bool) (args, targets []string) {
 		slices.SortStableFunc(protected, byDepth)
 		for _, path := range protected {
 			if under(path, []string{root}) {
-				args, targets = protect(args, targets, path)
+				args = protect(args, path)
 			} else if under(path, roots) && !slices.Contains(later, path) {
 				// Outside every root it is already read-only.
 				later = append(later, path)
@@ -82,7 +70,7 @@ func bwrapLayout(p Policy, mountProc bool) (args, targets []string) {
 	}
 	slices.SortStableFunc(later, byDepth)
 	for _, path := range later {
-		args, targets = protect(args, targets, path)
+		args = protect(args, path)
 	}
 	args = append(args, "--unshare-user", "--unshare-pid", "--unshare-ipc")
 	if !p.Network {
@@ -93,23 +81,17 @@ func bwrapLayout(p Policy, mountProc bool) (args, targets []string) {
 	}
 	args = append(args, "--cap-drop", "ALL")
 
-	return args, targets
+	return args
 }
 
-// protect makes path read-only inside a writable bind: an existing path is
-// bound read-only over itself, and a missing protected name gets an empty
-// read-only tmpfs. A missing gitdir target is left alone: Codex binds an
-// empty file there through an inherited fd, which argv cannot carry.
-func protect(args, targets []string, path string) (newArgs, newTargets []string) {
-	switch {
-	case exists(path):
+// protect binds an existing path read-only over itself inside a writable
+// bind; a missing path is left alone (see BwrapArgs).
+func protect(args []string, path string) []string {
+	if exists(path) {
 		args = append(args, "--ro-bind", path, path)
-	case slices.Contains(ProtectedNames, filepath.Base(path)):
-		args = append(args, "--perms", "555", "--tmpfs", path, "--remount-ro", path)
-		targets = append(targets, path)
 	}
 
-	return args, targets
+	return args
 }
 
 func exists(path string) bool {

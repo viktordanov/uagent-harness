@@ -85,7 +85,7 @@ Later files are more specific. The total stops at 32 KiB. `--no-instructions` tu
 
 <!-- /memoria:section -->
 
-<!-- memoria:section id="sandbox" files="internal/sandbox/sandbox.go internal/sandbox/shell.go internal/engine/embedded/sandboxtool.go internal/engine/embedded/tools.go internal/app/setup.go internal/app/resolve.go" -->
+<!-- memoria:section id="sandbox" files="internal/sandbox/sandbox.go internal/sandbox/shell.go internal/sandbox/seatbelt.go internal/sandbox/bwrap.go internal/sandbox/denied.go internal/sandbox/env.go internal/engine/embedded/sandboxtool.go internal/engine/embedded/tools.go internal/app/setup.go internal/app/resolve.go" -->
 ### Sandbox
 
 Commands run in the operating system's sandbox, as in Codex: Seatbelt (`sandbox-exec`) on macOS and bubblewrap (`bwrap`, which must be installed) on Linux. The mode comes from `--sandbox`, `UAH_SANDBOX`, or `sandbox_mode`:
@@ -96,7 +96,9 @@ Commands run in the operating system's sandbox, as in Codex: Seatbelt (`sandbox-
 | `read-only` | Read any file; write nothing; no network |
 | `danger-full-access` | Anything your user can: no sandbox |
 
-On the embedded engine the model can ask to run a command outside the sandbox (`sandbox_permissions: "require_escalated"` with a `justification`). This version refuses those requests with a reason; approvals, rules, and auto-review come next ([plan](docs/design/sandbox.md)). When a command fails in a way that looks like the sandbox blocked it, the model is told so. On the process engine, the runner's `SHELL` is a script that sandboxes each command. Where no sandbox is available, uah says so and runs commands without one. `/sandbox` in the TUI shows the mode; the detailed view's header always does.
+On the embedded engine the model can ask to run a command outside the sandbox (`sandbox_permissions: "require_escalated"` with a `justification`). This version refuses those requests with a reason; approvals, rules, and auto-review come next ([plan](docs/design/sandbox.md)). When a command fails in a way that looks like the sandbox blocked it, the model is told so. On the process engine, the runner's `SHELL` is a script that sandboxes each command. Where no sandbox is available, uah says so and runs commands without one. On Linux, a protected name that does not exist yet (such as `.git` in a workspace that is not a repository root) is not protected, because bubblewrap can only cover existing paths; macOS protects it either way.
+
+Commands get the whole environment, as in Codex. `[shell_environment_policy]` narrows it with Codex's keys: `inherit` (`all`, `core`, `none`), `ignore_default_excludes = false` to drop names matching `*KEY*`, `*SECRET*`, `*TOKEN*`, `exclude` and `include_only` patterns, and `set`. `/sandbox` in the TUI shows the mode; the detailed view's header always does.
 
 <!-- /memoria:section -->
 
@@ -157,6 +159,11 @@ max_bytes = 32768
 [sandbox_workspace_write]
 network_access = false
 writable_roots = ["~/Library/Caches/go-build"]   # ~ is home; relative paths are in the workspace
+
+[shell_environment_policy]
+inherit = "all"                   # all, core, none
+ignore_default_excludes = true    # false drops *KEY*, *SECRET*, *TOKEN*
+exclude = ["AWS_*"]
 
 [tui]
 details = false   # start in the detailed view

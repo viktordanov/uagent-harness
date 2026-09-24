@@ -29,7 +29,7 @@ func (w *wiring) tools(ctx context.Context, req core.Request, sessionID session.
 		return nil, err
 	}
 	skills, skillErrs := tool.DiscoverSkills(filepath.Join(req.Workspace, ".harness", "skills"))
-	var registry tool.Registry = tool.NewRegistry(translators, toolNames(req, len(skills) > 0)...)
+	registry := tool.NewRegistry(translators, toolNames(req, len(skills) > 0)...)
 	if b, ok := translators.Bash.(sandboxedBash); ok {
 		registry = sandboxRegistry{Registry: registry, policy: w.policy(req, b.mode)}
 	}
@@ -56,14 +56,16 @@ func (w *wiring) translators(req core.Request, sessionID session.ID) (tool.Stati
 	if shell == "" {
 		shell = "/bin/sh"
 	}
-	var run tool.Translator = bash.New(bash.Config{Shell: shell, Directory: req.Workspace, BaseDirectory: opsDir})
-	if p := w.e.cfg.Sandbox; p != nil && p.Mode != sandbox.FullAccess {
-		sandboxed, err := sandbox.Shell(w.e.cfg.SandboxDir, w.policy(req, p.Mode), shell)
+	run := bash.New(bash.Config{Shell: shell, Directory: req.Workspace, BaseDirectory: opsDir})
+	if p := w.e.cfg.Sandbox; p != nil {
+		sandboxed, err := sandbox.Shell(w.e.cfg.SandboxDir, w.policy(req, p.Mode), w.e.cfg.Env, shell)
 		switch {
 		case errors.Is(err, sandbox.ErrUnavailable):
 			_, _ = fmt.Fprintf(w.l.Stderr, "embedded: %v; commands run without one\n", err)
 		case err != nil:
 			return tool.StaticTranslators{}, err
+		case p.Mode == sandbox.FullAccess:
+			run = bash.New(bash.Config{Shell: sandboxed, Directory: req.Workspace, BaseDirectory: opsDir})
 		default:
 			run = sandboxedBash{
 				Translator: bash.New(bash.Config{Shell: sandboxed, Directory: req.Workspace, BaseDirectory: opsDir}),

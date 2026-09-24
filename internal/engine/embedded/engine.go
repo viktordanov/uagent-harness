@@ -43,6 +43,9 @@ type Config struct {
 	// sandboxing shells.
 	Sandbox    *sandbox.Policy
 	SandboxDir string
+	// Env is which environment variables commands get (the zero value is
+	// all of them). It applies when Sandbox is set.
+	Env sandbox.EnvPolicy
 }
 
 // Engine runs the agent in process.

@@ -113,7 +113,7 @@ func newEngine(r Resolved, runnerPath, stateDir string, logger *slog.Logger, opt
 		}
 		// The runner runs each command with $SHELL, so a sandboxing shell
 		// sandboxes every command without changing the runner.
-		shell, err := sandbox.Shell(sandboxDir, r.Sandbox, RealShell())
+		shell, err := sandbox.Shell(sandboxDir, r.Sandbox, r.Env, RealShell())
 		if errors.Is(err, sandbox.ErrUnavailable) {
 			opts.Notices = append(opts.Notices, "no sandbox is available on this system; commands run without one")
 			shell = RealShell()
@@ -126,7 +126,7 @@ func newEngine(r Resolved, runnerPath, stateDir string, logger *slog.Logger, opt
 	}
 	emb := embedded.New(embedded.Config{
 		StateDir: stateDir, MaxDisk: r.MaxDisk, Logger: logger, Provider: r.Settings.Provider, Hooks: opts.Hooks,
-		Sandbox: &r.Sandbox, SandboxDir: sandboxDir,
+		Sandbox: &r.Sandbox, SandboxDir: sandboxDir, Env: r.Env,
 	})
 	if r.Settings.ServiceTier != "" && !emb.Capabilities().ServiceTier {
 		return nil, usage(errors.New("--fast needs the openai or openai-codex provider"))
