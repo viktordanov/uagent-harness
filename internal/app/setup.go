@@ -11,6 +11,7 @@ import (
 
 	"github.com/viktordanov/uagent/harness"
 
+	"github.com/viktordanov/uagent-harness/internal/approval"
 	"github.com/viktordanov/uagent-harness/internal/config"
 	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/engine/embedded"
@@ -70,7 +71,11 @@ func Setup(in Inputs, logOutput io.Writer) (Result, error) {
 	}
 	r.Sandbox = absPolicy(r.Sandbox, in.Workspace)
 	logger := slog.New(slog.NewTextHandler(logOutput, &slog.HandlerOptions{Level: LogLevels[in.LogLevel]}))
-	eng, err := newEngine(r, in.Runner, stateDir, logger, &opts)
+	approver, err := newApprover(r, cfg, in.Workspace)
+	if err != nil {
+		return Result{}, err
+	}
+	eng, err := newEngine(r, in.Runner, stateDir, logger, &opts, approver)
 	if err != nil {
 		return Result{}, err
 	}
@@ -101,7 +106,7 @@ func loadHooks(cfg config.Config, workspace string) (*hooks.Runner, error) {
 }
 
 // newEngine builds the resolved engine and adds its notices to opts.
-func newEngine(r Resolved, runnerPath, stateDir string, logger *slog.Logger, opts *session.Options) (engine.Engine, error) {
+func newEngine(r Resolved, runnerPath, stateDir string, logger *slog.Logger, opts *session.Options, approver *approval.Approver) (engine.Engine, error) {
 	sandboxDir := filepath.Join(stateDir, "sandbox")
 	if r.Engine == EngineProcess {
 		runner, err := harness.FindRunner(runnerPath)
@@ -126,7 +131,7 @@ func newEngine(r Resolved, runnerPath, stateDir string, logger *slog.Logger, opt
 	}
 	emb := embedded.New(embedded.Config{
 		StateDir: stateDir, MaxDisk: r.MaxDisk, Logger: logger, Provider: r.Settings.Provider, Hooks: opts.Hooks,
-		Sandbox: &r.Sandbox, SandboxDir: sandboxDir, Env: r.Env,
+		Sandbox: &r.Sandbox, SandboxDir: sandboxDir, Env: r.Env, Approver: approver,
 	})
 	if r.Settings.ServiceTier != "" && !emb.Capabilities().ServiceTier {
 		return nil, usage(errors.New("--fast needs the openai or openai-codex provider"))

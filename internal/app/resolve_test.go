@@ -9,7 +9,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/viktordanov/uagent-harness/internal/app"
+	"github.com/viktordanov/uagent-harness/internal/approval"
 	"github.com/viktordanov/uagent-harness/internal/config"
+	"github.com/viktordanov/uagent-harness/internal/rules"
 	"github.com/viktordanov/uagent-harness/internal/sandbox"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
@@ -176,6 +178,23 @@ func TestResolve(t *testing.T) {
 			},
 		},
 		{
+			name: "the config file sets the approval policy and approvals",
+			cfg:  config.Config{ApprovalPolicy: "never", Approvals: config.Approvals{Allow: []string{"git status"}, Forbid: []string{"rm -rf"}}},
+			want: func(r *app.Resolved) {
+				r.Approval = approval.Never
+				r.Rules = []rules.Rule{
+					{Pattern: [][]string{{"git"}, {"status"}}, Decision: rules.Allow, Source: "[approvals] allow"},
+					{Pattern: [][]string{{"rm"}, {"-rf"}}, Decision: rules.Forbidden, Source: "[approvals] forbid"},
+				}
+			},
+		},
+		{
+			name: "--ask beats the config file",
+			in:   func(in *app.Inputs) { in.Ask = "on-request" },
+			cfg:  config.Config{ApprovalPolicy: "never"},
+			want: func(*app.Resolved) {},
+		},
+		{
 			name: "base URL and dotenv pass through",
 			in:   func(in *app.Inputs) { in.BaseURL, in.AllowDotenv = "http://llm", true },
 			want: func(r *app.Resolved) { r.Settings.BaseURL, r.Settings.AllowDotenv = "http://llm", true },
@@ -193,7 +212,7 @@ func TestResolve(t *testing.T) {
 					Workspace: "/ws", Timeout: 30 * time.Minute, Sandbox: string(sandbox.WorkspaceWrite),
 				},
 				Engine: app.EngineEmbedded, MaxDisk: 5 << 30, Instructions: true,
-				Sandbox: sandbox.Policy{Mode: sandbox.WorkspaceWrite},
+				Sandbox: sandbox.Policy{Mode: sandbox.WorkspaceWrite}, Approval: approval.OnRequest,
 			}
 			tt.want(&want)
 			want.Sandbox.Workspace = want.Settings.Workspace
@@ -220,6 +239,8 @@ func TestResolveUsageErrors(t *testing.T) {
 		{name: "invalid config max disk", cfg: config.Config{MaxDisk: "lots"}, want: `max_disk: invalid size "LOTS"`},
 		{name: "invalid config engine", cfg: config.Config{Engine: "turbo"}, want: "invalid engine turbo (want embedded or process)"},
 		{name: "invalid sandbox mode", cfg: config.Config{SandboxMode: "yolo"}, want: `invalid sandbox mode "yolo"`},
+		{name: "invalid approval policy", in: func(in *app.Inputs) { in.Ask = "untrusted" }, want: `invalid approval policy "untrusted"`},
+		{name: "invalid approval prefix", cfg: config.Config{Approvals: config.Approvals{Allow: []string{"echo $HOME"}}}, want: "not a simple command prefix"},
 		{
 			name: "fast on the process engine",
 			in:   func(in *app.Inputs) { in.Fast, in.FastSet, in.Engine = true, true, app.EngineProcess },
