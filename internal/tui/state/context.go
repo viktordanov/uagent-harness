@@ -37,6 +37,11 @@ func (s *State) onEngineEvent(ev core.Event) bool {
 		}
 		s.notice(session.LevelInfo, text)
 	case engine.Compacted:
+		if e.Interrupted {
+			s.notice(session.LevelInfo, "Compaction interrupted")
+
+			return true
+		}
 		if e.Err != "" {
 			s.notice(session.LevelWarning, "compaction failed: "+e.Err)
 

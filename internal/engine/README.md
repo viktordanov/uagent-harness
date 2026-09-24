@@ -75,7 +75,7 @@ Both engines read the host prompt with the instruction files from the request, k
 The runner runs each command with `$SHELL`. `internal/app/setup.go` points `SHELL` at a script from `sandbox.Shell` that runs the real shell inside the sandbox, so commands are sandboxed without changing the runner. That script cannot ask for more access.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="embedded" files="embedded/engine.go embedded/wiring.go embedded/agent.go embedded/adapter.go embedded/client.go embedded/providers.go embedded/codexauth.go embedded/store.go embedded/observer.go embedded/tools.go embedded/sandboxtool.go embedded/sandboxschema.go embedded/skills.go embedded/pretooluse.go embedded/autoreview.go embedded/compact.go embedded/compactlog.go embedded/context.go" -->
+<!-- memoria:section id="embedded" files="embedded/engine.go embedded/wiring.go embedded/agent.go embedded/adapter.go embedded/client.go embedded/providers.go embedded/codexauth.go embedded/store.go embedded/observer.go embedded/tools.go embedded/sandboxtool.go embedded/sandboxschema.go embedded/skills.go embedded/pretooluse.go embedded/autoreview.go embedded/compact.go embedded/context.go" -->
 ## The embedded engine
 
 The embedded engine is a uagent `harness.Backend`. uagent still owns the run: the guards, the session lock, the run record, and the output stream. The backend (`wiring.go`) reproduces unreal-agent-runner v0.1.1's `Run` (`cmd/internal/agentrunner/run.go`) in the same order:
@@ -100,7 +100,7 @@ The coordinator calls one `llm.Adapter`. Two adapters sit in front of the provid
 
 | Adapter | File | Does |
 | --- | --- | --- |
-| `compactor` | `compact.go` | Rewrites every request with the session's latest compaction, and compacts first when `/compact` asked or the last response reached `auto_compact_percent` of the window. Compactions are saved in `sessions/<id>.compaction.jsonl` (`compactlog.go`) |
+| `compactor` | `compact.go` | Decides when to compact (`/compact`, or the context in use reaching `auto_compact_percent` of the window), runs the compaction as a job under the run's context, and rewrites every request with the session's latest compaction. The rewrite, the summary call, and the log live in [internal/compaction](../compaction/README.md) |
 | `switcher` | `adapter.go` | Applies the live model to each request and routes to the priority client when fast mode is on, so `/model` and `/fast` apply from the next request. It records each session's last request for `/context` (`context.go`) |
 
 `switcher.direct()` is the same client without the live model override, for one-shot calls that choose their own model: the auto-reviewer and the compaction summary.

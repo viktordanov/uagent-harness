@@ -1,7 +1,9 @@
 // Package compaction rewrites a model request the way Codex compacts a
-// thread: every user message stays verbatim and in order, and everything
-// else before a point is replaced by one summary message. It holds no I/O;
-// the embedded engine decides when to compact and stores the records.
+// thread: the user messages stay verbatim and in order (the newest 20,000
+// tokens of them), and everything else before a point is replaced by one
+// summary message. It holds the rewrite, the summary call over any
+// llm.Adapter, the token estimates, and the compaction log; the embedded
+// engine decides when to compact and emits the events. See README.md.
 //
 // The prompts in prompts/ are Codex's (rust-v0.156.1,
 // codex-rs/prompts/templates/compact), Apache License 2.0, Copyright 2025
@@ -95,9 +97,9 @@ func NewRecord(input []llm.Item, summary string, trigger Trigger, model string, 
 }
 
 // Apply rewrites input, whose first item is the system message, with the
-// record: the system message, the covered user messages verbatim, the
-// summary, and the items after the covered ones. A tool result whose call was
-// covered becomes a user-role note, so no output lacks its call.
+// record: the system message, the covered user messages that Kept keeps,
+// the summary, and the items after the covered ones. A tool result whose
+// call was covered becomes a user-role note, so no output lacks its call.
 func Apply(input []llm.Item, rec Record) ([]llm.Item, error) {
 	if rec.Covered <= 0 || len(input) == 0 {
 		return input, nil
@@ -113,28 +115,13 @@ func Apply(input []llm.Item, rec Record) ([]llm.Item, error) {
 	if hash != rec.Hash {
 		return nil, ErrMismatch
 	}
-	out := make([]llm.Item, 0, len(input))
+	kept := Kept(covered, UserMessageMaxTokens)
+	out := make([]llm.Item, 0, 2+len(kept)+len(tail))
 	out = append(out, input[0])
-	for _, item := range covered {
-		if IsUserMessage(item) {
-			out = append(out, item)
-		}
-	}
+	out = append(out, kept...)
 	out = append(out, SummaryMessage(rec.Summary))
-	calls := map[string]bool{}
-	for _, item := range tail {
-		if c, ok := item.Data.(llm.ToolCall); ok {
-			calls[c.CallID] = true
-		}
-	}
-	for _, item := range tail {
-		if r, ok := item.Data.(llm.ToolResult); ok && !calls[r.CallID] {
-			item = orphanNote(r)
-		}
-		out = append(out, item)
-	}
 
-	return out, nil
+	return append(out, detachOrphans(tail)...), nil
 }
 
 // IsUserMessage reports whether the item is a user message.
@@ -153,12 +140,36 @@ func SummaryMessage(summary string) llm.Item {
 	return llm.Item{Type: llm.ItemMessage, Data: llm.Message{Role: llm.RoleUser, Text: SummaryPrefix + "\n" + summary}}
 }
 
-// orphanNote carries the output of a tool call that the summary covers.
+// detachOrphans turns each tool result whose call is not among items into a
+// user-role note. items is not changed.
+func detachOrphans(items []llm.Item) []llm.Item {
+	calls := map[string]bool{}
+	for _, item := range items {
+		if c, ok := item.Data.(llm.ToolCall); ok {
+			calls[c.CallID] = true
+		}
+	}
+	out := make([]llm.Item, 0, len(items))
+	for _, item := range items {
+		if r, ok := item.Data.(llm.ToolResult); ok && !calls[r.CallID] {
+			item = orphanNote(r)
+		}
+		out = append(out, item)
+	}
+
+	return out
+}
+
+// orphanNote carries the output of a tool call that the summary covers. A
+// message carries text only, so an image is named, not sent.
 func orphanNote(r llm.ToolResult) llm.Item {
 	var text []string
 	for _, o := range r.Output {
-		if o.Kind == llm.ToolResultText {
+		switch o.Kind {
+		case llm.ToolResultText:
 			text = append(text, o.Value)
+		case llm.ToolResultImage:
+			text = append(text, "[image omitted]")
 		}
 	}
 
@@ -166,20 +177,4 @@ func orphanNote(r llm.ToolResult) llm.Item {
 		Role: llm.RoleUser,
 		Text: fmt.Sprintf("Output of the earlier tool call %s, which the summary covers:\n%s", r.CallID, strings.Join(text, "\n")),
 	}}
-}
-
-// SummaryRequest is what the summary call sends: the (already compacted)
-// history without its system message, then the prompt as a user message.
-// The system text is returned separately, for the call's instructions.
-func SummaryRequest(view []llm.Item) (system string, input []llm.Item) {
-	rest := view
-	if len(view) > 0 {
-		if m, ok := view[0].Data.(llm.Message); ok && m.Role == llm.RoleSystem {
-			system, rest = m.Text, view[1:]
-		}
-	}
-	input = append(input, rest...)
-	input = append(input, llm.Item{Type: llm.ItemMessage, Data: llm.Message{Role: llm.RoleUser, Text: Prompt}})
-
-	return system, input
 }

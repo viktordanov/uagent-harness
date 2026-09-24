@@ -9,6 +9,7 @@ import (
 	"github.com/viktordanov/uagent/core"
 	"github.com/viktordanov/uagent/stream"
 
+	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
 
@@ -33,6 +34,9 @@ func (j *jsonlWriter) write(event core.Event) {
 	dto, ok := stream.EventToDTO(event)
 	if !ok {
 		dto, ok = sessionEventDTO(event)
+	}
+	if !ok {
+		dto, ok = engineEventDTO(event)
 	}
 	if !ok {
 		return
@@ -131,6 +135,30 @@ func sessionEventDTO(event core.Event) (any, bool) {
 			Level   string `json:"level"`
 			Message string `json:"message"`
 		}{header("notice", e.At), e.Level, e.Message}, true
+	}
+
+	return nil, false
+}
+
+// engineEventDTO is the stream shape of the embedded engine's own events.
+func engineEventDTO(event core.Event) (any, bool) {
+	switch e := event.(type) {
+	case engine.CompactionStarted:
+		return struct {
+			sessionHeader
+
+			Trigger string `json:"trigger"`
+			Tokens  int64  `json:"tokens"`
+		}{header("compaction_started", e.At), string(e.Trigger), e.Tokens}, true
+	case engine.Compacted:
+		return struct {
+			sessionHeader
+
+			Trigger     string `json:"trigger"`
+			Summary     string `json:"summary,omitempty"`
+			Error       string `json:"error,omitempty"`
+			Interrupted bool   `json:"interrupted,omitempty"`
+		}{header("compacted", e.At), string(e.Trigger), e.Summary, e.Err, e.Interrupted}, true
 	}
 
 	return nil, false

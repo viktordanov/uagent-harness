@@ -117,7 +117,7 @@ Every key may be set in the user file and in a trusted project file, except `[pr
 
 | Key | Type | Default | Merge | Meaning |
 | --- | --- | --- | --- | --- |
-| `auto_compact_percent` | integer 0–100 | 90 | override, can unset | Compact before a model request once the last response used this share of the context window; 0 turns automatic compaction off |
+| `auto_compact_percent` | integer 0–100 | 90 | override, can unset | Compact before a model request once the context in use (the last response's tokens plus an estimate of what was added since) reaches this share of the context window; 0 turns automatic compaction off |
 | `model_context_window` | integer | the model table (272,000 for current and unknown models) | override | The context window in tokens, for compaction and the context meter |
 
 ### Instructions and skills

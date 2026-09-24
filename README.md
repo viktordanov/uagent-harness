@@ -68,16 +68,20 @@ Choose one with `--engine`, `UAH_ENGINE`, or `engine` in the configuration; `emb
 
 <!-- /memoria:section -->
 
-<!-- memoria:section id="compaction" files="internal/compaction/compaction.go internal/compaction/window.go internal/engine/embedded/compact.go internal/engine/embedded/compactlog.go internal/llmcall/llmcall.go internal/session/compact.go internal/tui/state/context.go internal/contextusage/usage.go internal/engine/embedded/context.go internal/tui/state/contextview.go internal/tui/render/contextview.go" -->
+<!-- memoria:section id="compaction" files="internal/llmcall/llmcall.go cmd/uah/stream.go internal/contextusage/usage.go" -->
 ### Compaction
 
-On the embedded engine, uah compacts a long conversation the way Codex does. It asks the model for a handoff summary, then sends every earlier user message verbatim and in order, followed by the summary. The model's replies, reasoning, tool calls, and tool outputs before that point are dropped. Messages sent after the compaction follow the summary.
+<!-- memoria:import src="internal/compaction/README.md#summary" -->
+uah compacts a long conversation as Codex does: the earlier user messages stay verbatim and in order, up to the newest 20,000 tokens of them, and the rest is replaced by a model-written handoff summary. The session file keeps the full history; only what goes to the model changes, and a compaction is saved next to the session so a resumed session keeps it.
+<!-- /memoria:import -->
+
+On the embedded engine, uah asks the model for a handoff summary and then sends the kept user messages, followed by the summary. The model's replies, reasoning, tool calls, and tool outputs before that point are dropped. Messages sent after the compaction follow the summary.
 
 - `/compact` compacts before the next model request: now if the agent is working, or with the next message if it is idle.
-- Automatic compaction starts before a model request when the last response used `auto_compact_percent` of the model's context window (default 90, as Codex; 0 turns it off).
+- Automatic compaction starts before a model request when the context in use reaches `auto_compact_percent` of the model's context window (default 90, as Codex; 0 turns it off). The context in use is the last response's tokens plus an estimate of what was added since, such as tool outputs.
 - The window comes from Codex's model table (272,000 tokens for current models and for models it does not know). `model_context_window` overrides it.
 
-The footer shows "N% context left", computed from the last response's tokens as Codex computes it. A compaction is saved in `sessions/<id>.compaction.jsonl` next to the session file, so a resumed session keeps it. The runner's session file keeps the full history. The process engine cannot compact. The [plan](docs/design/compaction.md) lists the choices made.
+The footer shows "N% context left", computed from the last response's tokens as Codex computes it. A compaction is saved in `sessions/<id>.compaction.jsonl` next to the session file, so a resumed session keeps it, a reloaded transcript shows it, and `uah run --stream` writes `compaction_started` and `compacted` events. The process engine cannot compact. The [compaction README](internal/compaction/README.md) explains the rewrite, the triggers, and the failure behaviour; the [plan](docs/design/compaction.md) lists the choices made and the validation against Codex.
 
 `/context` shows what fills the window, as Claude Code's `/context` does: a 10×10 grid, one cell per percent, colored by category, beside a legend with each category's tokens: system prompt, instruction files, skills, tools, MCP tools, your messages, agent messages, and tool calls with their results, then the free space and the auto-compact buffer. Below it, each instruction file, skill, and tool has its own line. It breaks down the last request the engine sent, after any compaction: each part is estimated at 4 bytes a token, as Codex estimates, and scaled so the parts add up to the input tokens the provider reported (`internal/contextusage`). It needs the embedded engine and one model request.
 
@@ -127,7 +131,7 @@ Hooks run a command at a session event with Claude Code's contract: the event ar
 
 <!-- /memoria:section -->
 
-<!-- memoria:section id="mcp" files="internal/mcp/config.go internal/mcp/manager.go internal/mcp/names.go internal/mcp/result.go internal/mcp/transport.go internal/engine/embedded/mcptool.go internal/engine/embedded/mcpjobs.go internal/app/mcp.go internal/tui/state/mcp.go" -->
+<!-- memoria:section id="mcp" files="internal/mcp/config.go internal/mcp/manager.go internal/mcp/names.go internal/mcp/result.go internal/mcp/transport.go internal/app/mcp.go" -->
 ### MCP servers
 
 On the embedded engine, uah starts the MCP servers in `[mcp_servers]` and offers their tools to the model as `mcp__<server>__<tool>`. The configuration is Codex's, so a Codex `[mcp_servers]` section copies over:
@@ -153,7 +157,7 @@ Servers start on the first run (or `/mcp`) and stop when the session closes; a s
 
 <!-- /memoria:section -->
 
-<!-- memoria:section id="subagents" files="internal/agents/manager.go internal/agents/child.go internal/agents/roles.go internal/engine/subagents.go internal/engine/embedded/agenttool.go internal/engine/embedded/agentjobs.go internal/engine/embedded/agentprompt.go internal/app/agents.go internal/tui/state/agents.go" -->
+<!-- memoria:section id="subagents" files="internal/agents/manager.go internal/agents/child.go internal/agents/roles.go internal/app/agents.go" -->
 ### Subagents
 
 On the embedded engine, the agent can start subagents with Codex's v1 tools. The tool description tells the model, as Codex's does, to spawn only when you or AGENTS.md ask for delegation or parallel work.
@@ -235,7 +239,7 @@ The [TUI framework benchmark](bench/tui/README.md) holds the measurements behind
 
 <!-- /memoria:section -->
 
-<!-- memoria:section id="development" files=".github/workflows/ci.yml .golangci.yml testing/fakellm/fakellm.go testing/harnesstest/harnesstest.go internal/engine/embedded/embedded_test.go" -->
+<!-- memoria:section id="development" files=".github/workflows/ci.yml .golangci.yml testing/fakellm/fakellm.go testing/harnesstest/harnesstest.go" -->
 ## Development
 
 Go 1.27.1 or later is required. Tests need no model or tokens:
