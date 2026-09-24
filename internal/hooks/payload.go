@@ -22,8 +22,16 @@ type Input struct {
 	ToolUseID    string          `json:"tool_use_id,omitempty"`
 	ToolResponse *ToolResponse   `json:"tool_response,omitempty"`
 
-	// Stop: true when the run was started by a Stop hook, so a hook can avoid looping.
+	// Stop and SubagentStop: true when the run was started by such a hook,
+	// so a hook can avoid looping.
 	StopHookActive bool `json:"stop_hook_active,omitempty"`
+
+	// SubagentStop: the subagent's ID, type (its role, or "default"),
+	// transcript, and final answer; SessionID is the parent's.
+	AgentID              string `json:"agent_id,omitempty"`
+	AgentType            string `json:"agent_type,omitempty"`
+	AgentTranscriptPath  string `json:"agent_transcript_path,omitempty"`
+	LastAssistantMessage string `json:"last_assistant_message,omitempty"`
 
 	// PreCompact: "manual" (/compact) or "auto".
 	Trigger string `json:"trigger,omitempty"`
@@ -44,12 +52,12 @@ type ToolResponse struct {
 // Output is the optional JSON a hook prints on stdout with exit code 0.
 type Output struct {
 	// Continue false stops what the event is about: the prompt, the tool call,
-	// or (for Stop) any continuation.
+	// or (for Stop and SubagentStop) any continuation.
 	Continue      *bool  `json:"continue,omitempty"`
 	StopReason    string `json:"stopReason,omitempty"`
 	SystemMessage string `json:"systemMessage,omitempty"`
 	// Decision "block" with Reason blocks UserPromptSubmit, or keeps the agent
-	// going after Stop with Reason as the next message.
+	// going after Stop or SubagentStop with Reason as the next message.
 	Decision string `json:"decision,omitempty"`
 	Reason   string `json:"reason,omitempty"`
 
