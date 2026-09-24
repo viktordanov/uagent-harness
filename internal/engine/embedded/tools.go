@@ -24,7 +24,7 @@ import (
 // around them. Its static definitions are the tools the model is offered,
 // so a tool added or changed here reaches both.
 func (w *wiring) tools(ctx context.Context, req core.Request, sessionID session.ID) (tool.Registry, error) {
-	translators, err := w.translators(req, sessionID)
+	translators, err := w.translators(req, sessionID) //nolint:contextcheck // on Linux, the sandbox probes bwrap once per process, with its own timeout
 	if err != nil {
 		return nil, err
 	}
