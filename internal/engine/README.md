@@ -77,12 +77,12 @@ Both engines read the host prompt with the instruction files from the request, k
 The runner runs each command with `$SHELL`. `internal/app/setup.go` points `SHELL` at a script from `sandbox.Shell` that runs the real shell inside the sandbox, so commands are sandboxed without changing the runner. That script cannot ask for more access.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="embedded" files="embedded/engine.go embedded/wiring.go embedded/agent.go embedded/adapter.go embedded/client.go embedded/providers.go embedded/codexauth.go embedded/store.go embedded/observer.go embedded/tools.go embedded/sandboxtool.go embedded/sandboxschema.go embedded/skills.go embedded/pretooluse.go embedded/autoreview.go embedded/compact.go embedded/context.go embedded/fork.go" -->
+<!-- memoria:section id="embedded" files="embedded/engine.go embedded/wiring.go embedded/agent.go embedded/adapter.go embedded/client.go embedded/providers.go codexauth/codexauth.go embedded/store.go embedded/observer.go embedded/tools.go embedded/sandboxtool.go embedded/sandboxschema.go embedded/skills.go embedded/pretooluse.go embedded/autoreview.go embedded/compact.go embedded/context.go embedded/fork.go" -->
 ## The embedded engine
 
 The embedded engine is a uagent `harness.Backend`. uagent still owns the run: the guards, the session lock, the run record, and the output stream. The backend (`wiring.go`) reproduces unreal-agent-runner v0.1.1's `Run` (`cmd/internal/agentrunner/run.go`) in the same order:
 
-1. The provider client and the model (`client.go`, `providers.go`, a copy of the runner's provider table).
+1. The provider client and the model (`client.go`, `providers.go`, a copy of the runner's provider table). The ChatGPT credentials for openai-codex come from `codexauth`, which the model catalog (`internal/models`) shares.
 2. The session store and the per-invocation log (`store.go`).
 3. The tool registry (`tools.go`, below).
 4. The operation manager with the remote job handlers.

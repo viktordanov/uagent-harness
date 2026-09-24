@@ -81,7 +81,7 @@ The log is also the source for a reloaded transcript: `session.Load` adds each r
 
 The context in use is Codex's measure (`InUse`, after `get_total_token_usage`): the last response's total tokens plus an estimate of the items added after the last item the model produced, such as tool outputs and new messages. When the last response reported no usage (a provider without usage, or the first request after a compaction), the whole request is estimated. The estimate is Codex's: the model-visible bytes divided by four, 7,373 bytes for an image, and three quarters of the encoded length less 650 for encrypted reasoning.
 
-The window is `model_context_window` when set, else Codex's model table (`ContextWindow`): 272,000 tokens for current models and for models the table does not know.
+The window comes from `ContextWindow`, the one function every caller uses: `model_context_window` when set, else the model catalog's value (the provider's list, cached, or Codex's bundled catalog; see `internal/models`), else this package's table, else 272,000 tokens.
 
 The engine runs a compaction as a job under the run, not under the request. The runner cancels a model request when a message arrives; the next request then waits for the same job instead of starting a second summary. An interrupt cancels the job, and the request that waited does not go out.
 <!-- /memoria:section -->

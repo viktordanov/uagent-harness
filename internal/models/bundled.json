@@ -1,0 +1,689 @@
+{
+  "models": [
+    {
+      "slug": "gpt-6-astra",
+      "display_name": "GPT-6-Astra",
+      "description": "Frontier intelligence for the most demanding work.",
+      "visibility": "list",
+      "supported_in_api": true,
+      "priority": 1,
+      "context_window": 272000,
+      "max_context_window": 872000,
+      "default_reasoning_level": "low",
+      "supported_reasoning_levels": [
+        {
+          "effort": "low"
+        },
+        {
+          "effort": "medium"
+        },
+        {
+          "effort": "high"
+        },
+        {
+          "effort": "xhigh"
+        },
+        {
+          "effort": "max"
+        },
+        {
+          "effort": "ultra"
+        }
+      ],
+      "additional_speed_tiers": [
+        "fast"
+      ],
+      "service_tiers": [
+        {
+          "id": "priority",
+          "name": "Fast"
+        }
+      ],
+      "available_in_plans": [
+        "business",
+        "edu",
+        "edu_plus",
+        "edu_pro",
+        "education",
+        "enterprise",
+        "enterprise_cbp_automation",
+        "enterprise_cbp_trial",
+        "enterprise_cbp_usage_based",
+        "finserv",
+        "free",
+        "free_workspace",
+        "go",
+        "hc",
+        "k12",
+        "plus",
+        "pro",
+        "prolite",
+        "quorum",
+        "sci",
+        "self_serve_business_prolite",
+        "self_serve_business_usage_based",
+        "team"
+      ],
+      "minimal_client_version": "0.153.0"
+    },
+    {
+      "slug": "gpt-6-sol",
+      "display_name": "GPT-6-Sol",
+      "description": "Workhorse model for coding and everyday work.",
+      "visibility": "list",
+      "supported_in_api": true,
+      "priority": 2,
+      "context_window": 272000,
+      "max_context_window": 872000,
+      "default_reasoning_level": "medium",
+      "supported_reasoning_levels": [
+        {
+          "effort": "low"
+        },
+        {
+          "effort": "medium"
+        },
+        {
+          "effort": "high"
+        },
+        {
+          "effort": "xhigh"
+        },
+        {
+          "effort": "max"
+        },
+        {
+          "effort": "ultra"
+        }
+      ],
+      "additional_speed_tiers": [
+        "fast"
+      ],
+      "service_tiers": [
+        {
+          "id": "priority",
+          "name": "Fast"
+        }
+      ],
+      "default_service_tier": "priority",
+      "available_in_plans": [
+        "business",
+        "edu",
+        "edu_plus",
+        "edu_pro",
+        "education",
+        "ent26",
+        "enterprise",
+        "enterprise_cbp_automation",
+        "enterprise_cbp_trial",
+        "enterprise_cbp_usage_based",
+        "finserv",
+        "free",
+        "free_workspace",
+        "go",
+        "hc",
+        "k12",
+        "plus",
+        "pro",
+        "prolite",
+        "quorum",
+        "sci",
+        "self_serve_business_prolite",
+        "self_serve_business_usage_based",
+        "team"
+      ],
+      "minimal_client_version": "0.155.0"
+    },
+    {
+      "slug": "gpt-6-luna",
+      "display_name": "GPT-6-Luna",
+      "description": "Fast and affordable model for easier tasks.",
+      "visibility": "list",
+      "supported_in_api": true,
+      "priority": 3,
+      "context_window": 272000,
+      "max_context_window": 872000,
+      "default_reasoning_level": "medium",
+      "supported_reasoning_levels": [
+        {
+          "effort": "low"
+        },
+        {
+          "effort": "medium"
+        },
+        {
+          "effort": "high"
+        },
+        {
+          "effort": "xhigh"
+        },
+        {
+          "effort": "max"
+        }
+      ],
+      "additional_speed_tiers": [
+        "fast"
+      ],
+      "service_tiers": [
+        {
+          "id": "priority",
+          "name": "Fast"
+        }
+      ],
+      "default_service_tier": "priority",
+      "available_in_plans": [
+        "business",
+        "edu",
+        "edu_plus",
+        "edu_pro",
+        "education",
+        "ent26",
+        "enterprise",
+        "enterprise_cbp_automation",
+        "enterprise_cbp_trial",
+        "enterprise_cbp_usage_based",
+        "finserv",
+        "free",
+        "free_workspace",
+        "go",
+        "hc",
+        "k12",
+        "plus",
+        "pro",
+        "prolite",
+        "quorum",
+        "sci",
+        "self_serve_business_prolite",
+        "self_serve_business_usage_based",
+        "team"
+      ],
+      "minimal_client_version": "0.155.0"
+    },
+    {
+      "slug": "gpt-5.6-sol",
+      "display_name": "GPT-5.6-Sol",
+      "description": "Older coding model for complex work.",
+      "visibility": "list",
+      "supported_in_api": true,
+      "priority": 6,
+      "context_window": 272000,
+      "max_context_window": 872000,
+      "default_reasoning_level": "low",
+      "supported_reasoning_levels": [
+        {
+          "effort": "low"
+        },
+        {
+          "effort": "medium"
+        },
+        {
+          "effort": "high"
+        },
+        {
+          "effort": "xhigh"
+        },
+        {
+          "effort": "max"
+        },
+        {
+          "effort": "ultra"
+        }
+      ],
+      "additional_speed_tiers": [
+        "fast"
+      ],
+      "service_tiers": [
+        {
+          "id": "priority",
+          "name": "Fast"
+        },
+        {
+          "id": "ultrafast",
+          "name": "Ultrafast"
+        }
+      ],
+      "available_in_plans": [
+        "business",
+        "edu",
+        "edu_plus",
+        "edu_pro",
+        "education",
+        "enterprise",
+        "enterprise_cbp_automation",
+        "enterprise_cbp_usage_based",
+        "finserv",
+        "free",
+        "free_workspace",
+        "go",
+        "hc",
+        "k12",
+        "plus",
+        "pro",
+        "prolite",
+        "quorum",
+        "sci",
+        "self_serve_business_prolite",
+        "self_serve_business_usage_based",
+        "team"
+      ],
+      "minimal_client_version": "0.144.0"
+    },
+    {
+      "slug": "gpt-5.6-terra",
+      "display_name": "GPT-5.6-Terra",
+      "description": "Older balanced model for straightforward work.",
+      "visibility": "list",
+      "supported_in_api": true,
+      "priority": 7,
+      "context_window": 272000,
+      "max_context_window": 872000,
+      "default_reasoning_level": "medium",
+      "supported_reasoning_levels": [
+        {
+          "effort": "low"
+        },
+        {
+          "effort": "medium"
+        },
+        {
+          "effort": "high"
+        },
+        {
+          "effort": "xhigh"
+        },
+        {
+          "effort": "max"
+        },
+        {
+          "effort": "ultra"
+        }
+      ],
+      "additional_speed_tiers": [
+        "fast"
+      ],
+      "service_tiers": [
+        {
+          "id": "priority",
+          "name": "Fast"
+        }
+      ],
+      "available_in_plans": [
+        "business",
+        "edu",
+        "edu_plus",
+        "edu_pro",
+        "education",
+        "enterprise",
+        "enterprise_cbp_automation",
+        "enterprise_cbp_usage_based",
+        "finserv",
+        "free",
+        "free_workspace",
+        "go",
+        "hc",
+        "k12",
+        "plus",
+        "pro",
+        "prolite",
+        "quorum",
+        "sci",
+        "self_serve_business_prolite",
+        "self_serve_business_usage_based",
+        "team"
+      ],
+      "minimal_client_version": "0.144.0"
+    },
+    {
+      "slug": "gpt-5.6-luna",
+      "display_name": "GPT-5.6-Luna",
+      "description": "Older fast and efficient model.",
+      "visibility": "list",
+      "supported_in_api": true,
+      "priority": 8,
+      "context_window": 272000,
+      "max_context_window": 872000,
+      "default_reasoning_level": "medium",
+      "supported_reasoning_levels": [
+        {
+          "effort": "low"
+        },
+        {
+          "effort": "medium"
+        },
+        {
+          "effort": "high"
+        },
+        {
+          "effort": "xhigh"
+        },
+        {
+          "effort": "max"
+        }
+      ],
+      "additional_speed_tiers": [
+        "fast"
+      ],
+      "service_tiers": [
+        {
+          "id": "priority",
+          "name": "Fast"
+        }
+      ],
+      "available_in_plans": [
+        "business",
+        "edu",
+        "edu_plus",
+        "edu_pro",
+        "education",
+        "enterprise",
+        "enterprise_cbp_automation",
+        "enterprise_cbp_usage_based",
+        "finserv",
+        "free",
+        "free_workspace",
+        "go",
+        "hc",
+        "k12",
+        "plus",
+        "pro",
+        "prolite",
+        "quorum",
+        "sci",
+        "self_serve_business_prolite",
+        "self_serve_business_usage_based",
+        "team"
+      ],
+      "minimal_client_version": "0.144.0"
+    },
+    {
+      "slug": "gpt-daybreak-blue-latest",
+      "display_name": "Daybreak Blue",
+      "description": "Latest frontier agentic coding model for broad defensive cybersecurity work.",
+      "visibility": "hide",
+      "supported_in_api": true,
+      "priority": 10,
+      "context_window": 272000,
+      "max_context_window": 872000,
+      "default_reasoning_level": "low",
+      "supported_reasoning_levels": [
+        {
+          "effort": "low"
+        },
+        {
+          "effort": "medium"
+        },
+        {
+          "effort": "high"
+        },
+        {
+          "effort": "xhigh"
+        },
+        {
+          "effort": "max"
+        },
+        {
+          "effort": "ultra"
+        }
+      ],
+      "additional_speed_tiers": [],
+      "service_tiers": [],
+      "available_in_plans": [
+        "business",
+        "edu",
+        "edu_plus",
+        "edu_pro",
+        "education",
+        "enterprise",
+        "enterprise_cbp_automation",
+        "enterprise_cbp_usage_based",
+        "finserv",
+        "free",
+        "free_workspace",
+        "go",
+        "hc",
+        "k12",
+        "plus",
+        "pro",
+        "prolite",
+        "quorum",
+        "sci",
+        "self_serve_business_prolite",
+        "self_serve_business_usage_based",
+        "team"
+      ],
+      "minimal_client_version": "0.142.2"
+    },
+    {
+      "slug": "gpt-daybreak-red-latest",
+      "display_name": "Daybreak Red",
+      "description": "Cyber-permissive variant of our latest frontier agentic coding model for advanced, authorized cybersecurity research.",
+      "visibility": "hide",
+      "supported_in_api": true,
+      "priority": 11,
+      "context_window": 372000,
+      "max_context_window": 372000,
+      "default_reasoning_level": "medium",
+      "supported_reasoning_levels": [
+        {
+          "effort": "low"
+        },
+        {
+          "effort": "medium"
+        },
+        {
+          "effort": "high"
+        },
+        {
+          "effort": "xhigh"
+        },
+        {
+          "effort": "max"
+        },
+        {
+          "effort": "ultra"
+        }
+      ],
+      "additional_speed_tiers": [],
+      "service_tiers": [],
+      "available_in_plans": [
+        "business",
+        "edu",
+        "edu_plus",
+        "edu_pro",
+        "education",
+        "enterprise",
+        "enterprise_cbp_automation",
+        "enterprise_cbp_usage_based",
+        "finserv",
+        "free",
+        "free_workspace",
+        "go",
+        "hc",
+        "k12",
+        "plus",
+        "pro",
+        "prolite",
+        "quorum",
+        "sci",
+        "self_serve_business_prolite",
+        "self_serve_business_usage_based",
+        "team"
+      ],
+      "minimal_client_version": "0.142.2"
+    },
+    {
+      "slug": "gpt-5.5",
+      "display_name": "GPT-5.5",
+      "description": "Legacy coding model.",
+      "visibility": "list",
+      "supported_in_api": true,
+      "priority": 12,
+      "context_window": 272000,
+      "max_context_window": 272000,
+      "default_reasoning_level": "medium",
+      "supported_reasoning_levels": [
+        {
+          "effort": "low"
+        },
+        {
+          "effort": "medium"
+        },
+        {
+          "effort": "high"
+        },
+        {
+          "effort": "xhigh"
+        }
+      ],
+      "additional_speed_tiers": [
+        "fast"
+      ],
+      "service_tiers": [
+        {
+          "id": "priority",
+          "name": "Fast"
+        }
+      ],
+      "available_in_plans": [
+        "business",
+        "edu",
+        "edu_plus",
+        "edu_pro",
+        "education",
+        "enterprise",
+        "enterprise_cbp_automation",
+        "enterprise_cbp_usage_based",
+        "finserv",
+        "free",
+        "free_workspace",
+        "go",
+        "hc",
+        "k12",
+        "plus",
+        "pro",
+        "prolite",
+        "quorum",
+        "sci",
+        "self_serve_business_prolite",
+        "self_serve_business_usage_based",
+        "team"
+      ],
+      "minimal_client_version": "0.124.0"
+    },
+    {
+      "slug": "gpt-5.4",
+      "display_name": "GPT-5.4",
+      "description": "Strong model for everyday coding.",
+      "visibility": "hide",
+      "supported_in_api": true,
+      "priority": 16,
+      "context_window": 272000,
+      "max_context_window": 1000000,
+      "default_reasoning_level": "medium",
+      "supported_reasoning_levels": [
+        {
+          "effort": "low"
+        },
+        {
+          "effort": "medium"
+        },
+        {
+          "effort": "high"
+        },
+        {
+          "effort": "xhigh"
+        }
+      ],
+      "additional_speed_tiers": [
+        "fast"
+      ],
+      "service_tiers": [
+        {
+          "id": "priority",
+          "name": "Fast"
+        }
+      ],
+      "available_in_plans": [
+        "business",
+        "edu",
+        "edu_plus",
+        "edu_pro",
+        "education",
+        "enterprise",
+        "enterprise_cbp_automation",
+        "enterprise_cbp_usage_based",
+        "finserv",
+        "go",
+        "hc",
+        "plus",
+        "pro",
+        "prolite",
+        "quorum",
+        "sci",
+        "self_serve_business_prolite",
+        "self_serve_business_usage_based",
+        "team"
+      ],
+      "minimal_client_version": "0.98.0"
+    },
+    {
+      "slug": "codex-auto-review",
+      "display_name": "Codex Auto Review",
+      "description": "Automatic approval review model for Codex.",
+      "visibility": "hide",
+      "supported_in_api": true,
+      "priority": 43,
+      "context_window": 272000,
+      "max_context_window": 872000,
+      "default_reasoning_level": "medium",
+      "supported_reasoning_levels": [
+        {
+          "effort": "low"
+        },
+        {
+          "effort": "medium"
+        },
+        {
+          "effort": "high"
+        },
+        {
+          "effort": "xhigh"
+        },
+        {
+          "effort": "max"
+        }
+      ],
+      "additional_speed_tiers": [
+        "fast"
+      ],
+      "service_tiers": [
+        {
+          "id": "priority",
+          "name": "Fast"
+        }
+      ],
+      "available_in_plans": [
+        "business",
+        "edu",
+        "edu_plus",
+        "edu_pro",
+        "education",
+        "enterprise",
+        "enterprise_cbp_automation",
+        "enterprise_cbp_usage_based",
+        "finserv",
+        "go",
+        "hc",
+        "plus",
+        "pro",
+        "prolite",
+        "quorum",
+        "sci",
+        "self_serve_business_prolite",
+        "self_serve_business_usage_based",
+        "team"
+      ],
+      "minimal_client_version": "0.98.0"
+    }
+  ]
+}

@@ -12,7 +12,7 @@
 The [ledger](docs/ledger.md) tracks what is built and what is next.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="usage" files="cmd/uah/main.go cmd/uah/run.go cmd/uah/resume.go cmd/uah/sessions.go cmd/uah/tui.go cmd/uah/print.go cmd/uah/completion.go cmd/uah/doctor.go internal/app/doctor.go internal/app/doctorchecks.go cmd/uah/flags.go" -->
+<!-- memoria:section id="usage" files="cmd/uah/main.go cmd/uah/models.go cmd/uah/run.go cmd/uah/resume.go cmd/uah/sessions.go cmd/uah/tui.go cmd/uah/print.go cmd/uah/completion.go cmd/uah/doctor.go internal/app/doctor.go internal/app/doctorchecks.go cmd/uah/flags.go" -->
 ## Get started
 
 1. Install it (Go 1.27.1 or later):
@@ -22,7 +22,7 @@ The [ledger](docs/ledger.md) tracks what is built and what is next.
    ```
 
 2. Sign in. The default provider, `openai-codex`, uses your ChatGPT login: run `codex login`. For another provider, pass `--provider` (openai, openrouter, fireworks, or ollama) and set its API key variable.
-3. Check the setup: `uah doctor` checks the credentials, the sandbox, the configuration, hooks, MCP servers, and the state directory, and says how to fix each ✗.
+3. Check the setup: `uah doctor` checks the credentials, the models your login can use, the sandbox, the configuration, hooks, MCP servers, and the state directory, and says how to fix each ✗.
 4. Start in a repository:
 
    ```sh
@@ -88,6 +88,7 @@ uah sessions show 3f2a                 # the transcript (--json)
 - For this session: `/model gpt-6-luna` or `/effort low` in the TUI, or alt+, and alt+. to lower or raise the effort. On the embedded engine it applies from the next model request, even mid-run.
 - At start: `uah -m gpt-6-luna -e medium`, and `--fast` for priority processing.
 - For every session: `model` and `effort` in the [configuration](#configuration).
+- See what the provider offers: `uah models` (`--json`, `--refresh`), `/model ` then tab in the TUI, or tab after `-m`. A model the provider does not list is refused with the nearest names ("gpt-luna-6 is not available on openai-codex; did you mean gpt-6-luna?").
 
 ### Let a command run without asking
 
@@ -317,6 +318,16 @@ uah compacts a long conversation as Codex does: the earlier user messages stay v
 `/context` shows what fills the window, as Claude Code's does: a 10×10 grid, one cell per percent, with each category's tokens (system prompt, instruction files, skills, tools, MCP tools, your messages, agent messages, and tool calls with their results), the free space, and the auto-compact buffer, then a line per file, skill, and tool. It breaks down the last request sent, estimated at 4 bytes a token and scaled to the input tokens the provider reported (`internal/contextusage`).
 
 Read more: [compaction](internal/compaction/README.md), and the [design and validation](docs/design/compaction.md).
+<!-- /memoria:section -->
+
+<!-- memoria:section id="models" files="internal/app/models.go cmd/uah/models.go" -->
+### Model catalog
+
+<!-- memoria:import src="internal/models/README.md#summary" -->
+uah asks the provider which models the login can use, as Codex does: the list comes from the provider at runtime, is cached for five minutes with its ETag, and falls back to Codex's bundled catalog only when the provider cannot be asked. A new model therefore needs no uah release, and a mistyped model is refused before a run starts, with the nearest model names.
+<!-- /memoria:import -->
+
+`/model`, `-m` completion, `uah models`, and `uah doctor` read the catalog, and the context window comes from it when the provider gives one. Read more: [the model catalog](internal/models/README.md).
 <!-- /memoria:section -->
 
 <!-- memoria:section id="development" files=".github/workflows/ci.yml .golangci.yml testing/fakellm/fakellm.go testing/harnesstest/harnesstest.go" -->

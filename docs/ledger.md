@@ -44,6 +44,7 @@ Status: `todo`, `doing`, `done`, `cut` (with a reason).
 | 18 | MCP validated for production; `/mcp` view and OAuth login; `uah mcp` | lane v-mcp | 5 | done |
 | 19 | The chosen TUI look | main session | 17, 18 | done |
 | 20 | Diff rendering like Codex and Claude Code | any free lane | 19 | todo |
+| 21 | Model catalog from the provider, as Codex | lane models | — | done |
 
 Order of starting: 1 alone (it touches everything). Then lanes A (2), B (4), C (5) in parallel. D (6, 7) starts when a lane frees up. 9 and 10 come after their dependencies merge.
 
@@ -143,6 +144,12 @@ Build it as a theme in `internal/tui/render` (styles in one place), so another t
 - Claude Code's details worth taking: line numbers in a gutter, the whole line tinted rather than only the text, and word-level highlighting inside a changed line.
 - The same diff in `uah sessions show` (plain text with `+`/`-`) and in the detailed view unfolded.
 - Source: the runner's edit and apply_patch tool results; where a tool gives no diff, compute it from the before and after content.
+
+### 21. Model catalog from the provider, as Codex
+
+- In: `internal/models`: the provider's list at runtime (the ChatGPT backend's `/models?client_version=…` for openai-codex, `/v1/models`, OpenRouter's `/api/v1/models`, Fireworks' list, Ollama's `/api/tags`), a 300 s file cache with ETag keyed by a hashed provider and login identity, Codex's `models.json` bundled as the offline fallback, and near-miss suggestions. Wired into `/model` (menu values and "X is not available on P; did you mean Y?"), the one context-window function (`compaction.ContextWindow`), `uah doctor`, `uah models`, and `-m` completion from the cache. `models.Validate` for `spawn_agent`.
+- Out: editing `internal/agents` (the subagents lane calls `models.Validate`); a config key for the TTL.
+- Done: httptest tests per source shape, cache hit, TTL expiry, ETag 304, fallback to the cache then the bundled list, identity scoping; one real probe of the ChatGPT backend (9 models, live).
 
 ## Later
 

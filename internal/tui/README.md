@@ -105,7 +105,7 @@ The approval overlay replaces the composer keys while it is open:
 In the picker, ↑/↓ choose, enter resumes, tab switches between this directory and all directories, typing filters, and esc goes back.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="commands" files="state/commands.go state/menu.go state/context.go state/contextview.go state/mcp.go state/agents.go state/heatmap.go" -->
+<!-- memoria:section id="commands" files="state/commands.go state/menu.go state/models.go state/context.go state/contextview.go state/mcp.go state/agents.go state/heatmap.go" -->
 ## Slash commands
 
 `state.Commands()` is the registry; `/help` prints it in this order. A command without "While busy" waits until the agent is idle.
@@ -129,6 +129,8 @@ In the picker, ↑/↓ choose, enter resumes, tab switches between this director
 | `/details` | Compact or detailed view | Yes |
 | `/help` | Commands and keys | Yes |
 | `/quit` (`/exit`) | Close the session and exit | Yes |
+
+`/model` offers the provider's model list after a space: the first `/model` draft loads it through an effect (`EffLoadModels`, `state/models.go`), off the update loop, from the catalog in `internal/models`. When that list came from the provider, `/model` refuses a model it lacks with the nearest names; with no list, or only the bundled one, any model passes.
 
 `/model`, `/effort`, and `/fast` apply from the next model request on the embedded engine, and from the next run on the process engine; the session's `SettingsChanged` event says which.
 <!-- /memoria:section -->

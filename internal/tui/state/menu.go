@@ -5,6 +5,7 @@ import (
 
 	"github.com/sahilm/fuzzy"
 
+	"github.com/viktordanov/uagent-harness/internal/models"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
 
@@ -22,6 +23,9 @@ type Menu struct {
 	// Files are the workspace's files for "@", loaded on first use.
 	Files        []string
 	filesLoading bool
+	// Models is the provider's model list for /model, loaded on first use.
+	Models        *models.Catalog
+	modelsLoading bool
 }
 
 // Suggestion is one menu entry. Accepting it replaces the draft with Draft.
@@ -92,6 +96,8 @@ func commandSuggestions(prefix string) []Suggestion {
 func (s State) argSuggestions(name, arg string) []Suggestion {
 	var values []string
 	switch name {
+	case "model":
+		return s.modelSuggestions(arg)
 	case "effort":
 		values = session.Efforts
 	case cmdAgentsName:
@@ -148,6 +154,9 @@ func (s *State) onMenu(ev any) (effects []Effect, ok bool) {
 	switch e := ev.(type) {
 	case DraftChanged:
 		s.Menu.Index = 0
+		if eff := s.loadModels(e.Draft); eff != nil {
+			return []Effect{eff}, true
+		}
 		if _, mention := mentionAt(e.Draft); mention && s.Menu.Files == nil && !s.Menu.filesLoading {
 			s.Menu.filesLoading = true
 
@@ -158,6 +167,8 @@ func (s *State) onMenu(ev any) (effects []Effect, ok bool) {
 		if s.Menu.Files == nil {
 			s.Menu.Files = []string{}
 		}
+	case ModelsLoaded:
+		s.Menu.Models, s.Menu.modelsLoading = &e.Catalog, false
 	case MenuMove:
 		if n := min(len(s.Suggestions(e.Draft)), menuSize); n > 0 {
 			s.Menu.Index = ((s.Menu.Index+e.Delta)%n + n) % n
@@ -170,7 +181,7 @@ func (s *State) onMenu(ev any) (effects []Effect, ok bool) {
 		picked := items[min(s.Menu.Index, len(items)-1)]
 		s.Menu.Index = 0
 
-		return []Effect{EffSetDraft{Text: picked.Draft}}, true
+		return s.setDraft(picked.Draft), true
 	case MenuEnter:
 		items := s.Suggestions(e.Draft)
 		if len(items) == 0 {
@@ -179,7 +190,7 @@ func (s *State) onMenu(ev any) (effects []Effect, ok bool) {
 		picked := items[min(s.Menu.Index, len(items)-1)]
 		s.Menu.Index = 0
 		if strings.HasSuffix(picked.Draft, " ") {
-			return []Effect{EffSetDraft{Text: picked.Draft}}, true
+			return s.setDraft(picked.Draft), true
 		}
 		next, effects := s.command(picked.Draft)
 		*s = next
@@ -192,6 +203,17 @@ func (s *State) onMenu(ev any) (effects []Effect, ok bool) {
 	}
 
 	return nil, true
+}
+
+// setDraft puts an accepted suggestion in the composer and, for /model,
+// starts loading the model list.
+func (s *State) setDraft(draft string) []Effect {
+	effects := []Effect{EffSetDraft{Text: draft}}
+	if eff := s.loadModels(draft); eff != nil {
+		effects = append(effects, eff)
+	}
+
+	return effects
 }
 
 // MenuOpen reports whether the draft shows a menu, so the shell sends the

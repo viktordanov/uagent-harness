@@ -56,7 +56,7 @@ func TestDoctor_MCPNeedsLogin(t *testing.T) {
 	srv := oauthserver.New(t)
 	for required, want := range map[bool]app.CheckStatus{false: app.CheckWarn, true: app.CheckFail} {
 		writeConfig(t, &in, fmt.Sprintf("mcp_oauth_credentials_store = \"file\"\n[mcp_servers.remote]\nurl = %q\nrequired = %t\n", srv.MCPURL(), required))
-		checks := app.Doctor(context.Background(), in, app.DoctorOptions{HookTrustFile: filepath.Join(t.TempDir(), "trust.json")})
+		checks := app.Doctor(context.Background(), in, doctorOptions(t, filepath.Join(t.TempDir(), "trust.json")))
 		c := find(t, checks, "mcp remote")
 		assert.Equal(t, want, c.Status, "required=%t", required)
 		assert.Equal(t, "needs login", c.Detail)
