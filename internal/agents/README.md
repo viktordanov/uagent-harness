@@ -37,7 +37,7 @@ The engine knows no tool name, schema, or result, and the session knows children
 <!-- memoria:section id="parity" files="manager.go ops.go" -->
 ## Parity with the root session
 
-A subagent is the root agent in every way except what makes it a child. `childOptions` starts from the options `app.Setup` returned for the root session and opens the child with `session.Open` on the same engine, so the child gets the same instructions and skills, sandbox, rules, approvals policy and auto-review, hooks, MCP servers, compaction, context meter, tool output limits, index, and sidecar. Its settings are the parent run's: `Settings.WithRequest` inverts the request the parent's run started with, and the run's service tier follows.
+A subagent is the root agent in every way except what makes it a child. `childOptions` starts from the options `app.Setup` returned for the root session and opens the child with `session.Open` on the same engine, so the child gets the same instructions and skills, sandbox, rules, approvals policy and auto-review, hooks, MCP servers, compaction, context meter, tool output limits, index, and sidecar. Its settings are the parent run's: `Settings.WithRequest` inverts the request the parent's run started with, the run's service tier follows, and the permission mode is the parent's at the time of the spawn (`AgentParent.Mode`), so a stricter mode chosen during the run holds for new children. The child's sidecar keeps the child's own settings.
 
 The only differences:
 

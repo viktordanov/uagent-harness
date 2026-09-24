@@ -39,6 +39,8 @@ type approvalOpts struct {
 	interactive bool
 	hooks       []hooks.Hook
 	autoReview  bool
+	// mode, when set, is the session's permission mode.
+	mode approval.Mode
 }
 
 // newApprovalEnv opens the session; replies gets the outside directory.
@@ -68,7 +70,11 @@ func newApprovalEnv(t *testing.T, o approvalOpts, replies func(outside string) [
 		runner, err = hooks.New(o.hooks, nil, ws)
 		require.NoError(t, err)
 	}
-	e.s, err = session.Open(context.Background(), eng, session.Options{Settings: e.settings(), Interactive: o.interactive, Hooks: runner})
+	settings := e.settings()
+	if o.mode != "" {
+		settings = settings.WithMode(o.mode)
+	}
+	e.s, err = session.Open(context.Background(), eng, session.Options{Settings: settings, Interactive: o.interactive, Hooks: runner})
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = e.s.Close() })
 	e.ev = &events{t: t, s: e.s}

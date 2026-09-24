@@ -10,6 +10,7 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 
+	"github.com/viktordanov/uagent-harness/internal/approval"
 	"github.com/viktordanov/uagent-harness/internal/sandbox"
 	"github.com/viktordanov/uagent-harness/internal/tui/state"
 )
@@ -118,7 +119,7 @@ func transcript(s state.State, c *Cache, w, height int, head []string) []string 
 }
 
 func headerLine(s state.State, w int) string {
-	left := fmt.Sprintf(" uah · %s · %s/%s · %s · sandbox %s · %s", short(s.SessionID), s.Settings.Provider, s.Settings.Model, s.Settings.Effort, cmp.Or(s.Settings.Sandbox, "none"), home(s.Settings.Workspace))
+	left := fmt.Sprintf(" uah · %s · %s/%s · %s · %s · %s", short(s.SessionID), s.Settings.Provider, s.Settings.Model, s.Settings.Effort, cmp.Or(modeText(s), "sandbox none"), home(s.Settings.Workspace))
 	var right string
 	switch {
 	case s.SessionID == "":
@@ -215,12 +216,7 @@ func footerLine(s state.State, w int) string {
 		if s.Settings.ServiceTier != "" {
 			fast = "fast"
 		}
-		// The default sandbox goes unsaid; a looser or stricter one shows.
-		box := ""
-		if s.Settings.Sandbox != "" && s.Settings.Sandbox != string(sandbox.WorkspaceWrite) {
-			box = s.Settings.Sandbox
-		}
-		for _, p := range []string{strings.TrimSpace(s.Settings.Model + " " + s.Settings.Effort), fast, box, home(s.Settings.Workspace)} {
+		for _, p := range []string{strings.TrimSpace(s.Settings.Model + " " + s.Settings.Effort), fast, modeText(s), home(s.Settings.Workspace)} {
 			if p != "" {
 				parts = append(parts, p)
 			}
@@ -264,6 +260,20 @@ func footerLine(s state.State, w int) string {
 	}
 
 	return dim.Render(ansi.Truncate(text, w, ""))
+}
+
+// modeText is the permission mode, which shift+tab changes, as the footer
+// and the detailed header show it ("" without one).
+func modeText(s state.State) string {
+	m := s.Settings.Mode
+	if m == "" && s.Settings.Sandbox != "" {
+		m = approval.ModeFor(sandbox.Mode(s.Settings.Sandbox))
+	}
+	if m == "" {
+		return ""
+	}
+
+	return m.Label() + " mode"
 }
 
 func picker(s state.State, f Frame) string {

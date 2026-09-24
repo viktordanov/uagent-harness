@@ -4,7 +4,7 @@
 An engine starts runs of unreal-agent-runner for a session. The `process` engine spawns the runner binary through uagent; the `embedded` engine runs the runner's own packages inside uah, so messages and settings reach a live run.
 
 <!-- memoria:export id="summary" -->
-An engine starts runs of unreal-agent-runner for a session: the embedded engine (the default) runs the runner's packages inside uah, so messages, model, effort, and fast mode reach a live run, and the process engine spawns the runner binary through uagent. Both keep uagent's guards, session lock, and run records, and write the same session files, so a session can move between them.
+An engine starts runs of unreal-agent-runner for a session: the embedded engine (the default) runs the runner's packages inside uah, so messages, model, effort, fast mode, and the permission mode reach a live run, and the process engine spawns the runner binary through uagent. Both keep uagent's guards, session lock, and run records, and write the same session files, so a session can move between them.
 <!-- /memoria:export -->
 
 The choice comes from `--engine`, `UAH_ENGINE`, or `engine` in the [configuration](../../docs/configuration.md#model-and-engine); `internal/app/setup.go` builds the engine. The [harness design](../../docs/design/harness.md#two-engines) records why there are two.
@@ -21,15 +21,16 @@ The choice comes from `--engine`, `UAH_ENGINE`, or `engine` in the [configuratio
 <!-- memoria:section id="interface" files="engine.go events.go subagents.go" -->
 ## The interface
 
-`engine.Engine` has three methods: `Name`, `Capabilities`, and `Start(ctx, request, options, sink) (Run, error)`. The sink receives `RunStarted` first and `RunFinished` last, from one goroutine at a time. A `Run` takes messages and settings while it is live (`Send`, `SetEffort`, `SetModel`, `SetServiceTier`, `Compact`, `Clear`), stops (`Interrupt`, `Kill`), and ends (`Wait`). A method the engine cannot serve returns `ErrUnsupported`, and the session then applies the change from the next run.
+`engine.Engine` has three methods: `Name`, `Capabilities`, and `Start(ctx, request, options, sink) (Run, error)`. The sink receives `RunStarted` first and `RunFinished` last, from one goroutine at a time. A `Run` takes messages and settings while it is live (`Send`, `SetEffort`, `SetModel`, `SetServiceTier`, `SetMode`, `Compact`, `Clear`), stops (`Interrupt`, `Kill`), and ends (`Wait`). A method the engine cannot serve returns `ErrUnsupported`, and the session then applies the change from the next run.
 
-`Capabilities` says what reaches a live run: `LiveInput`, `LiveEffort`, `LiveModel`, `ServiceTier`, and `Compaction`. The session and the TUI read them; they never check the engine's name.
+`Capabilities` says what reaches a live run: `LiveInput`, `LiveEffort`, `LiveModel`, `ServiceTier`, `Compaction`, and `LiveMode`. The session and the TUI read them; they never check the engine's name.
 
 `engine.Options` carries what `core.Request` does not:
 
 | Field | Meaning |
 | --- | --- |
 | `ServiceTier` | `""` or `"priority"` |
+| `Mode` | The permission mode (`approval.Mode`): the sandbox commands run in, and whether the auto-reviewer decides alone. `""` is the engine's configured sandbox. A child gets its parent's through `AgentParent.Mode`, read when it spawns |
 | `Compact` | Compact before the run's first model request (a `/compact` sent while idle) |
 | `Clear` | Drop the context before the run's first model request (a `/clear` sent while idle) |
 | `Ask` | How the run asks the user to approve an action. Nil means no one can answer, as in `uah run` |
@@ -57,6 +58,7 @@ The engine's own events join the run's stream: `CompactionStarted`, `Compacted`,
 | A message sent while the agent works | Reaches the agent before its next model request | Queues; ctrl+enter restarts the run with the queue |
 | `/model`, `/effort` | From the next model request | From the next run |
 | `/fast` (priority processing) | openai and openai-codex | No |
+| The permission mode (shift+tab) | From the next command and model request | From the next run: each mode's sandbox has its own `SHELL` |
 | An interrupt | A hard stop through the runner's inbox; the session file records the stopped tools | uagent interrupts the runner process |
 | Sandbox | Per command, with escalation and approvals | Every command, through a sandboxing `SHELL`; no escalation |
 | Rules, auto-review, approval prompts | Yes | No |
@@ -75,10 +77,10 @@ Both engines read the host prompt with the instruction files from the request, k
 
 `process.Engine` is a thin adapter over uagent's `harness.Harness`: `Start` spawns the runner, and every live setter returns `ErrUnsupported`. The runner reads its request once, so the session queues messages until the run ends.
 
-The runner runs each command with `$SHELL`. `internal/app/setup.go` points `SHELL` at a script from `sandbox.Shell` that runs the real shell inside the sandbox, so commands are sandboxed without changing the runner. That script cannot ask for more access.
+The runner runs each command with `$SHELL`. `internal/app/setup.go` points `SHELL` at a script from `sandbox.Shell` that runs the real shell inside the sandbox, so commands are sandboxed without changing the runner. That script cannot ask for more access. `process.NewSandboxed` keeps one harness per sandbox mode, built on first use, and each run uses its permission mode's (`Options.Mode`).
 <!-- /memoria:section -->
 
-<!-- memoria:section id="embedded" files="embedded/engine.go embedded/wiring.go embedded/agent.go embedded/adapter.go embedded/client.go embedded/providers.go codexauth/codexauth.go embedded/store.go embedded/observer.go embedded/tools.go embedded/sandboxtool.go embedded/sandboxschema.go embedded/skills.go embedded/pretooluse.go embedded/autoreview.go embedded/compact.go embedded/context.go embedded/fork.go" -->
+<!-- memoria:section id="embedded" files="embedded/engine.go embedded/wiring.go embedded/agent.go embedded/adapter.go embedded/client.go embedded/providers.go codexauth/codexauth.go embedded/store.go embedded/observer.go embedded/tools.go embedded/sandboxtool.go embedded/sandboxschema.go embedded/skills.go embedded/pretooluse.go embedded/autoreview.go embedded/compact.go embedded/context.go embedded/fork.go embedded/mode.go" -->
 ## The embedded engine
 
 The embedded engine is a uagent `harness.Backend`. uagent still owns the run: the guards, the session lock, the run record, and the output stream. The backend (`wiring.go`) reproduces unreal-agent-runner v0.1.1's `Run` (`cmd/internal/agentrunner/run.go`) in the same order:
@@ -95,7 +97,7 @@ Every opened resource adds a closer; a failed start closes them in reverse, and 
 
 ### A live run
 
-`agent` is the `harness.Process`. Messages go into the runner's inbox as external inputs, and effort changes as `UpdateSettings` control messages. An interrupt is a `StopHard` control message: the coordinator cancels the model call and the tools, records their state, and returns. uagent cancels the context only after its grace period.
+`agent` is the `harness.Process`. Messages go into the runner's inbox as external inputs, and effort changes as `UpdateSettings` control messages. The permission mode lives in the run's `modeCell` (`mode.go`): the Bash translator reads it for each command and picks that mode's sandboxing shell (one per sandbox mode, built at the start), the switcher rewrites Bash's definition in each model request to describe that sandbox, and the ask reads it for each approval. In Auto mode the auto-reviewer decides alone, also with `approvals_reviewer = "user"`, and its "ask the user" becomes a decline with its reason. An interrupt is a `StopHard` control message: the coordinator cancels the model call and the tools, records their state, and returns. uagent cancels the context only after its grace period.
 
 ### Model adapters
 
@@ -104,7 +106,7 @@ The coordinator calls one `llm.Adapter`. Two adapters sit in front of the provid
 | Adapter | File | Does |
 | --- | --- | --- |
 | `compactor` | `compact.go` | Decides when to compact (`/compact`, or the context in use reaching `auto_compact_percent` of the window), runs the compaction as a job under the run's context, and rewrites every request with the session's latest compaction. The rewrite, the summary call, and the log live in [internal/compaction](../compaction/README.md) |
-| `switcher` | `adapter.go` | Applies the live model to each request and routes to the priority client when fast mode is on, so `/model` and `/fast` apply from the next request. It records each session's last request for `/context` (`context.go`) |
+| `switcher` | `adapter.go` | Applies the live model to each request, Bash's definition for the live permission mode, and routes to the priority client when fast mode is on, so `/model`, `/fast`, and shift+tab apply from the next request. It records each session's last request for `/context` (`context.go`) |
 
 `switcher.direct()` is the same client without the live model override, for one-shot calls that choose their own model: the auto-reviewer and the compaction summary. The switcher also replaces the prompt cache key when the session has another (`SetCacheKey`).
 
@@ -156,7 +158,7 @@ A job that had already started before the run stopped fails with "interrupted" w
 The runner stays unchanged: uah reproduces its wiring instead of patching it, and the equivalence test below keeps the two in step.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="tests" files="embedded/embedded_test.go embedded/approval_test.go embedded/compact_test.go embedded/context_test.go embedded/mcp_test.go embedded/mcpjobs_internal_test.go embedded/sandbox_test.go" -->
+<!-- memoria:section id="tests" files="embedded/embedded_test.go embedded/approval_test.go embedded/compact_test.go embedded/context_test.go embedded/mcp_test.go embedded/mcpjobs_internal_test.go embedded/sandbox_test.go embedded/mode_test.go" -->
 ## Tests
 
 The embedded tests run against `testing/fakellm`, a scripted Responses API, and need no tokens.
@@ -166,6 +168,7 @@ The embedded tests run against `testing/fakellm`, a scripted Responses API, and 
 | `TestEmbedded_MatchesTheRunner` | The real `unreal-agent-runner` (built from go.mod's version) and the embedded engine get the same script and must produce the same events and session items. `go test -short` skips it |
 | `TestEmbedded_SteersALiveRun`, `TestEmbedded_ChangesSettingsLive`, `TestEmbedded_InterruptThenContinue`, `TestEmbedded_ResumesAProcessSession` | Live input, live settings, interrupts, and moving a session between engines |
 | `approval_test.go`, `sandbox_test.go` | Escalation, rules, "don't ask again", headless denial, PermissionRequest hooks, auto-review, and the sandbox |
+| `mode_test.go` | Permission modes: a live switch to read only makes the next write fail in the sandbox and the next request describe it; Auto mode lets the reviewer allow or decline without asking, also once its breaker opens |
 | `compact_test.go`, `clear_test.go`, `context_test.go` | Manual and automatic compaction, `/clear` in the same session, resume after both, the PreCompact hook, and `/context` |
 | `mcp_test.go`, `mcpjobs_internal_test.go` | MCP tools, crashes, interrupts, approvals, and jobs that are not repeated |
 <!-- /memoria:section -->

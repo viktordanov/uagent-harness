@@ -52,6 +52,7 @@ func set(dst *string, v string) {
 // mergeSandbox merges the sandbox, approval, and review keys.
 func mergeSandbox(base *Config, over Config) {
 	set(&base.SandboxMode, over.SandboxMode)
+	set(&base.PermissionMode, over.PermissionMode)
 	set(&base.ApprovalPolicy, over.ApprovalPolicy)
 	base.Approvals.Allow = slices.Concat(base.Approvals.Allow, over.Approvals.Allow)
 	base.Approvals.Forbid = slices.Concat(base.Approvals.Forbid, over.Approvals.Forbid)
