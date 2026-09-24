@@ -53,7 +53,7 @@ The default view is compact, like Codex: your messages, one line per command (`�
 | mouse wheel, shift+↑ / shift+↓, pgup / pgdn | Scroll the transcript; end returns to the bottom. While the TUI reports the mouse, select text with Option (iTerm2, Terminal) or Shift (most others) held |
 | ctrl+c | Clear the composer; on an empty composer, quit (twice while a run is live) |
 
-Commands: `/model <id>`, `/effort <level>`, `/resume [id]`, `/new`, `/stop`, `/status`, `/details`, `/reasoning`, `/help`, `/quit`. `/model`, `/effort`, and `/fast` apply from the next model request on the embedded engine, and from the next run on the process engine. `/fast` needs the embedded engine and the openai or openai-codex provider.
+Commands: `/model <id>`, `/effort <level>`, `/resume [id]`, `/new`, `/stop`, `/status`, `/mcp`, `/details`, `/reasoning`, `/help`, `/quit`. `/model`, `/effort`, and `/fast` apply from the next model request on the embedded engine, and from the next run on the process engine. `/fast` needs the embedded engine and the openai or openai-codex provider.
 Tool calls keep their place in the transcript, so a command that finishes after later turns updates its original row. Diagnostics go to `<state-dir>/logs/uah-tui.log`.
 
 `uah run` takes the same backend, guard, and state flags as uagent (`--provider`, `-m`, `-e`, `-t`, `-C`, `--state-dir`, `--runner`, `--max-disk`, `--allow-dotenv`); `uah run --help` lists them.
@@ -130,6 +130,32 @@ Hooks in the user file run as written. Hooks in a trusted project's `.uagent/con
 
 <!-- /memoria:section -->
 
+<!-- memoria:section id="mcp" files="internal/mcp/config.go internal/mcp/manager.go internal/mcp/names.go internal/mcp/result.go internal/mcp/transport.go internal/engine/embedded/mcptool.go internal/engine/embedded/mcpjobs.go internal/app/mcp.go internal/tui/state/mcp.go" -->
+### MCP servers
+
+On the embedded engine, uah starts the MCP servers in `[mcp_servers]` and offers their tools to the model as `mcp__<server>__<tool>`. The configuration is Codex's, so a Codex `[mcp_servers]` section copies over:
+
+```toml
+[mcp_servers.docs]               # stdio
+command = "npx"
+args = ["-y", "@example/docs-mcp"]
+env = { DOCS_LANG = "en" }       # env_vars = ["NAME"] passes a variable through
+startup_timeout_sec = 20         # default 30
+tool_timeout_sec = 60            # default 300
+disabled_tools = ["delete_page"] # or enabled_tools = [...] to allow only those
+
+[mcp_servers.docs.tools.search]
+approval_mode = "approve"        # auto (default), prompt, writes, approve
+
+[mcp_servers.tracker]            # streamable HTTP
+url = "https://mcp.example.com/mcp"
+bearer_token_env_var = "TRACKER_TOKEN"
+```
+
+Servers start on the first run (or `/mcp`) and stop when the session closes; a stdio server gets only `HOME`, `PATH`, `USER`, and a few other basic variables unless `env` or `env_vars` adds more, as in Codex. A server that fails to start is left out (`required = true` fails the run instead). A call runs in the background, so the model keeps working while it runs; a call past its timeout, or to a server that crashed, returns an error to the model. Results reach the model as text and images; structured content arrives as JSON text. Disabled tools are hidden. Until uah can ask for approval, a tool whose `approval_mode` needs it (`prompt`, or `writes` for a tool not marked read-only) is refused with a reason. PreToolUse hook matchers see the `mcp__` names. `/mcp` lists each server, its state, and its tools. The process engine does not run MCP servers and says so. Unsupported Codex keys (OAuth, `bearer_token`, `http_headers_helper`) are errors ([plan](docs/design/mcp.md)).
+
+<!-- /memoria:section -->
+
 <!-- memoria:section id="configuration" files="internal/config/config.go cmd/uah/flags.go internal/app/resolve.go internal/app/setup.go .uagent/config.toml .uagent/hooks/guard.sh" -->
 ### Configuration
 
@@ -178,7 +204,7 @@ Unknown keys are errors, so a typo fails loudly instead of being ignored.
 Design records and the documentation procedure are indexed in [docs](docs/README.md):
 
 <!-- memoria:import src="docs/README.md#summary" -->
-Design records for the harness, the TUI, state storage, and sandboxing, plus the architecture rules and documentation procedure for uagent-harness.
+Design records for the harness, the TUI, state storage, sandboxing, and MCP, plus the architecture rules and documentation procedure for uagent-harness.
 <!-- /memoria:import -->
 
 The [TUI framework benchmark](bench/tui/README.md) holds the measurements behind choosing Bubble Tea v2 (a separate Go module).

@@ -1,6 +1,6 @@
 # MCP: plan
 
-Status: decided 2026-09-24, built in the same change. Codex facts are from openai/codex at rust-v0.156.1 (`codex-rs/`); runner facts are from unreal-agent v0.1.1 (`RN/`).
+Status: decided and built 2026-09-24 (ledger item 5). Codex facts are from openai/codex at rust-v0.156.1 (`codex-rs/`); runner facts are from unreal-agent v0.1.1 (`RN/`).
 
 The rule, as for the sandbox: do what Codex does, unless the runner forces a difference.
 
@@ -40,12 +40,16 @@ Servers live as long as the session's engine: they start on the first run (or on
 | --- | --- |
 | `internal/mcp/config.go` | `ServerConfig` in Codex's format, validation, timeouts, the tool filter, the approval mode |
 | `internal/mcp/names.go` | Codex's qualified tool names |
-| `internal/mcp/manager.go` | Starts servers (stdio and streamable HTTP, through `github.com/modelcontextprotocol/go-sdk`), lists tools, calls them with a timeout, reports status |
+| `internal/mcp/manager.go` | Starts servers (stdio and streamable HTTP, through `github.com/modelcontextprotocol/go-sdk` v1.8.0), lists tools, calls them with a timeout, reports status |
 | `internal/mcp/result.go` | Converts a `CallToolResult` to text and images |
-| `internal/engine/embedded/mcptool.go` | The registry wrapper, the translator, and the remote job handler |
+| `internal/mcp/transport.go` | Stdio commands with Codex's environment, and HTTP headers |
+| `internal/engine/embedded/mcptool.go` | The registry wrapper, the translator, and the approval hook point |
+| `internal/engine/embedded/mcpjobs.go` | The remote job handler that runs calls |
+| `internal/app/mcp.go` | Builds the manager from the configuration |
+| `testing/mcpserver` | A stdio test server built with the same SDK |
 | `internal/config/config.go` | `mcp_servers`, merged from the project file |
 | `internal/engine/engine.go` | `MCPLister`, the optional engine interface behind `/mcp` |
-| `internal/session`, `internal/tui/*` | `Session.MCPServers` and the `/mcp` command |
+| `internal/session`, `internal/tui/*` | `Session.MCPServers`, closing the engine with the session, and the `/mcp` command |
 
 ## Configuration
 
@@ -81,3 +85,5 @@ Each has the default taken.
 5. **Parallel calls.** Codex serializes calls to a server unless `supports_parallel_tool_calls`; uah does the same per server.
 6. **Resources, prompts, OAuth, restarts.** Not built (the ledger's Out list).
 7. **Process engine.** MCP needs the embedded engine; the process engine shows a notice when servers are configured, as it does for PreToolUse hooks.
+8. **Name length.** Codex allows 128 bytes because it sends MCP tools in Responses API namespaces; uah sends flat function names, which the API limits to 64 characters, so uah cuts at 64 with Codex's hash suffix.
+9. **Closing.** The SDK closes a stdio server by closing its stdin and waits up to 5 seconds before SIGTERM, and waits for calls in flight; a server that ignores a canceled call can delay closing a session that long.

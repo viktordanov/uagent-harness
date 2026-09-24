@@ -1,8 +1,8 @@
-<!-- memoria:section id="overview" files="design/harness.md design/tui.md design/implementation.md design/state.md design/sandbox-research.md design/sandbox.md ledger.md documentation/architecture.md documentation/memoria.md" -->
+<!-- memoria:section id="overview" files="design/harness.md design/tui.md design/implementation.md design/state.md design/sandbox-research.md design/sandbox.md design/mcp.md ledger.md documentation/architecture.md documentation/memoria.md" -->
 # Documentation
 
 <!-- memoria:export id="summary" -->
-Design records for the harness, the TUI, state storage, and sandboxing, plus the architecture rules and documentation procedure for uagent-harness.
+Design records for the harness, the TUI, state storage, sandboxing, and MCP, plus the architecture rules and documentation procedure for uagent-harness.
 <!-- /memoria:export -->
 
 Design:
@@ -13,6 +13,7 @@ Design:
 4. [State storage](design/state.md): what is stored where, and the plan for a rebuildable SQLite index.
 5. [Sandboxing and approvals: research](design/sandbox-research.md): how Codex sandboxes and approves commands, and the options for uah.
 6. [Sandboxing and approvals: plan](design/sandbox.md): the decisions (Codex's defaults), how a command runs, the packages, and the phases.
+7. [MCP](design/mcp.md): how Codex runs MCP servers, how their tools run as the runner's remote jobs, and the open decisions.
 
 Work:
 
