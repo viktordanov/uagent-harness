@@ -239,6 +239,9 @@ func (st *Styles) footerLine(s state.State, w int) string {
 		if pct, ok := s.ContextLeft(); ok {
 			hint = fmt.Sprintf("%d%% context left · %s", pct, hint)
 		}
+		if u, ok := s.UsageLeft(); ok {
+			hint = u + " · " + hint // the plan's tightest window
+		}
 		// The hint wins over the left side, which is cut when the line is full.
 		room := w - ansi.StringWidth(hint)
 		if room > 0 {
@@ -261,6 +264,9 @@ func (st *Styles) footerLine(s state.State, w int) string {
 	if left, ok := s.ContextLeft(); ok {
 		text += fmt.Sprintf(" · %d%% context left", left)
 		hint = "/ commands "
+	}
+	if u, ok := s.UsageLeft(); ok {
+		text += " · " + u
 	}
 	if gap := w - ansi.StringWidth(text) - ansi.StringWidth(hint); gap > 0 {
 		text += strings.Repeat(" ", gap) + hint

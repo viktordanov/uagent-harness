@@ -87,6 +87,8 @@ func (m Model) run(e state.Effect) tea.Cmd { //nolint:gocyclo // a dispatch swit
 
 			return state.ActivityLoaded{Counts: counts}
 		}
+	case state.EffLoadUsage:
+		return m.loadUsage(e)
 	case state.EffLoadModels:
 		if m.deps.Models == nil {
 			return nil

@@ -78,6 +78,8 @@ type State struct {
 	Totals    Totals
 	// ContextUsed is the tokens the last response used (0: unknown).
 	ContextUsed int64
+	// Usage is the subscription's usage, for /status and the footer (usage.go).
+	Usage Usage
 
 	ShowReasoning bool
 	// Details shows turns, run dividers, and token totals; the default is a

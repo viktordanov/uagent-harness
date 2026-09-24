@@ -20,6 +20,7 @@ import (
 	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/internal/tui/render"
 	"github.com/viktordanov/uagent-harness/internal/tui/state"
+	"github.com/viktordanov/uagent-harness/internal/usage"
 )
 
 const (
@@ -64,6 +65,9 @@ type Deps struct {
 	// Windows finds a model's context window in the model catalog, for the
 	// footer's context meter (nil: the default window).
 	Windows compaction.WindowLookup
+	// Usage reads the subscription's usage for /status, the footer, and the
+	// warnings (nil: none, as for a provider without usage).
+	Usage usage.Reader
 	// Now is the clock (default time.Now).
 	Now func() time.Time
 }
@@ -214,11 +218,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.gen != m.gen {
 			return m, next(msg.gen, msg.batches) // drain a closed session's last events
 		}
+		cmds := []tea.Cmd{m.afterChange(), next(m.gen, msg.batches)}
 		for _, e := range msg.events {
-			m.st, _ = state.Reduce(m.st, e)
+			var effects []state.Effect
+			m.st, effects = state.Reduce(m.st, e)
+			for _, eff := range effects { // such as reading the usage after a run
+				cmds = append(cmds, m.run(eff))
+			}
 		}
 
-		return m, tea.Batch(m.afterChange(), next(m.gen, msg.batches))
+		return m, tea.Batch(cmds...)
 	case sessionClosedMsg:
 		if msg.gen == m.gen {
 			m.sess = nil
@@ -245,6 +254,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 	case state.Failed, state.SessionsLoaded, state.ActivityLoaded, state.FilesLoaded, state.MCPListed, state.ContextShown,
 		state.ModelsLoaded, state.ConfigLoaded, state.ConfigSaved:
+		return m.dispatch(msg)
+	case state.UsageLoaded:
 		return m.dispatch(msg)
 	}
 	var cmd tea.Cmd
