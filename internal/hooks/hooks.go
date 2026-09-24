@@ -26,10 +26,13 @@ const (
 	PostToolUse      Event = "PostToolUse"
 	Stop             Event = "Stop"
 	PreCompact       Event = "PreCompact"
+	// PermissionRequest runs before the user is asked to approve a command
+	// or an MCP call; "allow" or "deny" answers for the user.
+	PermissionRequest Event = "PermissionRequest"
 )
 
 // Events are the supported events.
-var Events = []Event{SessionStart, SessionEnd, UserPromptSubmit, PreToolUse, PostToolUse, Stop, PreCompact}
+var Events = []Event{SessionStart, SessionEnd, UserPromptSubmit, PreToolUse, PostToolUse, Stop, PreCompact, PermissionRequest}
 
 const (
 	// DefaultTimeout applies when a hook sets none.
@@ -195,6 +198,9 @@ type Decision struct {
 	// going with Reason as the next message.
 	Block  bool
 	Reason string
+	// Allow is a hook's "allow" permission decision (PreToolUse,
+	// PermissionRequest).
+	Allow bool
 	// UpdatedInput replaces a PreToolUse tool call's arguments.
 	UpdatedInput json.RawMessage
 	// Context is text to add to a prompt (UserPromptSubmit, SessionStart).
@@ -233,6 +239,8 @@ func (d *Decision) add(event Event, res Result) {
 			d.Block, d.Reason = true, firstNonEmpty(s.PermissionDecisionReason, "denied by a hook")
 
 			return
+		case "allow":
+			d.Allow = true
 		}
 		if len(s.UpdatedInput) > 0 {
 			d.UpdatedInput = s.UpdatedInput

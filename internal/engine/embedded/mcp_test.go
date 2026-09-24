@@ -11,6 +11,7 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
+	"github.com/viktordanov/uagent-harness/internal/approval"
 	"github.com/viktordanov/uagent-harness/internal/engine/embedded"
 	"github.com/viktordanov/uagent-harness/internal/hooks"
 	"github.com/viktordanov/uagent-harness/internal/mcp"
@@ -155,4 +156,36 @@ func TestEmbedded_MCPInterruptThenContinue(t *testing.T) {
 	assert.Equal(t, core.StatusOK, result.Status)
 	reqs := e.llm.Requests()
 	assert.Contains(t, strings.Join(reqs[len(reqs)-1].ToolOutputs, "\n"), "Error: the MCP call was canceled")
+}
+
+// TestEmbedded_MCPApproval asks the user about a "prompt" tool through the
+// same prompt as sandbox escalations: an approval runs it, a decline tells
+// the model.
+func TestEmbedded_MCPApproval(t *testing.T) {
+	for _, tc := range []struct {
+		answer approval.Answer
+		want   string
+	}{
+		{approval.Approve, "echo: asked"},
+		{approval.Decline, "the user declined the MCP tool mcp__test__echo"},
+	} {
+		t.Run(string(tc.answer), func(t *testing.T) {
+			e := newEnv(t, fakellm.Reply{Calls: []fakellm.Call{call("mcp__test__echo", `{"text":"asked"}`)}}, fakellm.Reply{Text: "done"})
+			m := mcpManager(t, e, mcp.ServerConfig{Tools: map[string]mcp.ToolConfig{"echo": {ApprovalMode: mcp.ApprovalPrompt}}})
+			s, err := session.Open(context.Background(), e.withMCP(m, nil), session.Options{Settings: e.settings(), Interactive: true})
+			require.NoError(t, err)
+			t.Cleanup(func() { _ = s.Close() })
+			ev := &events{t: t, s: s}
+
+			_, err = s.Submit("echo")
+			require.NoError(t, err)
+			req := ev.until("ApprovalRequested", isA[session.ApprovalRequested]).(session.ApprovalRequested)
+			assert.Equal(t, `mcp__test__echo {"text":"asked"}`, req.Command)
+			require.NoError(t, s.Resolve(req.ID, tc.answer))
+			ev.finished()
+
+			reqs := e.llm.Requests()
+			assert.Contains(t, strings.Join(reqs[len(reqs)-1].ToolOutputs, "\n"), tc.want)
+		})
+	}
 }

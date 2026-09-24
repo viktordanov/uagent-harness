@@ -14,6 +14,7 @@ import (
 
 	"github.com/viktordanov/uagent-harness/internal/approval"
 	"github.com/viktordanov/uagent-harness/internal/engine/embedded"
+	"github.com/viktordanov/uagent-harness/internal/hooks"
 	"github.com/viktordanov/uagent-harness/internal/rules"
 	"github.com/viktordanov/uagent-harness/internal/sandbox"
 	"github.com/viktordanov/uagent-harness/internal/session"
@@ -34,6 +35,7 @@ type approvalOpts struct {
 	policy      approval.Policy
 	rules       string
 	interactive bool
+	hooks       []hooks.Hook
 }
 
 // newApprovalEnv opens the session; replies gets the outside directory.
@@ -57,7 +59,12 @@ func newApprovalEnv(t *testing.T, o approvalOpts, replies func(outside string) [
 		Sandbox: &policy, SandboxDir: filepath.Join(e.StateDir, "sandbox"),
 		Approver: approval.New(approval.Config{Policy: o.policy, Rules: parsed, RulesFile: e.rulesFile}),
 	})
-	e.s, err = session.Open(context.Background(), eng, session.Options{Settings: e.settings(), Interactive: o.interactive})
+	var runner *hooks.Runner
+	if len(o.hooks) > 0 {
+		runner, err = hooks.New(o.hooks, nil, ws)
+		require.NoError(t, err)
+	}
+	e.s, err = session.Open(context.Background(), eng, session.Options{Settings: e.settings(), Interactive: o.interactive, Hooks: runner})
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = e.s.Close() })
 	e.ev = &events{t: t, s: e.s}
@@ -208,4 +215,28 @@ func TestEmbedded_InterruptDeclinesApproval(t *testing.T) {
 	assert.Equal(t, approval.Decline, resolved.Decision)
 	e.ev.finished()
 	assert.NoFileExists(t, filepath.Join(e.outside, "x.txt"))
+}
+
+// TestEmbedded_PermissionRequestHook answers for the user, even headless:
+// allow runs the escalation, deny refuses it.
+func TestEmbedded_PermissionRequestHook(t *testing.T) {
+	for _, tc := range []struct {
+		decision string
+		ran      bool
+	}{{"allow", true}, {"deny", false}} {
+		t.Run(tc.decision, func(t *testing.T) {
+			hook := hooks.Hook{
+				Event: hooks.PermissionRequest, Source: hooks.SourceUser,
+				Command: `grep -q '"tool_name":"Bash"' && echo '{"hookSpecificOutput":{"permissionDecision":"` + tc.decision + `"}}'`,
+			}
+			e := newApprovalEnv(t, approvalOpts{hooks: []hooks.Hook{hook}}, escalate)
+			e.run(t)
+			assert.Equal(t, core.StatusOK, e.ev.finished().Status)
+			if tc.ran {
+				assert.FileExists(t, filepath.Join(e.outside, "x.txt"))
+			} else {
+				assert.NoFileExists(t, filepath.Join(e.outside, "x.txt"))
+			}
+		})
+	}
 }

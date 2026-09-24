@@ -2,12 +2,15 @@ package session
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/viktordanov/uagent-harness/internal/approval"
+	"github.com/viktordanov/uagent-harness/internal/hooks"
 )
 
 // ApprovalRequested asks the user to approve a command. The session waits
@@ -60,11 +63,49 @@ func (s *Session) Resolve(id string, answer approval.Answer) error {
 // askFunc is how runs ask the user: through the session's events when the
 // session is interactive, nil (deny) otherwise.
 func (s *Session) askFunc() approval.Ask {
-	if !s.interactive {
+	hooked := s.hooks.runner.Has(hooks.PermissionRequest, "")
+	if !s.interactive && !hooked {
 		return nil
 	}
+	base := s.hookInput(hooks.PermissionRequest) // read on the loop goroutine
 
-	return s.ask
+	return func(ctx context.Context, p approval.Prompt) approval.Answer {
+		if hooked {
+			d := s.hooks.runner.Run(ctx, permissionInput(base, p))
+			switch {
+			case d.Block:
+				return approval.Decline
+			case d.Allow:
+				return approval.Approve
+			}
+		}
+		if !s.interactive {
+			return approval.Decline
+		}
+
+		return s.ask(ctx, p)
+	}
+}
+
+// permissionInput describes the prompt to a PermissionRequest hook as a tool
+// call: an MCP tool by its name and arguments, anything else as Bash.
+func permissionInput(in hooks.Input, p approval.Prompt) hooks.Input {
+	name, args, _ := strings.Cut(p.Command, " ")
+	if strings.HasPrefix(name, "mcp__") && json.Valid([]byte(args)) {
+		in.ToolName, in.ToolInput = name, json.RawMessage(args)
+
+		return in
+	}
+	input, err := json.Marshal(struct {
+		Command       string `json:"command"`
+		Justification string `json:"justification,omitempty"`
+		Escalation    bool   `json:"sandbox_escalation,omitempty"`
+	}{p.Command, p.Justification, p.Escalation})
+	if err == nil {
+		in.ToolName, in.ToolInput = "Bash", input
+	}
+
+	return in
 }
 
 // ask runs on the engine's goroutine: it hands the prompt to the loop and

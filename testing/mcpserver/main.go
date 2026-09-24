@@ -63,7 +63,9 @@ func add(s *sdk.Server, name, description string, fn func(args) *sdk.CallToolRes
 	schema := map[string]any{typ: "object", "properties": map[string]any{
 		"text": map[string]any{typ: "string"}, "ms": map[string]any{typ: "integer"},
 	}}
-	s.AddTool(&sdk.Tool{Name: name, Description: description, InputSchema: schema}, func(_ context.Context, req *sdk.CallToolRequest) (*sdk.CallToolResult, error) {
+	// Read-only, so approval_mode auto runs them without asking, as Codex does.
+	annotations := &sdk.ToolAnnotations{ReadOnlyHint: true}
+	s.AddTool(&sdk.Tool{Name: name, Description: description, InputSchema: schema, Annotations: annotations}, func(_ context.Context, req *sdk.CallToolRequest) (*sdk.CallToolResult, error) {
 		var a args
 		if len(req.Params.Arguments) > 0 {
 			if err := json.Unmarshal(req.Params.Arguments, &a); err != nil {

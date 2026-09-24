@@ -45,7 +45,11 @@ type Tool struct {
 	Description string
 	InputSchema map[string]any
 	ReadOnly    bool
-	Approval    ApprovalMode
+	// AutoAsks is Codex's annotation rule for approval_mode auto: a
+	// destructive tool asks, a read-only one does not, and otherwise it asks
+	// unless marked both non-destructive and closed-world.
+	AutoAsks bool
+	Approval ApprovalMode
 }
 
 // ServerStatus is one server's state for /mcp.
@@ -209,7 +213,7 @@ func qualify(servers map[string]*server) []Tool {
 			}
 			candidates = append(candidates, Tool{
 				Server: s.name, Tool: t.Name, Description: t.Description, InputSchema: schema(t.InputSchema),
-				ReadOnly: t.Annotations != nil && t.Annotations.ReadOnlyHint, Approval: s.cfg.ApprovalFor(t.Name),
+				ReadOnly: t.Annotations != nil && t.Annotations.ReadOnlyHint, AutoAsks: autoAsks(t.Annotations), Approval: s.cfg.ApprovalFor(t.Name),
 			})
 		}
 	}
@@ -365,4 +369,22 @@ func (m *Manager) Close() error {
 	}
 
 	return errors.Join(errs...)
+}
+
+// autoAsks ports Codex's requires_mcp_tool_approval
+// (codex-rs/core/src/mcp_tool_call.rs): unset hints default to asking.
+func autoAsks(a *sdk.ToolAnnotations) bool {
+	if a == nil {
+		return true
+	}
+	if a.DestructiveHint != nil && *a.DestructiveHint {
+		return true
+	}
+	if a.ReadOnlyHint {
+		return false
+	}
+	destructive := a.DestructiveHint == nil || *a.DestructiveHint
+	openWorld := a.OpenWorldHint == nil || *a.OpenWorldHint
+
+	return destructive || openWorld
 }
