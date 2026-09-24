@@ -15,8 +15,10 @@ import (
 	"github.com/viktordanov/uagent/core"
 
 	"github.com/viktordanov/uagent-harness/internal/agents"
+	"github.com/viktordanov/uagent-harness/internal/approval"
 	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/engine/embedded"
+	"github.com/viktordanov/uagent-harness/internal/sandbox"
 	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/testing/fakellm"
 	"github.com/viktordanov/uagent-harness/testing/harnesstest"
@@ -55,10 +57,14 @@ func (e *env) getenv(key string) string {
 	return e.Env.Getenv(key)
 }
 
-// open opens the parent session.
-func (e *env) open(t *testing.T, interactive bool) (*session.Session, *events) {
+// open opens the parent session; with configure, it adjusts the engine.
+func (e *env) open(t *testing.T, interactive bool, configure ...func(*embedded.Config)) (*session.Session, *events) {
 	t.Helper()
-	eng := embedded.New(embedded.Config{StateDir: e.StateDir, Provider: "openai", Getenv: e.getenv, Subagents: e.mgr})
+	cfg := embedded.Config{StateDir: e.StateDir, Provider: "openai", Getenv: e.getenv, Subagents: e.mgr}
+	for _, c := range configure {
+		c(&cfg)
+	}
+	eng := embedded.New(cfg)
 	e.mgr.Bind(eng)
 	s, err := session.Open(context.Background(), eng, session.Options{
 		Settings:    session.Settings{Provider: "openai", Model: "gpt-test", Effort: "high", Workspace: e.Workspace, BaseURL: e.llm.URL},
@@ -145,6 +151,9 @@ func lastOutputs(e *env) string { return strings.Join(lastParent(e).ToolOutputs,
 func TestAgents_SpawnWaitAnswer(t *testing.T) {
 	gate := make(chan struct{})
 	var placeholder string
+	var timedOut bool
+	var mgr *agents.Manager
+	var parentID string
 	e := newEnv(t, agents.Config{},
 		fakellm.Reply{Calls: []fakellm.Call{call("spawn_agent", `{"message":"CHILD-A count the files"}`)}},
 		fakellm.Reply{From: func(req fakellm.Request) fakellm.Reply {
@@ -152,6 +161,7 @@ func TestAgents_SpawnWaitAnswer(t *testing.T) {
 		}},
 		fakellm.Reply{From: func(req fakellm.Request) fakellm.Reply {
 			placeholder = strings.Join(req.ToolOutputs, "\n")
+			_, timedOut, _ = mgr.Wait(context.Background(), parentID, ids(req), 50*time.Millisecond)
 			close(gate)
 
 			return fakellm.Reply{Text: "waiting for the agent"}
@@ -160,6 +170,7 @@ func TestAgents_SpawnWaitAnswer(t *testing.T) {
 	)
 	e.llm.Route("CHILD-A", fakellm.Reply{Gate: gate, Text: "forty-two"})
 	s, ev := e.open(t, false)
+	mgr, parentID = e.mgr, s.ID()
 
 	_, err := s.Submit("delegate")
 	require.NoError(t, err)
@@ -169,6 +180,7 @@ func TestAgents_SpawnWaitAnswer(t *testing.T) {
 	assert.Equal(t, "the agent counted", result.Answer)
 	assert.Contains(t, placeholder, "side", "the command ran while the wait was pending")
 	assert.Contains(t, placeholder, "Tool call is still running", "the wait did not hold up the coordinator")
+	assert.True(t, timedOut, "a wait on a running child times out")
 	assert.Contains(t, lastOutputs(e), `"state":"completed","message":"forty-two"`)
 
 	var child fakellm.Request
@@ -249,7 +261,42 @@ func TestAgents_LimitAndClose(t *testing.T) {
 	assert.Len(t, ids(lastParent(e)), 2, "the spawn after the close worked")
 }
 
-func TestAgents_WaitTimesOut(t *testing.T) {
+// TestAgents_ChildApprovalAsksTheParent shows a child's escalation in the
+// parent's session, labelled with the child's nickname.
+func TestAgents_ChildApprovalAsksTheParent(t *testing.T) {
+	e := newEnv(t, agents.Config{},
+		fakellm.Reply{Calls: []fakellm.Call{call("spawn_agent", `{"message":"CHILD-D fetch"}`)}},
+		callWith("wait", `{"ids":["ID"]}`),
+		fakellm.Reply{Text: "done"},
+	)
+	e.llm.Route("CHILD-D", fakellm.Reply{Escalated: []string{"echo fetched"}}, fakellm.Reply{Text: "fetched"})
+	policy := sandbox.Policy{Mode: sandbox.WorkspaceWrite, Workspace: e.Workspace}
+	if _, err := policy.Wrap([]string{"/bin/sh"}); err != nil {
+		t.Skipf("no sandbox here: %v", err)
+	}
+	s, ev := e.open(t, true, func(c *embedded.Config) {
+		c.Sandbox, c.SandboxDir = &policy, filepath.Join(e.StateDir, "sandbox")
+	})
+
+	_, err := s.Submit("delegate a fetch")
+	require.NoError(t, err)
+	req := ev.until("ApprovalRequested", func(x core.Event) bool { _, ok := x.(session.ApprovalRequested); return ok }).(session.ApprovalRequested)
+	assert.Equal(t, "agent Ada: it needs the network", req.Justification)
+	require.NoError(t, s.Resolve(req.ID, approval.Approve))
+	result := ev.finished()
+
+	assert.Equal(t, "done", result.Answer)
+	assert.Contains(t, lastOutputs(e), `"message":"fetched"`)
+	var child []string
+	for _, r := range e.llm.Requests() {
+		if slices.ContainsFunc(r.UserTexts, func(s string) bool { return strings.HasPrefix(s, "CHILD-D") }) {
+			child = append(child, r.ToolOutputs...)
+		}
+	}
+	assert.Contains(t, strings.Join(child, "\n"), "fetched", "the approved command ran")
+}
+
+func TestAgents_WaitUnknownID(t *testing.T) {
 	m := agents.New(agents.Config{})
 	statuses, timedOut, err := m.Wait(context.Background(), "p", []string{"missing"}, time.Millisecond)
 	require.NoError(t, err)
