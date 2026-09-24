@@ -26,6 +26,9 @@ type Capabilities struct {
 	// Compaction means the engine can compact the context (Run.Compact and
 	// Options.Compact).
 	Compaction bool
+	// LiveMode means a permission mode change reaches a live run
+	// (Run.SetMode); otherwise it applies from the next run.
+	LiveMode bool
 }
 
 // Engine starts runs.
@@ -55,6 +58,9 @@ type ContextReporter interface {
 type Options struct {
 	// ServiceTier is "" or "priority" (needs Capabilities.ServiceTier).
 	ServiceTier string
+	// Mode is the permission mode: the sandbox commands run in and who
+	// decides what needs approval ("": the engine's configured sandbox).
+	Mode approval.Mode
 	// Compact compacts the context before the run's first model request
 	// (needs Capabilities.Compaction).
 	Compact bool
@@ -78,6 +84,12 @@ type Options struct {
 	Inject func(text string)
 }
 
+// Forgetter is an engine that keeps per-session state across runs; the
+// session calls Forget when it closes, so the state does not outlive it.
+type Forgetter interface {
+	Forget(sessionID string)
+}
+
 // Run is a started run.
 type Run interface {
 	// Send delivers a message to the live run (ErrUnsupported without LiveInput).
@@ -88,6 +100,9 @@ type Run interface {
 	SetModel(model string) error
 	// SetServiceTier changes the tier for the next model request (ErrUnsupported without ServiceTier).
 	SetServiceTier(tier string) error
+	// SetMode changes the permission mode from the next command and the
+	// next model request (ErrUnsupported without LiveMode).
+	SetMode(mode approval.Mode) error
 	// Compact compacts the context before the next model request
 	// (ErrUnsupported without Compaction).
 	Compact() error

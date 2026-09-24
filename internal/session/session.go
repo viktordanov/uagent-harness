@@ -105,6 +105,8 @@ type Session struct {
 	approvals map[string]pending
 	// askOverride is Options.Ask.
 	askOverride approval.Ask
+	// sessionsDir holds the sidecar the settings are saved in ("": none).
+	sessionsDir string
 }
 
 // Open starts a session. Its first event is SessionOpened.
@@ -124,6 +126,7 @@ func Open(ctx context.Context, eng engine.Engine, opts Options) (*Session, error
 		settings: opts.Settings, state: StateIdle, sent: map[string]bool{},
 		hooks:       hookState{runner: opts.Hooks, resumed: opts.Resumed, tools: map[string]core.ToolCalled{}},
 		interactive: opts.Interactive, approvals: map[string]pending{}, askOverride: opts.Ask,
+		sessionsDir: opts.SessionsDir,
 	}
 	s.out <- SessionOpened{At: time.Now(), ID: id, Resumed: opts.Resumed, Engine: eng.Name(), Settings: opts.Settings}
 	if opts.Instructions != nil {
@@ -138,6 +141,7 @@ func Open(ctx context.Context, eng engine.Engine, opts Options) (*Session, error
 				s.out <- Notice{At: time.Now(), Level: LevelWarning, Message: err.Error()}
 			}
 		}
+		s.saveSettings(opts.Settings)
 	}
 	for _, n := range opts.Notices {
 		s.out <- Notice{At: time.Now(), Level: LevelWarning, Message: n}
@@ -219,6 +223,9 @@ func (s *Session) ContextUsage() (contextusage.Usage, bool) {
 // servers.
 func (s *Session) Close() error {
 	err := s.close()
+	if f, ok := s.eng.(engine.Forgetter); ok {
+		f.Forget(s.id)
+	}
 	if c, ok := s.eng.(io.Closer); ok {
 		if cerr := c.Close(); cerr != nil && err == nil {
 			err = fmt.Errorf("failed to close the engine: %w", cerr)

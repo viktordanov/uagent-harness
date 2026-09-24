@@ -51,10 +51,12 @@ type Manager struct {
 	tmpl     session.Options
 	parents  map[string]engine.AgentParent
 	children map[string]*child
+	// parentIDs remembers the parents read from sidecars (parentOf).
+	parentIDs map[string]string
+	// outboxes deliver each parent's updates in order (notify, forward).
+	outboxes map[string]*outbox
 	// changed is closed and replaced whenever a child's status changes.
 	changed chan struct{}
-	// emitMu keeps a child's updates in the order their states were taken.
-	emitMu sync.Mutex
 }
 
 // New returns a manager; Bind gives it the engine children run on.
@@ -65,7 +67,7 @@ func New(cfg Config) *Manager {
 
 	return &Manager{
 		cfg:     cfg,
-		parents: map[string]engine.AgentParent{}, children: map[string]*child{}, changed: make(chan struct{}),
+		parents: map[string]engine.AgentParent{}, children: map[string]*child{}, parentIDs: map[string]string{}, outboxes: map[string]*outbox{}, changed: make(chan struct{}),
 	}
 }
 
@@ -109,6 +111,14 @@ func (e childEngine) ContextUsage(sessionID string) (contextusage.Usage, bool) {
 	return contextusage.Usage{}, false
 }
 
+// Forget passes a child session's close to the engine, which keeps
+// per-session state (engine.Forgetter).
+func (e childEngine) Forget(sessionID string) {
+	if f, ok := e.Engine.(engine.Forgetter); ok {
+		f.Forget(sessionID)
+	}
+}
+
 // Attach records the parent's run and offers the tools when the session
 // may spawn: its depth is below MaxDepth. A forked child is offered them at
 // any depth, as its parent was, so its requests keep its parent's prefix;
@@ -142,16 +152,12 @@ func (m *Manager) treeRoot(id string) string {
 
 // lineage walks up from id to the top of its tree, through the live
 // children and then the sidecars, and returns how many steps it took and
-// where it ended. It holds m.mu.
+// where it ended. A sidecar is read once per session and remembered, since
+// a session's parent never changes. It holds m.mu.
 func (m *Manager) lineage(id string) (int, string) {
 	n := 0
 	for range 32 {
-		parent := ""
-		if c, ok := m.children[id]; ok {
-			parent = c.parent
-		} else if sc, found, err := session.ReadSidecar(m.tmpl.SessionsDir, id); err == nil && found && sc.Source == session.SourceSubagent {
-			parent = sc.Parent
-		}
+		parent := m.parentOf(id)
 		if parent == "" {
 			break
 		}
@@ -159,6 +165,23 @@ func (m *Manager) lineage(id string) (int, string) {
 	}
 
 	return n, id
+}
+
+// parentOf is a session's parent, "" for a root. It holds m.mu.
+func (m *Manager) parentOf(id string) string {
+	if c, ok := m.children[id]; ok {
+		return c.parent
+	}
+	if parent, ok := m.parentIDs[id]; ok {
+		return parent
+	}
+	parent := ""
+	if sc, found, err := session.ReadSidecar(m.tmpl.SessionsDir, id); err == nil && found && sc.Source == session.SourceSubagent {
+		parent = sc.Parent
+	}
+	m.parentIDs[id] = parent
+
+	return parent
 }
 
 // forked reports whether a session is a child started with fork_context,
@@ -172,20 +195,11 @@ func (m *Manager) forked(id string) bool {
 	return err == nil && rec.Fork
 }
 
-// root is the top session of id's tree. It holds m.mu.
-func (m *Manager) root(id string) string {
-	for c, ok := m.children[id]; ok; c, ok = m.children[id] {
-		id = c.parent
-	}
-
-	return id
-}
-
 // openIn counts the open children in root's tree. It holds m.mu.
 func (m *Manager) openIn(root string) int {
 	n := 0
 	for id, c := range m.children {
-		if !c.closed && m.root(id) == root {
+		if !c.closed && m.treeRoot(id) == root {
 			n++
 		}
 	}
@@ -214,7 +228,8 @@ func (m *Manager) role(name string) (Role, error) {
 // childOptions are a child's session options: the process's, as the root
 // session opens with, and the parent run's settings. Only what makes it a
 // child differs: its ID, its sidecar's source and parent, approvals asked
-// through the parent, and the model, effort, and instructions the spawn
+// through the parent, the parent run's permission mode as it is now, and
+// the model, effort, and instructions the spawn
 // call, the role, and the configured defaults override, in that order.
 // Hooks are the same, in a runner of its own. It holds m.mu.
 func (m *Manager) childOptions(p engine.AgentParent, c *child, role Role, rec record, resumed bool) session.Options {
@@ -226,6 +241,9 @@ func (m *Manager) childOptions(p engine.AgentParent, c *child, role Role, rec re
 	}
 	s := opts.Settings.WithRequest(p.Request)
 	s.ServiceTier = m.serviceTier(p.ServiceTier, role)
+	if p.Mode != nil && p.Mode() != "" {
+		s = s.WithMode(p.Mode())
+	}
 	s.Model = first(rec.Model, role.Model, m.cfg.Model, s.Model)
 	s.Effort = first(rec.Effort, role.Effort, m.cfg.Effort, s.Effort)
 	if role.DeveloperInstructions != "" {

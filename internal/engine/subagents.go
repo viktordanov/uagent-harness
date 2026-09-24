@@ -63,6 +63,10 @@ type AgentParent struct {
 	// with the same settings.
 	Request     core.Request
 	ServiceTier string
+	// Mode is the parent run's permission mode now: a child starts with
+	// it, so a stricter mode chosen during the run holds for new children
+	// too (nil: the engine's configured sandbox).
+	Mode func() approval.Mode
 	// Ask asks the parent's user, also after the parent's run ends (nil:
 	// no one can, so children are declined).
 	Ask approval.Ask

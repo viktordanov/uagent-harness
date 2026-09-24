@@ -10,6 +10,7 @@ timeout                                           10m0s                         
 max_disk                                          5G                            default
 engine                                            embedded                      default
 fast                                              true                          user file
+permission_mode                                   read-only                     env
 sandbox_mode                                      read-only                     env
 approval_policy                                   on-request                    default
 model_context_window                              272000                        default

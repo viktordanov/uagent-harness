@@ -235,3 +235,32 @@ func count(all []core.Event, what func(core.Event) bool) int {
 
 	return n
 }
+
+// TestPatch_FollowsTheMode applies patches under the run's live permission
+// mode: auto lets the reviewer approve a write outside the workspace
+// without asking, and a switch to read only makes the next workspace
+// write ask.
+func TestPatch_FollowsTheMode(t *testing.T) {
+	allow := fakellm.Reply{Text: `{"risk_level":"low","user_authorization":"high","outcome":"allow","rationale":"The user asked for it."}`}
+	var e *approvalEnv
+	e = newApprovalEnv(t, approvalOpts{interactive: true, mode: approval.ModeAuto}, func(outside string) []fakellm.Reply {
+		first := applyPatch("*** Add File: " + filepath.Join(outside, "x.txt") + "\n+hi")[0]
+		calls := applyPatch("*** Add File: in.txt\n+hi")[0].Calls
+		second := fakellm.Reply{From: func(fakellm.Request) fakellm.Reply {
+			_, err := e.s.SetSettings(e.settings().WithMode(approval.ModeReadOnly))
+			require.NoError(t, err)
+
+			return fakellm.Reply{Calls: calls}
+		}}
+
+		return []fakellm.Reply{first, allow, second, {Text: "done"}}
+	})
+	e.run(t)
+	req := e.approve(t, approval.Decline)
+
+	assert.Equal(t, core.StatusOK, e.ev.finished().Status)
+	assert.Equal(t, "hi\n", readFile(t, filepath.Join(e.outside, "x.txt")), "the reviewer approved it in auto mode")
+	assert.Equal(t, 1, countKind[engine.AutoReviewed](e.ev.all))
+	assert.Equal(t, "the sandbox is read-only", req.Justification, "read only asks after the switch")
+	assert.NoFileExists(t, filepath.Join(e.Workspace, "in.txt"))
+}

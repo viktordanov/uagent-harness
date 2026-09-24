@@ -66,7 +66,7 @@ The transcript is a list of `Item`s, each with a stable key. The reducer updates
 | `KindTool` | `call:<call ID>` | `ToolCalled`, `ToolStarted`, `ToolFinished` |
 | `KindAssistant`, `KindReasoning` | `text:<n>`, `reason:<n>` | `AssistantMessage`, `ReasoningSummary` |
 | `KindNotice` | `notice:<n>` | Session notices, hook results, command output, approvals |
-| `KindAgent` | `agent:<ID>` | `engine.AgentUpdated` (a subagent): `Name` is the nickname, `Text` the ID, `Detail` the state, and `Agent` the latest update (spawn call ID and message, model, effort, why it failed); its tool calls from `engine.AgentActivity` go into `Sub`, drawn under it in the detailed view |
+| `KindAgent` | `agent:<ID>` | `engine.AgentUpdated` (a subagent): `Name` is the nickname, `Text` the ID, `Detail` the state, and `Agent` the latest update (spawn call ID and message, model, effort, why it failed); its tool calls from `engine.AgentActivity` go into `Sub`, drawn under it in the detailed view. `State.Agents` lists them in start order without walking the transcript |
 | `KindContext` | `context:<n>` | `/context` (`ContextShown`) |
 | `KindFinish` | `done:<run ID>` | `RunFinished`: the end of a run in the compact view |
 | `KindMCP` | `mcp:<n>` | `/mcp` (`MCPListed`): one line per server; `Final` asks for the verbose form (`render/mcp.go`) |
@@ -74,7 +74,7 @@ The transcript is a list of `Item`s, each with a stable key. The reducer updates
 The compact view draws one line per tool call, as Codex does; the detailed view (ctrl+t) adds the header, run dividers, turns, and token totals. `LevelDebug` notices show only in the detailed view.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="keys" files="bubble/keys.go state/reduce.go state/approval.go" -->
+<!-- memoria:section id="keys" files="bubble/keys.go state/reduce.go state/approval.go state/mode.go" -->
 ## Keys
 
 | Key | Action |
@@ -85,6 +85,7 @@ The compact view draws one line per tool call, as Codex does; the detailed view 
 | esc esc | Interrupt the run (the second esc within 2 seconds); queued messages stay |
 | ↑ on an empty composer | Take the last queued message back to edit it |
 | alt+, / alt+. | Lower or raise the effort |
+| shift+tab | Next permission mode: read only, workspace, auto, and back to read only; from full access, read only. The footer shows the mode, and the session applies it (live on the embedded engine, from the next run on the process engine); `state/mode.go` |
 | ctrl+s | Session picker |
 | ctrl+n | New session |
 | `/`, `@` | Open the menu: commands and their values after `/`, workspace files (fuzzy) after `@`. Tab fills in the selection, enter runs a command, esc closes the menu |
@@ -164,7 +165,7 @@ The compact view is shaped like Codex's, in amber. The choices came from the sty
 | A finished run | `12:14 PM · worked 1m 12s`: Codex's time and Claude Code's duration; how it ended first when not ok | `finishLine` (a `KindFinish` item) |
 | Composer | `λ ` on the band, with a band row above and below | `Screen`, `composerStyles` in `bubble/model.go` |
 | Notices | Plain dim text; warnings start with `!` and errors with `✗` | `itemLines` |
-| Footer | Model and effort, directory, context left, hints | `footerLine` |
+| Footer | Model and effort, fast, the permission mode (`read only mode`, `workspace mode`, `auto mode`, or `full access mode`), directory, context left, hints. The detailed view's header shows the mode too | `footerLine`, `modeText` |
 | `/context` | One dot per percent of the window in its category's color, `·` for free space, `○` for the auto-compaction buffer | `contextLines` |
 
 A `Theme` holds every color: the accent, dim text, the band, the breath's shades, the code colors, and the colors `/context` tells its categories apart with. `Amber` is for dark terminals and `AmberLight` for light ones. The shell asks the terminal for its background at start (`tea.RequestBackgroundColor`); `ThemeFor` picks the theme and tints the band from that background, as Codex tints its message background, and `SetTheme` applies it. A new theme is a new `Theme` value. Text is never colored by the theme, so it keeps the terminal's own foreground.
@@ -192,7 +193,7 @@ To add an item kind, follow `KindContext`:
 To add a key, map it to an intent in `bubble/keys.go` and handle the intent in `state.Reduce`. Keep the existing keys' meanings.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="tests" files="state/reduce_test.go state/menu_test.go state/contextview_test.go render/screen_test.go render/contextview_test.go bubble/bubble_test.go bubble/approval_test.go" -->
+<!-- memoria:section id="tests" files="state/reduce_test.go state/menu_test.go state/contextview_test.go state/mode_test.go render/screen_test.go render/contextview_test.go render/mode_test.go bubble/bubble_test.go bubble/approval_test.go bubble/mode_test.go" -->
 ## Tests
 
 | Test | Pins |
@@ -201,4 +202,5 @@ To add a key, map it to an intent in `bubble/keys.go` and handle the intent in `
 | `render/screen_test.go` and the other render tests | Whole screens against golden files in `render/testdata` (`go test ./internal/tui/render -update` rewrites them), and scrolling |
 | `bubble/bubble_test.go` | The shell end to end, with real sessions on the process engine and uagent's fake runner: sending, commands, the picker, queue and interrupt, scrolling, and the menu |
 | `bubble/approval_test.go` | Approving and declining an escalation, with real sessions on the embedded engine and `testing/fakellm` |
+| `state/mode_test.go`, `render/mode_test.go`, `bubble/mode_test.go` | shift+tab's cycle, the mode notice, the footer and header in each mode, and shift+tab through a real session |
 <!-- /memoria:section -->

@@ -23,6 +23,9 @@ type switcher struct {
 	seen func(llm.Request, llm.Usage)
 	// cacheKey, when set, replaces the session's ID as the prompt cache key.
 	cacheKey string
+	// tools, when set, rewrites each request's tools, such as Bash for the
+	// run's current permission mode.
+	tools func([]llm.Tool) []llm.Tool
 }
 
 func newSwitcher(model string, priority bool, build func(bool) (Client, error)) (*switcher, error) {
@@ -40,6 +43,9 @@ func (s *switcher) Respond(ctx context.Context, req llm.Request, opts llm.Reques
 	s.mu.Unlock()
 	if model != "" {
 		req.Model.ID = model
+	}
+	if s.tools != nil {
+		req.Tools = s.tools(req.Tools)
 	}
 	if s.cacheKey != "" {
 		opts.CacheKey = s.cacheKey

@@ -30,7 +30,7 @@ A `Model` keeps the Codex fields that uah uses: the ID and display name, the con
 
 Lists are ordered by Codex's `priority`, lowest first; a model without a priority comes after the others. Hidden models (Codex's visibility `hide`) are accepted but menus do not offer them.
 
-`Catalog.Metadata` finds the entry whose metadata applies to an ID in Codex's order: the exact ID, then the longest ID that starts it (`gpt-5.5-2026-01-01` → `gpt-5.5`), then the same after one simple namespace (`openai/gpt-5.5` → `gpt-5.5`). `Window` uses it: the session provider's last catalog first, then the bundled one. `compaction.ContextWindow` is the one function every caller uses for a context window: `model_context_window` when it is set, then `Window`, then the compaction table, then 272,000 tokens.
+`Catalog.Metadata` finds the entry whose metadata applies to an ID in Codex's order: the exact ID, then the longest ID that starts it (`gpt-5.5-2026-01-01` → `gpt-5.5`), then the same after one simple namespace (`openai/gpt-5.5` → `gpt-5.5`). `Window` uses it: the session provider's last catalog first, then the bundled one. `compaction.ContextWindow` is the one function every caller uses for a context window: `model_context_window` when it is set, then `Window`, then 272,000 tokens.
 
 `Suggest` returns up to three near misses: the same words in another order first (`gpt-luna-6` → `gpt-6-luna`), then an edit distance within a third of the ID's length.
 <!-- /memoria:section -->

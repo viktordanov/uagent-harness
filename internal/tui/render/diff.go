@@ -167,8 +167,6 @@ func run(lines []patch.DiffLine, i int, kind string) int {
 	return n
 }
 
-func untab(s string) string { return strings.ReplaceAll(s, "\t", "    ") }
-
 // diffLine draws "  12 +text", tinted to the full width for an added or
 // removed line; segs, when set, mark its changed words.
 func diffLine(l patch.DiffLine, segs []seg, gw, w int) string {

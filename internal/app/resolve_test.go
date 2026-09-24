@@ -175,7 +175,7 @@ func TestResolve(t *testing.T) {
 				NetworkAccess: true, WritableRoots: []string{"~/.cache"},
 			}},
 			want: func(r *app.Resolved) {
-				r.Settings.Sandbox = "read-only"
+				r.Settings = r.Settings.WithMode(approval.ModeReadOnly)
 				r.Sandbox = sandbox.Policy{Mode: sandbox.ReadOnly, WritableRoots: []string{"~/.cache"}, Network: true}
 			},
 		},
@@ -184,8 +184,47 @@ func TestResolve(t *testing.T) {
 			in:   func(in *app.Inputs) { in.Sandbox = "danger-full-access" },
 			cfg:  config.Config{SandboxMode: "read-only"},
 			want: func(r *app.Resolved) {
-				r.Settings.Sandbox = "danger-full-access"
+				r.Settings = r.Settings.WithMode(approval.ModeFullAccess)
 				r.Sandbox.Mode = sandbox.FullAccess
+			},
+		},
+		{
+			name: "permission_mode beats sandbox_mode",
+			cfg:  config.Config{SandboxMode: "read-only", PermissionMode: "auto"},
+			want: func(r *app.Resolved) { r.Settings = r.Settings.WithMode(approval.ModeAuto) },
+		},
+		{
+			name:    "the resumed session's mode and fast mode beat the config file",
+			resumed: session.Info{Provider: app.CodexProvider, Mode: approval.ModeReadOnly, Fast: new(false)},
+			cfg:     config.Config{PermissionMode: "auto", Fast: true},
+			want: func(r *app.Resolved) {
+				r.Settings = r.Settings.WithMode(approval.ModeReadOnly)
+				r.Sandbox.Mode = sandbox.ReadOnly
+			},
+		},
+		{
+			name:    "flags beat the resumed session's mode and fast mode",
+			in:      func(in *app.Inputs) { in.Sandbox, in.Fast, in.FastSet = "workspace-write", true, true },
+			resumed: session.Info{Provider: app.CodexProvider, Mode: approval.ModeReadOnly, Fast: new(false)},
+			want:    func(r *app.Resolved) { r.Settings.ServiceTier = "priority" },
+		},
+		{
+			name:    "a session without saved settings keeps the configured mode and fast mode",
+			resumed: session.Info{Provider: app.CodexProvider},
+			cfg:     config.Config{SandboxMode: "read-only", Fast: true},
+			want: func(r *app.Resolved) {
+				r.Settings = r.Settings.WithMode(approval.ModeReadOnly)
+				r.Settings.ServiceTier = "priority"
+				r.Sandbox.Mode = sandbox.ReadOnly
+			},
+		},
+		{
+			name:    "the session's fast mode stays with its provider",
+			in:      func(in *app.Inputs) { in.Provider = "openai" },
+			resumed: session.Info{Provider: app.CodexProvider, Fast: new(true)},
+			want: func(r *app.Resolved) {
+				r.Settings.Provider, r.Settings.Model = "openai", ""
+				r.Review.Model = ""
 			},
 		},
 		{
@@ -257,7 +296,7 @@ func TestResolve(t *testing.T) {
 			want := app.Resolved{
 				Settings: session.Settings{
 					Provider: app.CodexProvider, Model: app.DefaultCodexModel, Effort: app.DefaultEffort,
-					Workspace: "/ws", Timeout: 30 * time.Minute, Sandbox: string(sandbox.WorkspaceWrite),
+					Workspace: "/ws", Timeout: 30 * time.Minute, Mode: approval.ModeWorkspace, Sandbox: string(sandbox.WorkspaceWrite),
 				},
 				Engine: app.EngineEmbedded, MaxDisk: 5 << 30, Instructions: true,
 				Sandbox: sandbox.Policy{Mode: sandbox.WorkspaceWrite}, AutoCompactPercent: 90, Approval: approval.OnRequest,
@@ -301,6 +340,7 @@ func TestResolveUsageErrors(t *testing.T) {
 		{name: "invalid agents.max_depth", cfg: config.Config{Agents: config.Agents{MaxDepth: new(-1)}}, want: "invalid agents.max_depth -1"},
 		{name: "invalid agents effort", cfg: config.Config{Agents: config.Agents{DefaultSubagentReasoningEffort: "huge"}}, want: `invalid agents.default_subagent_reasoning_effort "huge"`},
 		{name: "invalid sandbox mode", cfg: config.Config{SandboxMode: "yolo"}, want: `invalid sandbox mode "yolo"`},
+		{name: "invalid permission mode", cfg: config.Config{PermissionMode: "yolo"}, want: `invalid permission mode "yolo"`},
 		{name: "invalid approval policy", in: func(in *app.Inputs) { in.Ask = "untrusted" }, want: `invalid approval policy "untrusted"`},
 		{name: "invalid approval prefix", cfg: config.Config{Approvals: config.Approvals{Allow: []string{"echo $HOME"}}}, want: "not a simple command prefix"},
 		{

@@ -116,13 +116,17 @@ func (s *Session) onSettings(next Settings) Applied {
 		if next.ServiceTier != prev.ServiceTier {
 			live = live && s.run.SetServiceTier(next.ServiceTier) == nil
 		}
+		if next.Mode != prev.Mode {
+			live = live && s.run.SetMode(next.Mode) == nil
+		}
 		onlyLiveFields := next.Provider == prev.Provider && next.Workspace == prev.Workspace && next.BaseURL == prev.BaseURL
-		changed := next.Effort != prev.Effort || next.Model != prev.Model || next.ServiceTier != prev.ServiceTier
+		changed := next.Effort != prev.Effort || next.Model != prev.Model || next.ServiceTier != prev.ServiceTier || next.Mode != prev.Mode
 		if live && onlyLiveFields && changed {
 			applied = AppliedLive
 		}
 	}
 	s.emit(SettingsChanged{At: time.Now(), Settings: next, Applied: applied})
+	s.saveSettings(next)
 
 	return applied
 }
