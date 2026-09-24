@@ -14,6 +14,7 @@ import (
 	"github.com/viktordanov/uagent-harness/internal/approval"
 	"github.com/viktordanov/uagent-harness/internal/compaction"
 	"github.com/viktordanov/uagent-harness/internal/config"
+	"github.com/viktordanov/uagent-harness/internal/review"
 	"github.com/viktordanov/uagent-harness/internal/rules"
 	"github.com/viktordanov/uagent-harness/internal/sandbox"
 	"github.com/viktordanov/uagent-harness/internal/session"
@@ -88,6 +89,10 @@ type Resolved struct {
 	// Rules are the configured [approvals] prefixes; Setup adds the rules
 	// files.
 	Rules []rules.Rule
+	// ApprovalsReviewer is auto_review or user.
+	ApprovalsReviewer string
+	// Review is the auto-reviewer's model, effort, and timeout.
+	Review review.Config
 }
 
 // UsageError is an error in what the user asked for, such as an invalid
@@ -149,10 +154,15 @@ func Resolve(in Inputs, resumed session.Info, cfg config.Config) (Resolved, erro
 	if err != nil {
 		return Resolved{}, err
 	}
+	reviewer, reviewCfg, err := pickReview(cfg, s)
+	if err != nil {
+		return Resolved{}, err
+	}
 
 	return Resolved{
 		Settings: s, Engine: eng, MaxDisk: maxDisk, Instructions: !in.NoInstructions && cfg.InstructionsEnabled(),
 		Sandbox: policy, Env: envPolicy, AutoCompactPercent: percent, Approval: approvalPolicy, Rules: configured,
+		ApprovalsReviewer: reviewer, Review: reviewCfg,
 	}, nil
 }
 

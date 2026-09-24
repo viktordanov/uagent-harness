@@ -39,6 +39,11 @@ type Config struct {
 	// Approvals are command prefixes allowed or forbidden besides the
 	// rules files.
 	Approvals Approvals `toml:"approvals"`
+	// ApprovalsReviewer is who approves an action that needs approval:
+	// auto_review (the default) or user, as Codex's key.
+	ApprovalsReviewer string `toml:"approvals_reviewer"`
+	// Review configures the auto-reviewer's model call.
+	Review Review `toml:"review"`
 
 	// AutoCompactPercent compacts the context once a response used this
 	// share of the model's window (default 90; 0 turns it off).
@@ -131,6 +136,15 @@ type ShellEnvironmentPolicy struct {
 type Approvals struct {
 	Allow  []string `toml:"allow"`
 	Forbid []string `toml:"forbid"`
+}
+
+// Review configures the auto-reviewer. Empty fields take the defaults:
+// codex-auto-review on openai-codex (else the session model), low effort,
+// and a 90s timeout.
+type Review struct {
+	Model   string `toml:"model"`
+	Effort  string `toml:"effort"`
+	Timeout string `toml:"timeout"`
 }
 
 // TUI configures the terminal UI.
@@ -290,6 +304,10 @@ func merge(base, over Config) Config {
 	set(&base.ApprovalPolicy, over.ApprovalPolicy)
 	base.Approvals.Allow = append(base.Approvals.Allow, over.Approvals.Allow...)
 	base.Approvals.Forbid = append(base.Approvals.Forbid, over.Approvals.Forbid...)
+	set(&base.ApprovalsReviewer, over.ApprovalsReviewer)
+	set(&base.Review.Model, over.Review.Model)
+	set(&base.Review.Effort, over.Review.Effort)
+	set(&base.Review.Timeout, over.Review.Timeout)
 	base.SandboxWorkspaceWrite.NetworkAccess = base.SandboxWorkspaceWrite.NetworkAccess || over.SandboxWorkspaceWrite.NetworkAccess
 	base.SandboxWorkspaceWrite.WritableRoots = append(base.SandboxWorkspaceWrite.WritableRoots, over.SandboxWorkspaceWrite.WritableRoots...)
 	env, overEnv := &base.ShellEnvironmentPolicy, over.ShellEnvironmentPolicy
