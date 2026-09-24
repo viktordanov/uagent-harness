@@ -9,7 +9,7 @@ import (
 )
 
 // onRunEvent folds one of the runner's events into the transcript.
-func (s *State) onRunEvent(ev core.Event) {
+func (s *State) onRunEvent(ev core.Event) { //nolint:gocyclo // a dispatch switch over a closed set; see docs/documentation/architecture.md
 	switch e := ev.(type) {
 	case core.RunStarted:
 		s.Live = &Live{RunID: e.RunID, Started: e.At}

@@ -77,7 +77,7 @@ Both engines read the host prompt with the instruction files from the request, k
 <!-- memoria:section id="process" files="process/process.go" -->
 ## The process engine
 
-`process.Engine` is a thin adapter over uagent's `harness.Harness`: `Start` spawns the runner, and every live setter returns `ErrUnsupported`. The runner reads its request once, so the session queues messages until the run ends.
+`process.Engine` is a thin adapter over uagent's `harness.Harness`: `Start` spawns the runner, and every live setter returns `ErrUnsupported`. The runner reads its request once, so the session queues messages until the run ends. Its tests (`process/process_test.go`) run uagent's fake runner: a run's events and result, every live setter returning `ErrUnsupported`, an interrupt, and one harness per permission mode's sandbox, built when a run first asks for it, whose runner gets that sandbox's shell.
 
 The runner runs each command with `$SHELL`. `internal/app/setup.go` points `SHELL` at a script from `sandbox.Shell` that runs the real shell inside the sandbox, so commands are sandboxed without changing the runner. That script cannot ask for more access. `process.NewSandboxed` keeps one harness per sandbox mode, built on first use, and each run uses its permission mode's (`Options.Mode`).
 <!-- /memoria:section -->

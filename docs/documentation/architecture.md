@@ -35,9 +35,9 @@ uah is a pure core with well-organized infrastructure around it, not layered DDD
 
 ## Size and complexity
 
-Files stay under about 400 lines with one concern each, and functions under about 15 cyclomatic complexity. The known exceptions are dispatch switches over closed sets, where splitting would scatter one decision table:
+Files stay under about 400 lines with one concern each, and functions under about 15 cyclomatic complexity. golangci-lint's `gocyclo` fails at 20 as a backstop, so only a runaway function stops CI; each exception above 20 carries a `nolint:gocyclo` comment pointing here. The known exceptions are dispatch switches over closed sets, where splitting would scatter one decision table:
 
-- the TUI reducer's `onIntent`, `onEvent`, `onRunEvent`, and the menu's key handler `onMenu` (`internal/tui/state`), the shell's `Update`, `onKey`, and effect runner `run` (`internal/tui/bubble`), and `itemLines` (`internal/tui/render`);
+- the TUI reducer's `onIntent`, `onEvent`, `onRunEvent`, and the menu's key handler `onMenu` (`internal/tui/state`), the patch parser's `updateLine` state machine (`internal/patch`, ported from Codex), the shell's `Update`, `onKey`, and effect runner `run` (`internal/tui/bubble`), and `itemLines` (`internal/tui/render`);
 - `(*printer).print` in `cmd/uah/print.go`, one line of progress per event;
 - the session's `loop` (`internal/session/loop.go`), one case per command and internal event.
 

@@ -57,7 +57,7 @@ func (c *Cache) lines(it state.Item, width int, now time.Time, v view) []string 
 	return lines
 }
 
-func itemLines(it state.Item, w int, now time.Time, v view) []string {
+func itemLines(it state.Item, w int, now time.Time, v view) []string { //nolint:gocyclo // a dispatch switch over a closed set; see docs/documentation/architecture.md
 	if !v.details {
 		if lines, ok := compactLines(it, w, now); ok {
 			return lines

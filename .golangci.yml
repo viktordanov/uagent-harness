@@ -20,6 +20,7 @@ linters:
     - embeddedstructfieldcheck
     - forcetypeassert
     - funlen
+    - gocyclo
     - gocheckcompilerdirectives
     - goconst
     - ineffassign
@@ -70,6 +71,11 @@ linters:
     # - spancheck   # otel
 
   settings:
+    gocyclo:
+      # A backstop for runaway functions, not the target: aim for about 15
+      # (docs/documentation/architecture.md); the dispatch switches say why
+      # they are over.
+      min-complexity: 20
     errcheck:
       exclude-functions:
         - (net/http.ResponseWriter).Write

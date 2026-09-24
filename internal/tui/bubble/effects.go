@@ -16,7 +16,7 @@ var (
 )
 
 // run turns an effect into a command that does its I/O off the update loop.
-func (m Model) run(e state.Effect) tea.Cmd {
+func (m Model) run(e state.Effect) tea.Cmd { //nolint:gocyclo // a dispatch switch over a closed set; see docs/documentation/architecture.md
 	sess := m.sess
 	fail := func(err error) tea.Msg { return state.Failed{Err: err} }
 	withSession := func(fn func(*session.Session) error) tea.Cmd {
