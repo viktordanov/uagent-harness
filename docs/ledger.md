@@ -112,7 +112,7 @@ Ideas that come up while working go here, not into the items.
 - Subagents: `resume_agent` for children of an earlier process; `SubagentStop` hook; per-child tool lines in the detailed view; interrupting the parent stops its children; a child's approval while the parent is idle is declined today.
 - Auto-review: Codex sends only the transcript delta per review and lets the reviewer run read-only commands; uah sends the whole trimmed context each time. The openai API-key provider reviews with the session model (Codex uses gpt-5.6-luna). The engine's transcript mixes children's events into the parent's.
 - Approvals: "No, and tell the agent what to do" has no text field; no per-session cache of approved commands; the process engine ignores rules and approvals.
-- MCP: resources, prompts, OAuth, restarting a crashed server.
+- MCP: resources, prompts, restarting a crashed server, applying `tools/list_changed`, reconnecting a server after `uah mcp login` without `/new` (docs/design/mcp.md, Open decisions).
 - Compaction: Codex's 20,000-token cap on kept user messages is not applied; compaction events are not in `events.jsonl` or `uah run --stream`.
 - Crash cleanup kills recorded process groups; a reused process group ID after a reboot could hit an unrelated process (uagent's end-of-run cleanup has the same risk).
 - `uah config` does not list `[agents]`, `[review]`, and MCP servers yet.
