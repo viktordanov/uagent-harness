@@ -65,6 +65,9 @@ func Setup(ctx context.Context, in Inputs, logOutput io.Writer) (Result, error) 
 	if err != nil {
 		return Result{}, err
 	}
+	if err := readCompactPrompt(&r); err != nil {
+		return Result{}, err
+	}
 	if r.Instructions {
 		if opts.Instructions, r.Settings.SystemPrompt, err = loadInstructions(in.Workspace, cfg); err != nil {
 			return Result{}, err
@@ -151,8 +154,8 @@ func newEngine(r Resolved, runnerPath, stateDir string, logger *slog.Logger, ser
 		StateDir: stateDir, MaxDisk: r.MaxDisk, Logger: logger, Provider: r.Settings.Provider, Hooks: opts.Hooks,
 		Sandbox: &r.Sandbox, SandboxDir: sandboxDir, Env: r.Env, MCP: servers, Approver: approver,
 		AutoReview: r.ApprovalsReviewer == review.ReviewerAuto, Review: r.Review,
-		InstructionFiles:   instructionFiles(opts.Instructions),
-		AutoCompactPercent: r.AutoCompactPercent, ContextWindow: r.Settings.ContextWindow,
+		InstructionFiles: instructionFiles(opts.Instructions),
+		Compaction:       r.Compaction, ContextWindow: r.Settings.ContextWindow,
 		BeforeCompact: preCompactHook(opts.Hooks, r.Settings),
 	}
 	if subagents != nil {

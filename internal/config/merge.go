@@ -28,6 +28,7 @@ func merge(base, over Config) Config {
 	if over.ModelContextWindow != 0 {
 		base.ModelContextWindow = over.ModelContextWindow
 	}
+	mergeCompaction(&base, over)
 	mergeSandbox(&base, over)
 	mergeEnv(&base.ShellEnvironmentPolicy, over.ShellEnvironmentPolicy)
 	mergeInstructions(&base, over)
@@ -121,4 +122,17 @@ func mergeAgents(base *Agents, over Agents) {
 	}
 	set(&base.DefaultSubagentModel, over.DefaultSubagentModel)
 	set(&base.DefaultSubagentReasoningEffort, over.DefaultSubagentReasoningEffort)
+}
+
+func mergeCompaction(base *Config, over Config) {
+	if over.ModelAutoCompactTokenLimit != 0 {
+		base.ModelAutoCompactTokenLimit = over.ModelAutoCompactTokenLimit
+	}
+	set(&base.CompactPrompt, over.CompactPrompt)
+	set(&base.ExperimentalCompactPromptFile, over.ExperimentalCompactPromptFile)
+	set(&base.CompactModel, over.CompactModel)
+	set(&base.CompactEffort, over.CompactEffort)
+	if over.CompactUserMessageMaxTokens != 0 {
+		base.CompactUserMessageMaxTokens = over.CompactUserMessageMaxTokens
+	}
 }

@@ -19,6 +19,12 @@ review.model                                      codex-auto-review             
 review.effort                                     low                           default
 review.timeout                                    1m30s                         default
 auto_compact_percent                              80                            project file
+model_auto_compact_token_limit                    0                             default
+compact_model                                     gpt-6-luna                    default
+compact_effort                                    medium                        default
+compact_prompt                                    Codex's                       default
+experimental_compact_prompt_file                  ""                            default
+compact_user_message_max_tokens                   20000                         default
 instructions.max_bytes                            32768                         default
 project_doc_max_bytes                             32768                         default
 project_doc_fallback_filenames                    []                            default

@@ -18,12 +18,12 @@ import (
 )
 
 func (e *env) compacting(percent int) *embedded.Engine {
-	return embedded.New(embedded.Config{StateDir: e.StateDir, Provider: "openai", Getenv: e.getenv, AutoCompactPercent: percent})
+	return embedded.New(embedded.Config{StateDir: e.StateDir, Provider: "openai", Getenv: e.getenv, Compaction: compaction.Settings{Percent: percent}})
 }
 
 // compactingIn compacts automatically at percent of a window of this many tokens.
 func (e *env) compactingIn(window int64, percent int) *embedded.Engine {
-	return embedded.New(embedded.Config{StateDir: e.StateDir, Provider: "openai", Getenv: e.getenv, AutoCompactPercent: percent, ContextWindow: window})
+	return embedded.New(embedded.Config{StateDir: e.StateDir, Provider: "openai", Getenv: e.getenv, Compaction: compaction.Settings{Percent: percent}, ContextWindow: window})
 }
 
 func summaryText(s string) string { return compaction.SummaryPrefix + "\n" + s }

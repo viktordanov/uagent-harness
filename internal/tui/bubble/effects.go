@@ -38,7 +38,7 @@ func (m Model) run(e state.Effect) tea.Cmd {
 	case state.EffClear:
 		return withSession(func(s *session.Session) error { return s.Clear() })
 	case state.EffCompact:
-		return withSession(func(s *session.Session) error { return s.Compact() })
+		return withSession(func(s *session.Session) error { return s.CompactWith(e.Focus) })
 	case state.EffResolve:
 		return withSession(func(s *session.Session) error { return s.Resolve(e.ID, e.Answer) })
 	case state.EffSetSettings:

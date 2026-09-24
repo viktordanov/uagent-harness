@@ -82,8 +82,11 @@ type Resolved struct {
 	Sandbox sandbox.Policy
 	// Env is which environment variables commands get.
 	Env sandbox.EnvPolicy
-	// AutoCompactPercent is when the embedded engine compacts (0: never).
-	AutoCompactPercent int
+	// Compaction is when the embedded engine compacts and how it
+	// summarizes. Its Prompt is compact_prompt; Setup reads
+	// CompactPromptFile into it when that is empty.
+	Compaction        compaction.Settings
+	CompactPromptFile string
 	// Approval is when the user is asked to approve a command.
 	Approval approval.Policy
 	// Rules are the configured [approvals] prefixes; Setup adds the rules
@@ -148,7 +151,7 @@ func Resolve(in Inputs, resumed session.Info, cfg config.Config) (Resolved, erro
 	if err != nil {
 		return Resolved{}, err
 	}
-	percent, err := pickCompaction(cfg, &s)
+	compact, promptFile, err := pickCompaction(cfg, &s)
 	if err != nil {
 		return Resolved{}, err
 	}
@@ -167,28 +170,9 @@ func Resolve(in Inputs, resumed session.Info, cfg config.Config) (Resolved, erro
 
 	return Resolved{
 		Settings: s, Engine: eng, MaxDisk: maxDisk, Instructions: !in.NoInstructions && cfg.InstructionsEnabled(),
-		Sandbox: policy, Env: envPolicy, AutoCompactPercent: percent, Approval: approvalPolicy, Rules: configured,
+		Sandbox: policy, Env: envPolicy, Compaction: compact, CompactPromptFile: promptFile, Approval: approvalPolicy, Rules: configured,
 		ApprovalsReviewer: reviewer, Review: reviewCfg, Agents: agentSettings,
 	}, nil
-}
-
-// pickCompaction checks the compaction keys: the automatic limit (Codex's
-// 90% by default) and the context window override, which goes into the
-// settings for the context meter.
-func pickCompaction(cfg config.Config, s *session.Settings) (int, error) {
-	percent := compaction.DefaultAutoPercent
-	if cfg.AutoCompactPercent != nil {
-		percent = *cfg.AutoCompactPercent
-	}
-	if percent < 0 || percent > 100 {
-		return 0, usage(fmt.Errorf("invalid auto_compact_percent %d (want 0 to 100)", percent))
-	}
-	if cfg.ModelContextWindow < 0 {
-		return 0, usage(fmt.Errorf("invalid model_context_window %d", cfg.ModelContextWindow))
-	}
-	s.ContextWindow = cfg.ModelContextWindow
-
-	return percent, nil
 }
 
 // pickEnv checks the configured environment policy.

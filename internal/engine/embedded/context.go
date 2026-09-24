@@ -45,5 +45,5 @@ func (e *Engine) ContextUsage(sessionID string) (contextusage.Usage, bool) {
 	}
 	window := compaction.ContextWindow(last.req.Model.ID, e.cfg.ContextWindow)
 
-	return contextusage.Analyze(last.req, last.input, window, e.cfg.AutoCompactPercent, e.cfg.InstructionFiles), true
+	return contextusage.Analyze(last.req, last.input, window, e.cfg.Compaction.Limit(window), e.cfg.InstructionFiles), true
 }
