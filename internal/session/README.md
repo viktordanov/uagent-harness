@@ -37,7 +37,7 @@ The loop tracks where the session is in a run:
 `Open` also checks the engine's capabilities against `Options.Uses`, the features the configuration asks for: each one the engine does not run gets one `Notice` after `SessionOpened`, from the [capability table](../engine/README.md#what-each-engine-supports). The session never checks the engine's name.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="messages" files="dispatch.go runs.go inject.go history.go" -->
+<!-- memoria:section id="messages" files="dispatch.go runs.go inject.go history.go shell.go" -->
 ## Messages: queue, steer, interrupt
 
 Every message gets an ID and is reported as `InputQueued`, then `InputSent` when it goes to the runner, and `InputDelivered` when the runner echoes it as a `UserMessage`. Messages that never reached the runner are reported as `InputFailed`.
@@ -56,6 +56,8 @@ When a run ends, messages sent into it that it never read go back to the front o
 A message may carry images pasted in the TUI as tag lines at its end (`internal/images`: `<uah-image label="[Image #1]" ref="<sha256>.png" …/>`, the image in `<state>/images`). The session treats them as text: they queue, steer, reach the hooks and the run records, and resume with the message. The embedded engine turns them into image input for the model; `Info.FirstPrompt` and the TUI show the text without them. See the [images design](../../docs/design/images.md).
 
 `Inject` gives the agent a message without a turn of its own, as Codex's `inject_no_new_turn`: it is held and goes out before the next run's messages, and it never starts a run. It is not sent into a live run, because the runner cancels its model request when a message arrives, which would throw away a paid request. It skips the queue and the hooks. A subagent's `<subagent_notification>` reaches its parent this way (`engine.Options.Inject`).
+
+`RunShell(ctx, command)` runs a command the user typed (the TUI's `!` shell mode) with `Options.Shell`, a `usershell.Runner` that `internal/app` builds, so it works the same on both engines. It runs at once, in any state, also while a run is live, as Codex's user shell commands do. `ShellStarted`, `ShellOutput`, and `ShellFinished` report it. The session's interrupt stops it, and so does `Close`. Its record, Codex's `<user_shell_command>` message with the command, exit code, duration, and output cut to 40,000 characters, is held as `Inject` holds a message, with the command's ID: it goes before the next run's messages and never starts a run. A failed, stopped, or refused command is recorded too. By default the command runs outside the sandbox and the command rules, as in Codex; `user_shell_sandbox = true` runs it in the sandbox of the current permission mode and lets a `forbidden` rule refuse it. The [shell mode design](../../docs/design/shell-mode.md) has the research and the decisions.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="settings" files="settings.go dispatch.go compact.go saved.go" -->
@@ -111,7 +113,7 @@ The runner's session files and uagent's run records are the source of truth; the
 Listing and search go through the rebuildable SQLite index in [internal/store](../store/README.md), which falls back to `Sessions` when the index cannot be used.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="events" files="events.go approvals.go" -->
+<!-- memoria:section id="events" files="events.go approvals.go shell.go" -->
 ## Events
 
 `Events()` carries the runner's events (from uagent's `core`), the engine's events, and these session events:
@@ -125,13 +127,14 @@ Listing and search go through the rebuildable SQLite index in [internal/store](.
 | `ApprovalRequested`, `ApprovalResolved` | An approval waiting for `Resolve`, and its answer |
 | `HookRan` | A hook's outcome, command, and duration |
 | `Notice` | Text for the user, with a level |
+| `ShellStarted`, `ShellOutput`, `ShellFinished` | A command the user typed (`RunShell`): its start, its output as it arrives, and its result with the record the agent gets |
 | `Idle` | The session has nothing to do |
 
 `uah run --stream` writes them as JSONL, and the TUI reduces them into its state.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="tests" files="session_test.go hooks_test.go process_test.go compact_test.go history_test.go sidecar_test.go saved_test.go" -->
+<!-- memoria:section id="tests" files="session_test.go hooks_test.go process_test.go compact_test.go history_test.go sidecar_test.go saved_test.go shell_test.go" -->
 ## Tests
 
-`session_test.go` and `hooks_test.go` drive a session with a scripted fake engine, so each state transition can be held open: queueing while running, steering while starting, interrupts that keep the queue, messages the run never read, withdrawal, live settings, failures, and every hook event. `saved_test.go` pins the settings kept in the sidecar and a live mode change. `process_test.go` runs a session on the real process engine with uagent's fake runner: a steer that restarts the run, and what the session does the same on both engines (the host prompt, the session-level hooks, the saved settings and when they apply, and the notices for what the engine does not run). Resuming with the saved settings is tested end to end in `internal/app/resume_test.go`.
+`session_test.go` and `hooks_test.go` drive a session with a scripted fake engine, so each state transition can be held open: queueing while running, steering while starting, interrupts that keep the queue, messages the run never read, withdrawal, live settings, failures, and every hook event. `saved_test.go` pins the settings kept in the sidecar and a live mode change. `process_test.go` runs a session on the real process engine with uagent's fake runner: a steer that restarts the run, and what the session does the same on both engines (the host prompt, the session-level hooks, the saved settings and when they apply, and the notices for what the engine does not run). Resuming with the saved settings is tested end to end in `internal/app/resume_test.go`. `shell_test.go` pins `RunShell`: no run starts, the record goes first with the next message (on the fake engine and on the process engine), a command during a live run is not sent into it, and an interrupt stops it; `internal/app/usershell_test.go` runs it on the embedded engine with `testing/fakellm` (the next request carries Codex's format) and with `user_shell_sandbox` (a `forbid` rule refuses, the mode picks the sandbox), and `internal/usershell` tests a write outside the workspace failing in workspace mode.
 <!-- /memoria:section -->

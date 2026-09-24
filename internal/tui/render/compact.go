@@ -64,7 +64,13 @@ func (st *Styles) compactLines(it state.Item, w int, now time.Time) ([]string, b
 // userLines draws your message on the band, after a λ, with a band row
 // above and below as Codex draws it.
 func (st *Styles) userLines(text, suffix string, w int) []string {
-	lines := wrapPrefixed(text, w, st.accent.Render("λ "), "  ")
+	return st.bandLines("λ ", text, suffix, w)
+}
+
+// bandLines draws text on the band after an accent mark: λ for a message,
+// ! for a command the user ran.
+func (st *Styles) bandLines(mark, text, suffix string, w int) []string {
+	lines := wrapPrefixed(text, w, st.accent.Render(mark), "  ")
 	lines[len(lines)-1] += suffix
 	out := []string{"", st.band("", w)}
 	for _, l := range lines {

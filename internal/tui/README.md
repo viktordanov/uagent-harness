@@ -56,7 +56,7 @@ A frame: `View` calls `render.Screen`. The transcript is virtualized: it renders
 Effects made before the first session opens (the startup prompt, for example) are held and run once it opens.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="items" files="state/items.go state/runevents.go state/agents.go state/contextview.go state/approval.go state/mcp.go render/items.go render/mcp.go state/patch.go" -->
+<!-- memoria:section id="items" files="state/items.go state/runevents.go state/agents.go state/contextview.go state/approval.go state/mcp.go render/items.go render/mcp.go state/patch.go state/shell.go render/shell.go" -->
 ## Transcript items
 
 The transcript is a list of `Item`s, each with a stable key. The reducer updates an item in place by key and raises its `Version`, so a tool call that finishes after later turns updates its original row.
@@ -73,11 +73,12 @@ The transcript is a list of `Item`s, each with a stable key. The reducer updates
 | `KindContext` | `context:<n>` | `/context` (`ContextShown`) |
 | `KindFinish` | `done:<run ID>` | `RunFinished`: the end of a run in the compact view |
 | `KindMCP` | `mcp:<n>` | `/mcp` (`MCPListed`): one line per server; `Final` asks for the verbose form (`render/mcp.go`) |
+| `KindShell` | `msg:<command ID>` | A command you ran in shell mode: `session.ShellStarted`, `ShellOutput` (streamed into `Detail`), and `ShellFinished`; the runner's echo of its record marks it delivered, and a saved record makes it in a resumed transcript (`state/shell.go`, `render/shell.go`) |
 
 The compact view draws one line per tool call, as Codex does; the detailed view (ctrl+t) adds the header, run dividers, turns, and token totals. `LevelDebug` notices show only in the detailed view.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="keys" files="bubble/keys.go state/reduce.go state/approval.go state/mode.go" -->
+<!-- memoria:section id="keys" files="bubble/keys.go state/reduce.go state/approval.go state/mode.go state/shell.go render/shell.go bubble/model.go" -->
 ## Keys
 
 | Key | Action |
@@ -85,7 +86,8 @@ The compact view draws one line per tool call, as Codex does; the detailed view 
 | enter | Send. While the agent works, the message queues and goes out when the run ends |
 | ctrl+enter, alt+enter | Send now. The embedded engine gives the message to the running agent before its next model request; the process engine restarts the run with the queue and the message |
 | shift+enter, ctrl+j | New line |
-| esc esc | Interrupt the run (the second esc within 2 seconds); queued messages stay |
+| esc esc | Interrupt the run (the second esc within 2 seconds); queued messages stay. It also stops a running shell-mode command |
+| `!` on an empty composer | Shell mode (see below) |
 | ↑ on an empty composer | Take the last queued message back to edit it |
 | alt+, / alt+. | Lower or raise the effort |
 | shift+tab | Next permission mode: read only, workspace, auto, and back to read only; from full access, read only. The footer shows the mode, and the session applies it (live on the embedded engine, from the next run on the process engine); `state/mode.go` |
@@ -107,6 +109,8 @@ The approval overlay replaces the composer keys while it is open:
 | y | Yes, proceed |
 | s (or p) | Yes, and don't ask again for commands that start with the proposed prefix. Shown only when there is a prefix |
 | n, esc, ctrl+c | No, and tell the agent what to do differently |
+
+**Shell mode**, after Codex's and Claude Code's `!`: the composer's λ becomes an accent `!`, the placeholder and the footer's hint say so, and the menu stays closed, so `/bin/ls` is a path. Enter (or ctrl+enter) runs the line as a command in the workspace (`EffShell`, `Session.RunShell`) and returns the composer to messages; backspace on the empty composer, or esc, leaves shell mode first. The command runs at once, also while the agent works; its output streams into a `KindShell` item, drawn on the band after `!` with its exit status and its output folded to 10 rows (50 in the detailed view). Its record goes to the agent with your next message. `State.Shell` holds the mode, `render.ShellPrompt` draws the mark, and `bubble` only maps `!` and backspace and applies the prompt after each reduce. The research and decisions are in the [shell mode design](../../docs/design/shell-mode.md).
 
 In the picker, ↑/↓ choose, enter resumes, tab switches between this directory and all directories, typing filters, and esc goes back.
 
@@ -256,7 +260,7 @@ To add an item kind, follow `KindContext`:
 To add a key, map it to an intent in `bubble/keys.go` and handle the intent in `state.Reduce`. Keep the existing keys' meanings.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="tests" files="state/usage_test.go render/usage_test.go bubble/usage_test.go state/images_test.go bubble/images_test.go state/reduce_test.go state/menu_test.go state/contextview_test.go state/mode_test.go render/screen_test.go render/contextview_test.go render/mode_test.go bubble/bubble_test.go bubble/approval_test.go bubble/mode_test.go state/config_test.go bubble/config_test.go render/diff_test.go" -->
+<!-- memoria:section id="tests" files="state/images_test.go bubble/images_test.go state/reduce_test.go state/menu_test.go state/contextview_test.go state/mode_test.go render/screen_test.go render/contextview_test.go render/mode_test.go bubble/bubble_test.go bubble/approval_test.go bubble/mode_test.go state/config_test.go bubble/config_test.go render/diff_test.go state/shell_test.go render/shell_test.go bubble/shell_test.go state/usage_test.go render/usage_test.go bubble/usage_test.go" -->
 ## Tests
 
 | Test | Pins |
@@ -268,5 +272,6 @@ To add a key, map it to an intent in `bubble/keys.go` and handle the intent in `
 | `state/mode_test.go`, `render/mode_test.go`, `bubble/mode_test.go` | shift+tab's cycle, the mode notice, the footer and header in each mode, and shift+tab through a real session |
 | `state/images_test.go`, `bubble/images_test.go` | Images: placeholders and their numbers, removal by deleting the placeholder or with one backspace, what a message sends, the transcript with placeholders live and resumed, pasted and dropped paths, `@` image files, the process engine's notice, and a real embedded session whose model request carries the image, with a fake clipboard |
 | `state/usage_test.go`, `render/usage_test.go`, `bubble/usage_test.go` | Plan usage: the read after each run, `/status` rows and staleness, the footer, warnings once per threshold, the limit notice, a provider without usage, and a real reader against a loopback backend |
+| `state/shell_test.go`, `render/shell_test.go`, `bubble/shell_test.go` | Shell mode: entering and leaving it, enter running the line, `/` as a path, the `!` prompt and the footer, the item from its events, the echo, and a resumed record (golden `shell`), and `!` through a real session on the process engine |
 | `state/config_test.go`, `bubble/config_test.go` | `/config`: the rows and sources, toggles, cycles, typed values, what applies live, the warning when another source wins, and a real user file saved with its comments kept, with a change that would stop a session from starting undone |
 <!-- /memoria:section -->

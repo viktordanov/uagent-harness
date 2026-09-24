@@ -92,7 +92,7 @@ A change reaches a live run on the embedded engine from its next command and mod
 | Environment | The whole environment | The same |
 <!-- /memoria:section -->
 
-<!-- memoria:section id="approver" files="approval.go prefix.go" -->
+<!-- memoria:section id="approver" files="approval.go prefix.go typed.go" -->
 ## The approver
 
 `Approver.Decide(ctx, Request, Ask) Decision` is the whole contract. It is safe for concurrent use, because the runner runs tools in parallel.
@@ -107,6 +107,8 @@ A change reaches a live run on the embedded engine from its next command and mod
 
 "Don't ask again" is offered only when no rule matched. The prefix is the model's suggestion when it covers every simple command, else the whole command when it is one simple command, and never a bare shell, interpreter, `git`, `rm`, `sudo`, or `env` (Codex's list, in `prefix.go`). Choosing it appends `prefix_rule(pattern=[...], decision="allow")` to `~/.config/uagent/rules/default.rules` and applies it at once, also when the file cannot be written.
 
+`DecideTyped(command)` decides a command the user typed in the TUI's shell mode when `user_shell_sandbox = true`: a `forbidden` rule refuses it and an `allow` rule runs it outside the sandbox, as for the agent; anything else runs in the sandbox without asking, since typing it was the approval. By default the user's commands skip the rules and the sandbox, as in Codex ([shell mode](../../docs/design/shell-mode.md)).
+
 `Ask` is built in layers: the embedded engine wraps the session's ask with the auto-reviewer (`internal/engine/embedded/autoreview.go`), and the session's ask tries PermissionRequest hooks, then the user (`internal/session/approvals.go`).
 <!-- /memoria:section -->
 
@@ -120,8 +122,8 @@ A change reaches a live run on the embedded engine from its next command and mod
 3. The policy from `--ask`, `UAH_ASK`, or `approval_policy`.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="tests" files="approval_test.go mode_test.go" -->
+<!-- memoria:section id="tests" files="approval_test.go mode_test.go typed_test.go" -->
 ## Tests
 
-`approval_test.go` pins the decision table: each rule decision, escalation with and without a sandbox, the policies, headless denial, and "don't ask again". `mode_test.go` pins the modes' sandboxes, who decides, and the cycle. `internal/engine/embedded/approval_test.go` runs the pipeline end to end on the embedded engine with `testing/fakellm`, including PermissionRequest hooks and auto-review, and `internal/engine/embedded/mode_test.go` the modes: a live switch to read only, and Auto mode deciding without the user.
+`approval_test.go` pins the decision table: each rule decision, escalation with and without a sandbox, the policies, headless denial, and "don't ask again". `mode_test.go` pins the modes' sandboxes, who decides, and the cycle. `typed_test.go` pins `DecideTyped`. `internal/engine/embedded/approval_test.go` runs the pipeline end to end on the embedded engine with `testing/fakellm`, including PermissionRequest hooks and auto-review, and `internal/engine/embedded/mode_test.go` the modes: a live switch to read only, and Auto mode deciding without the user.
 <!-- /memoria:section -->
