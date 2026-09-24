@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -31,6 +32,9 @@ type Reply struct {
 	// InputTokens, when set, is the usage the response reports as input
 	// tokens (default 100 per request so far).
 	InputTokens int
+	// From, when set, builds the reply from the request, such as a call
+	// that needs an ID from an earlier tool result.
+	From func(Request) Reply
 }
 
 // Call is a function call to a tool by name, with JSON arguments.
@@ -64,8 +68,43 @@ type Server struct {
 
 	mu       sync.Mutex
 	replies  []Reply
+	routes   []route
 	requests []Request
 	seen     chan int
+}
+
+// route is a script for the requests whose user messages contain match.
+type route struct {
+	match   string
+	replies []Reply
+}
+
+// Route answers the requests whose user messages contain match with its
+// own replies, then "done", so one server can serve a parent session and
+// the subagents it starts with those messages.
+func (s *Server) Route(match string, replies ...Reply) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.routes = append(s.routes, route{match: match, replies: replies})
+}
+
+// next takes the reply for req from its route or the main script. It holds
+// s.mu.
+func (s *Server) next(req Request) Reply {
+	script := &s.replies
+	for i, r := range s.routes {
+		if slices.ContainsFunc(req.UserTexts, func(t string) bool { return strings.Contains(t, r.match) }) {
+			script = &s.routes[i].replies
+
+			break
+		}
+	}
+	reply := Reply{Text: "done"}
+	if len(*script) > 0 {
+		reply, *script = (*script)[0], (*script)[1:]
+	}
+
+	return reply
 }
 
 // New starts a server that closes with the test.
@@ -106,11 +145,11 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	s.requests = append(s.requests, req)
 	n := len(s.requests)
-	reply := Reply{Text: "done"}
-	if len(s.replies) > 0 {
-		reply, s.replies = s.replies[0], s.replies[1:]
-	}
+	reply := s.next(req)
 	s.mu.Unlock()
+	if reply.From != nil {
+		reply = reply.From(req)
+	}
 	s.seen <- n
 	if reply.Gate != nil {
 		select {

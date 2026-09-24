@@ -12,6 +12,7 @@ import (
 
 	"github.com/viktordanov/uagent/harness"
 
+	"github.com/viktordanov/uagent-harness/internal/agents"
 	"github.com/viktordanov/uagent-harness/internal/approval"
 	"github.com/viktordanov/uagent-harness/internal/compaction"
 	"github.com/viktordanov/uagent-harness/internal/config"
@@ -84,7 +85,8 @@ func Setup(ctx context.Context, in Inputs, logOutput io.Writer) (Result, error) 
 	if err != nil {
 		return Result{}, err
 	}
-	eng, err := newEngine(r, in.Runner, stateDir, logger, servers, &opts, approver) //nolint:contextcheck // on Linux, the sandbox probes bwrap once per process, with its own timeout
+	subagents := newAgents(r, cfg, in.Workspace, stateDir, &opts)
+	eng, err := newEngine(r, in.Runner, stateDir, logger, servers, &opts, approver, subagents) //nolint:contextcheck // on Linux, the sandbox probes bwrap once per process, with its own timeout
 	if err != nil {
 		return Result{}, err
 	}
@@ -115,7 +117,7 @@ func loadHooks(cfg config.Config, workspace string) (*hooks.Runner, error) {
 }
 
 // newEngine builds the resolved engine and adds its notices to opts.
-func newEngine(r Resolved, runnerPath, stateDir string, logger *slog.Logger, servers *mcp.Manager, opts *session.Options, approver *approval.Approver) (engine.Engine, error) {
+func newEngine(r Resolved, runnerPath, stateDir string, logger *slog.Logger, servers *mcp.Manager, opts *session.Options, approver *approval.Approver, subagents *agents.Manager) (engine.Engine, error) {
 	sandboxDir := filepath.Join(stateDir, "sandbox")
 	if r.Engine == EngineProcess {
 		runner, err := harness.FindRunner(runnerPath)
@@ -141,13 +143,20 @@ func newEngine(r Resolved, runnerPath, stateDir string, logger *slog.Logger, ser
 
 		return process.New(harness.Config{Backend: backend, StateDir: stateDir, MaxDisk: r.MaxDisk, Logger: logger}), nil
 	}
-	emb := embedded.New(embedded.Config{
+	ecfg := embedded.Config{
 		StateDir: stateDir, MaxDisk: r.MaxDisk, Logger: logger, Provider: r.Settings.Provider, Hooks: opts.Hooks,
 		Sandbox: &r.Sandbox, SandboxDir: sandboxDir, Env: r.Env, MCP: servers, Approver: approver,
 		AutoReview: r.ApprovalsReviewer == review.ReviewerAuto, Review: r.Review,
 		AutoCompactPercent: r.AutoCompactPercent, ContextWindow: r.Settings.ContextWindow,
 		BeforeCompact: preCompactHook(opts.Hooks, r.Settings),
-	})
+	}
+	if subagents != nil {
+		ecfg.Subagents = subagents
+	}
+	emb := embedded.New(ecfg)
+	if subagents != nil {
+		subagents.Bind(emb)
+	}
 	if r.Settings.ServiceTier != "" && !emb.Capabilities().ServiceTier {
 		return nil, usage(errors.New("--fast needs the openai or openai-codex provider"))
 	}

@@ -64,9 +64,41 @@ type Config struct {
 	Hooks map[string][]Hook `toml:"hooks"`
 	// MCPServers are keyed by server name, in Codex's format.
 	MCPServers map[string]mcp.ServerConfig `toml:"mcp_servers"`
+	// Agents configures subagents, as Codex's [agents].
+	Agents Agents `toml:"agents"`
 
 	// Projects are keyed by absolute workspace path.
 	Projects map[string]Project `toml:"projects"`
+}
+
+// Agents configures subagents with Codex's [agents] keys. Unset values
+// take the defaults: enabled, 4 open agents per session, depth 1, and the
+// parent's model and effort.
+type Agents struct {
+	Enabled                        *bool `toml:"enabled"`
+	MaxConcurrentThreadsPerSession *int  `toml:"max_concurrent_threads_per_session"`
+	// MaxThreads is Codex's older name for the same limit.
+	MaxThreads                     *int   `toml:"max_threads"`
+	MaxDepth                       *int   `toml:"max_depth"`
+	DefaultSubagentModel           string `toml:"default_subagent_model"`
+	DefaultSubagentReasoningEffort string `toml:"default_subagent_reasoning_effort"`
+}
+
+// MaxThreadsValue is the concurrency limit under either name, or nil.
+func (a Agents) MaxThreadsValue() *int {
+	if a.MaxConcurrentThreadsPerSession != nil {
+		return a.MaxConcurrentThreadsPerSession
+	}
+
+	return a.MaxThreads
+}
+
+// AgentsDir holds the user's agent role files (*.toml), as Codex's.
+func AgentsDir() string { return filepath.Join(Dir(), "agents") }
+
+// ProjectAgentsDir holds a trusted workspace's agent role files.
+func ProjectAgentsDir(workspace string) string {
+	return filepath.Join(workspace, ".uagent", "agents")
 }
 
 // Instructions configure instruction files.

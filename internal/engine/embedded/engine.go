@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"sync"
@@ -70,6 +71,10 @@ type Config struct {
 	// rules and the approval policy. Nil applies no rules and asks for
 	// escalations.
 	Approver *approval.Approver
+	// Subagents, when set, offers the agent tools (spawn_agent, send_input,
+	// wait, close_agent) to sessions it lets spawn; the engine closes it
+	// when it is an io.Closer.
+	Subagents engine.Subagents
 }
 
 // Engine runs the agent in process.
@@ -109,13 +114,18 @@ func (e *Engine) MCPServers() []mcp.ServerStatus {
 	return e.cfg.MCP.Status()
 }
 
-// Close stops the MCP servers; a later run starts them again.
+// Close stops the subagents and the MCP servers; a later run starts the
+// servers again.
 func (e *Engine) Close() error {
-	if e.cfg.MCP == nil {
-		return nil
+	var errs []error
+	if c, ok := e.cfg.Subagents.(io.Closer); ok {
+		errs = append(errs, c.Close())
+	}
+	if e.cfg.MCP != nil {
+		errs = append(errs, e.cfg.MCP.Close())
 	}
 
-	return e.cfg.MCP.Close() //nolint:wrapcheck // the manager's errors name the server
+	return errors.Join(errs...)
 }
 
 func (e *Engine) Capabilities() engine.Capabilities {
