@@ -79,7 +79,8 @@ func TestTUI_ApproveAnEscalation(t *testing.T) {
 	assert.NotContains(t, d.view(), "Run outside the sandbox?")
 	assert.FileExists(t, target)
 
-	d.key('c', tea.ModCtrl)
+	d.typeText("/quit")
+	d.key(tea.KeyEnter, 0)
 	d.waitQuit()
 }
 
