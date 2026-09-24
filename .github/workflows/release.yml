@@ -1,0 +1,64 @@
+name: Release assets
+
+# Builds the macOS and Linux archives for a tag and attaches them to its GitHub
+# release, where the Homebrew tap and the AUR package download them.
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to build
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      # The tag's source goes in source/; the release script comes from the
+      # branch the workflow runs on, so an older tag can be rebuilt.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          path: source
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: tools
+          sparse-checkout: scripts
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: source/go.mod
+          cache-dependency-path: source/go.sum
+      - name: Build the archives
+        env:
+          UAH_SOURCE: source
+        run: |
+          set -euo pipefail
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          tools/scripts/package-release.sh --version "${TAG#v}" --output dist
+      - name: Check the Linux binary runs
+        run: |
+          set -euo pipefail
+          version="${TAG#v}"
+          tar -xzf "dist/uah-${version}-x86_64-unknown-linux-gnu.tar.gz" -C dist
+          dist/uah-${version}-x86_64-unknown-linux-gnu/uah --version | grep -qx "uah version ${TAG}"
+      - name: Attach them to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 \
+            || gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --title "uah $TAG" --generate-notes
+          gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber dist/*.tar.gz dist/*.sha256
