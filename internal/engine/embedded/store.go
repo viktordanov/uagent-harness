@@ -14,6 +14,8 @@ import (
 	"github.com/unreallabsai/unreal-agent/harness/session"
 	"github.com/unreallabsai/unreal-agent/harness/sessionstore"
 	"github.com/unreallabsai/unreal-agent/harness/sessionstore/localfile"
+
+	"github.com/viktordanov/uagent/core"
 )
 
 // runStore is the session a run records to, and the log that copies its output.
@@ -25,15 +27,25 @@ type runStore struct {
 }
 
 // openStore opens the session store, the requested session, and the
-// per-invocation log. The log is added to the closers.
-func (w *wiring) openStore(ctx context.Context, requested string) (runStore, error) {
+// per-invocation log. The log is added to the closers. A forked session's
+// first run puts its messages in the store first (see seedFork).
+func (w *wiring) openStore(ctx context.Context, req core.Request, messages []core.UserInput) (runStore, error) {
 	store, err := localfile.New(w.l.SessionsDir)
 	if err != nil {
 		return runStore{}, fmt.Errorf("failed to open the session store: %w", err)
 	}
-	id, restored, err := openSession(ctx, store, requested)
+	id, restored, err := openSession(ctx, store, req.SessionID)
 	if err != nil {
 		return runStore{}, err
+	}
+	seeded, err := w.e.seedFork(ctx, store, id, messages, req.Effort)
+	if err != nil {
+		return runStore{}, err
+	}
+	if seeded {
+		if restored, err = store.Resume(ctx, id); err != nil {
+			return runStore{}, fmt.Errorf("failed to open session %q: %w", id, err)
+		}
 	}
 	logFile, err := openDatetimeLog(w.l.LogsDir, time.Now())
 	if err != nil {

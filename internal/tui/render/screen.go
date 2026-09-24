@@ -34,6 +34,9 @@ func Screen(s state.State, c *Cache, f Frame) (string, int) {
 	if s.Mode == state.ModePicker {
 		return picker(s, f), -1
 	}
+	if s.View != nil && len(s.Approvals) == 0 { // an approval is the session's: it shows there
+		return agentScreen(s, c, f)
+	}
 	var top []string
 	if s.Details {
 		top = append(top, headerLine(s, f.Width))

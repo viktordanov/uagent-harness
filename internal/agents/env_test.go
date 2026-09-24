@@ -156,7 +156,7 @@ func (ev *events) approval() session.ApprovalRequested {
 
 func call(name, args string) fakellm.Call { return fakellm.Call{Name: name, Args: args} }
 
-var idPattern = regexp.MustCompile(`"agent_id":"([0-9a-f-]{36})"`)
+var idPattern = regexp.MustCompile(`"agent_id":"((?:subagent-)?[0-9a-f-]{36})"`)
 
 // ids are the agent IDs in the request's tool results, in order.
 func ids(req fakellm.Request) []string {

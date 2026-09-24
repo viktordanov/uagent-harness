@@ -86,6 +86,9 @@ type State struct {
 	Picker  Picker
 	Menu    Menu
 	Now     time.Time
+	// View, when set, shows a subagent's transcript instead of the
+	// session's (see agentview.go).
+	View *AgentView
 
 	// Status is a transient hint in the footer, such as a pending confirmation.
 	Status      string

@@ -89,6 +89,9 @@ type Engine struct {
 	transcripts sync.Map
 	// last are each session's latest model request, for /context.
 	last lastRequests
+	// forks are the forked sessions whose first run has not started;
+	// cacheKeys are the sessions whose prompt cache key is not their ID.
+	forks, cacheKeys sync.Map
 }
 
 func New(cfg Config) *Engine {
@@ -239,3 +242,6 @@ func (s *lockedSink) emit(e core.Event) {
 	}
 	s.sink(e)
 }
+
+// Subagents is the engine's subagents, for a view that follows one.
+func (e *Engine) Subagents() engine.Subagents { return e.cfg.Subagents }

@@ -36,7 +36,7 @@ type tool struct {
 	name        string
 	description func(m *Manager) string
 	schema      string
-	run         func(ctx context.Context, m *Manager, parentID string, args json.RawMessage) (any, error)
+	run         func(ctx context.Context, m *Manager, call engine.AgentCall) (any, error)
 }
 
 var tools = []tool{
@@ -74,12 +74,12 @@ func (m *Manager) definitions() []engine.AgentTool {
 }
 
 // Call runs one tool call and returns its JSON result.
-func (m *Manager) Call(ctx context.Context, parentID, name string, args json.RawMessage) (string, error) {
+func (m *Manager) Call(ctx context.Context, call engine.AgentCall) (string, error) {
 	for _, t := range tools {
-		if t.name != name {
+		if t.name != call.Tool {
 			continue
 		}
-		out, err := t.run(ctx, m, parentID, args)
+		out, err := t.run(ctx, m, call)
 		if err != nil {
 			return "", err
 		}
@@ -91,7 +91,7 @@ func (m *Manager) Call(ctx context.Context, parentID, name string, args json.Raw
 		return string(data), nil
 	}
 
-	return "", fmt.Errorf("unknown agent tool %q", name)
+	return "", fmt.Errorf("unknown agent tool %q", call.Tool)
 }
 
 // Arguments and results of the tools.
@@ -101,6 +101,8 @@ type (
 		AgentType string `json:"agent_type"`
 		Model     string `json:"model"`
 		Effort    string `json:"reasoning_effort"`
+		// ForkContext starts the child from a copy of the parent's history.
+		ForkContext bool `json:"fork_context"`
 	}
 	spawnResult struct {
 		AgentID  string `json:"agent_id"`
@@ -136,8 +138,8 @@ type (
 	}
 )
 
-func runSpawn(ctx context.Context, m *Manager, parentID string, raw json.RawMessage) (any, error) {
-	a, err := decode[spawnArgs](raw)
+func runSpawn(ctx context.Context, m *Manager, call engine.AgentCall) (any, error) {
+	a, err := decode[spawnArgs](call.Args)
 	if err != nil {
 		return nil, err
 	}
@@ -145,11 +147,12 @@ func runSpawn(ctx context.Context, m *Manager, parentID string, raw json.RawMess
 		return nil, errEmptyMessage
 	}
 
-	return m.spawn(ctx, parentID, a)
+	return m.spawn(ctx, call, a)
 }
 
-func runSend(_ context.Context, m *Manager, parentID string, raw json.RawMessage) (any, error) {
-	a, err := decode[sendArgs](raw)
+func runSend(_ context.Context, m *Manager, call engine.AgentCall) (any, error) {
+	parentID := call.ParentID
+	a, err := decode[sendArgs](call.Args)
 	if err != nil {
 		return nil, err
 	}
@@ -161,8 +164,9 @@ func runSend(_ context.Context, m *Manager, parentID string, raw json.RawMessage
 	return sendResult{SubmissionID: id}, err
 }
 
-func runWait(ctx context.Context, m *Manager, parentID string, raw json.RawMessage) (any, error) {
-	a, err := decode[waitArgs](raw)
+func runWait(ctx context.Context, m *Manager, call engine.AgentCall) (any, error) {
+	parentID := call.ParentID
+	a, err := decode[waitArgs](call.Args)
 	if err != nil {
 		return nil, err
 	}
@@ -181,8 +185,9 @@ func runWait(ctx context.Context, m *Manager, parentID string, raw json.RawMessa
 	return waitResult{Status: bound(statuses), TimedOut: timedOut}, err
 }
 
-func runClose(_ context.Context, m *Manager, parentID string, raw json.RawMessage) (any, error) {
-	a, err := decode[closeArgs](raw)
+func runClose(_ context.Context, m *Manager, call engine.AgentCall) (any, error) {
+	parentID := call.ParentID
+	a, err := decode[closeArgs](call.Args)
 	if err != nil {
 		return nil, err
 	}
@@ -191,8 +196,9 @@ func runClose(_ context.Context, m *Manager, parentID string, raw json.RawMessag
 	return closeResult{PreviousStatus: prev}, err
 }
 
-func runResume(ctx context.Context, m *Manager, parentID string, raw json.RawMessage) (any, error) {
-	a, err := decode[resumeArgs](raw)
+func runResume(ctx context.Context, m *Manager, call engine.AgentCall) (any, error) {
+	parentID := call.ParentID
+	a, err := decode[resumeArgs](call.Args)
 	if err != nil {
 		return nil, err
 	}
