@@ -12,7 +12,7 @@
 The [ledger](docs/ledger.md) tracks what is built and what is next.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="usage" files="cmd/uah/main.go cmd/uah/models.go cmd/uah/run.go cmd/uah/resume.go cmd/uah/sessions.go cmd/uah/tui.go cmd/uah/print.go cmd/uah/completion.go cmd/uah/doctor.go internal/app/doctor.go internal/app/doctorchecks.go cmd/uah/flags.go" -->
+<!-- memoria:section id="usage" files="cmd/uah/main.go cmd/uah/models.go cmd/uah/run.go cmd/uah/resume.go cmd/uah/sessions.go cmd/uah/tui.go cmd/uah/tuiconfig.go cmd/uah/print.go cmd/uah/completion.go cmd/uah/doctor.go internal/app/doctor.go internal/app/doctorchecks.go cmd/uah/flags.go" -->
 ## Get started
 
 1. Install it (Go 1.27.1 or later):
@@ -173,14 +173,14 @@ Hooks in a project's `.uagent/config.toml` run only after `uah hooks trust`; `ua
 
 ### Change settings
 
-Type `/config` in the TUI. It lists auto-compact and its token limit, the compaction model, the default model and effort, fast mode, the details view, and the mouse, each with its value and where the value comes from. ↑↓ choose a setting; enter or space changes it (toggles, cycles, or opens a value to type); ←→ cycle back and forth; esc closes. Each change is saved at once to your user file, keeping its comments. The model, effort, and fast mode also change the running session, the details view and the mouse change at once, and the compaction settings apply to sessions opened afterwards (`/new`, `/resume`). A flag or a trusted project file that sets the same key still wins; `/config` says so.
+Type `/config` in the TUI. It lists auto-compact and its token limit, the compaction model, the default model and effort, fast mode, the permission mode, the details view, and the mouse, each with its value and where the value comes from. ↑↓ choose a setting; enter or space changes it (toggles, cycles, or opens a value to type); ←→ cycle back and forth; esc closes. Each change is saved at once to your user file, keeping its comments. The model, effort, fast mode, and permission mode also change the running session, the details view and the mouse change at once, and the compaction settings apply to sessions opened afterwards (`/new`, `/resume`). A flag or a trusted project file that sets the same key still wins; `/config` says so.
 
 ### See what is configured
 
 `uah config` shows each setting's value and where it came from. `uah doctor` checks that everything works.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="configuration" files="internal/config/config.go cmd/uah/flags.go cmd/uah/config.go internal/app/resolve.go internal/app/setup.go internal/app/explain.go internal/app/explain_files.go .uagent/config.toml .uagent/hooks/guard.sh" -->
+<!-- memoria:section id="configuration" files="internal/config/config.go cmd/uah/flags.go cmd/uah/config.go internal/app/resolve.go internal/app/setup.go internal/app/explain.go internal/app/explain_files.go internal/app/compaction.go internal/app/configedit.go internal/config/edit.go .uagent/config.toml .uagent/hooks/guard.sh" -->
 ## Configuration
 
 Two TOML files:
@@ -332,7 +332,7 @@ Read more: [subagents](internal/agents/README.md), and the [design and validatio
 ### Compaction and `/context`
 
 <!-- memoria:import src="internal/compaction/README.md#summary" -->
-uah compacts a long conversation as Codex does: the earlier user messages stay verbatim and in order, up to the newest 20,000 tokens of them, and the rest is replaced by a model-written handoff summary. The session file keeps the full history; only what goes to the model changes, and a compaction is saved next to the session so a resumed session keeps it.
+uah compacts a long conversation as Codex does: the earlier user messages stay verbatim and in order, up to the newest 20,000 tokens of them, and the rest is replaced by a model-written handoff summary. The summary model, effort, and prompt, when compaction starts, and the kept-message cap are configurable, with Codex's key names where Codex has them. The session file keeps the full history; only what goes to the model changes, and a compaction is saved next to the session so a resumed session keeps it.
 <!-- /memoria:import -->
 
 `/context` shows what fills the window, as Claude Code's does: a 10×10 grid, one cell per percent, with each category's tokens (system prompt, instruction files, skills, tools, MCP tools, your messages, agent messages, and tool calls with their results), the free space, and the auto-compact buffer, then a line per file, skill, and tool. It breaks down the last request sent, estimated at 4 bytes a token and scaled to the input tokens the provider reported (`internal/contextusage`).
