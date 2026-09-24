@@ -43,7 +43,7 @@ Status: `todo`, `doing`, `done`, `cut` (with a reason).
 | 17 | Subagents validated for production; children identical to the main agent except their nested session ID | lane v-subagents | 12 | done |
 | 18 | MCP validated for production; `/mcp` view and OAuth login; `uah mcp` | lane v-mcp | 5 | done |
 | 19 | The chosen TUI look | main session | 17, 18 | done |
-| 20 | Diff rendering like Codex and Claude Code | any free lane | 19 | todo |
+| 20 | Diff rendering like Codex and Claude Code | lane diff | 19 | done |
 | 21 | Model catalog from the provider, as Codex | lane models | — | done |
 | 22 | Subagent handling: steer in the view, notifications to the parent, only working agents browsable, run IDs | main session | 17 | done |
 | 23 | Quality pass over the new concepts | main session | 22 | done |
@@ -150,6 +150,7 @@ Build it as a theme in `internal/tui/render` (styles in one place), so another t
 - Claude Code's details worth taking: line numbers in a gutter, the whole line tinted rather than only the text, and word-level highlighting inside a changed line.
 - The same diff in `uah sessions show` (plain text with `+`/`-`) and in the detailed view unfolded.
 - Source: the runner's edit and apply_patch tool results; where a tool gives no diff, compute it from the before and after content.
+- Done: the runner has no edit tool, so the embedded engine offers Codex's `apply_patch` (function form, `input`), ported to `internal/patch` from Codex rust-v0.156.1. Writes inside the writable roots apply; others go through the approval pipeline under the run's live permission mode. The diff is computed at apply time, kept in the job's handle, and reaches the TUI as `engine.PatchApplied`, live and on reload. Open: the freeform (Lark grammar) form needs custom tools in the runner's Responses adapter; the approval overlay shows `apply_patch <paths>`, not the diff; a hard link inside the workspace to a file outside it is not caught (Codex runs the write in the sandbox for that).
 
 ### 21. Model catalog from the provider, as Codex
 

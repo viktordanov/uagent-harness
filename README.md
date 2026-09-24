@@ -253,6 +253,16 @@ An engine starts runs of unreal-agent-runner for a session: the embedded engine 
 `embedded` is the default; choose with `--engine` or `engine`. The [engine README](internal/engine/README.md) has a table of what each engine supports.
 <!-- /memoria:section -->
 
+<!-- memoria:section id="patch" files="cmd/uah/sessions.go" -->
+### File edits and diffs
+
+<!-- memoria:import src="internal/patch/README.md#summary" -->
+Models edit files with Codex's `apply_patch` tool: a patch of `*** Add File`, `*** Update File` (with `*** Move to`), and `*** Delete File` sections with `@@` hunks, parsed and applied as Codex does, with its lenient context matching and its messages. The embedded engine applies patches inside the writable roots at once, and asks for any other write as for a Bash escalation; the diff it records shows under the call in the TUI and in `uah sessions show`.
+<!-- /memoria:import -->
+
+Read more: [patches](internal/patch/README.md), and how patches are approved in [approvals](internal/approval/README.md#patches).
+<!-- /memoria:section -->
+
 <!-- memoria:section id="instructions" files="internal/app/setup.go internal/config/config.go" -->
 ### Instructions and skills
 
