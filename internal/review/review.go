@@ -10,6 +10,7 @@
 package review
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -110,10 +111,15 @@ type Verdict struct {
 	Usage  llm.Usage
 }
 
-// Config is the reviewer's model and budget.
+// Config is the reviewer's model, budget, and policy.
 type Config struct {
 	Model  string
 	Effort llm.ReasoningEffort
+	// Policy replaces the default security policy for every request that
+	// sets none; PolicyFile is the file it was read from ([review]
+	// policy_file), for display.
+	Policy     string
+	PolicyFile string
 	// Timeout bounds a review (DefaultTimeout when zero).
 	Timeout time.Duration
 	Limits  Limits
@@ -171,7 +177,7 @@ func (r *Reviewer) Reset() {
 
 func (r *Reviewer) review(ctx context.Context, req Request) Verdict {
 	call := llmcall.Request{
-		Model: r.cfg.Model, Effort: r.cfg.Effort, Instructions: Instructions(req.Policy),
+		Model: r.cfg.Model, Effort: r.cfg.Effort, Instructions: Instructions(cmp.Or(req.Policy, r.cfg.Policy)),
 		Input:   []llm.Item{llmcall.Message(llm.RoleUser, Render(req, r.cfg.Limits))},
 		Timeout: r.cfg.Timeout,
 	}

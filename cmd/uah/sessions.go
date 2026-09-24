@@ -40,7 +40,7 @@ func sessionsCommand() *cli.Command {
 		OnUsageError: onUsageError,
 		Action:       listSessions,
 		Commands: []*cli.Command{{
-			Name:         "show",
+			Name:         subShow,
 			Usage:        "print a session's transcript",
 			ArgsUsage:    "<id or unique prefix>",
 			Flags:        []cli.Flag{stateDir, jsonFlag},

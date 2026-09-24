@@ -126,6 +126,9 @@ The permission modes:
 | `model` | string | `codex-auto-review` on openai-codex, else the session's model | override | The review model, on the session's provider |
 | `effort` | string | `low` | override | The review effort: low, medium, high, xhigh, or max |
 | `timeout` | duration | `90s` | override | The limit for one review; a review that times out denies |
+| `policy_file` | path | Codex's review policy | override | A file whose text replaces the review policy, as Codex's `[auto_review] policy` does inline. The fixed framing and the answer format stay. An absolute path or one under `~/`; a missing or empty file stops the session from starting |
+
+`uah prompts init` writes the built-in review policy and summary prompt to `<config dir>/prompts/review.md` and `compact.md` as a starting point, and prints the `policy_file` and `experimental_compact_prompt_file` lines that use them; it overwrites only with `--force`. `uah prompts show review` or `show compact` prints one.
 
 ### Compaction
 
@@ -198,6 +201,12 @@ Each `[mcp_servers.<name>]` table is one server, in Codex's format, so a Codex s
 | `tools` | tables | none | both | Per-tool settings, by tool name, below |
 
 `[mcp_servers.<name>.tools.<tool>]` sets one tool's `approval_mode`: `auto` (ask unless the annotations say read-only, or non-destructive and closed-world), `prompt` (always ask), `writes` (ask unless read-only), or `approve` (never ask).
+
+Three ways set these keys without editing by hand, each in the file that configures the server (the trusted project file when it has the server, else the user file), keeping its comments:
+
+- `uah mcp add <name> --approve …` writes `default_tools_approval_mode = "approve"` for the new server.
+- `uah mcp approve <name> [tool] --mode approve|prompt|writes|auto` sets the server's default, or one tool's mode. Without `--mode`, it prints the current modes.
+- "Yes, and don't ask again for this tool" in the TUI's approval prompt writes `approval_mode = "approve"` for that tool, as Codex's "Allow and don't ask me again" does. The session stops asking at once.
 
 OAuth for streamable HTTP servers, with Codex's keys. A server that answers 401 and advertises OAuth needs `uah mcp login <name>`; until then it shows "needs login" in `/mcp` and `uah doctor`. A server with `bearer_token_env_var` or an `Authorization` header never uses OAuth.
 
@@ -415,10 +424,11 @@ writable_roots = ["../shared"]     # append: after the user's roots, relative to
 
 [approvals]
 allow = ["make test"]              # append: the user's allow list plus this
+forbid = ["git push --force"]      # append: never run, whatever an approval says
 
-[[hooks.PreToolUse]]               # append; runs only after `uah hooks trust`
-matcher = "Bash"
-command = ".uagent/hooks/guard.sh"
+[[hooks.PostToolUse]]              # append; runs only after `uah hooks trust`
+matcher = "apply_patch"
+command = ".uagent/hooks/format.sh"
 timeout = "5s"
 
 [mcp_servers.docs]                 # replace by name: the user's docs server is not used here

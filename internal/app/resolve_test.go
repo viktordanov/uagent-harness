@@ -359,6 +359,7 @@ func TestResolveUsageErrors(t *testing.T) {
 		{name: "invalid approvals_reviewer", cfg: config.Config{ApprovalsReviewer: "robot"}, want: `invalid approvals_reviewer "robot"`},
 		{name: "invalid review effort", cfg: config.Config{Review: config.Review{Effort: "huge"}}, want: `invalid review.effort "huge"`},
 		{name: "invalid review timeout", cfg: config.Config{Review: config.Review{Timeout: "-1s"}}, want: `invalid review.timeout "-1s"`},
+		{name: "relative review policy_file", cfg: config.Config{Review: config.Review{PolicyFile: "review.md"}}, want: `invalid review.policy_file "review.md"`},
 		{name: "invalid agents.max_concurrent_threads_per_session", cfg: config.Config{Agents: config.Agents{MaxConcurrentThreadsPerSession: new(0)}}, want: "invalid agents.max_concurrent_threads_per_session 0"},
 		{name: "invalid agents.max_depth", cfg: config.Config{Agents: config.Agents{MaxDepth: new(-1)}}, want: "invalid agents.max_depth -1"},
 		{name: "invalid agents effort", cfg: config.Config{Agents: config.Agents{DefaultSubagentReasoningEffort: "huge"}}, want: `invalid agents.default_subagent_reasoning_effort "huge"`},

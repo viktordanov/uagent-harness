@@ -19,6 +19,7 @@ approvals_reviewer                                auto_review                   
 review.model                                      codex-auto-review             default
 review.effort                                     low                           default
 review.timeout                                    1m30s                         default
+review.policy_file                                Codex's policy                default
 auto_compact_percent                              80                            project file
 model_auto_compact_token_limit                    0                             default
 compact_model                                     gpt-6-luna                    default

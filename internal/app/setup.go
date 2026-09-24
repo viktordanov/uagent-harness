@@ -71,6 +71,9 @@ func Setup(ctx context.Context, in Inputs, logOutput io.Writer) (Result, error) 
 	if err := readCompactPrompt(&r); err != nil {
 		return Result{}, err
 	}
+	if err := readReviewPolicy(&r); err != nil {
+		return Result{}, err
+	}
 	if r.Instructions {
 		if opts.Instructions, r.Settings.SystemPrompt, err = loadInstructions(in.Workspace, cfg); err != nil {
 			return Result{}, err
