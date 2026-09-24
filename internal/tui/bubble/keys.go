@@ -26,19 +26,8 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.onApprovalKey(msg)
 	}
 	draft := m.composer.Value()
-	if m.st.MenuOpen(draft) {
-		switch msg.String() {
-		case "tab":
-			return m.dispatch(state.MenuAccept{Draft: draft})
-		case keyEnter:
-			return m.dispatch(state.MenuEnter{Draft: draft})
-		case "up", "ctrl+p":
-			return m.dispatch(state.MenuMove{Draft: draft, Delta: -1})
-		case "down", keyCtrlN:
-			return m.dispatch(state.MenuMove{Draft: draft, Delta: 1})
-		case keyEsc:
-			return m.dispatch(state.MenuClose{Draft: draft})
-		}
+	if intent := menuIntent(m.st, msg.String(), draft); intent != nil {
+		return m.dispatch(intent)
 	}
 	switch msg.String() {
 	case keyEnter:
@@ -178,4 +167,25 @@ func (m Model) scroll(lines int) (tea.Model, tea.Cmd) {
 	}
 
 	return m.dispatch(state.ScrollBy{Lines: lines})
+}
+
+// menuIntent maps a key to a menu intent while the menu is open, or nil.
+func menuIntent(st state.State, key, draft string) any {
+	if !st.MenuOpen(draft) {
+		return nil
+	}
+	switch key {
+	case "tab":
+		return state.MenuAccept{Draft: draft}
+	case keyEnter:
+		return state.MenuEnter{Draft: draft}
+	case "up", "ctrl+p":
+		return state.MenuMove{Draft: draft, Delta: -1}
+	case "down", keyCtrlN:
+		return state.MenuMove{Draft: draft, Delta: 1}
+	case keyEsc:
+		return state.MenuClose{Draft: draft}
+	}
+
+	return nil
 }

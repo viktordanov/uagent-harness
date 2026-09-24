@@ -152,31 +152,54 @@ func (a *Approver) Policy() Policy { return a.cfg.Policy }
 func (a *Approver) Decide(ctx context.Context, req Request, ask Ask) Decision {
 	commands, _ := rules.Split(req.Command)
 	rule, matched := a.policy().Check(commands)
-	switch {
-	case matched && rule.Decision == rules.Forbidden:
-		return Decision{Run: Deny, Reason: forbiddenReason(rule)}
-	case matched && rule.Decision == rules.Allow:
-		return Decision{Run: Unsandboxed}
-	case matched && rule.Decision == rules.Prompt:
-	case !req.Escalated && !req.NoSandbox:
-		return Decision{Run: Sandboxed}
+	if d, done := byRule(req, rule, matched); done {
+		return d
 	}
-	escalation := req.Escalated || req.NoSandbox
 	if reason := a.cannotAsk(ask); reason != "" {
 		return Decision{Run: Deny, Reason: reason}
 	}
-	p := Prompt{Command: req.Command, Cwd: req.Cwd, Justification: req.Justification, Escalation: escalation}
+	p := prompt(req, rule, matched, commands)
+	run := Sandboxed
+	if p.Escalation {
+		run = Unsandboxed
+	}
+
+	return a.answer(ask(ctx, p), p, run)
+}
+
+// byRule decides without asking when a rule settles it, or when nothing
+// needs approval; done is false when the user must be asked.
+func byRule(req Request, rule rules.Rule, matched bool) (d Decision, done bool) {
+	switch {
+	case matched && rule.Decision == rules.Forbidden:
+		return Decision{Run: Deny, Reason: forbiddenReason(rule)}, true
+	case matched && rule.Decision == rules.Allow:
+		return Decision{Run: Unsandboxed}, true
+	case matched && rule.Decision == rules.Prompt:
+		return Decision{}, false
+	case !req.Escalated && !req.NoSandbox:
+		return Decision{Run: Sandboxed}, true
+	}
+
+	return Decision{}, false
+}
+
+// prompt is what the user is asked, with a prefix for "don't ask again"
+// when no rule matched.
+func prompt(req Request, rule rules.Rule, matched bool, commands [][]string) Prompt {
+	p := Prompt{Command: req.Command, Cwd: req.Cwd, Justification: req.Justification, Escalation: req.Escalated || req.NoSandbox}
 	if !matched {
 		p.ProposedPrefix = proposePrefix(req.PrefixRule, commands)
 	}
 	if matched && p.Justification == "" {
 		p.Justification = rule.Justification
 	}
-	run := Sandboxed
-	if escalation {
-		run = Unsandboxed
-	}
-	answer := ask(ctx, p)
+
+	return p
+}
+
+// answer turns the user's answer into the decision.
+func (a *Approver) answer(answer Answer, p Prompt, run Run) Decision {
 	switch answer {
 	case Approve:
 		return Decision{Run: run}

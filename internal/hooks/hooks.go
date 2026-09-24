@@ -233,25 +233,32 @@ func (d *Decision) add(event Event, res Result) {
 
 		return
 	}
-	if s := out.HookSpecificOutput; s != nil {
-		switch s.PermissionDecision {
-		case "deny", "ask":
-			d.Block, d.Reason = true, firstNonEmpty(s.PermissionDecisionReason, "denied by a hook")
-
-			return
-		case "allow":
-			d.Allow = true
-		}
-		if len(s.UpdatedInput) > 0 {
-			d.UpdatedInput = s.UpdatedInput
-		}
-		if s.AdditionalContext != "" {
-			d.Context = append(d.Context, s.AdditionalContext)
-		}
+	if s := out.HookSpecificOutput; s != nil && d.addSpecific(*s) {
+		return
 	}
 	if (event == UserPromptSubmit || event == SessionStart) && out == (Output{}) && strings.TrimSpace(res.Stdout) != "" {
 		d.Context = append(d.Context, strings.TrimSpace(res.Stdout)) // plain stdout is context, as in Claude Code
 	}
+}
+
+// addSpecific applies hookSpecificOutput and reports whether it blocked.
+func (d *Decision) addSpecific(s SpecificOutput) bool {
+	switch s.PermissionDecision {
+	case "deny", "ask":
+		d.Block, d.Reason = true, firstNonEmpty(s.PermissionDecisionReason, "denied by a hook")
+
+		return true
+	case "allow":
+		d.Allow = true
+	}
+	if len(s.UpdatedInput) > 0 {
+		d.UpdatedInput = s.UpdatedInput
+	}
+	if s.AdditionalContext != "" {
+		d.Context = append(d.Context, s.AdditionalContext)
+	}
+
+	return false
 }
 
 func firstNonEmpty(values ...string) string {
