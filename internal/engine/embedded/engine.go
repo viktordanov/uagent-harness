@@ -96,17 +96,19 @@ type Engine struct {
 	// models is cfg.Models, or a catalog of the bundled list.
 	models *models.Manager
 	// forks are the forked sessions whose first run has not started;
-	// cacheKeys are the sessions whose prompt cache key is not their ID.
-	forks, cacheKeys sync.Map
+	// cacheKeys are the sessions whose prompt cache key is not their ID;
+	// scopes the sessions with a Scope (engine.Scoper).
+	forks, cacheKeys, scopes sync.Map
 }
 
 // Forget drops what the engine kept for a session that closed: the
-// auto-reviewer's transcript, the last request for /context, and a fork or
-// cache key it may have (engine.Forgetter).
+// auto-reviewer's transcript, the last request for /context, and a fork,
+// cache key, or scope it may have (engine.Forgetter).
 func (e *Engine) Forget(sessionID string) {
 	e.transcripts.Delete(sessionID)
 	e.forks.Delete(sessionID)
 	e.cacheKeys.Delete(sessionID)
+	e.scopes.Delete(sessionID)
 	e.last.forget(sessionID)
 }
 

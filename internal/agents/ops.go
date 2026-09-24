@@ -161,6 +161,7 @@ func (m *Manager) start(parentID, id string, role Role, rec record, resumed bool
 	if f, ok := m.forker(); ok {
 		f.SetCacheKey(id, key) // as Codex keys every agent by its tree's session
 	}
+	m.scope(id, role, rec)
 
 	// Children outlive the call that started them; Close stops them.
 	s, err := session.Open(context.Background(), eng, opts) //nolint:contextcheck // children outlive the spawning call

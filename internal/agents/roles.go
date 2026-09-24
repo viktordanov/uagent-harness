@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -16,8 +17,9 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
-// Role is an agent type from a Codex role file. uah reads the subset of
-// Codex's keys that map to its settings.
+// Role is an agent type from a Codex role file (TOML) or a Markdown agent
+// file with front matter, as Claude Code's. uah reads the subset of their
+// keys that map to its settings.
 type Role struct {
 	Name               string   `toml:"name"`
 	Description        string   `toml:"description"`
@@ -29,16 +31,26 @@ type Role struct {
 	// "fast") runs the agent with priority processing, and "default" without
 	// it, whatever the parent uses. Empty follows the parent.
 	ServiceTier string `toml:"service_tier"`
-	// DeveloperInstructions are added to the agent's system prompt.
+	// DeveloperInstructions are added to the agent's system prompt; a
+	// Markdown file's body.
 	DeveloperInstructions string `toml:"developer_instructions"`
+	// Tools are the tools its agents are offered, by uah's names (see
+	// mapTools); nil offers every tool.
+	Tools []string `toml:"tools"`
+	// Approve are actions its agents run without asking, within the
+	// permission mode: command prefixes and MCP tools (see mapApprove).
+	Approve []string `toml:"approve"`
 	// Path is the file the role came from.
 	Path string `toml:"-"`
 }
 
-// LoadRoles reads the *.toml role files under each directory, later
-// directories replacing earlier roles of the same name, as Codex's config
-// layers do. Missing directories are skipped. A malformed file is left out
-// with a warning, as Codex does; so are keys uah does not support.
+// LoadRoles reads the agent definitions under each directory: Codex's
+// *.toml role files and Markdown *.md files with front matter. A later
+// directory replaces an earlier role of the same name, as Codex's config
+// layers do; within one directory a Markdown file wins over a TOML file of
+// the same name, with a warning. Missing directories are skipped. A
+// malformed file is left out with a warning, as Codex does; so are keys
+// uah does not support.
 func LoadRoles(dirs ...string) (roles []Role, warnings []string) {
 	byName := map[string]Role{}
 	for _, dir := range dirs {
@@ -48,18 +60,22 @@ func LoadRoles(dirs ...string) (roles []Role, warnings []string) {
 
 			continue
 		}
+		layer := map[string]Role{}
 		for _, path := range files {
-			r, ignored, err := readRole(path)
+			r, warns, err := readDefinition(path)
+			warnings = append(warnings, warns...)
 			if err != nil {
 				warnings = append(warnings, "ignoring malformed agent role: "+err.Error())
 
 				continue
 			}
-			if len(ignored) > 0 {
-				warnings = append(warnings, fmt.Sprintf("agent role %s: ignoring keys uah does not support: %s", path, strings.Join(ignored, ", ")))
+			if old, ok := layer[r.Name]; ok {
+				r = clash(old, r)
+				warnings = append(warnings, fmt.Sprintf("agent %q is defined twice in %s; using %s", r.Name, dir, r.Path))
 			}
-			byName[r.Name] = r
+			layer[r.Name] = r
 		}
+		maps.Copy(byName, layer)
 	}
 	for _, r := range byName {
 		roles = append(roles, r)
@@ -69,14 +85,35 @@ func LoadRoles(dirs ...string) (roles []Role, warnings []string) {
 	return roles, warnings
 }
 
-// roleFiles lists the .toml files under dir, recursively, sorted.
+// clash picks one of two definitions of a name in one directory: a
+// Markdown file over a TOML file, else the later file.
+func clash(old, r Role) Role {
+	if isMarkdown(old.Path) && !isMarkdown(r.Path) {
+		return old
+	}
+
+	return r
+}
+
+func isMarkdown(path string) bool { return filepath.Ext(path) == ".md" }
+
+// readDefinition reads a role file of either format.
+func readDefinition(path string) (Role, []string, error) {
+	if isMarkdown(path) {
+		return readMarkdown(path)
+	}
+
+	return readRole(path)
+}
+
+// roleFiles lists the .toml and .md files under dir, recursively, sorted.
 func roleFiles(dir string) ([]string, error) {
 	var files []string
 	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		if !d.IsDir() && filepath.Ext(path) == ".toml" {
+		if ext := filepath.Ext(path); !d.IsDir() && (ext == ".toml" || ext == ".md") {
 			files = append(files, path)
 		}
 
@@ -93,7 +130,8 @@ func roleFiles(dir string) ([]string, error) {
 	return files, nil
 }
 
-// readRole parses and checks one role file, returning the keys it ignored.
+// readRole parses and checks one TOML role file, with warnings about what
+// it ignored.
 func readRole(path string) (Role, []string, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -114,14 +152,38 @@ func readRole(path string) (Role, []string, error) {
 		ignored = append(ignored, fmt.Sprintf("service_tier = %q (want priority, fast, or default)", r.ServiceTier))
 		r.ServiceTier = ""
 	}
-	slices.Sort(ignored)
 	r.Path = path
-	r.Name, r.Description = strings.TrimSpace(r.Name), strings.TrimSpace(r.Description)
+	warnings := r.finish(ignored)
 	if err := r.check(); err != nil {
 		return Role{}, nil, fmt.Errorf("%s: %w", path, err)
 	}
 
-	return r, slices.Compact(ignored), nil
+	return r, warnings, nil
+}
+
+// finish trims the role's names, maps its tools and approvals to uah's,
+// and returns its warnings: the ignored keys, then the tools and
+// approvals uah cannot use.
+func (r *Role) finish(ignored []string) []string {
+	r.Name, r.Description = strings.TrimSpace(r.Name), strings.TrimSpace(r.Description)
+	var warnings, notes []string
+	if len(ignored) > 0 {
+		slices.Sort(ignored)
+		warnings = append(warnings, fmt.Sprintf("agent role %s: ignoring keys uah does not support: %s", r.Path, strings.Join(slices.Compact(ignored), ", ")))
+	}
+	if r.Tools != nil {
+		var w []string
+		r.Tools, w = mapTools(r.Tools)
+		notes = append(notes, w...)
+	}
+	var w []string
+	r.Approve, w = mapApprove(r.Approve)
+	notes = append(notes, w...)
+	for _, n := range notes {
+		warnings = append(warnings, fmt.Sprintf("agent role %s: %s", r.Path, n))
+	}
+
+	return warnings
 }
 
 // check applies Codex's rules for a role file.

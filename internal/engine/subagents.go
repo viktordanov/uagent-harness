@@ -56,6 +56,30 @@ type Forker interface {
 	SetCacheKey(sessionID, key string)
 }
 
+// Scoper is an engine that can narrow one session's tools and let it run
+// some actions without asking. The embedded engine implements it;
+// internal/agents sets a child's scope from its agent definition.
+type Scoper interface {
+	// SetScope applies s to the session's runs from its next run; the zero
+	// Scope removes it.
+	SetScope(sessionID string, s Scope)
+}
+
+// Scope narrows a session: the tools it is offered and the actions it may
+// run without asking. It never widens what the session's permission mode
+// allows.
+type Scope struct {
+	// Tools are the tools the session is offered, by name; mcp__<server>
+	// and mcp__<server>__* stand for every tool of a server. Nil offers
+	// every tool, and an empty, non-nil list none.
+	Tools []string
+	// Approve are actions approved in advance: command prefixes, such as
+	// "git status" or "apply_patch", and MCP tool names or server
+	// patterns. They answer what would otherwise ask, so a forbid rule, the
+	// approval policy never, and a read-only sandbox still hold.
+	Approve []string
+}
+
 // AgentParent is a parent session's live run.
 type AgentParent struct {
 	SessionID string

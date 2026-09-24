@@ -56,6 +56,9 @@ type mcpGate struct {
 	// again for this tool"; warn reports a save that failed.
 	m    *mcp.Manager
 	warn func(string)
+	// approved, when set, reports the tools the session's scope approved
+	// in advance: they run as with approval_mode approve.
+	approved func(name string) bool
 }
 
 // withMCP adds the tools the request does not disallow.
@@ -131,6 +134,9 @@ func (g mcpGate) check(t mcp.Tool, args string) string {
 		if mode, ok := g.m.ToolApproval(t.Name); ok {
 			t.Approval = mode // "don't ask again" applies at once
 		}
+	}
+	if g.approved != nil && g.approved(t.Name) {
+		t.Approval = mcp.ApprovalApprove
 	}
 	if !t.NeedsApproval() {
 		return ""
