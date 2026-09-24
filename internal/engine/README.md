@@ -24,7 +24,9 @@ The choice comes from `--engine`, `UAH_ENGINE`, or `engine` in the [configuratio
 
 `engine.Engine` has three methods: `Name`, `Capabilities`, and `Start(ctx, request, options, sink) (Run, error)`. The sink receives `RunStarted` first and `RunFinished` last, from one goroutine at a time. A `Run` takes messages and settings while it is live (`Send`, `SetEffort`, `SetModel`, `SetServiceTier`, `SetMode`, `Compact`, `Clear`), stops (`Interrupt`, `Kill`), and ends (`Wait`). A method the engine cannot serve returns `ErrUnsupported`, and the session then applies the change from the next run.
 
-`Capabilities` says what reaches a live run (`LiveInput`, `LiveEffort`, `LiveModel`, `ServiceTier`, `LiveMode`) and which features the engine runs at all (`Compaction`, `Rules`, `Approvals`, `ToolHooks`, `MCP`, `Subagents`, `ApplyPatch`, `CodexSkills`, `ContextUsage`, `Images`). The session, the TUI, and `uah doctor` read them; none of them checks the engine's name. [What each engine supports](#what-each-engine-supports) turns them into the capability table.
+`Capabilities` says what reaches a live run (`LiveInput`, `LiveEffort`, `LiveModel`, `ServiceTier`, `LiveMode`) and which features the engine runs at all (`Compaction`, `Rules`, `Approvals`, `ToolHooks`, `MCP`, `Subagents`, `ApplyPatch`, `CodexSkills`, `ContextUsage`, `Images`, `Reconnect`). The session, the TUI, and `uah doctor` read them; none of them checks the engine's name. [What each engine supports](#what-each-engine-supports) turns them into the capability table.
+
+A model request is sent up to `core.Request.MaxAttempts` times, which the session fills from its settings (`request_max_attempts`, default `engine.DefaultMaxAttempts`, 10); both engines pass it to the runner's client, whose backoff waits 2 s, doubling to 30 s, between attempts (v0.1.1).
 
 `engine.Options` carries what `core.Request` does not:
 
@@ -49,7 +51,7 @@ Optional interfaces are the seams the session probes with a type assertion:
 | `Subagents` | The agent tools: `Attach` returns the tools to offer a run, `ToolNames` every name it answers, `Call` runs one, `Interrupt` stops a parent's children. The engine knows no tool name, schema, or result; [internal/agents](../agents/README.md) implements it | `internal/agents` |
 | `Forker` | `Fork` copies a parent's history into a new child session for `spawn_agent`'s `fork_context`; `SetCacheKey` gives a session another prompt cache key (every subagent uses its root session's) | embedded |
 
-The engine's own events join the run's stream: `CompactionStarted`, `Compacted`, `AutoReviewed`, `AgentUpdated`, `AgentActivity` (a child's tool events, for the parent's view), and `PatchApplied` (the diff of an applied `apply_patch` call, `patch.go`). The embedded engine's `Subagents()` returns its `Subagents`, so a session can follow one child's whole stream (`session.WatchAgent`).
+The engine's own events join the run's stream: `CompactionStarted`, `Compacted`, `AutoReviewed`, `AgentUpdated`, `AgentActivity` (a child's tool events, for the parent's view), `PatchApplied` (the diff of an applied `apply_patch` call, `patch.go`), and `Reconnecting` and `ReconnectEnded` (a model request's retries, below). The embedded engine's `Subagents()` returns its `Subagents`, so a session can follow one child's whole stream (`session.WatchAgent`).
 <!-- /memoria:section -->
 
 <!-- memoria:section id="support" files="capabilities.go process/process.go embedded/engine.go" -->
@@ -77,6 +79,7 @@ Features that are on by default, such as live input or subagents, get no notice;
 | Codex's `apply_patch` and its diffs | `ApplyPatch` | On openai and openai-codex models | No |
 | Codex skills (`.agents/skills`, `~/.config/uagent/skills`, `$CODEX_HOME/skills`) | `CodexSkills` | Yes | Only the runner's `.harness/skills` |
 | `/context` | `ContextUsage` | Yes | No |
+| A lost connection to the model | `Reconnect` | Retried; each retry is reported (`Reconnecting`) and shown in the TUI, and a run that loses every attempt says it gave up after N attempts | Retried the same way by the runner, but nothing shows the attempts, and a failed run shows the runner's error |
 | Images pasted into the prompt | `Images` | Sent to the model with the message | The TUI shows the notice and keeps a pasted path as text; the model can still open an image file with ViewImage |
 | An interrupt | | A hard stop through the runner's inbox; the session file records the stopped tools | uagent interrupts the runner process |
 | `unreal-agent-runner` binary | | Not needed | Required |
@@ -135,12 +138,12 @@ The runner (v0.1.1) runs every Bash command as `$SHELL -c <command>` (`harness/o
 The rules see the same command string as on the embedded engine, so they are as strong there as here: they match the command's words, not what a script it runs does. Without rules, `$SHELL` is the sandboxing script, with no gate. That script cannot ask for more access. `process.NewSandboxed` keeps one harness per sandbox mode, built on first use, and each run uses its permission mode's (`Options.Mode`). `process.Capabilities(rules)` is the process engine's capabilities: only `Rules`, when the shells have a gate.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="embedded" files="embedded/engine.go embedded/wiring.go embedded/agent.go embedded/adapter.go embedded/client.go embedded/providers.go codexauth/codexauth.go embedded/store.go embedded/observer.go embedded/tools.go embedded/sandboxtool.go embedded/sandboxschema.go embedded/skills.go embedded/pretooluse.go embedded/autoreview.go embedded/compact.go embedded/context.go embedded/fork.go embedded/mode.go embedded/patchtool.go embedded/images.go" -->
+<!-- memoria:section id="embedded" files="embedded/engine.go embedded/wiring.go embedded/agent.go embedded/adapter.go embedded/client.go embedded/providers.go embedded/clients.go embedded/reconnect.go codexauth/codexauth.go embedded/store.go embedded/observer.go embedded/tools.go embedded/sandboxtool.go embedded/sandboxschema.go embedded/skills.go embedded/pretooluse.go embedded/autoreview.go embedded/compact.go embedded/context.go embedded/fork.go embedded/mode.go embedded/patchtool.go embedded/images.go" -->
 ## The embedded engine
 
 The embedded engine is a uagent `harness.Backend`. uagent still owns the run: the guards, the session lock, the run record, and the output stream. The backend (`wiring.go`) reproduces unreal-agent-runner v0.1.1's `Run` (`cmd/internal/agentrunner/run.go`) in the same order:
 
-1. The provider client and the model (`client.go`, `providers.go`, a copy of the runner's provider table). The ChatGPT credentials for openai-codex come from `codexauth`, which the model catalog (`internal/models`) shares.
+1. The provider client and the model (`client.go`, `providers.go`, a copy of the runner's provider table). `clients.go` builds each provider's Responses client as the runner's does, but over an HTTP client uah makes, so the engine can watch its retries (below). The ChatGPT credentials for openai-codex come from `codexauth`, which the model catalog (`internal/models`) shares.
 2. The session store and the per-invocation log (`store.go`).
 3. The tool registry (`tools.go`, below).
 4. The operation manager with the remote job handlers.
@@ -165,6 +168,16 @@ The coordinator calls one `llm.Adapter`. Two adapters sit in front of the provid
 | `switcher.images` | `images.go` | Gives the model the images pasted into user messages. The runner's `llm.Message` holds text only (v0.1.1), so each request is rewritten: a message loses its `<uah-image …/>` tag lines, and each image follows it as a `ViewImage` call and its result with the image's data URL from `<state>/images`, the one image input the runner's Responses encoder sends. The call IDs follow the item's place, so the prompt cache still matches; a missing file becomes an error text. See the [images design](../../docs/design/images.md) |
 
 `switcher.direct()` is the same client without the live model override, for one-shot calls that choose their own model: the auto-reviewer and the compaction summary. It adds pasted images too, so a summary sees them. The switcher also replaces the prompt cache key when the session has another (`SetCacheKey`).
+
+### Retries
+
+The runner's Responses client retries a failed attempt in its own loop: a lost connection, a stream cut halfway, a timeout, or a 408, 425, 429, or most 5xx statuses, after 2 s, then 4, 8, and 16 s, then every 30 s, less up to a fifth of jitter, or after the server's `Retry-After` up to 30 s (`responsesapi/stream.go`, v0.1.1). It reports nothing while it waits, and its constructors take no transport. So `reconnect.go` watches from outside:
+
+1. `watched` wraps each client. Every request gets a tracker in its context, with the attempt limit.
+2. `watchTransport`, the transport of the HTTP client `clients.go` builds, sees each attempt through that context. A failed connection, a stream that drops before it ends, or a status the client retries emits `engine.Reconnecting` with the next attempt, the limit, the runner's delay for it, and the reason. A response that starts, or the request's end, emits `ReconnectEnded`.
+3. When the last attempt lost its connection, the request fails with "gave up after N attempts because the connection to the model was lost", and the run reports that error without the coordinator's wrapping.
+
+The delay is the runner's policy for the failed attempt (`primitives.RemoteRetryPolicy.Backoff`), not the jittered wait itself, which can be up to a fifth shorter. A 429 the client does not retry, such as a usage limit, shows a retry for as long as it takes the client to return.
 
 ### Forked sessions
 
@@ -213,13 +226,13 @@ A job that had already started before the run stopped fails with "interrupted" w
 | A live setting | A `Capabilities` field in `capabilities.go` and a `Run` method in `engine.go`; `process.go` returns `ErrUnsupported`; `embedded/agent.go` delivers it; `internal/session/dispatch.go` (`onSettings`) calls it |
 | A feature one engine does not run | A `Capabilities` field, a `Feature`, and a row of `engine.Table` in `capabilities.go`; `usedFeatures` in `internal/app/features.go` when a configuration key turns it on. The notice, `uah doctor`, and `/status` follow |
 | A built-in tool | A registry layer in `embedded/tools.go`, wrapping the registry as the MCP and agent layers do. Use a remote job if the call can take long |
-| A provider | `embedded/providers.go`, mirroring the runner's table; set `Priority` if it accepts `service_tier = "priority"` |
+| A provider | `embedded/providers.go`, mirroring the runner's table, and its client in `embedded/clients.go`, built as the runner's client is, over `remoteHTTPClient`; set `Priority` if it accepts `service_tier = "priority"`, and add it to `TestClients_MatchTheRunner` |
 | A session-level query | An optional interface in `engine.go`, implemented by the embedded engine and probed by `internal/session` |
 
 The runner stays unchanged: uah reproduces its wiring instead of patching it, and the equivalence test below keeps the two in step.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="tests" files="capabilities_test.go process/process_test.go process/gate_test.go process/shellgate/gate_test.go embedded/embedded_test.go embedded/approval_test.go embedded/compact_test.go embedded/compact_settings_test.go embedded/context_test.go embedded/mcp_test.go embedded/mcpjobs_internal_test.go embedded/sandbox_test.go embedded/mode_test.go embedded/images_test.go" -->
+<!-- memoria:section id="tests" files="capabilities_test.go process/process_test.go process/gate_test.go process/shellgate/gate_test.go embedded/embedded_test.go embedded/approval_test.go embedded/compact_test.go embedded/compact_settings_test.go embedded/context_test.go embedded/mcp_test.go embedded/mcpjobs_internal_test.go embedded/sandbox_test.go embedded/mode_test.go embedded/images_test.go embedded/clients_test.go embedded/reconnect_test.go" -->
 ## Tests
 
 The embedded tests, and the process tests with the real runner, run against `testing/fakellm`, a scripted Responses API, and need no tokens.
@@ -236,5 +249,7 @@ The embedded tests, and the process tests with the real runner, run against `tes
 | `mode_test.go` | Permission modes: a live switch to read only makes the next write fail in the sandbox and the next request describe it; Auto mode lets the reviewer allow or decline without asking, also once its breaker opens |
 | `compact_test.go`, `compact_settings_test.go`, `clear_test.go`, `context_test.go` | Manual and automatic compaction, the configured summary model, prompt, focus, token limit, and kept-message cap, the stop when compacting cannot get under the limit, `/clear` in the same session, resume after both, the PreCompact hook, and `/context` |
 | `mcp_test.go`, `mcpjobs_internal_test.go` | MCP tools, crashes, interrupts, approvals, and jobs that are not repeated |
+| `clients_test.go` | Each provider's client sends the same request as the runner's own client, body and headers |
+| `reconnect_test.go` | A connection dropped before the answer and one cut halfway (`fakellm.Reply.Drop`, `Cut`) are retried after 2 and 4 s with a `Reconnecting` event each, and the run then finishes; with two attempts that both drop, the run fails and says it gave up. They wait for the real backoff (about 6 s), so `-short` skips them |
 | `images_test.go` | A message with pasted images: the model gets the text without tags and each image as a ViewImage result with its data URL, a missing image as an error text, and later requests carry the image again |
 <!-- /memoria:section -->

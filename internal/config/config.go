@@ -22,6 +22,9 @@ type Config struct {
 	Effort   string `toml:"effort"`
 	Timeout  string `toml:"timeout"`
 	MaxDisk  string `toml:"max_disk"`
+	// RequestMaxAttempts is how many times a model request is sent before
+	// the run fails (0: uah's default, engine.DefaultMaxAttempts).
+	RequestMaxAttempts int `toml:"request_max_attempts"`
 	// Engine is "embedded" (the default) or "process".
 	Engine string `toml:"engine"`
 	// Fast asks for priority processing on the embedded engine.

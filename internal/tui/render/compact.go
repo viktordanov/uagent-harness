@@ -275,6 +275,18 @@ func (st *Styles) workingLine(now time.Time, verb string, since time.Time) strin
 	return line + st.dim.Render(fmt.Sprintf(" (%s • esc to interrupt)", elapsed(now.Sub(since))))
 }
 
+// reconnectText is a model request's retry, as "Reconnecting, attempt 3
+// of 10", and how long until it is sent, as "retrying in 8s", or
+// "connecting" once it is.
+func reconnectText(r state.Reconnect, now time.Time) (verb, wait string) {
+	verb = fmt.Sprintf("Reconnecting, attempt %d of %d", r.Attempt, r.MaxAttempts)
+	if left := r.Retry.Sub(now); left > 0 {
+		return verb, "retrying in " + elapsed((left + time.Second - 1).Truncate(time.Second)) // rounded up
+	}
+
+	return verb, "connecting"
+}
+
 // elapsed is Codex's short duration: 12s, 1m 12s, 1h 02m.
 func elapsed(d time.Duration) string {
 	d = max(d, 0).Round(time.Second)

@@ -204,6 +204,10 @@ func (st *Styles) statusLine(s state.State, w int) string {
 		return st.warn.Render(ansi.Truncate(s.Status, w, "…"))
 	case s.SessionID == "":
 		return ansi.Truncate(st.workingLine(s.Now, "Opening the session", time.Time{}), w, "…")
+	case s.Live != nil && s.Live.Reconnect != nil:
+		verb, wait := reconnectText(*s.Live.Reconnect, s.Now)
+
+		return ansi.Truncate(st.breathing(s.Now.UnixMilli())+" "+st.bold.Render(verb)+st.dim.Render(" ("+wait+" • esc to interrupt)"), w, "…")
 	case s.Live != nil && !s.Live.TurnSince.IsZero():
 		return ansi.Truncate(st.workingLine(s.Now, "Thinking", s.Live.Started), w, "…")
 	case s.Live != nil && s.Live.Tools > 0:
@@ -257,6 +261,11 @@ func (st *Styles) footerLine(s state.State, w int) string {
 	}
 	if s.Status != "" {
 		return st.warn.Render(ansi.Truncate(" "+s.Status, w, "…"))
+	}
+	if s.Live != nil && s.Live.Reconnect != nil {
+		verb, wait := reconnectText(*s.Live.Reconnect, s.Now)
+
+		return st.warn.Render(ansi.Truncate(" "+verb+" ("+wait+")", w, "…"))
 	}
 	t := s.Totals
 	text := fmt.Sprintf(" %s in (%s cached) · %s out · %s · %s (∥%d)", tokens(t.Tokens.InputTokens), tokens(t.Tokens.CachedInputTokens),

@@ -44,3 +44,25 @@ type AutoReviewed struct {
 }
 
 func (e AutoReviewed) OccurredAt() time.Time { return e.At }
+
+// Reconnecting means a model request failed, for a lost connection or an
+// HTTP status the client retries, and the client tries again: attempt
+// Attempt of MaxAttempts starts after about Delay. Reason is the failure.
+// Only the embedded engine reports it (Capabilities.Reconnect).
+type Reconnecting struct {
+	At          time.Time
+	Attempt     int
+	MaxAttempts int
+	Delay       time.Duration
+	Reason      string
+}
+
+// ReconnectEnded means a model request that was retried stopped retrying:
+// OK when a response arrived, otherwise it failed or was canceled.
+type ReconnectEnded struct {
+	At time.Time
+	OK bool
+}
+
+func (e Reconnecting) OccurredAt() time.Time   { return e.At }
+func (e ReconnectEnded) OccurredAt() time.Time { return e.At }

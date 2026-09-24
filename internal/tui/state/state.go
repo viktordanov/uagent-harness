@@ -35,6 +35,18 @@ type Live struct {
 	Started   time.Time
 	TurnSince time.Time // zero when the model is not generating
 	Tools     int       // tools running now
+	// Reconnect, when set, is a model request waiting to be sent again
+	// after it failed (engine.Reconnecting).
+	Reconnect *Reconnect
+}
+
+// Reconnect is a model request's next attempt.
+type Reconnect struct {
+	Attempt     int
+	MaxAttempts int
+	// Retry is when the attempt is sent; after it, the attempt is in flight.
+	Retry  time.Time
+	Reason string
 }
 
 // Totals add up the session's finished runs.

@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/viktordanov/uagent-harness/internal/app"
 	"github.com/viktordanov/uagent-harness/internal/approval"
 	"github.com/viktordanov/uagent-harness/internal/config"
+	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/sandbox"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
@@ -76,6 +78,17 @@ func sessionFlags() []cli.Flag {
 				return err
 			},
 		},
+		&cli.IntFlag{
+			Name: "max-attempts", Usage: "send a model request this many times before the run fails, retrying a lost connection with backoff",
+			DefaultText: strconv.Itoa(engine.DefaultMaxAttempts), Sources: cli.EnvVars(app.EnvMaxAttempts),
+			Validator: func(n int) error {
+				if n < 1 {
+					return fmt.Errorf("invalid max-attempts %d (want 1 or more)", n)
+				}
+
+				return nil
+			},
+		},
 		&cli.BoolFlag{Name: "allow-dotenv", Usage: "run even if the workspace .env sets risky variables"},
 		&cli.StringFlag{
 			Name: flagConfig, Usage: "user configuration file", Value: config.UserFile(),
@@ -126,6 +139,7 @@ func inputs(cmd *cli.Command) app.Inputs {
 		TimeoutSet:     cmd.IsSet("timeout"),
 		MaxDisk:        cmd.String("max-disk"),
 		MaxDiskSet:     cmd.IsSet("max-disk"),
+		MaxAttempts:    cmd.Int("max-attempts"),
 		Fast:           cmd.Bool("fast"),
 		FastSet:        cmd.IsSet("fast"),
 		Sandbox:        cmd.String("sandbox"),

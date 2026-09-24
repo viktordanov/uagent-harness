@@ -44,6 +44,11 @@ type Reply struct {
 	FailBody string
 	// NoUsage leaves the usage out of the response, as some providers do.
 	NoUsage bool
+	// Drop closes the connection without an answer, as a lost network
+	// does; Cut closes it halfway through the stream. The client retries
+	// either, so the next reply answers the same request.
+	Drop bool
+	Cut  bool
 }
 
 // Call is a function call to a tool by name, with JSON arguments.
@@ -175,6 +180,11 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	if reply.Drop {
+		drop(w)
+
+		return
+	}
 	if reply.Fail != 0 {
 		failWith(w, reply)
 
@@ -187,7 +197,23 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "text/event-stream")
+	if reply.Cut {
+		_, _ = fmt.Fprintf(w, "data: %s", event[:len(event)/2])
+		http.NewResponseController(w).Flush() //nolint:errcheck // the connection closes next
+		drop(w)
+
+		return
+	}
 	_, _ = fmt.Fprintf(w, "data: %s\n\n", event)
+}
+
+// drop closes the request's connection at once.
+func drop(w http.ResponseWriter) {
+	conn, _, err := http.NewResponseController(w).Hijack()
+	if err != nil {
+		panic(err) // httptest's server supports hijacking
+	}
+	_ = conn.Close()
 }
 
 type (

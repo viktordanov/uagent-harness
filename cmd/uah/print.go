@@ -109,6 +109,12 @@ func (p *printer) print(event core.Event) { //nolint:gocyclo // a dispatch switc
 				p.say("warning: " + e.Warning)
 			}
 		}
+	case engine.Reconnecting:
+		p.say(fmt.Sprintf("reconnecting, attempt %d of %d (retrying in %s): %s", e.Attempt, e.MaxAttempts, e.Delay.Round(time.Second), e.Reason))
+	case engine.ReconnectEnded:
+		if e.OK {
+			p.say("reconnected")
+		}
 	case engine.AutoReviewed:
 		p.say(fmt.Sprintf("auto-review: %s (%s risk) %s — %s", e.Outcome, e.Risk, oneLine(e.Command, 80), e.Reason))
 	case engine.AgentUpdated:

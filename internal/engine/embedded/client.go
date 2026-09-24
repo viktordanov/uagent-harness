@@ -6,8 +6,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/unreallabsai/unreal-agent/harness/llm/responsesapi"
-
 	"github.com/viktordanov/uagent/core"
 
 	"github.com/viktordanov/uagent-harness/internal/engine"
@@ -48,7 +46,7 @@ func (w *wiring) client(req core.Request, opts engine.Options) (string, *switche
 			return nil, fmt.Errorf("failed to create the %s client: %w", p.Name, err)
 		}
 
-		return c, nil
+		return watched{Client: c, max: maxAttempts, emit: w.emit}, nil
 	})
 
 	return model, sw, err
@@ -97,9 +95,9 @@ func CheckCredentials(provider string, getenv func(string) string) error {
 }
 
 // maxAttempts returns the request's attempt limit, else the environment's,
-// else the runner's default.
+// else uah's default (the runner's is lower).
 func (w *wiring) maxAttempts(req core.Request) (int, error) {
-	n := responsesapi.DefaultMaxAttempts
+	n := engine.DefaultMaxAttempts
 	if req.MaxAttempts > 0 {
 		n = req.MaxAttempts
 	} else if v := strings.TrimSpace(w.getenv("UNREAL_HARNESS_LLM_MAX_ATTEMPTS")); v != "" {

@@ -25,6 +25,9 @@ func merge(base, over Config) Config {
 	if over.AutoCompactPercent != nil {
 		base.AutoCompactPercent = over.AutoCompactPercent
 	}
+	if over.RequestMaxAttempts != 0 {
+		base.RequestMaxAttempts = over.RequestMaxAttempts
+	}
 	if over.ModelContextWindow != 0 {
 		base.ModelContextWindow = over.ModelContextWindow
 	}

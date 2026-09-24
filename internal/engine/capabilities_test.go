@@ -23,7 +23,7 @@ func TestCapabilities_Table(t *testing.T) {
 
 	all := engine.Capabilities{
 		LiveInput: true, LiveEffort: true, LiveModel: true, ServiceTier: true, Compaction: true, LiveMode: true, Rules: true,
-		Approvals: true, ToolHooks: true, MCP: true, Subagents: true, ApplyPatch: true, CodexSkills: true, ContextUsage: true, Images: true,
+		Approvals: true, ToolHooks: true, MCP: true, Subagents: true, ApplyPatch: true, CodexSkills: true, ContextUsage: true, Images: true, Reconnect: true,
 	}
 	assert.Empty(t, all.Lacks())
 	assert.Empty(t, all.Summary())
