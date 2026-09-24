@@ -76,16 +76,20 @@ func listSessions(_ context.Context, cmd *cli.Command) error {
 	}
 	tw := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	if showAll {
-		fmt.Fprintln(tw, "SESSION\tACTIVE\tRUNS\tSTATUS\tMODEL\tDIRECTORY\tFIRST PROMPT")
+		fmt.Fprintln(tw, "SESSION\tACTIVE\tRUNS\tSTATUS\tMODEL\tFROM\tDIRECTORY\tFIRST PROMPT")
 	} else {
-		fmt.Fprintln(tw, "SESSION\tACTIVE\tRUNS\tSTATUS\tMODEL\tFIRST PROMPT")
+		fmt.Fprintln(tw, "SESSION\tACTIVE\tRUNS\tSTATUS\tMODEL\tFROM\tFIRST PROMPT")
 	}
 	for _, in := range infos {
 		dir := ""
 		if showAll {
 			dir = homeShort(in.Workspace) + "\t"
 		}
-		fmt.Fprintf(tw, "%s\t%s\t%d\t%s\t%s\t%s%s\n", short(in.ID), ago(in.LastActivity), in.Runs, in.Status, modelLabel(in.Model), dir, oneLine(in.FirstPrompt, 60))
+		from := in.Source
+		if from == "" {
+			from = "-"
+		}
+		fmt.Fprintf(tw, "%s\t%s\t%d\t%s\t%s\t%s\t%s%s\n", short(in.ID), ago(in.LastActivity), in.Runs, in.Status, modelLabel(in.Model), from, dir, oneLine(in.FirstPrompt, 60))
 	}
 
 	return tw.Flush()

@@ -77,6 +77,13 @@ type Idle struct {
 	At time.Time
 }
 
+// Notice levels.
+const (
+	LevelInfo    = "info"
+	LevelWarning = "warning"
+	LevelError   = "error"
+)
+
 // Notice is a message for the user that is not tied to one event, such as a
 // run that could not start.
 type Notice struct {

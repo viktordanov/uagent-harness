@@ -24,6 +24,9 @@ type Info struct {
 	LastActivity time.Time
 	Status       core.Status // of the newest run; "running" while one is in progress
 	Tokens       core.Tokens
+	// Source is where the session started (SourceTUI or SourceRun), or ""
+	// when it has no sidecar.
+	Source string
 }
 
 // LoadedRun is one run of a session with its decoded runner events.
@@ -45,8 +48,13 @@ func Sessions(stateDir string) ([]Info, error) {
 		bySession[id] = append(bySession[id], r)
 	}
 	infos := make([]Info, 0, len(bySession))
+	sessionsDir := filepath.Join(stateDir, "sessions")
 	for id, runs := range bySession {
-		infos = append(infos, summarize(id, runs))
+		info := summarize(id, runs)
+		if sc, found, err := ReadSidecar(sessionsDir, id); err == nil && found {
+			info.Source = sc.Source
+		}
+		infos = append(infos, info)
 	}
 	slices.SortFunc(infos, func(a, b Info) int { return b.LastActivity.Compare(a.LastActivity) })
 

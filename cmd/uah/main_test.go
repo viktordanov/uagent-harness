@@ -188,6 +188,7 @@ func TestRunAndSessions(t *testing.T) {
 	require.Len(t, lines, 2, list.stdout)
 	id := strings.Fields(lines[1])[0]
 	assert.Contains(t, lines[1], "first question")
+	assert.Equal(t, "run", strings.Fields(lines[1])[6], "uah run marks its sessions, which the resume picker hides")
 
 	env = append(env, "FAKERUNNER_FIXTURE="+fixtures.Path("parallel.jsonl"))
 	more := uahWith(t, env, "second\nthird\n", "run", "-C", e.Workspace, "--last", "--stdin")

@@ -12,7 +12,7 @@ go install github.com/viktordanov/uagent-harness/cmd/uah@latest
 
 uah                                                        # the TUI: a live session in the current directory
 uah -C ~/code/proj "Fix the failing test in pkg/foo"       # the TUI, starting with a prompt
-uah resume                                                 # pick a session of this directory to resume (--all: any directory)
+uah resume                                                 # pick a session of this directory to resume (--all: any directory); uah run sessions are hidden, as Codex hides exec sessions
 uah resume --last                                          # resume this directory's most recent session
 uah --session 3f2a                                         # the TUI, resuming a session with its transcript
 uah --fast                                                 # priority processing (openai and openai-codex)

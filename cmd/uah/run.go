@@ -54,7 +54,7 @@ func runAction(ctx context.Context, cmd *cli.Command) error {
 	}
 	ref := cmd.String("session")
 	if cmd.Bool("last") {
-		info, err := latestSession(cmd)
+		info, err := latestSession(cmd, false)
 		if err != nil {
 			return err
 		}
@@ -64,6 +64,7 @@ func runAction(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
+	st.options.Source = session.SourceRun
 	// The session gets its own context so Ctrl+C can close it gracefully.
 	s, err := session.Open(context.WithoutCancel(ctx), st.engine, st.options)
 	if err != nil {
