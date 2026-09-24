@@ -38,7 +38,7 @@ Status: `todo`, `doing`, `done`, `cut` (with a reason).
 | 12 | Subagents: research and plan | any free lane | — | done (built) |
 | 13 | `/context` like Claude Code | main session | 4 | done |
 | 14 | Shell completion: bash, zsh, fish | main session | — | done |
-| 15 | Module READMEs; root README as getting started, config surface, common tasks | main session + docs lane | 16–18 | doing |
+| 15 | Module READMEs; root README as getting started, config surface, common tasks | main session + docs lane | 16–18 | done |
 | 16 | Compaction validated for production | lane v-compaction | 4 | done |
 | 17 | Subagents validated for production; children identical to the main agent except their nested session ID | lane v-subagents | 12 | done |
 | 18 | MCP validated for production; `/mcp` view and OAuth login; `uah mcp` | lane v-mcp | 5 | done |
