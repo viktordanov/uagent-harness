@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -227,38 +228,74 @@ func ProjectFile(workspace string) string {
 // workspace, its project file, which overrides the user file. It returns the
 // files it read. Missing files are not errors.
 func Load(userPath, workspace string) (Config, []string, error) {
-	var cfg Config
-	var loaded []string
-	found, err := decode(userPath, &cfg)
+	l, err := LoadLayers(userPath, workspace)
 	if err != nil {
 		return Config{}, nil, err
+	}
+
+	return l.Merged(), l.Files(), nil
+}
+
+// Layers are the configuration files for a workspace as read, before they
+// are merged.
+type Layers struct {
+	User    Config
+	Project Config
+	// UserFile and ProjectFile are the paths read ("" when not read).
+	UserFile    string
+	ProjectFile string
+	// Trusted reports whether the user file trusts the workspace.
+	Trusted bool
+}
+
+// Merged is the user file with the project file over it.
+func (l Layers) Merged() Config { return merge(l.User, l.Project) }
+
+// Files are the files read, the user file first.
+func (l Layers) Files() []string {
+	var files []string
+	for _, f := range []string{l.UserFile, l.ProjectFile} {
+		if f != "" {
+			files = append(files, f)
+		}
+	}
+
+	return files
+}
+
+// LoadLayers reads the user file at userPath and, when it trusts the
+// workspace, the workspace's project file. Missing files are not errors.
+func LoadLayers(userPath, workspace string) (Layers, error) {
+	var l Layers
+	found, err := decode(userPath, &l.User)
+	if err != nil {
+		return Layers{}, err
 	}
 	if found {
-		loaded = append(loaded, userPath)
+		l.UserFile = userPath
 	}
-	tagHooks(cfg.Hooks, hooks.SourceUser)
+	tagHooks(l.User.Hooks, hooks.SourceUser)
 	abs, err := filepath.Abs(workspace)
 	if err != nil {
-		return Config{}, nil, fmt.Errorf("failed to resolve workspace: %w", err)
+		return Layers{}, fmt.Errorf("failed to resolve workspace: %w", err)
 	}
-	if !cfg.Projects[abs].Trusted {
-		return cfg, loaded, nil
+	if l.Trusted = l.User.Projects[abs].Trusted; !l.Trusted {
+		return l, nil
 	}
-	var project Config
 	path := ProjectFile(abs)
-	found, err = decode(path, &project)
-	if err != nil {
-		return Config{}, nil, err
+	if found, err = decode(path, &l.Project); err != nil {
+		return Layers{}, err
 	}
 	if !found {
-		return cfg, loaded, nil
+		return l, nil
 	}
-	if len(project.Projects) > 0 {
-		return Config{}, nil, fmt.Errorf("%s: [projects] belongs in the user file only", path)
+	if len(l.Project.Projects) > 0 {
+		return Layers{}, fmt.Errorf("%s: [projects] belongs in the user file only", path)
 	}
-	tagHooks(project.Hooks, hooks.SourceProject)
+	tagHooks(l.Project.Hooks, hooks.SourceProject)
+	l.ProjectFile = path
 
-	return merge(cfg, project), append(loaded, path), nil
+	return l, nil
 }
 
 func decode(path string, into *Config) (bool, error) {
@@ -287,8 +324,11 @@ func tagHooks(byEvent map[string][]Hook, source hooks.Source) {
 
 // merge returns base with every value set in over replacing it. Hooks,
 // writable roots, and approval lists add up; an MCP server replaces the one
-// of the same name whole.
+// of the same name whole. It changes neither argument's maps.
 func merge(base, over Config) Config {
+	base.Hooks = maps.Clone(base.Hooks)
+	base.MCPServers = maps.Clone(base.MCPServers)
+	base.ShellEnvironmentPolicy.Set = maps.Clone(base.ShellEnvironmentPolicy.Set)
 	set := func(dst *string, v string) {
 		if v != "" {
 			*dst = v
