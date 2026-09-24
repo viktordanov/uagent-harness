@@ -125,20 +125,18 @@ func headerLine(s state.State, w int) string {
 	return header.Render(left + strings.Repeat(" ", gap) + right)
 }
 
-// panelLines shows command completion while typing a command, else the queue.
+// panelLines shows the suggestion menu while typing a command or an "@"
+// mention, else the queue.
 func panelLines(s state.State, f Frame) []string {
-	if strings.HasPrefix(f.Draft, "/") && !strings.Contains(f.Draft, " ") {
-		matches := state.Complete(strings.TrimPrefix(f.Draft, "/"))
+	if items := s.Suggestions(f.Draft); len(items) > 0 {
 		var out []string
-		for i, c := range matches {
-			if i == 5 {
-				break
+		for i, it := range items[:min(len(items), 6)] {
+			label := fmt.Sprintf("%-16s", it.Label)
+			line := "  " + bold.Render(label) + "  " + dim.Render(it.Help)
+			if i == s.Menu.Index {
+				line = selected.Render("› "+label) + "  " + dim.Render(it.Help)
 			}
-			name := "/" + c.Name
-			if c.Args != "" {
-				name += " " + c.Args
-			}
-			out = append(out, ansi.Truncate(fmt.Sprintf("  %s  %s", bold.Render(fmt.Sprintf("%-16s", name)), dim.Render(c.Help)), f.Width, "…"))
+			out = append(out, ansi.Truncate(line, f.Width, "…"))
 		}
 
 		return out

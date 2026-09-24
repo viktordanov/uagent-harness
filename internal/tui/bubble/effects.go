@@ -78,6 +78,10 @@ func (m Model) run(e state.Effect) tea.Cmd {
 
 			return state.ActivityLoaded{Counts: counts}
 		}
+	case state.EffLoadFiles:
+		dir := m.deps.Cwd
+
+		return func() tea.Msg { return state.FilesLoaded{Paths: workspaceFiles(m.ctx, dir)} }
 	case state.EffOpenSession:
 		return m.switchTo(e.ID)
 	case state.EffQuit:

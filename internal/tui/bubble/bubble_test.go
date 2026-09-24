@@ -3,6 +3,8 @@ package bubble_test
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -10,6 +12,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	uaharness "github.com/viktordanov/uagent/harness"
 	"github.com/viktordanov/uagent/testing/fixtures"
@@ -252,4 +255,41 @@ func TestTUI_WheelScrolls(t *testing.T) {
 
 	d.key(tea.KeyEnd, 0)
 	assert.Equal(t, bottom, d.view())
+}
+
+func TestTUI_MenuCompletes(t *testing.T) {
+	deps := deps(t, "simple.jsonl")
+	deps.Cwd = t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(deps.Cwd, "notes.md"), []byte("x"), 0o600))
+	d := start(t, deps)
+	d.typeText("hi")
+	d.key(tea.KeyEnter, 0)
+	d.waitFor("● hello")
+
+	d.typeText("/eff")
+	d.key(tea.KeyTab, 0)
+	d.typeText("l")
+	d.key(tea.KeyTab, 0)
+	assert.Contains(t, d.view(), "› /effort low")
+	d.key(tea.KeyEnter, 0)
+	d.waitFor("effort low, applies from the next run")
+
+	d.typeText("see @not")
+	d.waitFor("notes.md")
+	d.key(tea.KeyTab, 0)
+	assert.Contains(t, d.view(), "› see notes.md")
+	d.key(tea.KeyEscape, 0)
+	assert.NotContains(t, d.view(), "press esc again", "esc with no menu open still means interrupt only while busy")
+}
+
+func TestTUI_StatusShowsActivity(t *testing.T) {
+	deps := deps(t, "simple.jsonl")
+	deps.Activity = func() (map[string]int, error) { return map[string]int{time.Now().Format(time.DateOnly): 3}, nil }
+	d := start(t, deps)
+	d.typeText("hi")
+	d.key(tea.KeyEnter, 0)
+	d.waitFor("● hello")
+	d.typeText("/status")
+	d.key(tea.KeyEnter, 0)
+	d.waitFor("activity · last 12 weeks · 3 runs")
 }

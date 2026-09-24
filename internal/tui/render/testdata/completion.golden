@@ -17,7 +17,7 @@
 • Ran cat a.txt
 
 ● hello
-  /resume [id]      open the session picker, or resume a session by ID prefix
+› /resume [id]      open the session picker, or resume a session by ID prefix
   /reasoning        show or hide reasoning summaries
 ────────────────────────────────────────────────────────────────────────────────────────────────────
 › /re

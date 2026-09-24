@@ -182,7 +182,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.sess = nil
 
 		return m, tea.Quit
-	case state.Failed, state.SessionsLoaded:
+	case state.Failed, state.SessionsLoaded, state.ActivityLoaded, state.FilesLoaded:
 		return m.dispatch(msg)
 	}
 	var cmd tea.Cmd
@@ -221,6 +221,12 @@ func (m Model) dispatch(intent any) (tea.Model, tea.Cmd) {
 	m.st, effects = state.Reduce(m.st, intent)
 	cmds := []tea.Cmd{m.afterChange()}
 	for _, e := range effects {
+		if d, ok := e.(state.EffSetDraft); ok {
+			m.composer.SetValue(d.Text)
+			m.composer.CursorEnd()
+
+			continue
+		}
 		if m.sess == nil && needsSession(e) {
 			m.held = append(m.held, e) // sent once the session opens
 
