@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -132,4 +133,26 @@ func TestEmbedded_MCPResumesWithoutTheServer(t *testing.T) {
 	last := reqs[len(reqs)-1].ToolOutputs
 	assert.Contains(t, last[0], "echo: before", "the stored result needs no server")
 	assert.Contains(t, last[1], `tool "mcp__test__echo" is not available`)
+}
+
+func TestEmbedded_MCPInterruptThenContinue(t *testing.T) {
+	e := newEnv(t, fakellm.Reply{Calls: []fakellm.Call{call("mcp__test__sleep", `{"ms":3000}`)}})
+	s, ev := e.open(t, e.withMCP(mcpManager(t, e, mcp.ServerConfig{SupportsParallelToolCalls: true}), nil), "")
+
+	_, err := s.Submit("wait a while")
+	require.NoError(t, err)
+	ev.until("the tool starting", isA[core.ToolStarted])
+	started := time.Now()
+	require.NoError(t, s.Interrupt())
+	result := ev.finished()
+	assert.Equal(t, core.StatusInterrupted, result.Status)
+	assert.Less(t, time.Since(started), 2*time.Second, "the hard stop cancels the call")
+	ev.idle()
+
+	_, err = s.Submit("carry on")
+	require.NoError(t, err)
+	result = ev.finished()
+	assert.Equal(t, core.StatusOK, result.Status)
+	reqs := e.llm.Requests()
+	assert.Contains(t, strings.Join(reqs[len(reqs)-1].ToolOutputs, "\n"), "Error: the MCP call was canceled")
 }
