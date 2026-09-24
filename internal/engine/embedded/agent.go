@@ -21,6 +21,8 @@ type agent struct {
 	cancel context.CancelFunc
 	inputs *inbox.Inbox
 	llm    *switcher
+	// compactor is set once the agent is wired.
+	compactor *compactor
 
 	interrupted atomic.Bool
 	stopOnce    sync.Once
@@ -72,6 +74,18 @@ func (a *agent) SetModel(model string) error {
 }
 
 func (a *agent) SetServiceTier(tier string) error { return a.llm.setPriority(tier == tierPriority) }
+
+// Compact compacts the context before the next model request.
+func (a *agent) Compact() error {
+	select {
+	case <-a.done:
+		return errStopped
+	default:
+	}
+	a.compactor.requestCompaction()
+
+	return nil
+}
 
 func (a *agent) control(msg inbox.ControlMessage) error {
 	payload, err := json.Marshal(msg)

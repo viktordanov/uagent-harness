@@ -26,6 +26,9 @@ type Reply struct {
 	// Gate, when set, holds the response until it is closed or the request
 	// is canceled, so a test can act while the model is "thinking".
 	Gate <-chan struct{}
+	// InputTokens, when set, is the usage the response reports as input
+	// tokens (default 100 per request so far).
+	InputTokens int
 }
 
 // Request is what the harness sent, reduced to what tests check.
@@ -39,6 +42,8 @@ type Request struct {
 	System string
 	// ToolOutputs are the tool results in the input, in order.
 	ToolOutputs []string
+	// CallIDs are the tool calls in the input, in order.
+	CallIDs []string
 	// Tools are the offered tools' parameter schemas as JSON, by name.
 	Tools map[string]string
 }
@@ -187,9 +192,14 @@ func response(n int, reply Reply) responseBody {
 		})
 	}
 
+	input := 100 * n
+	if reply.InputTokens > 0 {
+		input = reply.InputTokens
+	}
+
 	return responseBody{
 		ID: fmt.Sprintf("resp-%d", n), Object: "response", Status: completed, Output: output,
-		Usage: usage{InputTokens: 100 * n, OutputTokens: 10, TotalTokens: 100*n + 10},
+		Usage: usage{InputTokens: input, OutputTokens: 10, TotalTokens: input + 10},
 	}
 }
 
@@ -209,6 +219,7 @@ func parseRequest(body []byte) Request {
 			Role    string          `json:"role"`
 			Content json.RawMessage `json:"content"`
 			Output  json.RawMessage `json:"output"`
+			CallID  string          `json:"call_id"`
 		} `json:"input"`
 	}
 	_ = json.Unmarshal(body, &raw)
@@ -219,6 +230,11 @@ func parseRequest(body []byte) Request {
 	for _, in := range raw.Input {
 		if in.Type == "function_call_output" {
 			req.ToolOutputs = append(req.ToolOutputs, strings.Join(texts(in.Output), ""))
+
+			continue
+		}
+		if in.Type == "function_call" {
+			req.CallIDs = append(req.CallIDs, in.CallID)
 
 			continue
 		}

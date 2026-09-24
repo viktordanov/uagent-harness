@@ -53,6 +53,21 @@ func TestLoad(t *testing.T) {
 		assert.Equal(t, 10*time.Minute, d)
 	})
 
+	t.Run("compaction keys, and the project file overrides them", func(t *testing.T) {
+		root := t.TempDir()
+		ws := filepath.Join(root, "ws")
+		user := filepath.Join(root, "config.toml")
+		write(t, user, "auto_compact_percent = 80\nmodel_context_window = 128000\n[projects.\""+ws+"\"]\ntrusted = true\n")
+		write(t, config.ProjectFile(ws), "auto_compact_percent = 0\n")
+
+		cfg, _, err := config.Load(user, ws)
+
+		require.NoError(t, err)
+		require.NotNil(t, cfg.AutoCompactPercent)
+		assert.Equal(t, 0, *cfg.AutoCompactPercent, "0 in the project file turns it off")
+		assert.Equal(t, int64(128000), cfg.ModelContextWindow)
+	})
+
 	t.Run("unknown keys are errors", func(t *testing.T) {
 		user := filepath.Join(t.TempDir(), "config.toml")
 		write(t, user, "efort = \"low\"\n")

@@ -139,6 +139,8 @@ func (s *Session) handle(cmd any) (any, error) {
 		return s.onWithdraw(c.id), nil
 	case cmdSettings:
 		return s.onSettings(c.settings), nil
+	case cmdCompact:
+		return struct{}{}, s.onCompact()
 	}
 
 	return nil, fmt.Errorf("unknown session command %T", cmd)

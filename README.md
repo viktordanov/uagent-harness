@@ -55,7 +55,7 @@ The default view is compact, like Codex: your messages, one line per command (`�
 | mouse wheel, shift+↑ / shift+↓, pgup / pgdn | Scroll the transcript; end returns to the bottom. While the TUI reports the mouse, select text with Option (iTerm2, Terminal) or Shift (most others) held |
 | ctrl+c | Clear the composer; on an empty composer, quit (twice while a run is live) |
 
-Commands: `/model <id>`, `/effort <level>`, `/resume [id]`, `/new`, `/stop`, `/status` (with a 12-week activity heatmap), `/details`, `/reasoning`, `/help`, `/quit`. `/model`, `/effort`, and `/fast` apply from the next model request on the embedded engine, and from the next run on the process engine. `/fast` needs the embedded engine and the openai or openai-codex provider.
+Commands: `/model <id>`, `/effort <level>`, `/compact`, `/resume [id]`, `/new`, `/stop`, `/status` (with a 12-week activity heatmap), `/details`, `/reasoning`, `/help`, `/quit`. `/model`, `/effort`, and `/fast` apply from the next model request on the embedded engine, and from the next run on the process engine. `/fast` needs the embedded engine and the openai or openai-codex provider.
 Tool calls keep their place in the transcript, so a command that finishes after later turns updates its original row. Diagnostics go to `<state-dir>/logs/uah-tui.log`.
 
 `uah run` takes the same backend, guard, and state flags as uagent (`--provider`, `-m`, `-e`, `-t`, `-C`, `--state-dir`, `--runner`, `--max-disk`, `--allow-dotenv`); `uah run --help` lists them.
@@ -72,6 +72,19 @@ A flag wins over the environment (`UNREAL_HARNESS_LLM_*`, `UAGENT_*`), which win
 - **process**: `uah` spawns `unreal-agent-runner` through uagent. The runner reads its request once, so messages sent while it works wait for the next run.
 
 Both engines share uagent's guards, session lock, and run records, and write the same session files, so a session can move between them. The workspace `.env` is never loaded by the embedded engine.
+
+<!-- /memoria:section -->
+
+<!-- memoria:section id="compaction" files="internal/compaction/compaction.go internal/compaction/window.go internal/engine/embedded/compact.go internal/engine/embedded/compactlog.go internal/llmcall/llmcall.go internal/session/compact.go internal/tui/state/context.go" -->
+### Compaction
+
+On the embedded engine, uah compacts a long conversation the way Codex does. It asks the model for a handoff summary, then sends every earlier user message verbatim and in order, followed by the summary. The model's replies, reasoning, tool calls, and tool outputs before that point are dropped. Messages sent after the compaction follow the summary.
+
+- `/compact` compacts before the next model request: now if the agent is working, or with the next message if it is idle.
+- Automatic compaction starts before a model request when the last response used `auto_compact_percent` of the model's context window (default 90, as Codex; 0 turns it off).
+- The window comes from Codex's model table (272,000 tokens for current models and for models it does not know). `model_context_window` overrides it.
+
+The footer shows "N% context left", computed from the last response's tokens as Codex computes it. A compaction is saved in `sessions/<id>.compaction.jsonl` next to the session file, so a resumed session keeps it. The runner's session file keeps the full history. The process engine cannot compact. The [plan](docs/design/compaction.md) lists the choices made.
 
 <!-- /memoria:section -->
 
@@ -156,6 +169,8 @@ engine = "embedded"   # or "process"
 fast = false          # priority processing
 sandbox_mode = "workspace-write"   # read-only, workspace-write, danger-full-access
 project_doc_fallback_filenames = ["CLAUDE.md"]   # Codex's key: also read CLAUDE.md
+auto_compact_percent = 90          # compact at this share of the context window; 0 turns it off
+model_context_window = 272000      # tokens; overrides the model table
 
 [instructions]
 enabled = true

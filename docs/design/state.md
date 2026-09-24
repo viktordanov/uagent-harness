@@ -25,6 +25,7 @@ Everything lives under uagent's state directory (`~/.local/state/unreal-agent`),
 | `runs/<run-id>/summary.json` | uagent | Status (`running` until the run ends), settings, statistics, answer | Run record; history lists read these |
 | `runs/<run-id>/stderr.log` | uagent | The runner's stderr | Diagnostics |
 | `sessions/<id>.uah.json` | uah | Where the session started: `{"source":"tui"}` or `"run"` | Hides `uah run` sessions from the resume picker, as Codex hides `codex exec` sessions |
+| `sessions/<id>.compaction.jsonl` | uah (embedded engine) | One line per compaction: the builder items it covers, their SHA-256, and the summary | Replays compaction on resume; see [compaction](compaction.md) |
 | `logs/uah-tui.log` | uah | TUI diagnostics | Diagnostics |
 
 There is no database. Listing sessions reads every `summary.json` and the first `request.json` of each session: the cost grows with the number of runs, and there is no search.
