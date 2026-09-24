@@ -125,7 +125,15 @@ func newComposer(theme *render.Styles) textarea.Model {
 	ta := textarea.New()
 	ta.Placeholder = "Ask uah to do anything · / for commands"
 	ta.ShowLineNumbers = false
-	ta.Prompt = "λ "
+	// The λ marks the composer's first row only; the rows below it line up
+	// under the text, as Codex's composer does.
+	ta.SetPromptFunc(2, func(p textarea.PromptInfo) string {
+		if p.LineNumber == 0 {
+			return "λ "
+		}
+
+		return "  "
+	})
 	ta.DynamicHeight = true
 	ta.MinHeight = 1
 	ta.MaxHeight = 8
@@ -161,14 +169,18 @@ func composerStyles(theme *render.Styles) textarea.Styles {
 }
 
 // Run starts the program and blocks until it exits.
-func Run(ctx context.Context, deps Deps, opts ...tea.ProgramOption) error {
+func Run(ctx context.Context, deps Deps, opts ...tea.ProgramOption) (Exit, error) {
 	p := tea.NewProgram(New(ctx, deps), append([]tea.ProgramOption{tea.WithContext(ctx)}, opts...)...)
 	final, err := p.Run()
-	if fm, ok := final.(Model); ok && fm.sess != nil {
+	fm, ok := final.(Model)
+	if !ok {
+		return Exit{}, err //nolint:wrapcheck // the caller wraps it
+	}
+	if fm.sess != nil {
 		_ = fm.sess.Close() // the program ended without /quit, for example on SIGTERM
 	}
 
-	return err
+	return fm.Exit(), err //nolint:wrapcheck // the caller wraps it
 }
 
 func (m Model) Init() tea.Cmd {

@@ -60,7 +60,7 @@ uah resume --last       # this directory's most recent session
 uah --session 3f2a      # a session by ID or unique prefix
 ```
 
-In the TUI, ctrl+s opens the picker and ctrl+n starts a new session. The picker hides sessions from `uah run` and subagents, as Codex hides `codex exec` sessions.
+When you quit the TUI, it prints the session's token usage and the command that continues it (`uah resume <id>`), as Codex does. In the TUI, ctrl+s opens the picker and ctrl+n starts a new session. The picker hides sessions from `uah run` and subagents, as Codex hides `codex exec` sessions.
 
 ### Run without the TUI
 
