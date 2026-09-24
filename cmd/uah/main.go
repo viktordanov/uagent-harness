@@ -31,7 +31,7 @@ func main() {
 }
 
 func newApp() *cli.Command {
-	return &cli.Command{
+	return withCompletion(&cli.Command{
 		Name:    "uah",
 		Usage:   "a general-purpose harness for unreal-agent-runner",
 		Version: buildVersion(),
@@ -42,10 +42,17 @@ func newApp() *cli.Command {
 		Description: "Without a command, uah opens the terminal UI: a live session you can steer.\n" +
 			"enter sends (queueing while the agent works), ctrl+enter sends now, esc esc interrupts,\n" +
 			"/help lists commands. Resume with `uah resume`, --session <id or prefix>, or ctrl+s inside.",
-		Flags:    sessionFlags(),
-		Action:   tuiAction,
+		Flags:  sessionFlags(),
+		Action: tuiAction,
+		// `uah completion bash|zsh|fish` prints the script; the scripts ask
+		// uah itself for completions.
+		EnableShellCompletion: true,
+		ConfigureShellCompletionCommand: func(c *cli.Command) {
+			c.Hidden = false
+			c.Usage = "print the shell completion script: bash, zsh, fish, or pwsh"
+		},
 		Commands: []*cli.Command{runCommand(), resumeCommand(), sessionsCommand(), hooksCommand(), configCommand(), doctorCommand()},
-	}
+	})
 }
 
 // exitCode maps the app error to a process exit code and prints it once.
