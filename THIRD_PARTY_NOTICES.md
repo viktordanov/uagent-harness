@@ -31,7 +31,6 @@ Many other parts follow Codex's behavior (configuration keys, rules, approvals, 
 | --- | --- |
 | `internal/engine/codexauth/codexauth.go` | `harness/llm/clients/openaicodex/credentials.go` (loading the ChatGPT credentials) |
 | `internal/engine/embedded/clients.go` | `harness/llm/clients/openai/client.go`, `openrouter/client.go`, `fireworks/client.go`, `ollama/client.go`, and `openaicodex/client.go` (each provider's Responses client: endpoint, headers, prompt cache key placement, request extensions, the codex base URL check and error wrapping), and `harness/primitives/remote.go` (`newRemoteHTTPClient`'s transport settings) |
-| `internal/engine/embedded/clients.go` | `harness/llm/clients/{openai,openrouter,fireworks,ollama,openaicodex}/client.go` and `harness/primitives/remote.go` (building each provider's Responses client and its HTTP client) |
 
 ```
 MIT License
