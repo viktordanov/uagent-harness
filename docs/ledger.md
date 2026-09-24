@@ -4,6 +4,15 @@ The definitive list of work until it is done or the stop time arrives. Nothing o
 
 Stop time (first round): 07:50 local. Later rounds have none.
 
+## Pending (round 4)
+
+Asked for by the owner after v1.0.1.
+
+| # | Item | Lane | Status |
+| --- | --- | --- | --- |
+| 41 | Survive a lost connection: retry model requests up to 10 attempts with exponential backoff, and show the retry in the TUI ("reconnecting, attempt 3 of 10"). Today the runner retries 5 attempts at 2, 4, 8, and 16 s (about 30 s in all), which a Wi-Fi switch can outlast, and the TUI shows nothing while it waits | | pending |
+| 42 | Ctrl+enter on an empty composer sends every queued message now, in order. Today it does nothing (an empty `Steer` becomes an empty `Submit`), so queued messages wait for the run to end | | pending |
+
 ## Pending (round 3)
 
 Asked for by the owner after item 28; these come first.
