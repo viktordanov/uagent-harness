@@ -1,5 +1,5 @@
-// Package instructions finds instruction files (AGENTS.md, with CLAUDE.md as
-// a fallback) and builds the host prompt for the runner. The runner reads no
+// Package instructions finds instruction files (AGENTS.md, as Codex does) and
+// builds the host prompt for the runner. The runner reads no
 // instruction files itself, and setting its system prompt replaces its own
 // host prompt, so the runner's default text is kept in front.
 package instructions
@@ -32,11 +32,24 @@ type File struct {
 	Bytes int
 }
 
+// Options are Codex's AGENTS.md settings (codex-rs/core/src/agents_md.rs).
+type Options struct {
+	// FallbackFilenames are tried after AGENTS.override.md and AGENTS.md in
+	// each directory, in order; Codex's project_doc_fallback_filenames,
+	// empty by default.
+	FallbackFilenames []string
+	// RootMarkers find the project root by walking up from the workspace;
+	// Codex's project_root_markers. Nil means [".git"]; an empty list
+	// disables walking up.
+	RootMarkers []string
+}
+
 // Discover lists instruction files in the order they apply: the user file
-// first, then one file per directory from the repository root down to the
+// first, then one file per directory from the project root down to the
 // workspace. In each directory it takes AGENTS.override.md, else AGENTS.md,
-// else CLAUDE.md. userFiles are candidates for the user file, first match wins.
-func Discover(workspace string, userFiles []string) ([]File, error) {
+// else the first fallback that exists. userFiles are candidates for the user
+// file, first match wins.
+func Discover(workspace string, userFiles []string, opts Options) ([]File, error) {
 	var files []File
 	for _, p := range userFiles {
 		if f, ok, err := stat(p); err != nil {
@@ -47,12 +60,16 @@ func Discover(workspace string, userFiles []string) ([]File, error) {
 			break
 		}
 	}
-	dirs, err := projectDirs(workspace)
+	dirs, err := ProjectDirs(workspace, opts.RootMarkers)
 	if err != nil {
 		return nil, err
 	}
+	names := append([]string{"AGENTS.override.md", "AGENTS.md"}, opts.FallbackFilenames...)
 	for _, dir := range dirs {
-		for _, name := range []string{"AGENTS.override.md", "AGENTS.md", "CLAUDE.md"} {
+		for _, name := range names {
+			if name == "" || strings.ContainsAny(name, `/\`) {
+				continue // Codex ignores fallbacks that are paths
+			}
 			f, ok, err := stat(filepath.Join(dir, name))
 			if err != nil {
 				return nil, err
@@ -68,18 +85,24 @@ func Discover(workspace string, userFiles []string) ([]File, error) {
 	return files, nil
 }
 
-// projectDirs returns the directories from the repository root (the nearest
-// ancestor with a .git entry) down to the workspace, or just the workspace
-// when it is not inside a repository.
-func projectDirs(workspace string) ([]string, error) {
+// ProjectDirs returns the directories from the project root (the nearest
+// ancestor holding one of markers; nil means .git) down to the workspace, or
+// just the workspace when no ancestor has a marker or markers is empty.
+func ProjectDirs(workspace string, markers []string) ([]string, error) {
 	abs, err := filepath.Abs(workspace)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve workspace: %w", err)
 	}
+	if markers == nil {
+		markers = []string{".git"}
+	}
+	if len(markers) == 0 {
+		return []string{abs}, nil
+	}
 	var chain []string
 	for dir := abs; ; dir = filepath.Dir(dir) {
 		chain = append(chain, dir)
-		if _, err := os.Stat(filepath.Join(dir, ".git")); err == nil {
+		if hasMarker(dir, markers) {
 			break
 		}
 		if filepath.Dir(dir) == dir {
@@ -92,6 +115,16 @@ func projectDirs(workspace string) ([]string, error) {
 	}
 
 	return chain, nil
+}
+
+func hasMarker(dir string, markers []string) bool {
+	for _, m := range markers {
+		if _, err := os.Stat(filepath.Join(dir, m)); err == nil {
+			return true
+		}
+	}
+
+	return false
 }
 
 func stat(path string) (File, bool, error) {
@@ -121,6 +154,9 @@ func Assemble(files []File, maxBytes int) (text string, used []File, truncated b
 		data, err := os.ReadFile(f.Path)
 		if err != nil {
 			return "", nil, false, fmt.Errorf("failed to read %s: %w", f.Path, err)
+		}
+		if strings.TrimSpace(string(data)) == "" {
+			continue // Codex skips blank files
 		}
 		block := fmt.Sprintf("## %s\n\n%s\n", f.Path, strings.TrimSpace(string(data)))
 		if b.Len()+len(block) > maxBytes {

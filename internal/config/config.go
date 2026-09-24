@@ -35,7 +35,13 @@ type Config struct {
 	ShellEnvironmentPolicy ShellEnvironmentPolicy `toml:"shell_environment_policy"`
 
 	Instructions Instructions `toml:"instructions"`
-	TUI          TUI          `toml:"tui"`
+	// Codex's AGENTS.md keys: fallback file names after AGENTS.md (none by
+	// default), project root markers (nil: .git; empty: no walking up), and
+	// the size cap (the same as [instructions] max_bytes).
+	ProjectDocFallbackFilenames []string  `toml:"project_doc_fallback_filenames"`
+	ProjectRootMarkers          *[]string `toml:"project_root_markers"`
+	ProjectDocMaxBytes          int       `toml:"project_doc_max_bytes"`
+	TUI                         TUI       `toml:"tui"`
 	// Hooks are keyed by event name: [[hooks.PreToolUse]].
 	Hooks map[string][]Hook `toml:"hooks"`
 
@@ -114,6 +120,23 @@ type TUI struct {
 type Project struct {
 	// Trusted allows <workspace>/.uagent/config.toml to apply.
 	Trusted bool `toml:"trusted"`
+}
+
+// InstructionOptions are the AGENTS.md discovery settings and the size cap
+// (project_doc_max_bytes wins over [instructions] max_bytes).
+func (c Config) InstructionOptions() (fallbacks []string, markers []string, maxBytes int) {
+	if c.ProjectRootMarkers != nil {
+		markers = *c.ProjectRootMarkers
+		if markers == nil {
+			markers = []string{}
+		}
+	}
+	maxBytes = c.Instructions.MaxBytes
+	if c.ProjectDocMaxBytes != 0 {
+		maxBytes = c.ProjectDocMaxBytes
+	}
+
+	return c.ProjectDocFallbackFilenames, markers, maxBytes
 }
 
 // InstructionsEnabled reports whether instruction files should be loaded.
@@ -259,6 +282,15 @@ func merge(base, over Config) Config {
 	}
 	if over.Instructions.MaxBytes != 0 {
 		base.Instructions.MaxBytes = over.Instructions.MaxBytes
+	}
+	if over.ProjectDocFallbackFilenames != nil {
+		base.ProjectDocFallbackFilenames = over.ProjectDocFallbackFilenames
+	}
+	if over.ProjectRootMarkers != nil {
+		base.ProjectRootMarkers = over.ProjectRootMarkers
+	}
+	if over.ProjectDocMaxBytes != 0 {
+		base.ProjectDocMaxBytes = over.ProjectDocMaxBytes
 	}
 
 	return base

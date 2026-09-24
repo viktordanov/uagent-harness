@@ -75,15 +75,17 @@ Both engines share uagent's guards, session lock, and run records, and write the
 
 <!-- /memoria:section -->
 
-<!-- memoria:section id="instructions" files="internal/instructions/instructions.go" -->
-### Instructions
+<!-- memoria:section id="instructions" files="internal/instructions/instructions.go internal/app/setup.go internal/engine/embedded/skills.go internal/config/config.go" -->
+### Instructions and skills
 
-The runner reads no instruction files, so `uah` builds them into the runner's system prompt, after the runner's own default text:
+The runner reads no instruction files, so `uah` builds them into the runner's system prompt, after the runner's own default text, the way Codex finds them (codex-rs/core/src/agents_md.rs):
 
 1. The user file: `~/.config/uagent/AGENTS.md`, or else `~/.codex/AGENTS.md`.
-2. One file per directory from the repository root down to the workspace: `AGENTS.override.md`, else `AGENTS.md`, else `CLAUDE.md`.
+2. One file per directory from the project root down to the workspace: `AGENTS.override.md`, else `AGENTS.md`, else the first of `project_doc_fallback_filenames` (none by default; `["CLAUDE.md"]` reads Claude Code's files). The project root is the nearest ancestor with one of `project_root_markers` (`.git` by default; `[]` means the workspace only).
 
-Later files are more specific. The total stops at 32 KiB. `--no-instructions` turns this off, and the loaded files are reported as `instructions_loaded`.
+Later files are more specific. Blank files are skipped, and the total stops at `project_doc_max_bytes` (32 KiB). `--no-instructions` turns this off, and the loaded files are reported as `instructions_loaded`.
+
+Skills are Codex's `<name>/SKILL.md` folders, offered through the runner's own skill tool. They are read from `.agents/skills` in each directory from the workspace up to the project root, the runner's `.harness/skills`, `~/.config/uagent/skills`, and `$CODEX_HOME/skills`; a name in a more specific place wins.
 
 <!-- /memoria:section -->
 
@@ -153,10 +155,11 @@ max_disk = "5G"
 engine = "embedded"   # or "process"
 fast = false          # priority processing
 sandbox_mode = "workspace-write"   # read-only, workspace-write, danger-full-access
+project_doc_fallback_filenames = ["CLAUDE.md"]   # Codex's key: also read CLAUDE.md
 
 [instructions]
 enabled = true
-max_bytes = 32768
+max_bytes = 32768                               # or Codex's project_doc_max_bytes at the top level
 
 [sandbox_workspace_write]
 network_access = false

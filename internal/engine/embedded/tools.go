@@ -28,7 +28,7 @@ func (w *wiring) tools(ctx context.Context, req core.Request, sessionID session.
 	if err != nil {
 		return nil, err
 	}
-	skills, skillErrs := tool.DiscoverSkills(filepath.Join(req.Workspace, ".harness", "skills"))
+	skills, skillErrs := discoverSkills(req.Workspace, w.getenv)
 	registry := tool.NewRegistry(translators, toolNames(req, len(skills) > 0)...)
 	if b, ok := translators.Bash.(sandboxedBash); ok {
 		registry = sandboxRegistry{Registry: registry, policy: w.policy(req, b.mode)}
