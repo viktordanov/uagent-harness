@@ -21,6 +21,10 @@ const DefaultTimeout = 5 * time.Minute
 // ErrNoText means the model answered without any text.
 var ErrNoText = errors.New("the model answered without text")
 
+// ErrContextWindow means the input did not fit the model's context window.
+// Call wraps the provider's error with it, so a caller can send less.
+var ErrContextWindow = errors.New("the input exceeds the model's context window")
+
 // Request is one call.
 type Request struct {
 	// Model is the model ID; the adapter may fill in its own when empty.
@@ -62,10 +66,18 @@ func Call(ctx context.Context, adapter llm.Adapter, req Request) (Result, error)
 		Input: input,
 	}, llm.RequestOptions{CacheKey: req.CacheKey})
 	if err != nil {
+		if overflow(err.Error()) {
+			return Result{}, fmt.Errorf("failed to call the model: %w: %w", ErrContextWindow, err)
+		}
+
 		return Result{}, fmt.Errorf("failed to call the model: %w", err)
 	}
-	if resp.Failure != nil {
-		return Result{}, fmt.Errorf("failed to call the model: %s: %s", resp.Failure.Code, resp.Failure.Message)
+	if f := resp.Failure; f != nil {
+		if overflow(f.Code + " " + f.Message) {
+			return Result{}, fmt.Errorf("failed to call the model: %w: %s: %s", ErrContextWindow, f.Code, f.Message)
+		}
+
+		return Result{}, fmt.Errorf("failed to call the model: %s: %s", f.Code, f.Message)
 	}
 	text := Text(resp)
 	if text == "" {
@@ -73,6 +85,23 @@ func Call(ctx context.Context, adapter llm.Adapter, req Request) (Result, error)
 	}
 
 	return Result{Text: text, Usage: resp.Usage}, nil
+}
+
+// overflowSigns are how providers report an input over the window: the
+// Responses API's code, and the wording of OpenAI-compatible servers.
+var overflowSigns = []string{"context_length_exceeded", "maximum context length", "context window", "prompt is too long"}
+
+// overflow reports whether a provider's error text says the input did not
+// fit the context window.
+func overflow(text string) bool {
+	text = strings.ToLower(text)
+	for _, sign := range overflowSigns {
+		if strings.Contains(text, sign) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // Text joins the assistant messages of a response.

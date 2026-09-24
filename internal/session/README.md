@@ -96,7 +96,7 @@ PreToolUse and PreCompact hooks run in the embedded engine, on the coordinator's
 The runner's session files and uagent's run records are the source of truth; the [state storage record](../../docs/design/state.md) lists every file and why the index is only a cache.
 
 - **Sidecar.** A new session writes `sessions/<id>.uah.json` with its `source` (`tui`, `run`, or `subagent`), its creation time, and, for a subagent, its `parent`. The first writer wins (`O_EXCL`). `Interactive` drops `run` and `subagent` sessions from the resume picker, as Codex hides `codex exec` sessions, and `Tree` lists subagents under their parents.
-- **History.** `Sessions` folds run records into one `Info` per session, reading only summaries and the first request. `Load` reads every run of a session in start order with its events, which is how the TUI rebuilds a resumed transcript. `InDir` matches a session's workspace the way Codex does: absolute, cleaned, and with symlinks resolved.
+- **History.** `Sessions` folds run records into one `Info` per session, reading only summaries and the first request. `Load` reads every run of a session in start order with its events, which is how the TUI rebuilds a resumed transcript; each compaction saved in the compaction log is added to the run it happened in, in time order, so reloaded transcripts, `uah sessions show`, and `uah run --stream` show it. `InDir` matches a session's workspace the way Codex does: absolute, cleaned, and with symlinks resolved.
 
 Listing and search go through the rebuildable SQLite index in [internal/store](../store/README.md), which falls back to `Sessions` when the index cannot be used.
 <!-- /memoria:section -->

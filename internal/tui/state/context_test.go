@@ -2,13 +2,16 @@ package state_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/viktordanov/uagent/core"
+	uaharness "github.com/viktordanov/uagent/harness"
 
 	"github.com/viktordanov/uagent-harness/internal/compaction"
 	"github.com/viktordanov/uagent-harness/internal/engine"
+	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/internal/tui/state"
 )
 
@@ -40,4 +43,30 @@ func TestReduce_CompactCommand(t *testing.T) {
 	s.Caps = engine.Capabilities{Compaction: true}
 	_, effects = apply(s, state.Submit{Text: "/compact"})
 	assert.Equal(t, []state.Effect{state.EffCompact{}}, effects)
+}
+
+func TestReduce_ReloadedCompactionAndInterrupt(t *testing.T) {
+	s := opened()
+	history := []session.LoadedRun{{
+		Record: uaharness.RunRecord{Complete: true, Result: core.Result{
+			Request: core.Request{RunID: "old", SessionID: "sess-2"}, Status: core.StatusOK, StartedAt: t0, Wall: time.Second,
+		}},
+		Events: []core.Event{
+			core.ModelResponded{At: t0, Turn: 1, Usage: core.Tokens{InputTokens: 200_000}},
+			engine.Compacted{At: t0, Trigger: compaction.TriggerAuto, Summary: "S"},
+		},
+	}}
+	s, _ = apply(s, state.HistoryLoaded{SessionID: "sess-2", Runs: history})
+	var notices []string
+	for _, it := range s.Items {
+		if it.Kind == state.KindNotice {
+			notices = append(notices, it.Text)
+		}
+	}
+	assert.Contains(t, notices, "Context compacted; your messages stay as written", "a reloaded transcript shows the compaction")
+	_, ok := s.ContextLeft()
+	assert.False(t, ok, "the reloaded compaction clears the meter")
+
+	s, _ = apply(s, engine.Compacted{At: t0, Trigger: compaction.TriggerManual, Err: "interrupted: context canceled", Interrupted: true})
+	assert.Equal(t, "Compaction interrupted", s.Items[len(s.Items)-1].Text)
 }

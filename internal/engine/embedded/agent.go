@@ -43,6 +43,9 @@ func (a *agent) ExitCode() int {
 func (a *agent) Interrupt() {
 	a.stopOnce.Do(func() {
 		a.interrupted.Store(true)
+		if a.compactor != nil {
+			a.compactor.interrupt()
+		}
 		if err := a.control(inbox.ControlMessage{Mode: inbox.StopHard, Reason: "interrupted by the user"}); err != nil {
 			a.cancel()
 		}
