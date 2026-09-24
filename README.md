@@ -4,7 +4,7 @@
 The general-purpose harness built on [uagent](https://github.com/viktordanov/uagent), the wrapper around unreal-agent-runner.
 uagent runs one task with safety guards. This repository adds what long-lived, interactive work needs: sessions with a message queue and steering, an embedded engine for live model, effort, and fast-mode changes, instruction files, configuration, hooks, and a terminal UI.
 
-Status: milestone M6: sessions, instructions, configuration, the TUI, the embedded engine, and hooks. Sandboxing and approvals are researched in [docs/design/sandbox-research.md](docs/design/sandbox-research.md) but not built.
+Status: milestone M6: sessions, instructions, configuration, the TUI, the embedded engine, and hooks. Sandboxing and approvals are planned in [docs/design/sandbox.md](docs/design/sandbox.md), following Codex, but not built yet.
 
 1. [Use it](#use-it): the TUI, engines, instructions, hooks, and configuration
 2. [Development](#development)
