@@ -177,7 +177,7 @@ command = "osascript -e 'display notification \"uah is idle\"'"
 | `PreCompact` | A compaction is about to start (`trigger`: manual or auto), on the embedded engine | Stop it (exit 2 or `"decision":"block"`) |
 | `SessionEnd` | The session closes | Observe only, with at most a second |
 
-Hooks in the user file run as written. Hooks in a trusted project's `.uagent/config.toml` run only after `uah hooks trust` records their exact commands (by SHA-256, in `~/.config/uagent/trusted-hooks.json`); a changed command needs trust again. `uah hooks` lists the hooks for a workspace and whether each runs. Hook runs appear in the TUI's detailed view (ctrl+t); blocks and failures appear in both views.
+Hooks in the user file run as written. Hooks in a trusted project's `.uagent/config.toml` run only after `uah hooks trust` records their exact commands (by SHA-256, in `~/.config/uagent/trusted-hooks.json`); a changed command needs trust again. When a command runs a local script (its first word is a path to a file, absolute or relative to the workspace, such as `.uagent/hooks/check.sh` or `"$UAH_PROJECT_DIR"/check.sh`), trust also records the script's SHA-256, so an edited script is reported as untrusted ("the script changed") until `uah hooks trust` runs again. Entries trusted before uah hashed scripts still cover commands that run no script; commands that run one need trust again. `uah hooks` lists the hooks for a workspace and whether each runs. Hook runs appear in the TUI's detailed view (ctrl+t); blocks and failures appear in both views.
 
 <!-- /memoria:section -->
 

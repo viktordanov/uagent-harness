@@ -122,7 +122,22 @@ func (r *Runner) Hooks() []Hook {
 
 // Trusted reports whether a hook may run.
 func (r *Runner) Trusted(h Hook) bool {
-	return h.Source != SourceProject || (r.trust != nil && r.trust.Trusted(h.Command))
+	ok, _ := r.TrustState(h)
+
+	return ok
+}
+
+// TrustState reports whether a hook may run, and if not, why: a project hook
+// that was never trusted, or whose command or script changed since.
+func (r *Runner) TrustState(h Hook) (bool, string) {
+	if h.Source != SourceProject {
+		return true, ""
+	}
+	if r.trust == nil {
+		return false, ReasonUntrusted
+	}
+
+	return r.trust.Check(r.workspace, h.Command)
 }
 
 // OnResult sets a function that sees every result, from any goroutine.
@@ -163,10 +178,10 @@ func (r *Runner) Run(ctx context.Context, in Input) Decision {
 	var d Decision
 	for _, h := range r.matching(in.Event, in.ToolName) {
 		var res Result
-		if r.Trusted(h) {
+		if ok, why := r.TrustState(h); ok {
 			res = r.exec(ctx, h, in)
 		} else {
-			res = Result{Hook: h, Outcome: OutcomeSkipped, Reason: "project hook not trusted; run `uah hooks trust` to allow it"}
+			res = Result{Hook: h, Outcome: OutcomeSkipped, Reason: why}
 		}
 		r.mu.Lock()
 		report := r.report
