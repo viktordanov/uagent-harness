@@ -129,6 +129,16 @@ model_reasoning_effort = "high"
 developer_instructions = "Review only; do not edit files. List each finding with its file and line."
 ```
 
+Each subagent runs on the parent's provider. To give one another model, effort, or fast mode:
+
+- **Model and effort for one task.** Ask for it ("use a subagent on gpt-6-luna with low effort"). The agent passes `model` and `reasoning_effort` to `spawn_agent`. On openai-codex, a model outside Codex's catalog fails at once, with the models to choose from.
+- **Model, effort, and fast mode for a kind of subagent.** Set `model`, `model_reasoning_effort`, and `service_tier = "priority"` in its role file; `service_tier = "priority"` is fast mode for that role only. See [role files](docs/configuration.md#subagents).
+- **Defaults for every subagent.** Set `default_subagent_model` and `default_subagent_reasoning_effort` in `[agents]`. Fast mode for every subagent follows the parent: `/fast` in the session turns it on for the children it starts.
+
+To hand a subagent the conversation so far, ask for a forked subagent ("fork a subagent to write the tests for what we just discussed"): `spawn_agent` with `fork_context` starts it from a copy of the parent's history, so it needs no exploring again and reuses the provider's prompt cache.
+
+To watch a subagent work, type `/agents <name>` (tab completes the names): the TUI shows its transcript as it works, and a message you type there goes to it. esc returns to the main agent, which kept running. `uah sessions` lists subagents under their parent as `subagent-1a2b3c4d`, and `uah sessions show subagent-1a2b3c4d` prints one's transcript.
+
 ### Keep a long session going
 
 uah compacts automatically at 90% of the context window. `/compact` compacts now, and `/context` shows what fills the window.
@@ -287,7 +297,14 @@ Read more: [MCP](internal/mcp/README.md), and the [design and validation](docs/d
 Subagents are child sessions that a session's agent starts, messages, waits for, and closes through Codex's v1 multi-agent tools. `internal/agents` implements them behind the `engine.Subagents` seam: the embedded engine offers the tools and runs their calls in the background, and the package owns the tools, the children's lifecycle, approvals through the parent, limits, hooks, and resume.
 <!-- /memoria:import -->
 
-A subagent is the same as the main agent in every way except its session, which is nested under the parent's: the same instructions, skills, sandbox, approvals, hooks, MCP servers, and compaction. It asks for approval through the parent's session. Read more: [subagents](internal/agents/README.md), and the [design and validation](docs/design/subagents.md).
+A subagent is the same as the main agent in every way except its session, which is nested under the parent's: the same instructions, skills, sandbox, approvals, hooks, MCP servers, and compaction. It asks for approval through the parent's session.
+
+- Its session ID is `subagent-<uuid>`. A role or the spawn call can give it another model, effort, or fast mode on the parent's provider.
+- `fork_context` starts it from a copy of the parent's history, so its first model request starts with the parent's and reuses the provider's prompt cache.
+- A failed subagent reports why, such as the provider's message, to the parent's `wait_agent`, the TUI, and `uah run`.
+- `/agents <name>` shows its live transcript in the TUI.
+
+Read more: [subagents](internal/agents/README.md), and the [design and validation](docs/design/subagents.md).
 <!-- /memoria:section -->
 
 <!-- memoria:section id="compaction" files="internal/llmcall/llmcall.go cmd/uah/stream.go internal/contextusage/usage.go" -->
