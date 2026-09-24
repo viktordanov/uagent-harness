@@ -1,0 +1,10 @@
+# Project configuration for this repository. It overrides the user file only
+# because the user file lists this path under [projects] with trusted = true.
+
+effort = "medium"
+
+# Block destructive commands before the agent runs them (embedded engine).
+[[hooks.PreToolUse]]
+matcher = "Bash"
+command = ".uagent/hooks/guard.sh"
+timeout = "5s"

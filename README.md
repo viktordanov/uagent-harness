@@ -1,3 +1,4 @@
+<!-- memoria:section id="overview" files="cmd/uah/main.go go.mod" -->
 # uagent-harness
 
 The general-purpose harness built on [uagent](https://github.com/viktordanov/uagent), the wrapper around unreal-agent-runner.
@@ -5,6 +6,11 @@ uagent runs one task with safety guards. This repository adds what long-lived, i
 
 Status: milestone M6: sessions, instructions, configuration, the TUI, the embedded engine, and hooks. Sandboxing and approvals are researched in [docs/design/sandbox-research.md](docs/design/sandbox-research.md) but not built.
 
+1. [Use it](#use-it): the TUI, engines, instructions, hooks, and configuration
+2. [Development](#development)
+<!-- /memoria:section -->
+
+<!-- memoria:section id="usage" files="cmd/uah/main.go cmd/uah/run.go cmd/uah/resume.go cmd/uah/sessions.go cmd/uah/tui.go cmd/uah/print.go internal/session/history.go internal/session/sidecar.go" -->
 ## Use it
 
 ```sh
@@ -26,6 +32,9 @@ printf 'first\nsecond\n' | uah run --stdin                  # each line is a mes
 uah run --stream "..."                                     # JSONL: uagent's run events plus session events
 ```
 
+<!-- /memoria:section -->
+
+<!-- memoria:section id="tui" files="internal/tui/state/commands.go internal/tui/state/reduce.go internal/tui/bubble/keys.go internal/tui/bubble/model.go internal/tui/render/items.go internal/tui/render/screen.go internal/tui/render/markdown.go" -->
 ### The TUI
 
 The default view is compact, like Codex: your messages, one line per command (`• Ran go test ./...`), and the answers, with Markdown drawn as Codex draws it (highlighted code blocks, `code`, bold, headings, lists). ctrl+t (or `/details`) switches to the detailed view with the header, run dividers, turns with token counts, and session totals; `[tui] details = true` starts there.
@@ -50,6 +59,9 @@ Tool calls keep their place in the transcript, so a command that finishes after 
 `uah run` takes the same backend, guard, and state flags as uagent (`--provider`, `-m`, `-e`, `-t`, `-C`, `--state-dir`, `--runner`, `--max-disk`, `--allow-dotenv`); `uah run --help` lists them.
 A flag wins over the environment (`UNREAL_HARNESS_LLM_*`, `UAGENT_*`), which wins over the resumed session's settings and the defaults. Sessions and run records live in uagent's state directory, so `uagent` and `uah` share them.
 
+<!-- /memoria:section -->
+
+<!-- memoria:section id="engines" files="internal/engine/engine.go internal/engine/embedded/engine.go internal/engine/embedded/wiring.go internal/engine/embedded/agent.go internal/engine/embedded/providers.go internal/engine/process/process.go internal/session/session.go" -->
 ### Engines
 
 `uah` runs the agent in one of two ways, chosen with `--engine`, `UAH_ENGINE`, or `engine` in the configuration:
@@ -59,6 +71,9 @@ A flag wins over the environment (`UNREAL_HARNESS_LLM_*`, `UAGENT_*`), which win
 
 Both engines share uagent's guards, session lock, and run records, and write the same session files, so a session can move between them. The workspace `.env` is never loaded by the embedded engine.
 
+<!-- /memoria:section -->
+
+<!-- memoria:section id="instructions" files="internal/instructions/instructions.go" -->
 ### Instructions
 
 The runner reads no instruction files, so `uah` builds them into the runner's system prompt, after the runner's own default text:
@@ -68,6 +83,9 @@ The runner reads no instruction files, so `uah` builds them into the runner's sy
 
 Later files are more specific. The total stops at 32 KiB. `--no-instructions` turns this off, and the loaded files are reported as `instructions_loaded`.
 
+<!-- /memoria:section -->
+
+<!-- memoria:section id="hooks" files="internal/hooks/hooks.go internal/hooks/exec.go internal/hooks/payload.go internal/hooks/trust.go internal/engine/embedded/pretooluse.go cmd/uah/hooks.go" -->
 ### Hooks
 
 Hooks run a command at a session event, with Claude Code's contract: the event arrives as JSON on stdin, exit 0 continues (optionally printing JSON), exit 2 blocks with stderr as the reason, and any other exit is reported and ignored.
@@ -93,9 +111,19 @@ command = "osascript -e 'display notification \"uah is idle\"'"
 
 Hooks in the user file run as written. Hooks in a trusted project's `.uagent/config.toml` run only after `uah hooks trust` records their exact commands (by SHA-256, in `~/.config/uagent/trusted-hooks.json`); a changed command needs trust again. `uah hooks` lists the hooks for a workspace and whether each runs. Hook runs appear in the TUI's detailed view (ctrl+t); blocks and failures appear in both views.
 
+<!-- /memoria:section -->
+
+<!-- memoria:section id="configuration" files="internal/config/config.go cmd/uah/flags.go .uagent/config.toml .uagent/hooks/guard.sh" -->
 ### Configuration
 
-`~/.config/uagent/config.toml` (or `$XDG_CONFIG_HOME/uagent/config.toml`, or `--config`) sets defaults below flags, the environment, and a resumed session:
+Two files, both TOML:
+
+| File | Scope | Applies when |
+| --- | --- | --- |
+| `~/.config/uagent/config.toml` (or `$XDG_CONFIG_HOME/uagent/config.toml`, or `--config`) | Every workspace | Always |
+| `<workspace>/.uagent/config.toml` | One workspace; overrides the user file, and its hooks add to the user file's | The user file lists the workspace under `[projects]` with `trusted = true`. Its hooks also need `uah hooks trust` |
+
+Flags win over the environment, which wins over a resumed session's settings, then the project file, the user file, and the defaults. The names say `uagent` because uah shares uagent's directories. This repository's own [.uagent/config.toml](.uagent/config.toml) and [guard hook](.uagent/hooks/guard.sh) are a working example of a project file. A user file:
 
 ```toml
 provider = "openai-codex"
@@ -120,15 +148,17 @@ trusted = true
 
 Unknown keys are errors, so a typo fails loudly instead of being ignored.
 
-Design:
+Design records and the documentation procedure are indexed in [docs](docs/README.md):
 
-1. [Harness design](docs/design/harness.md): what the runner provides, what the harness adds, the two engines, and the accepted scope.
-2. [TUI design](docs/design/tui.md): the framework choice, architecture, screens, keys, and commands.
-3. [Implementation spec](docs/design/implementation.md): the packages and files in both repositories, types, milestones, and tests.
-4. [State storage](docs/design/state.md): what is stored where today, and the plan for a rebuildable SQLite index.
-5. [Sandboxing and approvals](docs/design/sandbox-research.md): how Codex sandboxes and approves commands, bubblewrap, and options for uah (research, not decided).
-6. [TUI framework benchmark](bench/tui/README.md): the measurements behind choosing Bubble Tea v2 (a separate Go module).
+<!-- memoria:import src="docs/README.md#summary" -->
+Design records for the harness, the TUI, state storage, and sandboxing, plus the architecture rules and documentation procedure for uagent-harness.
+<!-- /memoria:import -->
 
+The [TUI framework benchmark](bench/tui/README.md) holds the measurements behind choosing Bubble Tea v2 (a separate Go module).
+
+<!-- /memoria:section -->
+
+<!-- memoria:section id="development" files=".github/workflows/ci.yml .golangci.yml testing/fakellm/fakellm.go testing/harnesstest/harnesstest.go internal/engine/embedded/embedded_test.go" -->
 ## Development
 
 Go 1.27.1 or later is required. Tests need no model or tokens:
@@ -144,3 +174,4 @@ golangci-lint run ./...      # lint with .golangci.yml (golangci-lint v2.13.2)
 
 CI (`.github/workflows/ci.yml`) runs the build, the race tests, and the linter on each push and pull request.
 `bench/tui` is a separate Go module, so the root commands above do not include it.
+<!-- /memoria:section -->
