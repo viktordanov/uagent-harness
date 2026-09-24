@@ -127,7 +127,7 @@ func (p *printer) say(msg string) {
 	fmt.Fprintf(p.w, "[%6.1fs] %s\n", time.Since(p.origin).Seconds(), msg)
 }
 
-func short(id string) string { return id[:min(8, len(id))] }
+func short(id string) string { return session.ShortID(id) }
 
 func modelLabel(model string) string {
 	if model == "" {
