@@ -27,7 +27,7 @@ func newPrinter(w io.Writer, verbose bool) *printer {
 	return &printer{w: w, verbose: verbose, origin: time.Now(), agents: map[string]string{}}
 }
 
-func (p *printer) print(event core.Event) {
+func (p *printer) print(event core.Event) { //nolint:gocyclo // a dispatch switch over a closed set; see docs/documentation/architecture.md
 	switch e := event.(type) {
 	case session.SessionOpened:
 		resumed := ""

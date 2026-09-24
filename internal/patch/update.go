@@ -12,7 +12,7 @@ import (
 )
 
 // updateLine reads one line of an update hunk.
-func (p *parser) updateLine(line string) error {
+func (p *parser) updateLine(line string) error { //nolint:gocyclo // Codex's per-line state machine, kept as one table; see docs/documentation/architecture.md
 	u := strings.TrimRight(line, " \t\r\n\v\f")
 	if ok, err := p.header(u); ok || err != nil {
 		return err

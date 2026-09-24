@@ -51,6 +51,7 @@ Status: `todo`, `doing`, `done`, `cut` (with a reason).
 | 25 | `/config`: the basic settings in the TUI, saved to the user file | lane settings | 24 | done |
 | 26 | Permission modes on shift+tab, shown in the TUI | lane modes | — | done |
 | 27 | Session settings kept with the session: model, effort, fast mode, permission mode | lane modes | 26 | done |
+| 28 | Tests for the process engine, codexauth, and the notification codec; a complexity backstop in CI | main session | 23 | done |
 
 Order of starting: 1 alone (it touches everything). Then lanes A (2), B (4), C (5) in parallel. D (6, 7) starts when a lane frees up. 9 and 10 come after their dependencies merge.
 
@@ -252,6 +253,16 @@ One line per merge or decision: time, item, what landed, commit.
 - 05:16 · 11 · Merged lane/doctor: `uah doctor` (config, settings, runner, workspace, credentials incl. the real client construction, a real sandbox run, instructions, hooks, MCP startup, state), hook trust that also hashes a local script the command runs, and a crash-recovery test (SIGKILL uah mid-tool, resume) that found orphaned tools surviving a crash — fixed on the embedded engine by killing recorded live groups before resuming.
 - 05:22 · 11 · Moved the crash fix into uagent v0.4.2 (harness.Start kills tools a killed run left behind, after taking the session lock), so both engines get it; removed the embedded engine's copy. The crash test still passes.
 - 05:28 · 12 · Merged lane/subagents: Codex v1 tools (spawn_agent, send_input, wait, close_agent) as the runner's remote jobs, children as resumable sessions under their parent (hidden from the picker), [agents] config and Codex role files, child approvals through the parent, progress lines and /agents in the TUI. The reference test caught the new keys; docs/configuration.md gained a Subagents section.
+
+- 09:40 · 13 · `/context` like Claude Code: internal/contextusage, the engine records each session's last request, a 10×10 grid.
+- 09:50 · 14–15 · Shell completion for bash, zsh, fish, and pwsh; module READMEs next to their code, and the root README as a guide.
+- 11:20 · 16–18 · Merged the compaction, MCP (OAuth, `uah mcp`, `/mcp`), and subagents validation lanes, each checked against Codex.
+- 11:45 · 19 · The amber look: transparent background, λ on a band, the tool column, the breathing λ, the finish line, the banner.
+- 12:25 · 22 · `/clear` in the same session; subagents round 2 (fork_context, `subagent-` IDs, the agent view); the model catalog (21).
+- 13:55 · 22 · Subagent notifications, steering the viewed agent, only working agents browsable; uagent v0.4.3 for run IDs.
+- 14:20 · 23 · Quality pass: 24 of the survey's 26 findings fixed.
+- 14:45 · 24–27, 20 · Merged configurable compaction and `/config`, permission modes and saved session settings, and `apply_patch` with diffs.
+- 15:10 · 28 · A fresh review found CI red on a notification race (fixed: the note goes before the update), stale ledger lines (fixed), and no tests for the process engine (added), and suggested a complexity check (gocyclo at 20, as a backstop).
 
 ### Final summary (05:29)
 

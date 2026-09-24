@@ -21,7 +21,7 @@ const (
 // onKey maps keys to intents. The keys never change meaning: Enter sends
 // (queueing while the agent works), Ctrl+Enter sends now, Shift+Enter adds a
 // line.
-func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) { //nolint:gocyclo // a dispatch switch over a closed set; see docs/documentation/architecture.md
 	if m.st.Mode == state.ModePicker {
 		return m.onPickerKey(msg)
 	}

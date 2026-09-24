@@ -180,7 +180,7 @@ func (s *State) loadHistory(h HistoryLoaded) {
 	s.Live = nil
 }
 
-func (s *State) onIntent(ev any) (State, []Effect) {
+func (s *State) onIntent(ev any) (State, []Effect) { //nolint:gocyclo // a dispatch switch over a closed set; see docs/documentation/architecture.md
 	switch e := ev.(type) {
 	case Submit:
 		text := strings.TrimSpace(e.Text)
