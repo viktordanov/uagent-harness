@@ -15,6 +15,8 @@ import (
 	"github.com/unreallabsai/unreal-agent/harness/llm/clients/openrouter"
 	"github.com/unreallabsai/unreal-agent/harness/llm/responsesapi"
 	"github.com/unreallabsai/unreal-agent/harness/primitives"
+
+	"github.com/viktordanov/uagent-harness/internal/engine/codexauth"
 )
 
 // Client is a model client the engine can close.
@@ -115,7 +117,7 @@ func DefaultProviders() []Provider {
 // codexPriorityClient is openaicodex.NewClient with service_tier "priority":
 // the same endpoint, headers, and redirect rule.
 func codexPriorityClient(config openaicodex.Config) (Client, error) {
-	creds, err := codexCredentials(config)
+	creds, err := codexauth.Load(config)
 	if err != nil {
 		return nil, err
 	}
@@ -134,8 +136,8 @@ func codexPriorityClient(config openaicodex.Config) (Client, error) {
 	})
 
 	return priorityClient(remote, baseURL+"/responses", *config.MaxAttempts, map[string][]string{
-		"Authorization":      {"Bearer " + creds.accessToken},
-		"ChatGPT-Account-ID": {creds.accountID},
+		"Authorization":      {"Bearer " + creds.AccessToken},
+		"ChatGPT-Account-ID": {creds.AccountID},
 		"Content-Type":       {"application/json"},
 		"originator":         {"unreal-agent"},
 		"User-Agent":         {"unreal-agent"},
