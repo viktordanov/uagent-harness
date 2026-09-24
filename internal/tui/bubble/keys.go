@@ -80,6 +80,21 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		if draft == "" {
 			return m.dispatch(state.ScrollToBottom{})
 		}
+	case "alt+left":
+		return m.dispatch(state.SwitchAgent{Delta: -1})
+	case "alt+right":
+		return m.dispatch(state.SwitchAgent{Delta: 1})
+	case "alt+b", "alt+f":
+		// Many macOS terminals send alt+← and alt+→ as these word motions;
+		// on an empty composer they switch agents, as in Codex.
+		if draft == "" {
+			delta := 1
+			if msg.String() == "alt+b" {
+				delta = -1
+			}
+
+			return m.dispatch(state.SwitchAgent{Delta: delta})
+		}
 	case "alt+,":
 		return m.dispatch(state.StepEffort{Delta: -1})
 	case "alt+.":

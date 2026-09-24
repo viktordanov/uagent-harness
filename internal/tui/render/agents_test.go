@@ -37,7 +37,7 @@ func TestScreen_AgentView(t *testing.T) {
 	}})
 	out := ansi.Strip(screen(s, ""))
 	lines := strings.Split(out, "\n")
-	assert.Equal(t, " viewing agent Ada · esc returns", strings.TrimRight(lines[0], " "))
+	assert.Equal(t, " agent Ada · alt+← alt+→ switch agents · esc esc interrupts", strings.TrimRight(lines[0], " "))
 	assert.Contains(t, out, "the child's answer")
 	assert.NotContains(t, out, "the parent's answer")
 	assert.Contains(t, out, "gpt-child", "the footer is the agent's")

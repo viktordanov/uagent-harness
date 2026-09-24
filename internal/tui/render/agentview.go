@@ -17,7 +17,7 @@ func agentScreen(s state.State, c *Cache, f Frame) (string, int) {
 	f.Height = max(f.Height-1, 1)
 	out, row := Screen(*v.St, c.view, f)
 	c.maxScroll = c.view.maxScroll
-	header := " " + Accent().Render("viewing agent "+v.Nickname) + Dim().Render(" · esc returns")
+	header := " " + Accent().Render("agent "+v.Nickname) + Dim().Render(" · alt+← alt+→ switch agents · esc esc interrupts")
 
 	return ansi.Truncate(header, f.Width, "") + "\n" + out, row + 1
 }

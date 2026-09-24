@@ -112,6 +112,12 @@ func (m Model) run(e state.Effect) tea.Cmd {
 		return m.watchAgent(e.ID)
 	case state.EffAgentSend:
 		return m.sendToAgent(e.Text)
+	case state.EffAgentInterrupt:
+		if w := m.watch; w != nil && w.Interrupt != nil {
+			w.Interrupt()
+		}
+
+		return nil
 	case state.EffQuit:
 		return func() tea.Msg {
 			if sess != nil {

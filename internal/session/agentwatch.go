@@ -22,6 +22,9 @@ type AgentWatch struct {
 	Stop func()
 	// Send gives the agent a message, as the parent's send_input does.
 	Send func(text string) error
+	// Interrupt stops the agent's current work, and its own subagents',
+	// as esc esc does for the main agent. It stays open for more messages.
+	Interrupt func()
 }
 
 // AgentWatcher follows a session's subagents; internal/agents implements

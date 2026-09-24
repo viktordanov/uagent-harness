@@ -88,6 +88,7 @@ The compact view draws one line per tool call, as Codex does; the detailed view 
 | ctrl+s | Session picker |
 | ctrl+n | New session |
 | `/`, `@` | Open the menu: commands and their values after `/`, workspace files (fuzzy) after `@`. Tab fills in the selection, enter runs a command, esc closes the menu |
+| alt+← / alt+→ (alt+b / alt+f on an empty composer) | Switch between the main agent and its subagents, in the order they started |
 | ctrl+t | Compact or detailed view |
 | ctrl+r | Show or hide reasoning summaries |
 | ↑ / ↓ on an empty composer, the mouse wheel, shift+↑ / shift+↓, pgup / pgdn | Scroll the transcript; end returns to the bottom. The TUI leaves the mouse to the terminal, so text selects as usual and the wheel arrives as ↑ and ↓. `[tui] mouse = true` reports the mouse instead: the wheel then scrolls directly, and selecting needs Option (iTerm2, Terminal) or Shift (most others) |
@@ -135,11 +136,11 @@ In the picker, ↑/↓ choose, enter resumes, tab switches between this director
 <!-- memoria:section id="agentview" files="state/agentview.go bubble/agentview.go render/agentview.go" -->
 ## The agent view
 
-`/agents Ada` (or an ID prefix; the menu completes the nicknames) shows a subagent's transcript in place of the session's, under one header line: `viewing agent Ada · esc returns`. It follows Codex's `/subagents` switch, where the TUI shows another thread of the session and the user can type to it.
+`/agents Ada` (or an ID prefix; the menu completes the nicknames) shows a subagent's transcript in place of the session's, under one header line: `agent Ada · alt+← alt+→ switch agents · esc esc interrupts`. It follows Codex's `/subagents` switch, where the TUI shows another thread of the session and the user can type to it. alt+← and alt+→ step through the main agent and the subagents in the order they started, wrapping around, as Codex's previous- and next-agent keys do; on an empty composer alt+b and alt+f do the same, since many macOS terminals send those for alt+arrows (`SwitchAgent`).
 
 - `state.AgentView` holds a second `State` for the agent, reduced from its events by the same reducer and drawn by the same renderer, with a cache of its own. The session's own events keep reducing into the main state meanwhile.
 - The shell follows the agent with `Session.WatchAgent` (see [internal/session](../session/README.md)): its earlier runs become a `HistoryLoaded`, then its events arrive in 16 ms batches as `state.AgentEvents`, like the session's.
-- A message typed in the view goes to the agent (`EffAgentSend`), as the parent's `send_input` does. `/agents` and `/quit` work as usual; other commands are for the main agent and say so. esc, or opening another agent, ends the view.
+- A message typed in the view goes to the agent (`EffAgentSend`), as the parent's `send_input` does. `/agents` and `/quit` work as usual; other commands are for the main agent and say so. esc esc interrupts the viewed agent while it works (`EffAgentInterrupt`, which stops its own subagents too), as it does the main agent; alt+← back to the main agent, or opening another agent, ends the view. The clock keeps ticking while any subagent runs, so their spinners move while the main agent is idle.
 - An approval waiting in the session shows the session's screen until it is answered.
 <!-- /memoria:section -->
 

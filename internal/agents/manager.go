@@ -268,17 +268,12 @@ func (m *Manager) Interrupt(parentID string) {
 	var stop []*child
 	for _, c := range m.children {
 		if c.parent == parentID && !c.closed {
-			stop = append(stop, m.subtree(c)...)
+			stop = append(stop, c)
 		}
-	}
-	for _, c := range stop {
-		c.cancelAsks()
 	}
 	m.mu.Unlock()
 	for _, c := range stop {
-		if s := c.session(m); s != nil {
-			go func() { _ = s.Interrupt() }() // never wait on a child's loop from the parent's
-		}
+		m.interruptTree(c)
 	}
 }
 
