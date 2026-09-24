@@ -28,7 +28,7 @@ uah run --stream "..."                                     # JSONL: uagent's run
 
 ### The TUI
 
-The default view is compact, like Codex: your messages, one line per command (`• Ran go test ./...`), and the answers. ctrl+t (or `/details`) switches to the detailed view with the header, run dividers, turns with token counts, and session totals; `[tui] details = true` starts there.
+The default view is compact, like Codex: your messages, one line per command (`• Ran go test ./...`), and the answers, with Markdown drawn as Codex draws it (highlighted code blocks, `code`, bold, headings, lists). ctrl+t (or `/details`) switches to the detailed view with the header, run dividers, turns with token counts, and session totals; `[tui] details = true` starts there.
 
 | Key | Action |
 | --- | --- |
@@ -41,7 +41,7 @@ The default view is compact, like Codex: your messages, one line per command (`�
 | ctrl+s, ctrl+n | Session picker, new session |
 | ctrl+t | Compact or detailed view |
 | ctrl+r | Show or hide reasoning summaries |
-| pgup / pgdn | Scroll the transcript |
+| mouse wheel, shift+↑ / shift+↓, pgup / pgdn | Scroll the transcript; end returns to the bottom. While the TUI reports the mouse, select text with Option (iTerm2, Terminal) or Shift (most others) held |
 | ctrl+c | Clear the composer; on an empty composer, quit (twice while a run is live) |
 
 Commands: `/model <id>`, `/effort <level>`, `/resume [id]`, `/new`, `/stop`, `/status`, `/details`, `/reasoning`, `/help`, `/quit`. `/model`, `/effort`, and `/fast` apply from the next model request on the embedded engine, and from the next run on the process engine. `/fast` needs the embedded engine and the openai or openai-codex provider.
