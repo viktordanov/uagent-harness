@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"path/filepath"
 	"strings"
 	"time"
@@ -17,6 +18,7 @@ import (
 
 	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/hooks"
+	"github.com/viktordanov/uagent-harness/internal/mcp"
 )
 
 // ErrClosed means the session has been closed.
@@ -168,8 +170,32 @@ func (s *Session) SetSettings(settings Settings) (Applied, error) {
 	return call[Applied](s, cmdSettings{settings: settings})
 }
 
-// Close interrupts a live run, waits for it to end, and closes Events.
+// MCPServers reports the engine's MCP servers; ok is false when the engine
+// does not run MCP servers.
+func (s *Session) MCPServers() (servers []mcp.ServerStatus, ok bool) {
+	l, ok := s.eng.(engine.MCPLister)
+	if !ok {
+		return nil, false
+	}
+
+	return l.MCPServers(), true
+}
+
+// Close interrupts a live run, waits for it to end, and closes Events. It
+// then closes the engine when it holds resources between runs, such as MCP
+// servers.
 func (s *Session) Close() error {
+	err := s.close()
+	if c, ok := s.eng.(io.Closer); ok {
+		if cerr := c.Close(); cerr != nil && err == nil {
+			err = fmt.Errorf("failed to close the engine: %w", cerr)
+		}
+	}
+
+	return err
+}
+
+func (s *Session) close() error {
 	reply := make(chan error, 1)
 	select {
 	case s.in <- cmdClose{reply: reply}:

@@ -65,6 +65,15 @@ func (m Model) run(e state.Effect) tea.Cmd {
 
 			return state.SessionsLoaded{Sessions: infos, Local: local, All: m.deps.AllSessions || m.deps.Cwd == ""}
 		}
+	case state.EffListMCP:
+		return func() tea.Msg {
+			if sess == nil {
+				return fail(errNoSession)
+			}
+			servers, ok := sess.MCPServers()
+
+			return state.MCPListed{Servers: servers, Supported: ok}
+		}
 	case state.EffOpenSession:
 		return m.switchTo(e.ID)
 	case state.EffQuit:

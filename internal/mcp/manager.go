@@ -298,8 +298,10 @@ func (m *Manager) Call(ctx context.Context, serverName, tool string, args json.R
 	switch {
 	case s == nil:
 		err = fmt.Errorf("the MCP server %s is not running", serverName)
+	case s.state == StateFailed:
+		err = fmt.Errorf("the MCP server %s failed: %w", serverName, s.err)
 	case s.state != StateReady:
-		err = fmt.Errorf("the MCP server %s is %s: %w", serverName, s.state, errOrEOF(s.err))
+		err = fmt.Errorf("the MCP server %s is %s", serverName, s.state)
 	default:
 		session = s.session
 	}

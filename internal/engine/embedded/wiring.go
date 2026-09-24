@@ -93,7 +93,7 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 	if err != nil {
 		return nil, err
 	}
-	operations := operation.NewLocalOperationManager(runCtx)
+	operations := operation.NewLocalOperationManager(runCtx, newMCPJobs(runCtx, w.e.cfg.MCP))
 	a, err := newAgent(runCtx, cancel, sw, s.restored, req.Effort, messages)
 	if err != nil {
 		return nil, err

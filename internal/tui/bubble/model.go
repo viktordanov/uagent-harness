@@ -180,7 +180,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.sess = nil
 
 		return m, tea.Quit
-	case state.Failed, state.SessionsLoaded:
+	case state.Failed, state.SessionsLoaded, state.MCPListed:
 		return m.dispatch(msg)
 	}
 	var cmd tea.Cmd
