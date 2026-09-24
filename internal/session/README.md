@@ -57,7 +57,7 @@ When a run ends, messages sent into it that it never read go back to the front o
 
 `Settings` are what every run sends: provider, model, effort, service tier, workspace, and the host prompt. `SetSettings` stores them and, while a run is live, tries `SetEffort`, `SetModel`, and `SetServiceTier` on it. `SettingsChanged.Applied` says `live` when all changed fields reached the run, and `next_run` otherwise (always on the process engine).
 
-`Compact` marks a compaction as pending. While a run is live, the engine compacts before its next model request; while idle, `engine.Options.Compact` asks the next run to compact first. The pending flag clears when the engine reports a manual `CompactionStarted`. The process engine returns `ErrNoCompaction`.
+`Compact` marks a compaction as pending. While a run is live, the engine compacts before its next model request; while idle, `engine.Options.Compact` asks the next run to compact first. The pending flag clears when the engine reports a manual `CompactionStarted`. `Clear` (`/clear`) works the same way with `Run.Clear` and `engine.Options.Clear`: the model's next request starts fresh in the same session. The process engine returns `ErrNoCompaction` for both.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="approvals" files="approvals.go" -->

@@ -1,11 +1,11 @@
-  ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   ⛁ Instructions: 2.0k tokens (0.7%)
-  ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   ⛁ Skills: 1.0k tokens (0.4%)
-  ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   ⛁ Tools: 8.0k tokens (3%)
-  ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   ⛁ Your messages: 2.0k tokens (0.7%)
-  ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   ⛁ Agent messages: 5.0k tokens (2%)
-  ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶ ⛶   ⛁ Tool calls and results: 20.0k tokens (7%)
-  ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝ ⛝   ⛶ Free space: 203.8k tokens (75%)
-                        ⛝ Auto-compact buffer: 27.2k tokens (10%)
+  · · · · · · · · · ·   ● Instructions: 2.0k tokens (0.7%)
+  · · · · · · · · · ·   ● Skills: 1.0k tokens (0.4%)
+  · · · · · · · · · ·   ● Tools: 8.0k tokens (3%)
+  · · · · · · · · · ·   ● Your messages: 2.0k tokens (0.7%)
+  · · · · · · · · · ·   ● Agent messages: 5.0k tokens (2%)
+  · · · · · · · · · ·   ● Tool calls and results: 20.0k tokens (7%)
+  ○ ○ ○ ○ ○ ○ ○ ○ ○ ○   · Free space: 203.8k tokens (75%)
+                        ○ Auto-compact buffer: 27.2k tokens (10%)
 
   Instructions
   └ AGENTS.md: 2.0k tokens

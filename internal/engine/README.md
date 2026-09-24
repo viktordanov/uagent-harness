@@ -21,7 +21,7 @@ The choice comes from `--engine`, `UAH_ENGINE`, or `engine` in the [configuratio
 <!-- memoria:section id="interface" files="engine.go events.go subagents.go" -->
 ## The interface
 
-`engine.Engine` has three methods: `Name`, `Capabilities`, and `Start(ctx, request, options, sink) (Run, error)`. The sink receives `RunStarted` first and `RunFinished` last, from one goroutine at a time. A `Run` takes messages and settings while it is live (`Send`, `SetEffort`, `SetModel`, `SetServiceTier`, `Compact`), stops (`Interrupt`, `Kill`), and ends (`Wait`). A method the engine cannot serve returns `ErrUnsupported`, and the session then applies the change from the next run.
+`engine.Engine` has three methods: `Name`, `Capabilities`, and `Start(ctx, request, options, sink) (Run, error)`. The sink receives `RunStarted` first and `RunFinished` last, from one goroutine at a time. A `Run` takes messages and settings while it is live (`Send`, `SetEffort`, `SetModel`, `SetServiceTier`, `Compact`, `Clear`), stops (`Interrupt`, `Kill`), and ends (`Wait`). A method the engine cannot serve returns `ErrUnsupported`, and the session then applies the change from the next run.
 
 `Capabilities` says what reaches a live run: `LiveInput`, `LiveEffort`, `LiveModel`, `ServiceTier`, and `Compaction`. The session and the TUI read them; they never check the engine's name.
 
@@ -31,6 +31,7 @@ The choice comes from `--engine`, `UAH_ENGINE`, or `engine` in the [configuratio
 | --- | --- |
 | `ServiceTier` | `""` or `"priority"` |
 | `Compact` | Compact before the run's first model request (a `/compact` sent while idle) |
+| `Clear` | Drop the context before the run's first model request (a `/clear` sent while idle) |
 | `Ask` | How the run asks the user to approve an action. Nil means no one can answer, as in `uah run` |
 | `Notify` | Adds an engine event to the session's stream, also after the run ended, such as a subagent's progress |
 
@@ -159,6 +160,6 @@ The embedded tests run against `testing/fakellm`, a scripted Responses API, and 
 | `TestEmbedded_MatchesTheRunner` | The real `unreal-agent-runner` (built from go.mod's version) and the embedded engine get the same script and must produce the same events and session items. `go test -short` skips it |
 | `TestEmbedded_SteersALiveRun`, `TestEmbedded_ChangesSettingsLive`, `TestEmbedded_InterruptThenContinue`, `TestEmbedded_ResumesAProcessSession` | Live input, live settings, interrupts, and moving a session between engines |
 | `approval_test.go`, `sandbox_test.go` | Escalation, rules, "don't ask again", headless denial, PermissionRequest hooks, auto-review, and the sandbox |
-| `compact_test.go`, `context_test.go` | Manual and automatic compaction, resume after it, the PreCompact hook, and `/context` |
+| `compact_test.go`, `clear_test.go`, `context_test.go` | Manual and automatic compaction, `/clear` in the same session, resume after both, the PreCompact hook, and `/context` |
 | `mcp_test.go`, `mcpjobs_internal_test.go` | MCP tools, crashes, interrupts, approvals, and jobs that are not repeated |
 <!-- /memoria:section -->

@@ -10,8 +10,8 @@
 
 λ Fix the failing test in pkg/foo
 
-  RAN   fail   go test ./pkg/foo  exit 1
-  RUN   4s     go test ./... -run Bar
+  RAN    fail    go test ./pkg/foo  exit 1
+  RUN    4s      go test ./... -run Bar
 • I'll patch the fixture while the suite runs.
 
 λ Thinking (8s • esc to interrupt)

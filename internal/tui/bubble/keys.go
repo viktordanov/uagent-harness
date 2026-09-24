@@ -13,6 +13,7 @@ const (
 	keyEsc   = "esc"
 	keyCtrlN = "ctrl+n"
 	keyCtrlC = "ctrl+c"
+	keyDown  = "down"
 )
 
 // onKey maps keys to intents. The keys never change meaning: Enter sends
@@ -57,6 +58,15 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "up":
 		if draft == "" && len(m.st.Queue) > 0 {
 			return m.dispatch(state.EditLastQueued{})
+		}
+		// The terminal's wheel arrives as ↑ and ↓ when the mouse is not
+		// reported: an empty composer scrolls the transcript.
+		if draft == "" {
+			return m.scroll(1)
+		}
+	case keyDown:
+		if draft == "" {
+			return m.scroll(-1)
 		}
 	case "pgup":
 		return m.scroll(max(m.h/2, 1))
@@ -113,7 +123,7 @@ func (m Model) onPickerKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "up", "ctrl+p":
 		return m.dispatch(state.PickerMove{Delta: -1})
-	case "down", keyCtrlN:
+	case keyDown, keyCtrlN:
 		return m.dispatch(state.PickerMove{Delta: 1})
 	case keyEnter:
 		return m.dispatch(state.PickerChoose{})
@@ -181,7 +191,7 @@ func menuIntent(st state.State, key, draft string) any {
 		return state.MenuEnter{Draft: draft}
 	case "up", "ctrl+p":
 		return state.MenuMove{Draft: draft, Delta: -1}
-	case "down", keyCtrlN:
+	case keyDown, keyCtrlN:
 		return state.MenuMove{Draft: draft, Delta: 1}
 	case keyEsc:
 		return state.MenuClose{Draft: draft}

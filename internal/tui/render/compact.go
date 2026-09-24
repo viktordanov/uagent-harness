@@ -18,8 +18,9 @@ import (
 // calls as a dim labeled column, "•" before the agent's messages, and the
 // time and duration under a finished run.
 
-// labelWidth is the tool column: a label ("RAN"), then its time or state.
-const labelWidth = 6
+// labelWidth is each of the tool column's two fields: a label ("RAN") and
+// its time or state, at most six characters and a space.
+const labelWidth = 7
 
 // compactLines draws an item in the compact view. ok is false for kinds
 // drawn the same in both views.
@@ -31,6 +32,13 @@ func compactLines(it state.Item, w int, now time.Time) ([]string, bool) {
 		return []string{"", finishLine(it)}, true
 	case state.KindTool:
 		return []string{compactTool(it, w, now)}, true
+	case state.KindAgent:
+		// A running subagent is drawn at the bottom, above the working line.
+		if it.Detail == engine.AgentRunning {
+			return nil, true
+		}
+
+		return agentLines(it, w, now), true
 	case state.KindAssistant:
 		mark := accent.Render("• ")
 		if it.Final {
@@ -118,18 +126,25 @@ func compactTool(it state.Item, w int, now time.Time) string {
 	return head + dim.Render(text) + tail
 }
 
-// toolLabel is a tool's column label: RAN for commands, the name in
-// capitals otherwise, and MCP for a server's tools.
+// toolLabels name the tools whose label is not their name in capitals.
+var toolLabels = map[string]string{
+	"Bash": "RAN", "ViewImage": "VIEW",
+	"spawn_agent": "SPAWN", "send_input": "SEND", "wait_agent": "WAIT", "wait": "WAIT",
+	"close_agent": "CLOSE", "resume_agent": "RESUME",
+}
+
+// toolLabel is a tool's column label: RAN for commands, MCP for a server's
+// tools, the agent tools' verbs, else the name's first word in capitals.
 func toolLabel(name string) string {
-	switch {
-	case name == "Bash":
-		return "RAN"
-	case strings.HasPrefix(name, "mcp__"):
+	if l, ok := toolLabels[name]; ok {
+		return l
+	}
+	if strings.HasPrefix(name, "mcp__") {
 		return "MCP"
 	}
-	name = strings.ToUpper(name)
+	name, _, _ = strings.Cut(strings.ToUpper(name), "_")
 
-	return name[:min(len(name), labelWidth)]
+	return name[:min(len(name), labelWidth-1)]
 }
 
 // agentLines draws a subagent as a tree: "  AGENT Ada  0:42", and under a
@@ -173,6 +188,20 @@ func agentDoing(it state.Item) string {
 	}
 
 	return "thinking"
+}
+
+// activeAgents draws the running subagents as trees for the bottom of the
+// screen, with a blank line above each.
+func activeAgents(s state.State, w int) []string {
+	var out []string
+	for _, it := range s.Items {
+		if it.Kind == state.KindAgent && it.Detail == engine.AgentRunning {
+			out = append(out, "")
+			out = append(out, agentLines(it, w, s.Now)...)
+		}
+	}
+
+	return out
 }
 
 // banner is Codex's box at the top of the transcript.

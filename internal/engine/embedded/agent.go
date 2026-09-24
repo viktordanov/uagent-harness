@@ -12,6 +12,8 @@ import (
 	"github.com/unreallabsai/unreal-agent/harness/llm"
 
 	"github.com/viktordanov/uagent/core"
+
+	"github.com/viktordanov/uagent-harness/internal/compaction"
 )
 
 // agent is one in-process coordinator run. It implements harness.Process;
@@ -85,7 +87,19 @@ func (a *agent) Compact() error {
 		return errStopped
 	default:
 	}
-	a.compactor.requestCompaction()
+	a.compactor.requestCompaction(compaction.TriggerManual)
+
+	return nil
+}
+
+// Clear drops the context before the next model request (/clear).
+func (a *agent) Clear() error {
+	select {
+	case <-a.done:
+		return errStopped
+	default:
+	}
+	a.compactor.requestCompaction(compaction.TriggerClear)
 
 	return nil
 }

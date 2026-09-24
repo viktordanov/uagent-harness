@@ -95,8 +95,10 @@ type Session struct {
 	closeReply           chan error
 	// compactPending is a /compact the engine has not started yet.
 	compactPending bool
-	hooks          hookState
-	interactive    bool
+	// clearPending is a /clear the engine has not started yet.
+	clearPending bool
+	hooks        hookState
+	interactive  bool
 	// approvals are the pending approvals' reply channels by ID.
 	approvals map[string]pending
 	// askOverride is Options.Ask.

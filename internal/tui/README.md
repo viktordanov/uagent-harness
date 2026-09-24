@@ -89,7 +89,7 @@ The compact view draws one line per tool call, as Codex does; the detailed view 
 | `/`, `@` | Open the menu: commands and their values after `/`, workspace files (fuzzy) after `@`. Tab fills in the selection, enter runs a command, esc closes the menu |
 | ctrl+t | Compact or detailed view |
 | ctrl+r | Show or hide reasoning summaries |
-| mouse wheel, shift+↑ / shift+↓, pgup / pgdn | Scroll the transcript. end returns to the bottom. To select text while the TUI reports the mouse, hold Option (iTerm2, Terminal) or Shift (most others) |
+| ↑ / ↓ on an empty composer, the mouse wheel, shift+↑ / shift+↓, pgup / pgdn | Scroll the transcript; end returns to the bottom. The TUI leaves the mouse to the terminal, so text selects as usual and the wheel arrives as ↑ and ↓. `[tui] mouse = true` reports the mouse instead: the wheel then scrolls directly, and selecting needs Option (iTerm2, Terminal) or Shift (most others) |
 | ctrl+c | Clear the composer; on an empty composer, quit (twice while a run is live) |
 
 The approval overlay replaces the composer keys while it is open:
@@ -114,7 +114,8 @@ In the picker, ↑/↓ choose, enter resumes, tab switches between this director
 | `/effort <level>` | Set the thinking level: low, medium, high, xhigh, max | Yes |
 | `/fast` | Toggle priority processing; needs the embedded engine and the openai or openai-codex provider | Yes |
 | `/resume [id]` | Open the picker, or resume a session by ID prefix | No |
-| `/new` (`/clear`) | Start a new session | No |
+| `/new` | Start a new session | No |
+| `/clear` | Start the agent fresh in this session: the screen clears, and the next request carries nothing from before; the session keeps its history (embedded engine) | Yes |
 | `/stop` | Interrupt the run; queued messages stay | Yes |
 | `/compact` | Compact the context before the next model request (embedded engine) | Yes |
 | `/context` | Break down what fills the context window | Yes |
@@ -140,16 +141,17 @@ The compact view is shaped like Codex's, in amber. The choices came from the sty
 | Background | The terminal's own; only your messages, the composer, and code blocks sit on a band | `band` in `render/theme.go` |
 | Banner | Codex's box at the top of the transcript: `λ uah (version)`, the model with `/model to change`, the directory | `banner` in `render/compact.go` |
 | Your messages | `λ ` and the text on the band, with a band row above and below | `userLines` |
-| Tool calls | A dim column: label, time, command (`RAN   4.1s  go test ./...`); a live call in the accent (`RUN`), a failed one with `fail` and its detail | `compactTool` |
+| Tool calls | A dim column: label, time, command (`RAN    4.1s   go test ./...`), each field six characters and a space; a live call in the accent (`RUN`), a failed one with `fail` and its detail. Agent tools read `SPAWN`, `SEND`, `WAIT`, `CLOSE`, `RESUME` | `compactTool`, `toolLabel` |
 | Agent messages | `•` in the accent | `compactLines` |
 | Code blocks | On the band, highlighted with the theme's code colors, not wrapped | `markdownLines`, `highlight` |
-| Subagents | A tree: `AGENT Ada  42s`, and under a running one `└ ⠹ Read …`, its live tool call | `agentLines` |
+| Subagents | While running, at the bottom above the working line with a blank line before each: `AGENT Ada  42s`, and under it `└ ⠹ Read …`, its live tool call. A finished one is one line where it was spawned | `activeAgents`, `agentLines` |
 | Working | A breathing `λ` (seven shades, one breath every 1.6 s) and `Working (12s • esc to interrupt)` | `workingLine`, `breathing` |
 | A finished run | `12:14 PM · worked 1m 12s`: Codex's time and Claude Code's duration; how it ended first when not ok | `finishLine` (a `KindFinish` item) |
 | Composer | `λ ` on the band, with a band row above and below | `Screen`, `composerStyles` in `bubble/model.go` |
 | Footer | Model and effort, directory, context left, hints | `footerLine` |
+| `/context` | One dot per percent of the window in its category's color, `·` for free space, `○` for the auto-compaction buffer | `contextLines` |
 
-A `Theme` holds every color: the accent, dim text, the band, the breath's shades, and the code colors. `Amber` is for dark terminals and `AmberLight` for light ones. The shell asks the terminal for its background at start (`tea.RequestBackgroundColor`); `ThemeFor` picks the theme and tints the band from that background, as Codex tints its message background, and `SetTheme` applies it. A new theme is a new `Theme` value. Text is never colored by the theme, so it keeps the terminal's own foreground.
+A `Theme` holds every color: the accent, dim text, the band, the breath's shades, the code colors, and the colors `/context` tells its categories apart with. `Amber` is for dark terminals and `AmberLight` for light ones. The shell asks the terminal for its background at start (`tea.RequestBackgroundColor`); `ThemeFor` picks the theme and tints the band from that background, as Codex tints its message background, and `SetTheme` applies it. A new theme is a new `Theme` value. Text is never colored by the theme, so it keeps the terminal's own foreground.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="extending" files="state/commands.go state/contextview.go state/effects.go state/items.go render/contextview.go render/items.go bubble/effects.go bubble/model.go" -->

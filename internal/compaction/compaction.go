@@ -42,7 +42,19 @@ type Trigger string
 const (
 	TriggerManual Trigger = "manual"
 	TriggerAuto   Trigger = "auto"
+	// TriggerClear is /clear: the covered items are dropped with no summary,
+	// so the model starts fresh in the same session.
+	TriggerClear Trigger = "clear"
 )
+
+// Verb names what the trigger does, for messages: "compaction", or "clear".
+func (t Trigger) Verb() string {
+	if t == TriggerClear {
+		return "clear"
+	}
+
+	return "compaction"
+}
 
 // ErrMismatch means the request's history is not the one the record covers.
 var ErrMismatch = errors.New("the history does not match the compaction")
@@ -50,7 +62,11 @@ var ErrMismatch = errors.New("the history does not match the compaction")
 // Record is one compaction. It covers the first Covered items after the
 // system message of every later request the context builder produces.
 type Record struct {
-	Covered int       `json:"covered"`
+	Covered int `json:"covered"`
+	// Floor is how many of the covered items a /clear dropped: they are
+	// left out entirely, with none of their user messages kept. A clear's
+	// Floor is its Covered; a later compaction carries the floor forward.
+	Floor   int       `json:"floor,omitempty"`
 	Hash    string    `json:"hash"`
 	Summary string    `json:"summary"`
 	Trigger Trigger   `json:"trigger"`
@@ -115,13 +131,23 @@ func Apply(input []llm.Item, rec Record) ([]llm.Item, error) {
 	if hash != rec.Hash {
 		return nil, ErrMismatch
 	}
-	kept := Kept(covered, UserMessageMaxTokens)
+	kept := Kept(covered[min(rec.Floor, len(covered)):], UserMessageMaxTokens)
 	out := make([]llm.Item, 0, 2+len(kept)+len(tail))
 	out = append(out, input[0])
 	out = append(out, kept...)
-	out = append(out, SummaryMessage(rec.Summary))
+	if rec.Floor < rec.Covered {
+		out = append(out, SummaryMessage(rec.Summary))
+	}
 
 	return append(out, detachOrphans(tail)...), nil
+}
+
+// NewClear is a /clear over input: every coverable item is dropped.
+func NewClear(input []llm.Item, at time.Time) (Record, error) {
+	rec, err := NewRecord(input, "", TriggerClear, "", at)
+	rec.Floor = rec.Covered
+
+	return rec, err
 }
 
 // IsUserMessage reports whether the item is a user message.

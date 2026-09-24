@@ -16,7 +16,7 @@ func (s *Session) startRun(inputs []core.UserInput) {
 	s.state = StateStarting
 	s.markSent(inputs)
 	req := s.settings.request(s.id, inputs)
-	opts := engine.Options{ServiceTier: s.settings.ServiceTier, Compact: s.compactPending, Ask: s.askFunc(false), AskAnytime: s.askFunc(true), Notify: s.notify}
+	opts := engine.Options{ServiceTier: s.settings.ServiceTier, Compact: s.compactPending, Clear: s.clearPending, Ask: s.askFunc(false), AskAnytime: s.askFunc(true), Notify: s.notify}
 	sink := func(e core.Event) { s.in <- evRun{event: e} }
 	go func() {
 		run, err := s.eng.Start(s.ctx, req, opts, sink)

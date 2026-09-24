@@ -206,19 +206,19 @@ func TestReduce_Commands(t *testing.T) {
 		effects []state.Effect
 		notice  string
 	}{
-		"model":             {from: opened(), text: "/model gpt-6-astra", effects: []state.Effect{state.EffSetSettings{Settings: withModel("gpt-6-astra")}}},
-		"bad model":         {from: opened(), text: "/model -x", notice: "starts with a dash"},
-		"effort":            {from: busy, text: "/effort low", effects: []state.Effect{state.EffSetSettings{Settings: withEffort("low")}}},
-		"bad effort":        {from: opened(), text: "/effort huge", notice: "effort: high"},
-		"fast unavailable":  {from: opened(), text: "/fast", notice: "embedded engine"},
-		"new":               {from: opened(), text: "/new", effects: []state.Effect{state.EffOpenSession{}}},
-		"clear alias":       {from: opened(), text: "/clear", effects: []state.Effect{state.EffOpenSession{}}},
-		"new while busy":    {from: busy, text: "/new", notice: "waits until the agent is idle"},
-		"resume opens list": {from: opened(), text: "/resume", effects: []state.Effect{state.EffLoadSessions{}}},
-		"stop":              {from: busy, text: "/stop", effects: []state.Effect{state.EffInterrupt{}}},
-		"unknown":           {from: opened(), text: "/nope", notice: "unknown command /nope"},
-		"help":              {from: opened(), text: "/help", notice: "/model <id>"},
-		"status":            {from: opened(), text: "/status", notice: "session sess-1 · process engine", effects: []state.Effect{state.EffLoadActivity{}}},
+		"model":                  {from: opened(), text: "/model gpt-6-astra", effects: []state.Effect{state.EffSetSettings{Settings: withModel("gpt-6-astra")}}},
+		"bad model":              {from: opened(), text: "/model -x", notice: "starts with a dash"},
+		"effort":                 {from: busy, text: "/effort low", effects: []state.Effect{state.EffSetSettings{Settings: withEffort("low")}}},
+		"bad effort":             {from: opened(), text: "/effort huge", notice: "effort: high"},
+		"fast unavailable":       {from: opened(), text: "/fast", notice: "embedded engine"},
+		"new":                    {from: opened(), text: "/new", effects: []state.Effect{state.EffOpenSession{}}},
+		"clear needs compaction": {from: opened(), text: "/clear", notice: "/clear needs the embedded engine"},
+		"new while busy":         {from: busy, text: "/new", notice: "waits until the agent is idle"},
+		"resume opens list":      {from: opened(), text: "/resume", effects: []state.Effect{state.EffLoadSessions{}}},
+		"stop":                   {from: busy, text: "/stop", effects: []state.Effect{state.EffInterrupt{}}},
+		"unknown":                {from: opened(), text: "/nope", notice: "unknown command /nope"},
+		"help":                   {from: opened(), text: "/help", notice: "/model <id>"},
+		"status":                 {from: opened(), text: "/status", notice: "session sess-1 · process engine", effects: []state.Effect{state.EffLoadActivity{}}},
 	}
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {

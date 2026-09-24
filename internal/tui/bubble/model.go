@@ -46,6 +46,9 @@ type Deps struct {
 	AllSessions bool
 	// Details starts in the detailed view: turns, run dividers, and tokens.
 	Details bool
+	// Mouse reports the mouse, so the wheel scrolls; off, the terminal
+	// selects text and its wheel sends ↑ and ↓.
+	Mouse bool
 	// Version is uah's version, for the banner.
 	Version string
 	// Now is the clock (default time.Now).
@@ -278,10 +281,13 @@ func (m Model) View() tea.View {
 	})
 	v := tea.NewView(content)
 	v.AltScreen = true
-	// Wheel events scroll the transcript. Terminals still select text with
-	// the modifier they use while an app reports the mouse (Option in iTerm2
-	// and Terminal, Shift in most others).
-	v.MouseMode = tea.MouseModeCellMotion
+	// With the mouse reported, wheel events scroll the transcript and
+	// selecting text needs the terminal's modifier (Option in iTerm2 and
+	// Terminal, Shift in most others). Without it, which is the default, the
+	// terminal selects text and turns the wheel into ↑ and ↓ (keys.go).
+	if m.deps.Mouse {
+		v.MouseMode = tea.MouseModeCellMotion
+	}
 	v.WindowTitle = "uah"
 	if c := m.composer.Cursor(); c != nil && composerRow >= 0 {
 		c.Y += composerRow
