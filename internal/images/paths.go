@@ -9,7 +9,7 @@ import (
 )
 
 // extensions are the image files a pasted or dropped path attaches.
-var extensions = []string{".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".tif", ".tiff"}
+var extensions = []string{extPNG, extJPG, ".jpeg", ".gif", ".webp", ".bmp", ".tif", ".tiff"}
 
 // IsImagePath reports whether a path names an image by its extension.
 func IsImagePath(path string) bool {

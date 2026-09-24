@@ -154,6 +154,7 @@ func (s *State) onMenu(ev any) (effects []Effect, ok bool) {
 	switch e := ev.(type) {
 	case DraftChanged:
 		s.Menu.Index = 0
+		s.pruneImages(e.Draft)
 		if eff := s.loadModels(e.Draft); eff != nil {
 			return []Effect{eff}, true
 		}
@@ -180,6 +181,9 @@ func (s *State) onMenu(ev any) (effects []Effect, ok bool) {
 		}
 		picked := items[min(s.Menu.Index, len(items)-1)]
 		s.Menu.Index = 0
+		if effects, ok := s.acceptImage(e.Draft, picked); ok {
+			return effects, true
+		}
 
 		return s.setDraft(picked.Draft), true
 	case MenuEnter:
@@ -189,6 +193,9 @@ func (s *State) onMenu(ev any) (effects []Effect, ok bool) {
 		}
 		picked := items[min(s.Menu.Index, len(items)-1)]
 		s.Menu.Index = 0
+		if effects, ok := s.acceptImage(e.Draft, picked); ok {
+			return effects, true
+		}
 		if strings.HasSuffix(picked.Draft, " ") {
 			return s.setDraft(picked.Draft), true
 		}

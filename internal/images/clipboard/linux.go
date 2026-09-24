@@ -7,6 +7,8 @@ import (
 	"net/url"
 	"slices"
 	"strings"
+
+	"github.com/viktordanov/uagent-harness/internal/images"
 )
 
 // imageTypes are the clipboard types read as an image, in order of
@@ -93,7 +95,7 @@ func (l Linux) pick() (tool, bool) {
 	return tool{}, false
 }
 
-// firstFile is the first local file of a URI list.
+// firstFile is the first local image file of a URI list.
 func firstFile(list string) (string, bool) {
 	for line := range strings.SplitSeq(list, "\n") {
 		line = strings.TrimSpace(line)
@@ -101,7 +103,7 @@ func firstFile(list string) (string, bool) {
 			continue
 		}
 		u, err := url.Parse(line)
-		if err != nil || u.Scheme != "file" || (u.Host != "" && u.Host != "localhost") {
+		if err != nil || u.Scheme != "file" || (u.Host != "" && u.Host != "localhost") || !images.IsImagePath(u.Path) {
 			continue
 		}
 

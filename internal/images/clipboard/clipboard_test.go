@@ -49,6 +49,14 @@ func TestMacOS_FinderFileFirst(t *testing.T) {
 	assert.Equal(t, "/Users/me/shot.png", got.Path)
 }
 
+func TestMacOS_TextIsNotAFile(t *testing.T) {
+	f := &fakeExec{out: map[string]string{
+		"osascript -e POSIX path of (the clipboard as «class furl»)": "/Users/me/notes.txt\n",
+	}}
+	_, err := clipboard.MacOS{Exec: f.run}.ReadImage(t.Context())
+	require.ErrorIs(t, err, clipboard.ErrNoImage, "ctrl+v then pastes the text")
+}
+
 func TestMacOS_TIFFAndEmpty(t *testing.T) {
 	f := &fakeExec{out: map[string]string{"osascript -e the clipboard as «class TIFF»": "«data TIFF4D4D»"}}
 	got, err := clipboard.MacOS{Exec: f.run}.ReadImage(t.Context())
@@ -77,7 +85,7 @@ func linux(f *fakeExec, env map[string]string, installed ...string) clipboard.Li
 
 func TestLinux_WaylandPNG(t *testing.T) {
 	f := &fakeExec{out: map[string]string{
-		"wl-paste --list-types":                     "text/plain\nimage/png\n",
+		"wl-paste --list-types":                  "text/plain\nimage/png\n",
 		"wl-paste --no-newline --type image/png": "PNGDATA",
 	}}
 	got, err := linux(f, map[string]string{"WAYLAND_DISPLAY": "wayland-0", "DISPLAY": ":0"}, "wl-paste", "xclip").ReadImage(t.Context())

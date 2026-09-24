@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/viktordanov/uagent-harness/internal/images"
 )
 
 // MacOS reads the clipboard with osascript: a file copied in Finder first,
@@ -23,7 +25,9 @@ const (
 
 func (m MacOS) ReadImage(ctx context.Context) (Content, error) {
 	if out, err := m.Exec(ctx, "osascript", "-e", scriptFile); err == nil {
-		if path := strings.TrimSpace(string(out)); path != "" {
+		// Text on the clipboard may coerce to a file too; only an image
+		// file counts.
+		if path := strings.TrimSpace(string(out)); strings.HasPrefix(path, "/") && images.IsImagePath(path) {
 			return Content{Path: path}, nil
 		}
 	}
