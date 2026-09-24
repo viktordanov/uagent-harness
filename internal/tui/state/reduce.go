@@ -28,6 +28,16 @@ func Reduce(s State, ev any) (State, []Effect) {
 		s.expireConfirmations()
 
 		return s, nil
+	case session.ApprovalRequested:
+		s.requestApproval(e)
+
+		return s, nil
+	case session.ApprovalResolved:
+		s.resolveApproval(e)
+
+		return s, nil
+	case Answer:
+		return s.answer(e)
 	case core.Event:
 		s.onEvent(e)
 
@@ -44,7 +54,7 @@ func (s *State) onEvent(ev core.Event) {
 			s.resetTranscript()
 		}
 		s.SessionID, s.Resumed, s.Engine, s.Settings = e.ID, e.Resumed, e.Engine, e.Settings
-		s.Queue, s.Live, s.Busy, s.Quitting = nil, nil, false, false
+		s.Queue, s.Live, s.Busy, s.Quitting, s.Approvals = nil, nil, false, false, nil
 	case session.InstructionsLoaded:
 		s.Files = e.Files
 	case session.InputQueued:
