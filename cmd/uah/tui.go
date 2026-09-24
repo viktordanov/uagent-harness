@@ -60,6 +60,7 @@ func openTUI(ctx context.Context, cmd *cli.Command, launch tuiLaunch) error {
 			if err != nil {
 				return nil, nil, err
 			}
+			setup.options.Source = session.SourceTUI
 			s, err := session.Open(context.WithoutCancel(ctx), setup.engine, setup.options)
 			if err != nil {
 				return nil, nil, err
@@ -76,7 +77,11 @@ func openTUI(ctx context.Context, cmd *cli.Command, launch tuiLaunch) error {
 
 			return s, history, nil
 		},
-		Sessions: func() ([]session.Info, error) { return session.Sessions(st.stateDir) },
+		Sessions: func() ([]session.Info, error) {
+			infos, err := session.Sessions(st.stateDir)
+
+			return session.Interactive(infos), err
+		},
 	}
 	if err := bubble.Run(ctx, deps); err != nil {
 		return fmt.Errorf("the TUI stopped: %w", err)

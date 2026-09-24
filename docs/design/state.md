@@ -1,6 +1,6 @@
 # State storage: decision record
 
-Status: proposed, 2026-09-24. Nothing here is implemented yet; this records what is stored today and the recommended direction.
+Status: proposed, 2026-09-24. The sidecar is implemented (with `source` only); the index is not.
 
 1. [What is stored today](#what-is-stored-today)
 2. [How other harnesses store state](#how-other-harnesses-store-state)
@@ -24,6 +24,7 @@ Everything lives under uagent's state directory (`~/.local/state/unreal-agent`),
 | `runs/<run-id>/events.jsonl` | uagent | The runner's stdout, byte for byte | Run record; the harness rebuilds transcripts from these |
 | `runs/<run-id>/summary.json` | uagent | Status (`running` until the run ends), settings, statistics, answer | Run record; history lists read these |
 | `runs/<run-id>/stderr.log` | uagent | The runner's stderr | Diagnostics |
+| `sessions/<id>.uah.json` | uah | Where the session started: `{"source":"tui"}` or `"run"` | Hides `uah run` sessions from the resume picker, as Codex hides `codex exec` sessions |
 | `logs/uah-tui.log` | uah | TUI diagnostics | Diagnostics |
 
 There is no database. Listing sessions reads every `summary.json` and the first `request.json` of each session: the cost grows with the number of runs, and there is no search.

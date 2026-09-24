@@ -40,7 +40,7 @@ func resumeAction(ctx context.Context, cmd *cli.Command) error {
 	launch := tuiLaunch{all: cmd.Bool(flagAll)}
 	switch {
 	case cmd.Bool("last"):
-		info, err := latestSession(cmd)
+		info, err := latestSession(cmd, true)
 		if err != nil {
 			return err
 		}
@@ -56,7 +56,10 @@ func resumeAction(ctx context.Context, cmd *cli.Command) error {
 
 // latestSession is the most recent session in the current directory, or in
 // any directory with --all.
-func latestSession(cmd *cli.Command) (session.Info, error) {
+//
+// interactiveOnly skips sessions started by `uah run`, as `codex resume` skips
+// `codex exec` sessions.
+func latestSession(cmd *cli.Command, interactiveOnly bool) (session.Info, error) {
 	stateDir, err := filepath.Abs(cmd.String("state-dir"))
 	if err != nil {
 		return session.Info{}, fmt.Errorf("failed to resolve state dir: %w", err)
@@ -71,6 +74,9 @@ func latestSession(cmd *cli.Command) (session.Info, error) {
 	}
 	if !cmd.Bool(flagAll) {
 		infos = session.InDir(infos, cwd)
+	}
+	if interactiveOnly {
+		infos = session.Interactive(infos)
 	}
 	if len(infos) == 0 {
 		where := "in " + cwd

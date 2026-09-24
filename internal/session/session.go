@@ -52,6 +52,9 @@ type Options struct {
 	SessionsDir string
 	// Notices are shown after SessionOpened, such as configuration warnings.
 	Notices []string
+	// Source (SourceTUI or SourceRun) is recorded in a new session's sidecar
+	// in SessionsDir when set.
+	Source string
 }
 
 // Session is safe to use from any goroutine. All state lives on one internal
@@ -128,9 +131,14 @@ func Open(ctx context.Context, eng engine.Engine, opts Options) (*Session, error
 	}
 	if opts.SessionsDir != "" {
 		s.transcriptPath = filepath.Join(opts.SessionsDir, id+".session.jsonl")
+		if opts.Source != "" && !opts.Resumed {
+			if err := writeSidecar(opts.SessionsDir, id, Sidecar{Source: opts.Source, Created: time.Now().UTC()}); err != nil {
+				s.out <- Notice{At: time.Now(), Level: LevelWarning, Message: err.Error()}
+			}
+		}
 	}
 	for _, n := range opts.Notices {
-		s.out <- Notice{At: time.Now(), Level: "warning", Message: n}
+		s.out <- Notice{At: time.Now(), Level: LevelWarning, Message: n}
 	}
 	if s.hooks != nil {
 		s.jobs = make(chan func(), eventBuffer)
@@ -443,7 +451,7 @@ func (s *Session) onPromptChecked(m evPromptChecked) {
 
 func (s *Session) showMessages(d hooks.Decision) {
 	for _, msg := range d.Messages {
-		s.emit(Notice{At: time.Now(), Level: "info", Message: msg})
+		s.emit(Notice{At: time.Now(), Level: LevelInfo, Message: msg})
 	}
 }
 
@@ -558,7 +566,7 @@ func (s *Session) onStarted(m evStarted) bool {
 		}
 		s.startSteers = nil
 		s.emit(InputFailed{At: time.Now(), IDs: ids, Reason: m.err.Error()})
-		s.emit(Notice{At: time.Now(), Level: "error", Message: m.err.Error()})
+		s.emit(Notice{At: time.Now(), Level: LevelError, Message: m.err.Error()})
 		s.interruptWhenStarted, s.restartAfterStop = false, false
 		s.state = StateIdle
 		if s.closeReply != nil {
@@ -615,7 +623,7 @@ func (s *Session) onRunEvent(e core.Event) {
 func (s *Session) onEnded(m evEnded) bool {
 	s.run = nil
 	if m.err != nil {
-		s.emit(Notice{At: time.Now(), Level: "error", Message: m.err.Error()})
+		s.emit(Notice{At: time.Now(), Level: LevelError, Message: m.err.Error()})
 	}
 	userStopped := s.state == StateStopping && !s.restartAfterStop
 	if s.closeReply == nil {
@@ -673,7 +681,7 @@ func (s *Session) onStopChecked(m evStopChecked) {
 	reason := strings.TrimSpace(m.decision.Reason)
 	if m.decision.Block && reason != "" {
 		if s.stopStreak >= maxStopContinuations {
-			s.emit(Notice{At: time.Now(), Level: "warning", Message: fmt.Sprintf("Stop hooks continued the agent %d times in a row; stopping", s.stopStreak)})
+			s.emit(Notice{At: time.Now(), Level: LevelWarning, Message: fmt.Sprintf("Stop hooks continued the agent %d times in a row; stopping", s.stopStreak)})
 		} else {
 			s.stopStreak++
 			input := core.UserInput{ID: uuid.NewString(), Text: reason}
