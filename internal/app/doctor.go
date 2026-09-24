@@ -7,10 +7,12 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/viktordanov/uagent-harness/internal/config"
 	"github.com/viktordanov/uagent-harness/internal/models"
 	"github.com/viktordanov/uagent-harness/internal/session"
+	planusage "github.com/viktordanov/uagent-harness/internal/usage"
 )
 
 // CheckStatus is how a doctor check came out.
@@ -62,10 +64,14 @@ type DoctorOptions struct {
 	Stderr io.Writer
 	// Models is the model catalog (default NewModels for the settings).
 	Models *models.Manager
+	// Usage reads the subscription's usage (default NewUsage for the settings).
+	Usage planusage.Reader
+	// Now is the clock for reset times (default time.Now).
+	Now func() time.Time
 }
 
 // Doctor checks what a session in the workspace would need: the
-// configuration, the runner, credentials, the model list, the sandbox, instructions, hooks,
+// configuration, the runner, credentials, the model list, the plan's usage, the sandbox, instructions, hooks,
 // MCP servers, and the state directory. It starts no session and calls no
 // model; it runs `true` in the sandbox and starts the MCP servers.
 func Doctor(ctx context.Context, in Inputs, opts DoctorOptions) []Check {
@@ -77,6 +83,9 @@ func Doctor(ctx context.Context, in Inputs, opts DoctorOptions) []Check {
 	}
 	if opts.Stderr == nil {
 		opts.Stderr = io.Discard
+	}
+	if opts.Now == nil {
+		opts.Now = time.Now
 	}
 	stateDir, err := filepath.Abs(in.StateDir)
 	if err == nil {
@@ -102,7 +111,14 @@ func Doctor(ctx context.Context, in Inputs, opts DoctorOptions) []Check {
 	if opts.Models == nil {
 		opts.Models = NewModels(stateDir, r.Settings, opts.Getenv)
 	}
-	checks = append(checks, checkModels(ctx, opts.Models, r.Settings.Model), checkSandbox(ctx, r.Sandbox), checkInstructions(r, cfg, in.Workspace))
+	checks = append(checks, checkModels(ctx, opts.Models, r.Settings.Model))
+	if opts.Usage == nil {
+		opts.Usage = NewUsage(r.Settings, opts.Getenv)
+	}
+	if c, ok := checkUsage(ctx, opts.Usage, opts.Now()); ok {
+		checks = append(checks, c)
+	}
+	checks = append(checks, checkSandbox(ctx, r.Sandbox), checkInstructions(r, cfg, in.Workspace))
 	checks = append(checks, checkHooks(cfg, in.Workspace, opts.HookTrustFile)...)
 	checks = append(checks, checkMCP(ctx, cfg, caps, in.Workspace, opts.Stderr)...)
 

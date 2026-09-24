@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -44,7 +45,7 @@ func TestDoctor_Healthy(t *testing.T) {
 		}
 		assert.Equal(t, app.CheckOK, c.Status, "%s: %s", c.Name, c.Detail)
 	}
-	assert.Equal(t, []string{"config", "runner", "engine", "workspace", "credentials", "models", "sandbox", "instructions", "hooks", "mcp", "state"}, names)
+	assert.Equal(t, []string{"config", "runner", "engine", "workspace", "credentials", "models", "usage", "sandbox", "instructions", "hooks", "mcp", "state"}, names)
 	assert.True(t, app.Healthy(checks))
 	assert.Contains(t, find(t, checks, "credentials").Detail, "openai-codex credentials found")
 }
@@ -210,6 +211,7 @@ func doctorOptions(t *testing.T, trustFile string) app.DoctorOptions {
 	return app.DoctorOptions{
 		HookTrustFile: trustFile,
 		Models:        modelstest.Manager(t, app.CodexProvider, modelstest.Source{Models: modelstest.IDs(app.DefaultCodexModel, "gpt-6-luna")}),
+		Usage:         usageReader(t, http.StatusOK, usageBody(22, false)),
 	}
 }
 
