@@ -48,7 +48,7 @@ The keys to know in the TUI:
 | `@` | Mention a workspace file (fuzzy search) |
 | ctrl+t | The detailed view: turns, tokens, and each tool's result |
 
-Text selects with the mouse as in any terminal, and the wheel or ↑/↓ on an empty composer scrolls. The [TUI README](internal/tui/README.md) lists every key and command.
+Text selects with the mouse as in any terminal, and the wheel scrolls, also while you type a prompt. The [TUI README](internal/tui/README.md) lists every key and command.
 
 ## Common tasks
 
