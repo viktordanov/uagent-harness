@@ -1,6 +1,6 @@
 # Compaction and the context meter: plan
 
-Status: accepted, 2026-09-24 (ledger item 4). Embedded engine only.
+Status: accepted, 2026-09-24 (ledger item 4); configurable and looked at again in ledger item 24. Embedded engine only.
 
 1. [How Codex compacts](#how-codex-compacts)
 2. [What the runner supports](#what-the-runner-supports)
@@ -41,9 +41,16 @@ The coordinator calls one `llm.Adapter` for every model request. The embedded en
 Configuration:
 
 ```toml
-auto_compact_percent = 90       # 0 turns automatic compaction off
-model_context_window = 272000   # tokens; default from the model table, 272000 for unknown models
+auto_compact_percent = 90                   # 0 turns automatic compaction off
+model_context_window = 272000               # tokens; default from the model catalog, else 272000
+model_auto_compact_token_limit = 200000     # Codex's: compact sooner than the percent when lower
+compact_model = "gpt-6-luna"                # the summary model; default: the session's, as Codex
+compact_effort = "medium"                   # default: the session's
+compact_prompt = "…"                        # Codex's; or experimental_compact_prompt_file = "~/…"
+compact_user_message_max_tokens = 20000     # Codex's constant; default at most a quarter of the window
 ```
+
+The Codex keys and where Codex reads them (`rust-v0.156.1`, `codex-rs/`): `compact_prompt` (`config/src/config_toml.rs:264`), `experimental_compact_prompt_file` (`config_toml.rs:543`; `compact_prompt` wins, `core/src/config/mod.rs:3908-3974`), `model_auto_compact_token_limit` (`config_toml.rs:170`; applied in `models-manager/src/model_info.rs:29`, and the effective limit is the lower of it and 90% of the window, `protocol/src/openai_models.rs:525-536`), and `model_context_window` (`config_toml.rs:167`). Codex has no summary model setting: it compacts with the session's model (`core/src/compact.rs`), and with the previous model when a model switch shrinks the window (`core/src/session/turn.rs:1342`). The kept-message cap is a constant (`COMPACT_USER_MESSAGE_MAX_TOKENS`, `core/src/compact.rs:60`). Codex's `/compact` takes no argument (`tui/src/slash_command.rs:166`, not in `supports_inline_args`). Claude Code documents `/compact [instructions]` for focus instructions, the `autoCompactEnabled` setting, a "Compact Instructions" section in CLAUDE.md, and no separate compaction model (code.claude.com/docs: commands, settings reference, how Claude Code works).
 
 ## Validation
 
@@ -69,6 +76,22 @@ Checked on 2026-09-24 against Codex `rust-v0.156.1` and the runner (unreal-agent
 | 16 | Images in user messages: the runner's `llm.Message` carries text only (v0.1.1), so user messages have no images to keep. | — | Not applicable. |
 | 17 | Each request hashes the covered items (JSON and SHA-256 of the history). | Low | Kept: a few milliseconds per MB of history, well under a model call. |
 
+### Second look (ledger item 24)
+
+Checked on 2026-09-24 after the keys above were added. The compaction tests, old and new, pass with `-race -count=10`.
+
+What a summary keeps: the system prompt (the runner's host prompt, AGENTS.md, and skills, which uah never rewrites, where Codex re-injects its initial context after compacting), the user's messages word for word up to the cap, and the model's handoff summary: progress, decisions, constraints, next steps, and the data it judged critical. What it loses: tool outputs (file contents, test output, diffs), the assistant's messages and reasoning, and the list of tool calls. On the next turns the model works from the summary and reads again the files it needs, a few tool calls, as in Codex. The prefix after a compaction (system, kept messages, summary) stays the same on every later request, so the prompt cache holds from the second request on.
+
+| # | Finding | Severity | Status |
+| --- | --- | --- | --- |
+| 18 | An automatic compaction that leaves the context above the limit, because the system prompt and the kept messages alone fill it, compacted again before every later request: one summary call per model request. Codex accepts this risk ("as long as compaction works well…", `core/src/session/turn.rs`). | High | Fixed: the compaction reports a warning (`engine.Compacted.Warning`) and automatic compaction stops for the run; `/compact` still works. Test: `TestEmbedded_AutoCompactionStopsWhenItCannotGetUnderTheLimit`. |
+| 19 | Codex's 20,000-token cap is a fourteenth of its 272,000-token windows, but more than the whole window of many local models (8,000 to 32,000 tokens), so a compacted context there was mostly old messages, or did not fit. | Medium | Fixed: the default cap is at most a quarter of the window (`Settings.KeepFor`); a configured cap wins. |
+| 20 | A cap applied at rewrite time would change what every earlier compaction rewrites to when the setting changes: another request prefix, a prompt cache miss, and a history the model never saw. | Low | Fixed: a record saves its cap (`Record.Keep`). |
+| 21 | The summary model is the session's; a cheaper one saves cost, but its call cannot reuse the session model's prompt cache, and its window may be smaller. | — | Configurable (`compact_model`, `compact_effort`); a smaller window trims the oldest history first, as a summary overflow does. |
+| 22 | A model switch to a smaller window: the next request compacts with the new model, which trims the oldest history to fit. Codex first compacts with the previous model (`turn.rs:1342`). | Low | Open: see Later in the ledger. |
+| 23 | Claude Code steers a summary with `/compact [instructions]`. | — | Adopted: `/compact <focus>` adds the focus to the prompt for that summary; the record keeps it. |
+| 24 | Claude Code's summary prompt asks for more structure (files and code, errors and fixes, all user messages), and its "Compact Instructions" in CLAUDE.md steer every summary. uah keeps the user messages themselves and Codex's shorter prompt. | — | Kept: `compact_prompt` or `experimental_compact_prompt_file` sets a longer prompt for those who want one. |
+
 ## Open decisions
 
 Defaults taken; the owner can change them.
@@ -81,5 +104,7 @@ Defaults taken; the owner can change them.
 | Automatic compaction after failures | Stops for the run after three in a row | Keep trying before every request |
 | `/compact` while idle | Compacts before the next message's model request | An immediate compaction run, which needs a replay-only coordinator |
 | Auto-compaction measure | Last response's input plus output tokens, as Codex | Last input tokens only |
-| Summary model | The session's model and effort | A configurable cheaper model |
+| Summary model | The session's model and effort, as Codex; `compact_model` and `compact_effort` set another | — |
+| Kept-message cap | Codex's 20,000 tokens, at most a quarter of the window | `compact_user_message_max_tokens` |
+| An automatic compaction that cannot get under the limit | Warn and stop automatic compaction for the run | Compact before every request, as Codex |
 | Where the record lives | `sessions/<id>.compaction.jsonl` | The `<id>.uah.json` sidecar (metadata only today) |
