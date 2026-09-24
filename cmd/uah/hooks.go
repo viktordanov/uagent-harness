@@ -9,6 +9,7 @@ import (
 
 	"github.com/urfave/cli/v3"
 
+	"github.com/viktordanov/uagent-harness/internal/app"
 	"github.com/viktordanov/uagent-harness/internal/config"
 	"github.com/viktordanov/uagent-harness/internal/hooks"
 )
@@ -40,7 +41,11 @@ func hooksCommand() *cli.Command {
 }
 
 func loadHooks(cmd *cli.Command) (string, *hooks.Runner, *hooks.Trust, error) {
-	workspace, err := filepath.Abs(pick(cmd, "workspace", "", "", "."))
+	dir := cmd.String(flagWorkspace)
+	if dir == "" {
+		dir = "."
+	}
+	workspace, err := filepath.Abs(dir)
 	if err != nil {
 		return "", nil, nil, fmt.Errorf("failed to resolve workspace: %w", err)
 	}
@@ -52,7 +57,7 @@ func loadHooks(cmd *cli.Command) (string, *hooks.Runner, *hooks.Trust, error) {
 	if err != nil {
 		return "", nil, nil, cli.Exit(err.Error(), exitUsage)
 	}
-	trust, err := hooks.LoadTrust(hookTrustFile())
+	trust, err := hooks.LoadTrust(app.HookTrustFile())
 	if err != nil {
 		return "", nil, nil, err
 	}

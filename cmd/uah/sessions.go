@@ -15,6 +15,7 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
+	"github.com/viktordanov/uagent-harness/internal/app"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
 
@@ -103,9 +104,9 @@ func showSession(_ context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return fmt.Errorf("failed to resolve state dir: %w", err)
 	}
-	info, err := resolveSession(stateDir, cmd.Args().First())
+	info, err := app.FindSession(stateDir, cmd.Args().First())
 	if err != nil {
-		return err
+		return exitError(err)
 	}
 	runs, err := session.Load(stateDir, info.ID)
 	if err != nil {
