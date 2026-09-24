@@ -164,7 +164,7 @@ func (e *Engine) Capabilities() engine.Capabilities {
 
 	return engine.Capabilities{
 		LiveInput: true, LiveEffort: true, LiveModel: true, ServiceTier: err == nil && p.Priority, Compaction: true, LiveMode: true,
-		Rules: true, Approvals: true, ToolHooks: true, MCP: true, Subagents: true, ApplyPatch: true, CodexSkills: true, ContextUsage: true,
+		Rules: true, Approvals: true, ToolHooks: true, MCP: true, Subagents: true, ApplyPatch: true, CodexSkills: true, ContextUsage: true, Images: true,
 	}
 }
 

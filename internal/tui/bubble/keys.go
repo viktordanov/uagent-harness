@@ -9,13 +9,14 @@ import (
 
 // Keys named in more than one mode.
 const (
-	keyEnter = "enter"
-	keyEsc   = "esc"
-	keyCtrlN = "ctrl+n"
-	keyCtrlC = "ctrl+c"
-	keyDown  = "down"
-	keyUp    = "up"
-	keyCtrlP = "ctrl+p"
+	keyEnter     = "enter"
+	keyEsc       = "esc"
+	keyCtrlN     = "ctrl+n"
+	keyCtrlC     = "ctrl+c"
+	keyDown      = "down"
+	keyUp        = "up"
+	keyCtrlP     = "ctrl+p"
+	keyBackspace = "backspace"
 )
 
 // onKey maps keys to intents. The keys never change meaning: Enter sends
@@ -56,7 +57,7 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) { //nolint:gocycl
 		if draft != "" {
 			m.composer.Reset()
 
-			return m, nil
+			return m.dispatch(state.DraftChanged{}) // drops the draft's images
 		}
 
 		return m.dispatch(state.Quit{})
@@ -101,6 +102,12 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) { //nolint:gocycl
 
 			return m.dispatch(state.SwitchAgent{Delta: delta})
 		}
+	case "ctrl+v", "alt+v":
+		// Paste the clipboard's image, as Codex and Claude Code do on
+		// macOS and Linux; text pastes arrive as a bracketed paste.
+		return m.dispatch(state.PasteImage{})
+	case keyBackspace:
+		m.eatPlaceholder()
 	case "shift+tab":
 		return m.dispatch(state.CycleMode{})
 	case "alt+,":
@@ -161,7 +168,7 @@ func (m Model) onPickerKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.dispatch(state.PickerCancel{})
 	case keyEsc:
 		return m.dispatch(state.PickerCancel{})
-	case "backspace":
+	case keyBackspace:
 		return m.dispatch(state.PickerType{Text: "\b"})
 	case "tab":
 		return m.dispatch(state.PickerToggleAll{})
@@ -255,7 +262,7 @@ func (m Model) onConfigKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		if !editing {
 			return m.dispatch(state.ConfigChange{Delta: 1})
 		}
-	case "backspace":
+	case keyBackspace:
 		return m.dispatch(state.ConfigType{Text: "\b"})
 	}
 	if editing && msg.Text != "" {

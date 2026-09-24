@@ -16,6 +16,8 @@ import (
 	"github.com/viktordanov/uagent/core"
 
 	"github.com/viktordanov/uagent-harness/internal/compaction"
+	"github.com/viktordanov/uagent-harness/internal/images"
+	"github.com/viktordanov/uagent-harness/internal/images/clipboard"
 	"github.com/viktordanov/uagent-harness/internal/models"
 	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/internal/tui/render"
@@ -70,6 +72,11 @@ type Deps struct {
 	Usage usage.Reader
 	// Now is the clock (default time.Now).
 	Now func() time.Time
+	// Images stores images pasted into the composer, and Clipboard reads
+	// the clipboard's image for ctrl+v (optional; without them pasting an
+	// image says it cannot).
+	Images    *images.Store
+	Clipboard clipboard.Reader
 }
 
 // Model is the Bubble Tea model.
@@ -210,10 +217,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		return m.onKey(msg)
 	case tea.PasteMsg:
-		var cmd tea.Cmd
-		m.composer, cmd = m.composer.Update(msg)
-
-		return m, cmd
+		return m.onPaste(msg)
 	case eventsMsg:
 		if msg.gen != m.gen {
 			return m, next(msg.gen, msg.batches) // drain a closed session's last events
@@ -239,10 +243,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case agentOpenedMsg, agentEventsMsg, agentWatchEndedMsg:
 		return m.onAgentMsg(msg)
 	case withdrawnMsg:
-		m.composer.SetValue(msg.text)
-		m.composer.CursorEnd()
-
-		return m, nil
+		return m.dispatch(state.DraftRestored{Text: msg.text})
 	case tickMsg:
 		m.st, _ = state.Reduce(m.st, state.Tick{Now: time.Time(msg)})
 		m.ticking = false
@@ -253,7 +254,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		return m, tea.Quit
 	case state.Failed, state.SessionsLoaded, state.ActivityLoaded, state.FilesLoaded, state.MCPListed, state.ContextShown,
-		state.ModelsLoaded, state.ConfigLoaded, state.ConfigSaved:
+		state.ModelsLoaded, state.ConfigLoaded, state.ConfigSaved, state.ImageAttached, state.ImageFailed:
 		return m.dispatch(msg)
 	case state.UsageLoaded:
 		return m.dispatch(msg)
@@ -298,6 +299,11 @@ func (m Model) dispatch(intent any) (tea.Model, tea.Cmd) {
 		if d, ok := e.(state.EffSetDraft); ok {
 			m.composer.SetValue(d.Text)
 			m.composer.CursorEnd()
+
+			continue
+		}
+		if ins, ok := e.(state.EffInsertText); ok {
+			m.composer.InsertString(ins.Text)
 
 			continue
 		}
