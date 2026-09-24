@@ -79,6 +79,7 @@ func (s *Session) loop() {
 	defer close(s.done)
 	defer close(s.out)
 	defer s.stop()
+	defer s.stopShells()
 	if s.hooks.jobs != nil {
 		defer close(s.hooks.jobs)
 	}
@@ -103,8 +104,8 @@ func (s *Session) loop() {
 			}
 		case evRun:
 			s.onRunEvent(m.event)
-		case evInject:
-			s.onInject(m.text)
+		case evDo:
+			m()
 		case evNotify:
 			s.emit(m.event)
 		case evEnded:
@@ -141,6 +142,7 @@ func (s *Session) handle(cmd any) (any, error) {
 		return s.onSubmit(c), nil
 	case cmdInterrupt:
 		s.restartAfterStop = false
+		s.stopShells()
 		s.interruptLive()
 
 		return struct{}{}, nil
@@ -154,6 +156,8 @@ func (s *Session) handle(cmd any) (any, error) {
 		return struct{}{}, s.onClear()
 	case cmdResolve:
 		return struct{}{}, s.onResolve(c)
+	case cmdShell:
+		return s.onShell(c), nil
 	}
 
 	return nil, fmt.Errorf("unknown session command %T", cmd)

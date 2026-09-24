@@ -21,6 +21,7 @@ import (
 	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/hooks"
 	"github.com/viktordanov/uagent-harness/internal/mcp"
+	"github.com/viktordanov/uagent-harness/internal/usershell"
 )
 
 // ErrClosed means the session has been closed.
@@ -69,6 +70,8 @@ type Options struct {
 	// Ask, when set, answers this session's approvals instead of its own
 	// prompts: a subagent asks through its parent.
 	Ask approval.Ask
+	// Shell runs the commands the user types (RunShell); nil: none.
+	Shell *usershell.Runner
 }
 
 // Session is safe to use from any goroutine. All state lives on one internal
@@ -113,6 +116,9 @@ type Session struct {
 	askOverride approval.Ask
 	// sessionsDir holds the sidecar the settings are saved in ("": none).
 	sessionsDir string
+	// shell runs the user's commands; shells stops each running one by ID.
+	shell  *usershell.Runner
+	shells map[string]context.CancelFunc
 }
 
 // Open starts a session. Its first event is SessionOpened.
@@ -132,7 +138,7 @@ func Open(ctx context.Context, eng engine.Engine, opts Options) (*Session, error
 		settings: opts.Settings, state: StateIdle, sent: map[string]bool{},
 		hooks:       hookState{runner: opts.Hooks, resumed: opts.Resumed, tools: map[string]core.ToolCalled{}},
 		interactive: opts.Interactive, approvals: map[string]pending{}, askOverride: opts.Ask,
-		sessionsDir: opts.SessionsDir,
+		sessionsDir: opts.SessionsDir, shell: opts.Shell, shells: map[string]context.CancelFunc{},
 	}
 	s.out <- SessionOpened{At: time.Now(), ID: id, Resumed: opts.Resumed, Engine: eng.Name(), Settings: opts.Settings}
 	if opts.Instructions != nil {

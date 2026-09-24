@@ -102,6 +102,7 @@ func Setup(ctx context.Context, in Inputs, logOutput io.Writer) (Result, error) 
 	if subagents != nil {
 		subagents.Bind(eng, opts) // children open exactly as this session does
 	}
+	opts.Shell = userShell(r, cfg, stateDir, approver)
 
 	return Result{StateDir: stateDir, Engine: eng, Options: opts, Config: cfg, Models: catalog}, nil
 }

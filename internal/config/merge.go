@@ -58,6 +58,7 @@ func mergeSandbox(base *Config, over Config) {
 	base.Approvals.Allow = slices.Concat(base.Approvals.Allow, over.Approvals.Allow)
 	base.Approvals.Forbid = slices.Concat(base.Approvals.Forbid, over.Approvals.Forbid)
 	set(&base.ApprovalsReviewer, over.ApprovalsReviewer)
+	base.UserShellSandbox = base.UserShellSandbox || over.UserShellSandbox
 	set(&base.Review.Model, over.Review.Model)
 	set(&base.Review.Effort, over.Review.Effort)
 	set(&base.Review.Timeout, over.Review.Timeout)
