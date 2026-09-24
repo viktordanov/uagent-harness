@@ -3,6 +3,7 @@ package state_test
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -91,4 +92,34 @@ func TestReduce_AgentActivity(t *testing.T) {
 		s, _ = apply(s, engine.AgentActivity{ID: "a1", Event: core.ToolCalled{CallID: fmt.Sprint(i), Name: "Bash"}})
 	}
 	assert.Len(t, s.Items[len(s.Items)-1].Sub, 30, "the line keeps the latest tool calls")
+}
+
+func TestReduce_AgentCallsReadAsNames(t *testing.T) {
+	s := opened()
+	s, _ = apply(s,
+		core.ToolCalled{At: t0, CallID: "c1", Name: "spawn_agent", Label: `{"message":"Summarize"}`},
+		engine.AgentUpdated{At: t0, ID: "subagent-1234abcd-0000", Nickname: "Ada", State: engine.AgentRunning, Started: t0, CallID: "c1", Model: "gpt-6-luna", Effort: "low", Task: "Summarize"},
+		core.ToolCalled{At: t0, CallID: "c2", Name: "wait_agent", Label: `{"targets":["subagent-1234abcd-0000","subagent-99999999-0000"],"timeout_ms":1000}`},
+		core.ToolCalled{At: t0, CallID: "c3", Name: "send_input", Label: `{"target":"subagent-1234abcd-0000","message":"and the tests"}`},
+		engine.AgentUpdated{At: t0.Add(72 * time.Second), ID: "subagent-1234abcd-0000", Nickname: "Ada", State: engine.AgentCompleted, Started: t0},
+		engine.AgentUpdated{At: t0.Add(80 * time.Second), ID: "subagent-1234abcd-0000", Nickname: "Ada", State: engine.AgentShutdown, Started: t0},
+	)
+	label := func(key string) string {
+		for _, it := range s.Items {
+			if it.Key == key {
+				return it.Label
+			}
+		}
+
+		return ""
+	}
+	assert.Equal(t, "Ada · gpt-6-luna low · Summarize", label("call:c1"))
+	assert.Equal(t, "Ada, subagent-99999999", label("call:c2"))
+	assert.Equal(t, "Ada · and the tests", label("call:c3"))
+	for _, it := range s.Items {
+		if it.Kind == state.KindAgent {
+			assert.Equal(t, engine.AgentCompleted, it.Detail, "closing a finished agent keeps done")
+			assert.Equal(t, 72*time.Second, it.Duration)
+		}
+	}
 }

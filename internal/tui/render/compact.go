@@ -187,9 +187,17 @@ func agentLines(it state.Item, w int, now time.Time) []string {
 	case engine.AgentRunning:
 		head = accent.Render("  AGENT ") + name + dim.Render("  "+elapsed(now.Sub(it.Started)))
 	case engine.AgentCompleted:
-		head = dim.Render("  AGENT ") + name + dim.Render("  done")
+		done := "  done"
+		if it.Duration > 0 {
+			done += " in " + elapsed(it.Duration)
+		}
+		head = dim.Render("  AGENT ") + name + dim.Render(done)
 	case engine.AgentErrored:
-		head = dim.Render("  AGENT ") + name + bad.Render("  failed")
+		why := "  failed"
+		if it.Agent != nil && it.Agent.Message != "" {
+			why += ": " + oneLine(it.Agent.Message)
+		}
+		head = dim.Render("  AGENT ") + name + bad.Render(why)
 	default:
 		head = dim.Render("  AGENT ") + name + dim.Render("  "+it.Detail)
 	}

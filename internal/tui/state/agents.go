@@ -17,7 +17,10 @@ import (
 func (s *State) onAgentUpdated(e engine.AgentUpdated) {
 	key := "agent:" + e.ID
 	set := func(it *Item) {
-		it.Detail, it.Started, it.Agent = e.State, e.Started, &e
+		if e.State == engine.AgentCompleted && it.Detail == engine.AgentRunning && !e.Started.IsZero() {
+			it.Duration = e.At.Sub(e.Started)
+		}
+		it.Detail, it.Started, it.Agent = settle(it.Detail, e.State), e.Started, &e
 		if e.State != engine.AgentRunning {
 			for i := range it.Sub {
 				if it.Sub[i].Tool == ToolCalled || it.Sub[i].Tool == ToolRunning {
@@ -32,6 +35,7 @@ func (s *State) onAgentUpdated(e engine.AgentUpdated) {
 	it := Item{Kind: KindAgent, Key: key, Name: e.Nickname, Label: e.Role, Text: e.ID}
 	set(&it)
 	s.put(it)
+	s.labelSpawn(e)
 }
 
 // maxAgentTools is how many of a subagent's latest tool calls its line
