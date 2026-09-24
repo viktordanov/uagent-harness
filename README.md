@@ -6,45 +6,30 @@
   <a href="https://github.com/viktordanov/uagent-harness/actions/workflows/memoria.yml"><img src="https://github.com/viktordanov/uagent-harness/actions/workflows/memoria.yml/badge.svg" alt="Docs checked by Memoria"></a>
   <a href="https://github.com/viktordanov/uagent-harness/releases/latest"><img src="https://img.shields.io/github/v/release/viktordanov/uagent-harness" alt="Release"></a>
   <a href="https://aur.archlinux.org/packages/uah-bin"><img src="https://img.shields.io/aur/version/uah-bin" alt="AUR"></a>
-  <a href="go.mod"><img src="https://img.shields.io/github/go-mod/go-version/viktordanov/uagent-harness" alt="Go version"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/viktordanov/uagent-harness" alt="License"></a>
 </p>
 
 <p align="center"><img src="docs/assets/uah.png" alt="The uah TUI: a flaky test found and fixed with a diff, then two subagents reviewing in parallel" width="900"></p>
 
-`uah` is a terminal coding agent built on [uagent](https://github.com/viktordanov/uagent), the wrapper around unreal-agent-runner. It works like Codex, with a TUI and a headless `uah run`.
+A terminal coding agent that works like Codex, running on [unreal-agent](https://github.com/unreallabsai/unreal-agent) through [uagent](https://github.com/viktordanov/uagent).
+
+```sh
+brew install viktordanov/tap/uah
+```
+
+- [Sessions](#resume-a-session) you can resume and search, and a headless [`uah run`](#headless-mode)
+- [Subagents](#subagents-and-agent-files) that run in parallel, defined in Markdown or TOML agent files
+- [AGENTS.md and skills](#agentsmd-and-skills), and [MCP servers](#mcp-setup) with OAuth
+- A [sandbox](#permission-modes) (Seatbelt, bubblewrap) with [approvals](#command-rules), permission modes, and an auto-reviewer
+- [Compaction](#compaction-and-clear), `/context`, and `/clear`
+- [Pasted images](#images), [`!` shell commands](#shell-mode), `apply_patch` diffs, and [hooks](#hook-setup)
+- Your ChatGPT plan's [usage](#usage-limits) in the footer
+- [Configuration](#configuration) in TOML or `/config`, including the prompts
+
+The [ledger](docs/ledger.md) lists what's next.
 
 > [!NOTE]
-> This project's documentation is maintained with [Memoria](https://github.com/viktordanov/rs-memoria). Each README is tied to the code it describes, and CI fails when that code changes and nobody has reviewed the README.
-
----
-
-## Features
-
-| Feature | Notes |
-| --- | --- |
-| [Sessions](#resume-a-session) | Saved, searchable, resumable; quitting prints the resume command |
-| [Usage limits](#usage-limits) | ChatGPT plan limits in `/usage`, `/status`, and the footer |
-| [Subagents](#subagents-and-agent-files) | Codex's tools, run in parallel, with `fork_context` and a view per agent |
-| [Agent files](#subagents-and-agent-files) | Markdown with front matter, as in Claude Code, or TOML, as in Codex |
-| [AGENTS.md and skills](#agentsmd-and-skills) | Found as Codex finds them; `CLAUDE.md` if you opt in |
-| [MCP](#mcp-setup) | Stdio and HTTP servers, OAuth, per-tool approvals |
-| [Sandbox](#permission-modes) | Seatbelt on macOS, bubblewrap on Linux |
-| [Approvals](#command-rules) | Read-only, workspace, auto, and full-access modes; command rules; an auto-reviewer |
-| [Compaction](#compaction-and-clear) | Automatic or `/compact`, with its own model and prompt; `/clear`, `/context` |
-| [Images](#images) | Paste with ctrl+v, or drop a file |
-| [Shell mode](#shell-mode) | `!` runs a command yourself; the agent sees the output |
-| [File edits](#file-edits-and-diffs) | Codex's `apply_patch`, shown as diffs |
-| [Hooks](#hook-setup) | Claude Code's hook format |
-| [Configuration](#configuration) | TOML, `/config` in the TUI, and your own prompts |
-
-More is planned: the [ledger](docs/ledger.md) tracks what is built and what is next.
-
-1. [Get started](#get-started)
-2. [Common tasks](#common-tasks)
-3. [Configuration](#configuration)
-4. [How it works](#how-it-works)
-5. [Development](#development)
+> The docs are kept in sync with the code by [Memoria](https://github.com/viktordanov/rs-memoria): CI fails when code changes and its README hasn't been reviewed.
 <!-- /memoria:section -->
 
 ---
@@ -60,10 +45,10 @@ More is planned: the [ledger](docs/ledger.md) tracks what is built and what is n
    go install github.com/viktordanov/uagent-harness/cmd/uah@latest  # from source, Go 1.27.1 or later
    ```
 
-   Or download an archive from the [releases](https://github.com/viktordanov/uagent-harness/releases). Brew and the AUR also install the shell completions.
+   Or grab an archive from the [releases](https://github.com/viktordanov/uagent-harness/releases).
 
-2. Sign in. The default provider, `openai-codex`, uses your ChatGPT login: run `codex login`. For another provider, pass `--provider` (openai, openrouter, fireworks, or ollama) and set its API key variable.
-3. Check the setup: `uah doctor` checks the credentials, the models your login can use, your plan's usage, the sandbox, the configuration, hooks, MCP servers, and the state directory, and says how to fix each ✗.
+2. Sign in with `codex login`; uah uses your ChatGPT account. For another provider, pass `--provider` (openai, openrouter, fireworks, or ollama) and set its API key variable.
+3. Run `uah doctor`. It checks the login, sandbox, config, and MCP servers, and says how to fix anything that fails.
 4. Start in a repository:
 
    ```sh
@@ -78,7 +63,7 @@ More is planned: the [ledger](docs/ledger.md) tracks what is built and what is n
    uah completion zsh > "${fpath[1]}/_uah"
    ```
 
-The keys to know in the TUI:
+Keys worth knowing:
 
 | Key | Does |
 | --- | --- |
@@ -89,7 +74,7 @@ The keys to know in the TUI:
 | `@` | Mention a workspace file (fuzzy search) |
 | ctrl+t | The detailed view: turns, tokens, and each tool's result |
 
-Text selects with the mouse as in any terminal, and the wheel scrolls, also while you type a prompt. The [TUI README](internal/tui/README.md) lists every key and command.
+The [TUI README](internal/tui/README.md) lists every key and command.
 
 ---
 
