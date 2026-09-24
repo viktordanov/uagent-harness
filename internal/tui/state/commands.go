@@ -35,7 +35,7 @@ func Commands() []Command {
 		{Name: "status", Help: "session, settings, and totals", WhileBusy: true, run: cmdStatus},
 		{Name: "mcp", Args: "[verbose]", Help: "MCP servers: state, transport, and tool count; verbose adds auth and each tool", WhileBusy: true, run: cmdMCP},
 		{Name: cmdAgentsName, Args: "[name]", Help: "subagents the agent started, and their state; a name shows that agent's transcript as it works", WhileBusy: true, run: cmdAgents},
-		{Name: "sandbox", Help: "what commands may do: the sandbox mode (set it with --sandbox or sandbox_mode)", WhileBusy: true, run: cmdSandbox},
+		{Name: "sandbox", Help: "what commands may do: the permission mode and its sandbox (shift+tab changes it)", WhileBusy: true, run: cmdSandbox},
 		{Name: "reasoning", Help: "show or hide reasoning summaries", WhileBusy: true, run: func(s *State, _ string) []Effect { s.ShowReasoning = !s.ShowReasoning; return nil }},
 		{Name: "details", Help: "show or hide turns, run dividers, and token totals", WhileBusy: true, run: func(s *State, _ string) []Effect { s.Details = !s.Details; return nil }},
 		{Name: "help", Help: "commands and keys", WhileBusy: true, run: cmdHelp},
@@ -173,7 +173,7 @@ func cmdHelp(s *State, _ string) []Effect {
 		fmt.Fprintf(&b, "%-18s %s\n", name, c.Help)
 	}
 	b.WriteString("\nenter send (queues while the agent works) · ctrl+enter or alt+enter send now · shift+enter or ctrl+j new line\n")
-	b.WriteString("esc esc interrupt · ↑ edit the last queued message · alt+, alt+. effort · ctrl+s sessions · ctrl+n new · ctrl+t details · ctrl+r reasoning · wheel, shift+↑↓, pgup/pgdn scroll (end: bottom) · ctrl+c ctrl+c quit")
+	b.WriteString("esc esc interrupt · ↑ edit the last queued message · shift+tab permission mode · alt+, alt+. effort · ctrl+s sessions · ctrl+n new · ctrl+t details · ctrl+r reasoning · wheel, shift+↑↓, pgup/pgdn scroll (end: bottom) · ctrl+c ctrl+c quit")
 	s.notice(session.LevelInfo, b.String())
 
 	return nil
@@ -192,7 +192,8 @@ func cmdSandbox(s *State, _ string) []Effect {
 	default:
 		text = "sandbox " + s.Settings.Sandbox
 	}
-	s.notice(session.LevelInfo, text+". Change it with --sandbox or sandbox_mode in the configuration.")
+	s.notice(session.LevelInfo, s.Settings.Mode.Label()+" mode, "+text+
+		". shift+tab cycles read only, workspace, and auto; full access needs --sandbox or sandbox_mode.")
 
 	return nil
 }

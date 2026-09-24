@@ -32,7 +32,7 @@ Each value comes from the first of these that sets it:
 
 1. A flag.
 2. The flag's environment variable (see [Environment variables](#environment-variables)).
-3. The resumed session (`--session`, `uah resume`, `uah run --last`): only the provider, model, effort, and workspace.
+3. The resumed session (`--session`, `uah resume`, `uah run --last`): the `provider`, `model`, `effort`, `fast`, and `permission_mode` it last used, which its sidecar (`sessions/<id>.uah.json`) keeps whenever they change, and its workspace. A session from before uah kept them gives the provider, model, and effort of its last run.
 4. The project file.
 5. The user file.
 6. The default.
@@ -42,7 +42,8 @@ The exceptions, as the code applies them:
 - A `--provider` flag that changes the provider, compared with the resumed session's, else the configured one, else openai-codex, drops the resumed and configured models. The model is then `--model`, or the provider's default: `gpt-6-sol` for openai-codex and none for the others.
 - The workspace comes from `-C`, the resumed session, or the current directory; no file sets it.
 - `--timeout` (30m) and `--max-disk` (5G) have defaults, but a default counts only when the flag is not given: the files come first.
-- `--fast` given, even as `--fast=false`, wins. Otherwise `fast` is on when either file turns it on.
+- `--fast` given, even as `--fast=false`, wins. Otherwise the resumed session's fast mode wins, unless a `--provider` flag changes the provider or the engine is `process`. Otherwise `fast` is on when either file turns it on.
+- The permission mode is `--sandbox` (or `UAH_SANDBOX`) as a mode, else the resumed session's, else `permission_mode`, else `sandbox_mode` as a mode, else `workspace`. `sandbox_mode` follows from the mode. A project file's `sandbox_mode` does not override a user file's `permission_mode`, because `permission_mode` from either file comes first.
 - `--no-instructions` turns instructions off whatever the files say; no flag turns them on over `enabled = false`.
 - `project_doc_max_bytes`, from either file, wins over `[instructions] max_bytes` from either file.
 - Keys without a flag come only from the files and the defaults.
@@ -76,9 +77,21 @@ Every key may be set in the user file and in a trusted project file, except `[pr
 
 | Key | Type | Default | Flag, env | Merge | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| `sandbox_mode` | string | `workspace-write` | `--sandbox`, `UAH_SANDBOX` | override | `read-only`, `workspace-write`, or `danger-full-access` (no sandbox), as Codex names them |
+| `permission_mode` | string | `workspace` | `--sandbox`, `UAH_SANDBOX` (as a mode) | override | The permission mode: `read-only`, `workspace`, `auto`, or `full-access`. It sets the sandbox and who decides what needs approval (table below), and it wins over `sandbox_mode`. shift+tab in the TUI cycles `read-only`, `workspace`, and `auto` |
+| `sandbox_mode` | string | `workspace-write` | `--sandbox`, `UAH_SANDBOX` | override | `read-only`, `workspace-write`, or `danger-full-access` (no sandbox), as Codex names them. Without `permission_mode`, it picks the mode of the same sandbox: `read-only`, `workspace`, or `full-access` |
 | `approval_policy` | string | `on-request` | `--ask`, `UAH_ASK` | override | Who answers an escalation or a `prompt` rule: `on-request` asks the user (headless runs deny), `never` denies. In a file, Codex's `on-failure` means `on-request` |
 | `approvals_reviewer` | string | `auto_review` | none | override | `auto_review` lets the auto-reviewer judge before anyone is asked; `user` skips it |
+
+The permission modes:
+
+| Mode | Sandbox | Escalations and `prompt` rules |
+| --- | --- | --- |
+| `read-only` | `read-only` | Ask: the auto-reviewer first (with `approvals_reviewer = "auto_review"`), then the user |
+| `workspace` (default) | `workspace-write` | Ask: the auto-reviewer first, then the user |
+| `auto` | `workspace-write` | The auto-reviewer decides, also with `approvals_reviewer = "user"`. The user is not asked; a decline reaches the model with the reviewer's reason |
+| `full-access` | none (`danger-full-access`) | No escalations; `prompt` rules ask as in `workspace`. Only a flag or a file sets it; shift+tab moves from it to `read-only` |
+
+`approval_policy = "never"` still denies whatever needs approval, in every mode. The embedded engine applies a mode change to a live run from its next command and model request; the process engine applies it from the next run.
 
 `[sandbox_workspace_write]` configures the `workspace-write` mode:
 
@@ -271,7 +284,7 @@ developer_instructions = "Review the diff you are given. List only real bugs, ea
 | `UNREAL_HARNESS_LLM_MODEL` | `--model` | `model` | The model |
 | `UNREAL_HARNESS_LLM_BASE_URL` | `--base-url` | none | The LLM base URL |
 | `UAH_ENGINE` | `--engine` | `engine` | The engine |
-| `UAH_SANDBOX` | `--sandbox` | `sandbox_mode` | The sandbox mode |
+| `UAH_SANDBOX` | `--sandbox` | `sandbox_mode` | The sandbox mode, and the permission mode of that sandbox |
 | `UAH_ASK` | `--ask` | `approval_policy` | The approval policy |
 | `UAGENT_CONFIG` | `--config` | none | The user file |
 | `UAGENT_STATE_DIR` | `--state-dir` | none | Sessions, logs, and run records |
@@ -304,6 +317,7 @@ max_disk = "5G"                    # tool output per run; "0" disables
 engine = "embedded"                # or "process"
 fast = false                       # priority processing
 sandbox_mode = "workspace-write"   # read-only, workspace-write, danger-full-access
+# permission_mode = "workspace"    # read-only, workspace, auto, full-access; wins over sandbox_mode
 approval_policy = "on-request"     # or never
 approvals_reviewer = "auto_review" # or user: skip the auto-reviewer
 auto_compact_percent = 90          # 0 turns automatic compaction off

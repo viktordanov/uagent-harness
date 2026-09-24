@@ -100,6 +100,8 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 
 			return m.dispatch(state.SwitchAgent{Delta: delta})
 		}
+	case "shift+tab":
+		return m.dispatch(state.CycleMode{})
 	case "alt+,":
 		return m.dispatch(state.StepEffort{Delta: -1})
 	case "alt+.":

@@ -159,12 +159,34 @@ func sessionSettings(in Inputs, o Origins, r Resolved, cfg config.Config) []Sett
 		one("timeout", s.Timeout.String(), pick(given(in.TimeoutSet), overrides(l, func(c config.Config) any { return c.Timeout }), FromDefault)),
 		one("max_disk", maxDisk, pick(given(in.MaxDiskSet), overrides(l, func(c config.Config) any { return c.MaxDisk }), FromDefault)),
 		one("engine", r.Engine, pick(input(in.Engine, EnvEngine, env), overrides(l, func(c config.Config) any { return c.Engine }), FromDefault)),
-		{Key: "fast", Value: s.ServiceTier != "", Sources: orSources(given(in.FastSet), adds(l, func(c config.Config) any { return c.Fast }))},
-		one("sandbox_mode", string(r.Sandbox.Mode), pick(input(in.Sandbox, EnvSandbox, env), overrides(l, func(c config.Config) any { return c.SandboxMode }), FromDefault)),
+		{Key: "fast", Value: s.ServiceTier != "", Sources: fastSources(in, o, cfg)},
+		one("permission_mode", string(s.Mode), modeSource(in, o)),
+		one("sandbox_mode", string(r.Sandbox.Mode), modeSource(in, o)),
 		one("approval_policy", string(r.Approval), pick(input(in.Ask, EnvAsk, env), overrides(l, func(c config.Config) any { return c.ApprovalPolicy }), FromDefault)),
 		one("model_context_window", compaction.ContextWindow(s.Model, s.ContextWindow), pick(overrides(l, func(c config.Config) any { return c.ModelContextWindow }), FromDefault)),
 		{Key: "instructions.enabled", Value: r.Instructions, Sources: orSources(given(in.NoInstructions), []Source{overrides(l, func(c config.Config) any { return c.Instructions.Enabled })})},
 	}
+}
+
+// fastSources are the fast mode's: the flag, the resumed session, or the
+// files, as pickFast decides.
+func fastSources(in Inputs, o Origins, cfg config.Config) []Source {
+	if !in.FastSet && sessionFast(in, o.Resumed, cfg) {
+		return []Source{FromSession}
+	}
+
+	return orSources(given(in.FastSet), adds(o.Layers, func(c config.Config) any { return c.Fast }))
+}
+
+// modeSource is the permission mode's source, and the sandbox mode's that
+// follows from it: --sandbox, the resumed session, permission_mode, or
+// sandbox_mode, as pickMode decides.
+func modeSource(in Inputs, o Origins) Source {
+	l := o.Layers
+
+	return pick(input(in.Sandbox, EnvSandbox, o.Env), sessionValue(string(o.Resumed.Mode)),
+		overrides(l, func(c config.Config) any { return c.PermissionMode }),
+		overrides(l, func(c config.Config) any { return c.SandboxMode }), FromDefault)
 }
 
 // Text is the value as one line of text.

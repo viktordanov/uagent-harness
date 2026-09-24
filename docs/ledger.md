@@ -49,8 +49,8 @@ Status: `todo`, `doing`, `done`, `cut` (with a reason).
 | 23 | Quality pass over the new concepts | main session | 22 | done |
 | 24 | Compaction you can configure, and a second look at how well it works | lane settings | 16 | doing |
 | 25 | `/config`: the basic settings in the TUI, saved to the user file | lane settings | 24 | doing |
-| 26 | Permission modes on shift+tab, shown in the TUI | lane modes | — | doing |
-| 27 | Session settings kept with the session: model, effort, fast mode, permission mode | lane modes | 26 | doing |
+| 26 | Permission modes on shift+tab, shown in the TUI | lane modes | — | done |
+| 27 | Session settings kept with the session: model, effort, fast mode, permission mode | lane modes | 26 | done |
 
 Order of starting: 1 alone (it touches everything). Then lanes A (2), B (4), C (5) in parallel. D (6, 7) starts when a lane frees up. 9 and 10 come after their dependencies merge.
 
@@ -179,19 +179,23 @@ Claude Code's `/config`, for the basic settings: auto-compact on or off and its 
 
 ### 26. Permission modes on shift+tab
 
-shift+tab cycles three modes, shown in the footer and changed live:
+shift+tab cycles three modes, shown in the footer (and the detailed view's header) and changed live:
 
-| Mode | Sandbox | Escalations |
-| --- | --- | --- |
-| Read only | read-only | Ask (the auto-reviewer first) |
-| Workspace (default) | workspace-write | Ask (the auto-reviewer first) |
-| Auto | workspace-write | The auto-reviewer decides; you are not asked |
+| Mode | Sandbox | Escalations and `prompt` rules | Codex | Claude Code |
+| --- | --- | --- | --- | --- |
+| Read only | read-only | Ask (the auto-reviewer first) | `read-only` preset | `plan` (nearest) |
+| Workspace (default) | workspace-write | Ask (the auto-reviewer first) | `auto` preset, reviewer user ("Ask for approval") | `default` |
+| Auto | workspace-write | The auto-reviewer decides; you are not asked; a decline reaches the model with the reason | `auto` preset, reviewer auto_review ("Approve for me") | `auto` |
 
-Full access (danger-full-access) stays a flag and a config value, outside the cycle. The mapping follows Codex's approval presets and Claude Code's shift+tab; "Auto" is Claude Code's auto mode, with Codex's auto-reviewer as the judge.
+Full access (danger-full-access) stays a flag and a config value, outside the cycle, as Codex keeps Full Access out of its permission shortcut; shift+tab moves from it to Read only. The mapping and the Codex sources (approval presets, the permission shortcut, the turn-context override) are in the [approvals README](../internal/approval/README.md#permission-modes).
+
+Built: `approval.Mode` (read-only, workspace, auto, full-access); `session.Settings.Mode`; `engine.Options.Mode`, `Capabilities.LiveMode`, and `Run.SetMode`. On the embedded engine a change applies from the next command (the Bash tool picks that mode's sandboxing shell) and the next model request (the switcher rewrites Bash's description of the sandbox); the ask reads it for each approval. On the process engine it applies from the next run (one sandboxing `SHELL` per mode), and the TUI says so. A subagent starts in its parent's mode at spawn. The `permission_mode` key picks a mode at start and wins over `sandbox_mode`; `--sandbox` still wins over both.
+
+Open (defaults taken): no `--mode` flag, because Auto does not map onto `--sandbox` or `--ask` and a headless run cannot ask anyway, so `--sandbox` covers the rest; Full Access keeps `approval_policy` as configured instead of Codex's `never`; Claude Code's `acceptEdits` has no uah equivalent (the workspace sandbox already lets commands edit); when the reviewer's circuit breaker opens, Auto mode declines with the reason instead of asking the user as Claude Code's auto mode does after 3 blocks in a row or 20 in total.
 
 ### 27. Session settings kept with the session
 
-The model, effort, fast mode, and permission mode a session last used are saved in its sidecar and restored on resume, before the configured defaults; a flag still wins.
+The model (with its provider), effort, fast mode, and permission mode a session last used are saved in its sidecar (`sessions/<id>.uah.json`, `settings`) when it opens and whenever they change, and restored on resume ahead of the configured defaults; a flag still wins. Older sidecars without `settings` fall back to the last run's request for the provider, model, and effort, and to the configuration for fast mode and the mode. `uah config --session` shows `session` as their source. A subagent's sidecar keeps its own settings. The precedence in docs/configuration.md is pinned by a test that its resumed-session line names every saved key.
 
 ### 23. As done
 

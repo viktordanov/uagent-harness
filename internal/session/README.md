@@ -54,10 +54,12 @@ When a run ends, messages sent into it that it never read go back to the front o
 `Inject` gives the agent a message without a turn of its own, as Codex's `inject_no_new_turn`: it is held and goes out before the next run's messages, and it never starts a run. It is not sent into a live run, because the runner cancels its model request when a message arrives, which would throw away a paid request. It skips the queue and the hooks. A subagent's `<subagent_notification>` reaches its parent this way (`engine.Options.Inject`).
 <!-- /memoria:section -->
 
-<!-- memoria:section id="settings" files="settings.go dispatch.go compact.go" -->
+<!-- memoria:section id="settings" files="settings.go dispatch.go compact.go saved.go" -->
 ## Settings and compaction
 
-`Settings` are what every run sends: provider, model, effort, service tier, workspace, and the host prompt. `SetSettings` stores them and, while a run is live, tries `SetEffort`, `SetModel`, and `SetServiceTier` on it. `SettingsChanged.Applied` says `live` when all changed fields reached the run, and `next_run` otherwise (always on the process engine).
+`Settings` are what every run sends: provider, model, effort, service tier, the permission mode, workspace, and the host prompt. The permission mode (`approval.Mode`: read only, workspace, auto, or full access) goes to the engine as `engine.Options.Mode`; `WithMode` sets it and keeps `Sandbox`, its sandbox mode for display, in step. `SetSettings` stores them and, while a run is live, tries `SetEffort`, `SetModel`, `SetServiceTier`, and `SetMode` on it. `SettingsChanged.Applied` says `live` when all changed fields reached the run, and `next_run` otherwise (always on the process engine).
+
+The session keeps its provider, model, effort, fast mode, and permission mode in its sidecar (`Saved`): when it opens and after each change. On resume, `ApplySidecar` puts them in the session's `Info` in place of its newest run's provider, model, and effort, and `internal/app` restores them ahead of the configuration; a flag still wins. A session whose sidecar has no settings (from before uah kept them) resumes with its newest run's. A subagent's sidecar keeps its own settings.
 
 `Compact` marks a compaction as pending; `CompactWith(focus)` adds what the summary should focus on (`/compact <focus>`). While a run is live, the engine compacts before its next model request (`Run.Compact(focus)`); while idle, `engine.Options.Compact` and `CompactFocus` ask the next run to compact first. The pending flag clears when the engine reports a manual `CompactionStarted`. `Clear` (`/clear`) works the same way with `Run.Clear` and `engine.Options.Clear`: the model's next request starts fresh in the same session. The process engine returns `ErrNoCompaction` for both.
 <!-- /memoria:section -->
@@ -97,7 +99,7 @@ PreToolUse and PreCompact hooks run in the embedded engine, on the coordinator's
 
 The runner's session files and uagent's run records are the source of truth; the [state storage record](../../docs/design/state.md) lists every file and why the index is only a cache.
 
-- **Sidecar.** A new session writes `sessions/<id>.uah.json` with its `source` (`tui`, `run`, or `subagent`), its creation time, and, for a subagent, its `parent`. The first writer wins (`O_EXCL`). `Interactive` drops `run` and `subagent` sessions from the resume picker, as Codex hides `codex exec` sessions, and `Tree` lists subagents under their parents.
+- **Sidecar.** A new session writes `sessions/<id>.uah.json` with its `source` (`tui`, `run`, or `subagent`), its creation time, and, for a subagent, its `parent`. The first writer wins (`O_EXCL`). Its `settings` are rewritten whole (a temporary file, then a rename) whenever they change; see [Settings and compaction](#settings-and-compaction). `Interactive` drops `run` and `subagent` sessions from the resume picker, as Codex hides `codex exec` sessions, and `Tree` lists subagents under their parents.
 - **Subagent IDs.** `NewSubagentID` is `subagent-<uuid>`; `ShortID` prints `subagent-` and 8 characters of the UUID (8 characters for other sessions), a prefix that resumes the session. Older subagents have plain UUIDs; the sidecar's `parent` identifies them.
 - **Watching a subagent.** `WatchAgent(ref)` follows one of the session's subagents, by ID or nickname, through the engine's `Subagents()` when it implements `AgentWatcher`: its earlier runs, its events so far, the ones that follow, and a way to message it. The TUI's agent view uses it; [internal/agents](../agents/README.md#watching-an-agent) implements it.
 - **History.** `Sessions` folds run records into one `Info` per session, reading only summaries and the first request. `Load` reads every run of a session in start order with its events, which is how the TUI rebuilds a resumed transcript; each compaction saved in the compaction log is added to the run it happened in, in time order, so reloaded transcripts, `uah sessions show`, and `uah run --stream` show it. `InDir` matches a session's workspace the way Codex does: absolute, cleaned, and with symlinks resolved.
@@ -124,8 +126,8 @@ Listing and search go through the rebuildable SQLite index in [internal/store](.
 `uah run --stream` writes them as JSONL, and the TUI reduces them into its state.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="tests" files="session_test.go hooks_test.go process_test.go compact_test.go history_test.go sidecar_test.go" -->
+<!-- memoria:section id="tests" files="session_test.go hooks_test.go process_test.go compact_test.go history_test.go sidecar_test.go saved_test.go" -->
 ## Tests
 
-`session_test.go` and `hooks_test.go` drive a session with a scripted fake engine, so each state transition can be held open: queueing while running, steering while starting, interrupts that keep the queue, messages the run never read, withdrawal, live settings, failures, and every hook event. `process_test.go` runs a session on the real process engine with uagent's fake runner.
+`session_test.go` and `hooks_test.go` drive a session with a scripted fake engine, so each state transition can be held open: queueing while running, steering while starting, interrupts that keep the queue, messages the run never read, withdrawal, live settings, failures, and every hook event. `saved_test.go` pins the settings kept in the sidecar and a live mode change. `process_test.go` runs a session on the real process engine with uagent's fake runner. Resuming with the saved settings is tested end to end in `internal/app/resume_test.go`.
 <!-- /memoria:section -->
