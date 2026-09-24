@@ -78,7 +78,7 @@ func TestReduce_ARunFromTheFixture(t *testing.T) {
 	)
 
 	assert.Equal(t, []state.Kind{
-		state.KindUser, state.KindRun, state.KindTurn, state.KindTool, state.KindTool, state.KindTurn, state.KindAssistant,
+		state.KindUser, state.KindRun, state.KindTurn, state.KindTool, state.KindTool, state.KindTurn, state.KindAssistant, state.KindFinish,
 	}, kinds(s))
 	msg, _ := s.Item("msg:" + userID)
 	assert.Equal(t, state.InputDelivered, msg.Input, "the runner's echo marks the message delivered")
@@ -253,7 +253,7 @@ func TestReduce_HistoryAndSessions(t *testing.T) {
 	s, _ = apply(s, state.HistoryLoaded{SessionID: "sess-2", Runs: history})
 	s, _ = apply(s, session.SessionOpened{ID: "sess-2", Resumed: true, Settings: settings()})
 
-	assert.Equal(t, []state.Kind{state.KindRun, state.KindUser, state.KindAssistant}, kinds(s), "resuming keeps the loaded history")
+	assert.Equal(t, []state.Kind{state.KindRun, state.KindUser, state.KindAssistant, state.KindFinish}, kinds(s), "resuming keeps the loaded history")
 	run, _ := s.Item("run:old-run")
 	assert.Equal(t, core.StatusOK, run.Status)
 	assert.True(t, s.Resumed)

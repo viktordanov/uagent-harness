@@ -27,6 +27,8 @@ const (
 	KindAgent
 	// KindContext is a /context breakdown in Context.
 	KindContext
+	// KindFinish ends a run: its Status, Started, and Wall.
+	KindFinish
 	// KindMCP is the /mcp panel: MCP holds the servers, and Final asks for
 	// the verbose form.
 	KindMCP

@@ -8,7 +8,6 @@ import (
 	"github.com/alecthomas/chroma/v2"
 	"github.com/alecthomas/chroma/v2/formatters"
 	"github.com/alecthomas/chroma/v2/lexers"
-	"github.com/alecthomas/chroma/v2/styles"
 	"github.com/charmbracelet/x/ansi"
 )
 
@@ -18,10 +17,7 @@ import (
 // answers are short, and a partly odd layout beats a slow or heavy renderer.
 
 var (
-	codeSpan  = lipgloss.NewStyle().Foreground(lipgloss.Color("6"))
-	heading   = lipgloss.NewStyle().Bold(true)
-	quoteBar  = dim.Render("│ ")
-	codeStyle = styles.Get("monokai")
+	heading = lipgloss.NewStyle().Bold(true)
 
 	inlineCode = regexp.MustCompile("`([^`]+)`")
 	strong     = regexp.MustCompile(`\*\*([^*]+)\*\*|__([^_]+)__`)
@@ -46,7 +42,10 @@ func markdownLines(text string, w int, first, rest string) []string {
 			for i++; i < len(lines) && !strings.HasPrefix(strings.TrimSpace(lines[i]), fence); i++ {
 				code = append(code, lines[i])
 			}
-			body = append(body, highlight(strings.Join(code, "\n"), lang)...)
+			// Code sits on the band, as your messages do, and is not wrapped.
+			for _, l := range highlight(strings.Join(code, "\n"), lang) {
+				body = append(body, band(" "+l, width))
+			}
 
 			continue
 		}
@@ -115,7 +114,7 @@ func highlight(code, lang string) []string {
 		return strings.Split(code, "\n")
 	}
 	var b strings.Builder
-	if err := formatters.TTY256.Format(&b, codeStyle, it); err != nil {
+	if err := formatters.TTY16m.Format(&b, codeStyle, it); err != nil {
 		return strings.Split(code, "\n")
 	}
 

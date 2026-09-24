@@ -157,7 +157,9 @@ func TestNameCollisions(t *testing.T) {
 // the server forget its sessions, as a restarted server does.
 type swapHandler struct{ h atomic.Pointer[http.Handler] }
 
-func (s *swapHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) { (*s.h.Load()).ServeHTTP(w, r) }
+func (s *swapHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	(*s.h.Load()).ServeHTTP(w, r)
+}
 
 func (s *swapHandler) fresh() {
 	server := sdk.NewServer(&sdk.Implementation{Name: "http", Version: "1"}, nil)

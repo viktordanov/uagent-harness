@@ -10,7 +10,6 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/internal/tui/state"
 )
@@ -71,10 +70,8 @@ func itemLines(it state.Item, w int, now time.Time, v view) []string {
 			suffix = bad.Render("  not delivered")
 		case state.InputQueued, state.InputDelivered:
 		}
-		lines := wrapPrefixed(it.Text, w, user.Render("› "), "  ")
-		lines[len(lines)-1] += suffix
 
-		return append([]string{""}, lines...)
+		return userLines(it.Text, suffix, w)
 	case state.KindRun:
 		return []string{dim.Render(runRule(it, w, now))}
 	case state.KindTurn:
@@ -86,21 +83,23 @@ func itemLines(it state.Item, w int, now time.Time, v view) []string {
 	case state.KindTool:
 		return []string{toolLine(it, w, now)}
 	case state.KindAgent:
-		lines := []string{agentLine(it, w, now)}
+		lines := agentLines(it, w, now)
 		if v.details {
 			for _, sub := range it.Sub {
-				lines = append(lines, "  "+toolLine(sub, w-2, now))
+				lines = append(lines, "    "+toolLine(sub, w-4, now))
 			}
 		}
 
 		return lines
+	case state.KindFinish:
+		return nil // the run divider has it
 	case state.KindContext:
 		return contextLines(it.Context, w)
 	case state.KindMCP:
 		return mcpLines(it, w, v.details)
 	case state.KindAssistant:
 		if it.Final {
-			return append([]string{"", answer.Render("● answer")}, markdownLines(it.Text, w, "  ", "  ")...)
+			return append([]string{"", accent.Render("● answer")}, markdownLines(it.Text, w, "  ", "  ")...)
 		}
 
 		return markdownLines(it.Text, w, dim.Render("  · "), "    ")
@@ -135,71 +134,6 @@ func itemLines(it state.Item, w int, now time.Time, v view) []string {
 	return nil
 }
 
-// compactLines draws an item in the compact, Codex-like view. ok is false for
-// kinds drawn the same in both views.
-func compactLines(it state.Item, w int, now time.Time) ([]string, bool) {
-	switch it.Kind {
-	case state.KindRun:
-		switch it.Status {
-		case core.StatusOK, core.StatusRunning:
-			return nil, true
-		case core.StatusInterrupted:
-			return []string{warn.Render("  ■ interrupted")}, true
-		case core.StatusTimeout, core.StatusDiskLimit, core.StatusFailed:
-		}
-
-		return []string{bad.Render(fmt.Sprintf("  ✗ run ended: %s", it.Status))}, true
-	case state.KindTurn:
-		return nil, true
-	case state.KindTool:
-		return []string{compactTool(it, w, now)}, true
-	case state.KindAssistant:
-		bullet := "• "
-		if it.Final {
-			bullet = answer.Render("● ")
-			return append([]string{""}, markdownLines(it.Text, w, bullet, "  ")...), true
-		}
-
-		return markdownLines(it.Text, w, bullet, "  "), true
-	case state.KindNotice:
-		if it.Level == state.LevelDebug {
-			return nil, true
-		}
-	case state.KindUser, state.KindReasoning:
-	}
-
-	return nil, false
-}
-
-// compactTool draws a tool call as one Codex-like line: "• Ran <command>".
-func compactTool(it state.Item, w int, now time.Time) string {
-	verb := it.Name
-	if it.Name == "Bash" {
-		verb = "Ran"
-	}
-	var mark, suffix string
-	switch it.Tool {
-	case state.ToolCalled, state.ToolRunning:
-		mark, suffix = tool.Render(spin(now)), dim.Render("  "+clock(now.Sub(it.Started)))
-		if it.Name == "Bash" {
-			verb = "Running"
-		}
-	case state.ToolOK:
-		mark = dim.Render("•")
-		if it.Duration >= time.Second {
-			suffix = dim.Render("  " + secs(it.Duration))
-		}
-	case state.ToolFailed:
-		mark, suffix = bad.Render("•"), bad.Render("  "+it.Detail)
-	case state.ToolStopped:
-		mark, suffix = warn.Render("■"), warn.Render("  stopped")
-	}
-	head := fmt.Sprintf("%s %s ", mark, bold.Render(verb))
-	room := w - ansi.StringWidth(head) - ansi.StringWidth(suffix)
-
-	return head + ansi.Truncate(oneLine(it.Label), max(room, 8), "…") + suffix
-}
-
 func runRule(it state.Item, w int, now time.Time) string {
 	var text string
 	if it.Status == core.StatusRunning {
@@ -232,27 +166,6 @@ func toolLine(it state.Item, w int, now time.Time) string {
 	room := w - ansi.StringWidth(head) - ansi.StringWidth(detail) - 2
 
 	return head + ansi.Truncate(it.Label, max(room, 8), "…") + "  " + detail
-}
-
-// agentLine draws a subagent: "• agent Ada: running 0:42".
-func agentLine(it state.Item, w int, now time.Time) string {
-	name := it.Name
-	if it.Label != "" {
-		name += " (" + it.Label + ")"
-	}
-	var detail string
-	switch it.Detail {
-	case engine.AgentRunning:
-		detail = tool.Render(spin(now)) + dim.Render(" running "+clock(now.Sub(it.Started)))
-	case engine.AgentCompleted:
-		detail = ok.Render("done")
-	case engine.AgentErrored:
-		detail = bad.Render("failed")
-	default:
-		detail = dim.Render(it.Detail)
-	}
-
-	return ansi.Truncate("• agent "+tool.Render(name)+": "+detail, w, "…")
 }
 
 // wrapPrefixed wraps text to width w with first and continuation prefixes.

@@ -28,6 +28,9 @@ var update = flag.Bool("update", false, "rewrite golden files")
 
 var t0 = time.Date(2026, 9, 24, 12, 0, 0, 0, time.UTC)
 
+// Finished runs show the local time; goldens are drawn in UTC.
+func init() { time.Local = time.UTC }
+
 func apply(s state.State, evs ...any) state.State {
 	for _, ev := range evs {
 		s, _ = state.Reduce(s, ev)
@@ -52,7 +55,7 @@ func fixtureEvents(t *testing.T, name string) []any {
 }
 
 func screen(s state.State, draft string) string {
-	composer := "› " + draft
+	composer := "λ " + draft
 	out, _ := render.Screen(s, render.NewCache(), render.Frame{Width: 100, Height: 24, Composer: composer, ComposerHeight: 1, Draft: draft})
 	lines := strings.Split(ansi.Strip(out), "\n")
 	for i := range lines {

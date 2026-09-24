@@ -13,12 +13,12 @@
 
 
 
+  AGENT Ada  0s
+    └ ⠋ thinking
+  AGENT Rex reviewer  done
+      ✓ Bash  go test ./...  exit 0 · 2.0s
 
 
+λ
 
-• agent Ada: ⠋ running 0:00
-• agent Rex (reviewer): done
-    ✓ Bash  go test ./...  exit 0 · 2.0s
-────────────────────────────────────────────────────────────────────────────────────────────────────
-›
  0 in (0 cached) · 0 out · 0 runs · 0 tools (∥0)           enter send · ctrl+enter now · / commands

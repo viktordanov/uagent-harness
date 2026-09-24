@@ -42,7 +42,7 @@ Status: `todo`, `doing`, `done`, `cut` (with a reason).
 | 16 | Compaction validated for production | lane v-compaction | 4 | done |
 | 17 | Subagents validated for production; children identical to the main agent except their nested session ID | lane v-subagents | 12 | done |
 | 18 | MCP validated for production; `/mcp` view and OAuth login; `uah mcp` | lane v-mcp | 5 | done |
-| 19 | The chosen TUI look | main session | 17, 18 | todo |
+| 19 | The chosen TUI look | main session | 17, 18 | done |
 | 20 | Diff rendering like Codex and Claude Code | any free lane | 19 | todo |
 
 Order of starting: 1 alone (it touches everything). Then lanes A (2), B (4), C (5) in parallel. D (6, 7) starts when a lane frees up. 9 and 10 come after their dependencies merge.
