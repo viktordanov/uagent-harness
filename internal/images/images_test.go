@@ -122,10 +122,10 @@ func TestPastedPath(t *testing.T) {
 		{"file://" + plain, plain},
 		{"file://" + strings.ReplaceAll(spaced, " ", "%20"), spaced},
 		{"~/shot.png", plain},
-		{spaced, ""},               // two words
-		{text, ""},                 // not an image
+		{spaced, ""}, // two words
+		{text, ""},   // not an image
 		{filepath.Join(dir, "missing.png"), ""},
-		{"shot.png", ""},           // relative
+		{"shot.png", ""}, // relative
 		{"see " + plain, ""},
 		{plain + "\n" + plain, ""}, // two lines
 	}

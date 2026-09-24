@@ -39,6 +39,8 @@ const (
 	MaxSource = 64 << 20
 	// jpegQuality is the quality of a re-encoded JPEG, as Codex's.
 	jpegQuality = 85
+	extPNG      = ".png"
+	extJPG      = ".jpg"
 )
 
 // ErrTooLarge means the image cannot fit the provider's limit.
@@ -126,7 +128,7 @@ func Prepare(data []byte) (encoded []byte, ext string, width, height int, err er
 	}
 	w, h := fit(cfg.Width, cfg.Height)
 	if format == "jpeg" && w == cfg.Width && h == cfg.Height && base64.StdEncoding.EncodedLen(len(data)) <= MaxEncoded {
-		return data, ".jpg", w, h, nil
+		return data, extJPG, w, h, nil
 	}
 	src, _, err := image.Decode(bytes.NewReader(data))
 	if err != nil {
@@ -153,7 +155,7 @@ func encode(img image.Image, jpegFirst bool) ([]byte, string, error) {
 			return nil, "", fmt.Errorf("failed to encode the image: %w", err)
 		}
 		if base64.StdEncoding.EncodedLen(buf.Len()) <= MaxEncoded {
-			return buf.Bytes(), ".png", nil
+			return buf.Bytes(), extPNG, nil
 		}
 		buf.Reset()
 	}
@@ -164,7 +166,7 @@ func encode(img image.Image, jpegFirst bool) ([]byte, string, error) {
 		return nil, "", fmt.Errorf("%w: %d bytes after downscaling, the limit is %d", ErrTooLarge, buf.Len(), MaxEncoded*3/4)
 	}
 
-	return buf.Bytes(), ".jpg", nil
+	return buf.Bytes(), extJPG, nil
 }
 
 // fit scales a size down to fit MaxSide on both sides, keeping its ratio.

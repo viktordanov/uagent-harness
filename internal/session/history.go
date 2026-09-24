@@ -11,6 +11,7 @@ import (
 	"github.com/viktordanov/uagent/harness"
 
 	"github.com/viktordanov/uagent-harness/internal/approval"
+	"github.com/viktordanov/uagent-harness/internal/images"
 )
 
 // Info summarizes one session from its run records.
@@ -115,7 +116,7 @@ func firstPrompt(req core.Request) string {
 	}
 	texts := make([]string, 0, len(req.Messages))
 	for _, m := range req.Messages {
-		texts = append(texts, m.Text)
+		texts = append(texts, images.Display(m.Text)) // pasted images show as their placeholders
 	}
 
 	return strings.Join(texts, "\n")

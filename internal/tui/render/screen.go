@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/viktordanov/uagent-harness/internal/approval"
+	"github.com/viktordanov/uagent-harness/internal/images"
 	"github.com/viktordanov/uagent-harness/internal/sandbox"
 	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/internal/tui/state"
@@ -182,9 +183,9 @@ func (st *Styles) panelLines(s state.State, f Frame) []string {
 			break
 		}
 		if s.Details {
-			out = append(out, ansi.Truncate(fmt.Sprintf("  %d. %s", i+1, oneLine(q.Text)), f.Width, "…"))
+			out = append(out, ansi.Truncate(fmt.Sprintf("  %d. %s", i+1, oneLine(images.Display(q.Text))), f.Width, "…"))
 		} else {
-			out = append(out, st.dim.Render(ansi.Truncate("  ↳ queued: ", f.Width, ""))+ansi.Truncate(oneLine(q.Text), max(f.Width-12, 8), "…"))
+			out = append(out, st.dim.Render(ansi.Truncate("  ↳ queued: ", f.Width, ""))+ansi.Truncate(oneLine(images.Display(q.Text)), max(f.Width-12, 8), "…"))
 		}
 	}
 	if !s.Details {
