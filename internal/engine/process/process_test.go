@@ -49,7 +49,8 @@ func TestProcess_RunsTheRunner(t *testing.T) {
 	t.Setenv("FAKERUNNER_FIXTURE", fixtures.Path("simple.jsonl"))
 	eng := process.New(uaharness.Config{RunnerPath: harnesstest.FakeRunner(t), StateDir: env.StateDir, Getenv: env.Getenv, KillGrace: time.Second})
 	assert.Equal(t, "process", eng.Name())
-	assert.Equal(t, engine.Capabilities{}, eng.Capabilities(), "no live input, settings, compaction, or modes")
+	assert.Equal(t, engine.Capabilities{}, eng.Capabilities(), "no live input, settings, compaction, modes, or rules")
+	assert.Len(t, eng.Capabilities().Lacks(), len(engine.Table), "it lacks every feature in the capability table")
 
 	var got sink
 	run, err := eng.Start(context.Background(), request(env, "hi"), engine.Options{}, got.add)
@@ -101,7 +102,7 @@ func TestProcess_SandboxedPerMode(t *testing.T) {
 	t.Setenv("FAKERUNNER_CAPTURE", env.Capture)
 	var mu sync.Mutex
 	built := map[sandbox.Mode]int{}
-	eng, err := process.NewSandboxed(sandbox.WorkspaceWrite, func(mode sandbox.Mode) (uaharness.Config, error) {
+	eng, err := process.NewSandboxed(sandbox.WorkspaceWrite, false, func(mode sandbox.Mode) (uaharness.Config, error) {
 		mu.Lock()
 		built[mode]++
 		mu.Unlock()
@@ -128,7 +129,7 @@ func TestProcess_SandboxedPerMode(t *testing.T) {
 	assert.Contains(t, shellOf(approval.ModeAuto), "SHELL=/shell-for-workspace-write", "auto runs in the workspace sandbox")
 	assert.Equal(t, map[sandbox.Mode]int{sandbox.WorkspaceWrite: 1, sandbox.ReadOnly: 1}, built, "each sandbox is built once")
 
-	failing, err := process.NewSandboxed(sandbox.WorkspaceWrite, func(mode sandbox.Mode) (uaharness.Config, error) {
+	failing, err := process.NewSandboxed(sandbox.WorkspaceWrite, false, func(mode sandbox.Mode) (uaharness.Config, error) {
 		if mode == sandbox.ReadOnly {
 			return uaharness.Config{}, errors.New("no seatbelt")
 		}

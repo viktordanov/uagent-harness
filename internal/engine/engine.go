@@ -17,20 +17,6 @@ import (
 // ErrUnsupported means the engine cannot do this while a run is live.
 var ErrUnsupported = errors.New("not supported by this engine while a run is live")
 
-// Capabilities says what an engine can change while a run is live.
-type Capabilities struct {
-	LiveInput   bool
-	LiveEffort  bool
-	LiveModel   bool
-	ServiceTier bool
-	// Compaction means the engine can compact the context (Run.Compact and
-	// Options.Compact).
-	Compaction bool
-	// LiveMode means a permission mode change reaches a live run
-	// (Run.SetMode); otherwise it applies from the next run.
-	LiveMode bool
-}
-
 // Engine starts runs.
 type Engine interface {
 	Name() string

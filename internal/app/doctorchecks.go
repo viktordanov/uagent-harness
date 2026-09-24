@@ -15,6 +15,7 @@ import (
 	"github.com/viktordanov/uagent/harness"
 
 	"github.com/viktordanov/uagent-harness/internal/config"
+	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/engine/embedded"
 	"github.com/viktordanov/uagent-harness/internal/hooks"
 	"github.com/viktordanov/uagent-harness/internal/mcp"
@@ -185,12 +186,12 @@ func checkHooks(cfg config.Config, workspace, trustFile string) []Check {
 // checkMCP starts the configured MCP servers, each within its startup
 // timeout, and reports how many tools each offers. A server that needs an
 // OAuth login is a warning (a failure when it is required).
-func checkMCP(ctx context.Context, cfg config.Config, engine, workspace string, stderr io.Writer) []Check {
+func checkMCP(ctx context.Context, cfg config.Config, caps engine.Capabilities, workspace string, stderr io.Writer) []Check {
 	if len(cfg.MCPServers) == 0 {
 		return []Check{ok("mcp", "no servers configured")}
 	}
-	if engine == EngineProcess {
-		return []Check{warn("mcp", fmt.Sprintf("%d servers configured; they start only on the embedded engine", len(cfg.MCPServers)), "use --engine embedded")}
+	if !caps.MCP {
+		return []Check{warn("mcp", fmt.Sprintf("%d servers configured; this engine does not start them", len(cfg.MCPServers)), "use --engine embedded")}
 	}
 	m, err := mcpManager(cfg, workspace, slog.New(slog.NewTextHandler(stderr, nil)))
 	if err != nil {

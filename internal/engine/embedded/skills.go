@@ -56,3 +56,24 @@ func discoverSkills(workspace string, getenv func(string) string) ([]tool.Skill,
 
 	return skills, errs
 }
+
+// CodexSkills names the skills found in Codex's folders, which only the
+// embedded engine loads: every skill root except the runner's own
+// .harness/skills.
+func CodexSkills(workspace string, getenv func(string) string) []string {
+	runners := filepath.Join(workspace, ".harness", "skills")
+	var names []string
+	for _, root := range skillRoots(workspace, getenv) {
+		if root == runners {
+			continue
+		}
+		found, _ := tool.DiscoverSkills(root)
+		for _, s := range found {
+			if !slices.Contains(names, s.Name) {
+				names = append(names, s.Name)
+			}
+		}
+	}
+
+	return names
+}

@@ -54,6 +54,10 @@ type Options struct {
 	SessionsDir string
 	// Notices are shown after SessionOpened, such as configuration warnings.
 	Notices []string
+	// Uses are the features the configuration asks for. Each one the
+	// engine does not run (engine.Capabilities.Unsupported) gets one
+	// notice when the session opens.
+	Uses []engine.Feature
 	// Source (SourceTUI or SourceRun) is recorded in a new session's sidecar
 	// in SessionsDir when set.
 	Source string
@@ -147,6 +151,9 @@ func Open(ctx context.Context, eng engine.Engine, opts Options) (*Session, error
 	}
 	for _, n := range opts.Notices {
 		s.out <- Notice{At: time.Now(), Level: LevelWarning, Message: n}
+	}
+	for _, r := range s.caps.Unsupported(opts.Uses) {
+		s.out <- Notice{At: time.Now(), Level: LevelWarning, Message: r.Notice(eng.Name())}
 	}
 	s.startHooks(opts.Resumed)
 	go s.loop()
