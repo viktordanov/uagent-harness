@@ -174,6 +174,7 @@ command = "osascript -e 'display notification \"uah is idle\"'"
 | `PreToolUse` | Before each tool call, on the embedded engine | Deny it (exit 2 or `permissionDecision: "deny"`); the reason is the tool's error result. Rewrite it (`updatedInput`) |
 | `PostToolUse` | After each tool call | Observe only |
 | `Stop` | The agent finished and nothing is queued | Keep it going: `"decision":"block"` with a `reason` sends the reason as the next message (at most 5 times in a row; `stop_hook_active` is true after the first) |
+| `SubagentStop` | A subagent finished (`agent_id`, `agent_type`, `agent_transcript_path`, `last_assistant_message`; `session_id` is the parent's) | Keep it going: `"decision":"block"` with a `reason` sends the reason to the subagent (at most 5 times in a row) |
 | `PermissionRequest` | Before the user is asked to approve an escalated command, a `prompt` rule, or an MCP call (`tool_name` is `Bash` or the `mcp__` name) | Answer for the user with `permissionDecision` `"allow"` or `"deny"` (exit 2 denies); works headless too |
 | `PreCompact` | A compaction is about to start (`trigger`: manual or auto), on the embedded engine | Stop it (exit 2 or `"decision":"block"`) |
 | `SessionEnd` | The session closes | Observe only, with at most a second |
@@ -208,19 +209,24 @@ Servers start on the first run (or `/mcp`) and stop when the session closes; a s
 
 <!-- /memoria:section -->
 
-<!-- memoria:section id="subagents" files="internal/agents/manager.go internal/agents/child.go internal/agents/roles.go internal/engine/subagents.go internal/engine/embedded/agenttool.go internal/engine/embedded/agentjobs.go internal/engine/embedded/agentprompt.go internal/app/agents.go internal/tui/state/agents.go" -->
+<!-- memoria:section id="subagents" files="internal/engine/subagents.go internal/engine/embedded/agenttool.go internal/engine/embedded/agentjobs.go internal/app/agents.go internal/tui/state/agents.go" -->
 ### Subagents
+
+<!-- memoria:import src="internal/agents/README.md#summary" -->
+Subagents are child sessions that a session's agent starts, messages, waits for, and closes through Codex's v1 multi-agent tools. `internal/agents` implements them behind the `engine.Subagents` seam: the embedded engine offers the tools and runs their calls in the background, and the package owns the tools, the children's lifecycle, approvals through the parent, limits, hooks, and resume.
+<!-- /memoria:import -->
 
 On the embedded engine, the agent can start subagents with Codex's v1 tools. The tool description tells the model, as Codex's does, to spawn only when you or AGENTS.md ask for delegation or parallel work.
 
 | Tool | Does |
 | --- | --- |
-| `spawn_agent(message, agent_type?, model?, reasoning_effort?)` | Starts a subagent with the task and returns `{id, nickname}` at once |
-| `send_input(id, message)` | Gives a running or finished subagent another message |
-| `wait(ids, timeout_ms?)` | Returns when any listed subagent finishes, with each finished one's final answer, or `timed_out` after the timeout (default 30s, 10s to 1h) |
-| `close_agent(id)` | Stops a subagent and returns its status before it stopped |
+| `spawn_agent(message, agent_type?, model?, reasoning_effort?)` | Starts a subagent with the task and returns `{agent_id, nickname}` at once |
+| `send_input(target, message, interrupt?)` | Gives a subagent another message; `interrupt` stops its current work first |
+| `wait_agent(targets, timeout_ms?)` | Returns when any listed subagent finishes, with each finished one's final answer, or `timed_out` after the timeout (default 30s, 10s to 1h) |
+| `close_agent(target)` | Stops a subagent and its own subagents, and returns its status before it stopped |
+| `resume_agent(id)` | Opens a closed subagent again, also one from an earlier `uah` process, with its history |
 
-The tools run in the background, as MCP calls do, so the agent keeps working while a subagent runs or while it waits. A subagent is an ordinary session in the same workspace, with the parent's provider, model, effort, instructions, sandbox, and MCP servers. It asks for approval through the parent's session: the prompt's reason starts with `agent <nickname>:`. With no one to ask (`uah run`), such commands are declined with a reason. The TUI shows each subagent as one line where it was spawned (`• agent Ada: running 0:42`, then `done`), and `/agents` lists them with their IDs. `uah sessions` lists subagents under their parent, and the resume picker hides them; `uah resume <id>` opens one like any session.
+The tools run in the background, as MCP calls do, so the agent keeps working while a subagent runs or while it waits. A subagent is an ordinary session in the same workspace, with the parent's provider, model, effort, instructions, sandbox, and MCP servers. It asks for approval through the parent's session, also while the parent is idle: the prompt's reason starts with `agent <nickname>:`. With no one to ask (`uah run`), such commands are declined with a reason. Interrupting the agent also stops its subagents' current work; they stay open for more messages. The TUI shows each subagent as one line where it was spawned (`• agent Ada: running 0:42`, then `done`), with its tool calls under it in the detailed view (ctrl+t), and `/agents` lists them with their IDs. `uah sessions` lists subagents under their parent, and the resume picker hides them; `uah resume <id>` opens one like any session. A `SubagentStop` hook runs when a subagent finishes (see [Hooks](#hooks)).
 
 ```toml
 [agents]
@@ -242,7 +248,7 @@ model_reasoning_effort = "high"         # optional
 developer_instructions = "Review only; do not edit files. List each finding with its file and line."
 ```
 
-uah reads these keys of a role file; other Codex config keys in it are ignored with a warning, and a file without a name, description, or `developer_instructions` is skipped with a warning. The process engine does not run subagents ([plan and as-built notes](docs/design/subagents.md)).
+uah reads these keys of a role file; other Codex config keys in it are ignored with a warning, and a file without a name, description, or `developer_instructions` is skipped with a warning. The process engine does not run subagents. [How the package works](internal/agents/README.md) and [the plan, as-built notes, and validation](docs/design/subagents.md) have the details.
 
 <!-- /memoria:section -->
 
