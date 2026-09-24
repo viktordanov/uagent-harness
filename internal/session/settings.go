@@ -9,6 +9,8 @@ import (
 	"unicode"
 
 	"github.com/viktordanov/uagent/core"
+
+	"github.com/viktordanov/uagent-harness/internal/approval"
 )
 
 // Efforts are the thinking levels the runner accepts.
@@ -30,8 +32,11 @@ type Settings struct {
 	AllowDotenv bool
 	// SystemPrompt replaces the runner's host prompt when set.
 	SystemPrompt string
-	// Sandbox is the sandbox mode commands run in, for display; the engine
-	// enforces the mode it was built with.
+	// Mode is the permission mode: the sandbox commands run in and who
+	// decides what needs approval ("": the engine's configured sandbox).
+	// Change it with WithMode, which keeps Sandbox in step.
+	Mode approval.Mode
+	// Sandbox is Mode's sandbox mode, for display.
 	Sandbox string
 	// ContextWindow overrides the model table's context window (tokens), for
 	// the context meter; the engine was built with the same value.
@@ -55,8 +60,21 @@ func (s Settings) Validate() error {
 	if s.Workspace == "" {
 		return errors.New("the workspace is not set")
 	}
+	if s.Mode != "" {
+		if _, err := approval.ParseMode(string(s.Mode)); err != nil {
+			return err
+		}
+	}
 
 	return nil
+}
+
+// WithMode returns the settings with the permission mode m and its sandbox
+// mode.
+func (s Settings) WithMode(m approval.Mode) Settings {
+	s.Mode, s.Sandbox = m, string(m.Sandbox())
+
+	return s
 }
 
 // validateModel checks syntax only; the provider decides which models exist.

@@ -28,7 +28,11 @@ type Config struct {
 	Fast bool `toml:"fast"`
 	// SandboxMode is read-only, workspace-write (the default), or
 	// danger-full-access; the names match Codex's.
-	SandboxMode           string                `toml:"sandbox_mode"`
+	SandboxMode string `toml:"sandbox_mode"`
+	// PermissionMode is read-only, workspace, auto, or full-access: a
+	// sandbox mode and who decides what needs approval. It overrides
+	// sandbox_mode when set.
+	PermissionMode        string                `toml:"permission_mode"`
 	SandboxWorkspaceWrite SandboxWorkspaceWrite `toml:"sandbox_workspace_write"`
 	// ShellEnvironmentPolicy is which environment variables commands get.
 	ShellEnvironmentPolicy ShellEnvironmentPolicy `toml:"shell_environment_policy"`

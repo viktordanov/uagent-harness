@@ -138,17 +138,30 @@ func newEngine(r Resolved, runnerPath, stateDir string, logger *slog.Logger, ser
 			opts.Notices = append(opts.Notices, "MCP servers need the embedded engine; they do not start on the process engine")
 		}
 		// The runner runs each command with $SHELL, so a sandboxing shell
-		// sandboxes every command without changing the runner.
-		shell, err := sandbox.Shell(sandboxDir, r.Sandbox, r.Env, RealShell())
-		if errors.Is(err, sandbox.ErrUnavailable) {
-			opts.Notices = append(opts.Notices, "no sandbox is available on this system; commands run without one")
-			shell = RealShell()
-		} else if err != nil {
+		// sandboxes every command without changing the runner; each
+		// permission mode's sandbox gets its own.
+		unavailable := false
+		eng, err := process.NewSandboxed(r.Sandbox.Mode, func(mode sandbox.Mode) (harness.Config, error) {
+			p := r.Sandbox
+			p.Mode = mode
+			shell, err := sandbox.Shell(sandboxDir, p, r.Env, RealShell())
+			if errors.Is(err, sandbox.ErrUnavailable) {
+				unavailable, shell = true, RealShell()
+			} else if err != nil {
+				return harness.Config{}, err //nolint:wrapcheck // Shell's errors name the file
+			}
+			backend := harness.RunnerBackend{Path: runner, Env: []string{"SHELL=" + shell}}
+
+			return harness.Config{Backend: backend, StateDir: stateDir, MaxDisk: r.MaxDisk, Logger: logger}, nil
+		})
+		if err != nil {
 			return nil, err
 		}
-		backend := harness.RunnerBackend{Path: runner, Env: []string{"SHELL=" + shell}}
+		if unavailable {
+			opts.Notices = append(opts.Notices, "no sandbox is available on this system; commands run without one")
+		}
 
-		return process.New(harness.Config{Backend: backend, StateDir: stateDir, MaxDisk: r.MaxDisk, Logger: logger}), nil
+		return eng, nil
 	}
 	ecfg := embedded.Config{
 		StateDir: stateDir, MaxDisk: r.MaxDisk, Logger: logger, Provider: r.Settings.Provider, Hooks: opts.Hooks,

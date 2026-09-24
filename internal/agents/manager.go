@@ -228,7 +228,8 @@ func (m *Manager) role(name string) (Role, error) {
 // childOptions are a child's session options: the process's, as the root
 // session opens with, and the parent run's settings. Only what makes it a
 // child differs: its ID, its sidecar's source and parent, approvals asked
-// through the parent, and the model, effort, and instructions the spawn
+// through the parent, the parent run's permission mode as it is now, and
+// the model, effort, and instructions the spawn
 // call, the role, and the configured defaults override, in that order.
 // Hooks are the same, in a runner of its own. It holds m.mu.
 func (m *Manager) childOptions(p engine.AgentParent, c *child, role Role, rec record, resumed bool) session.Options {
@@ -240,6 +241,9 @@ func (m *Manager) childOptions(p engine.AgentParent, c *child, role Role, rec re
 	}
 	s := opts.Settings.WithRequest(p.Request)
 	s.ServiceTier = m.serviceTier(p.ServiceTier, role)
+	if p.Mode != nil && p.Mode() != "" {
+		s = s.WithMode(p.Mode())
+	}
 	s.Model = first(rec.Model, role.Model, m.cfg.Model, s.Model)
 	s.Effort = first(rec.Effort, role.Effort, m.cfg.Effort, s.Effort)
 	if role.DeveloperInstructions != "" {

@@ -93,7 +93,8 @@ uah sessions show 3f2a                 # the transcript (--json)
 ### Let a command run without asking
 
 1. When uah asks, answer `s` ("Yes, and don't ask again"). It saves a rule for the command's prefix.
-2. Or list prefixes in the configuration:
+2. Or press shift+tab until the footer says `auto mode`: the auto-reviewer then approves or declines each escalation, and you are not asked. See [Switch the permission mode](#switch-the-permission-mode).
+3. Or list prefixes in the configuration:
 
    ```toml
    [approvals]
@@ -102,6 +103,21 @@ uah sessions show 3f2a                 # the transcript (--json)
    ```
 
 The [approvals README](internal/approval/README.md) gives the order in which rules, the sandbox, the auto-reviewer, hooks, and you decide.
+
+### Switch the permission mode
+
+Press shift+tab in the TUI. It cycles three modes, and the footer shows the current one:
+
+| Mode | Commands can | What needs approval |
+| --- | --- | --- |
+| read only | Read files, write nothing | The auto-reviewer, then you |
+| workspace (default) | Write the workspace | The auto-reviewer, then you |
+| auto | Write the workspace | The auto-reviewer decides; you are not asked |
+
+- On the embedded engine, a change applies from the next command, even mid-run. On the process engine, it applies from the next run.
+- A resumed session keeps its mode, with its model, effort, and fast mode.
+- To start in a mode, set `permission_mode` in the [configuration](#configuration). `--sandbox read-only` or `--sandbox workspace-write` also picks a mode for one session.
+- Full access (no sandbox) is not in the cycle. Set it with `--sandbox danger-full-access` or `permission_mode = "full-access"`; shift+tab then moves to read only.
 
 ### Add an MCP server
 
@@ -174,14 +190,14 @@ Two TOML files:
 | `~/.config/uagent/config.toml` (or `$XDG_CONFIG_HOME/uagent/config.toml`, or `--config`) | Every workspace | Always |
 | `<workspace>/.uagent/config.toml` | One workspace | The user file marks the workspace `trusted` under `[projects]`; its hooks also need `uah hooks trust` |
 
-A flag wins over the environment, which wins over a resumed session's settings, then the project file, the user file, and the defaults. Unknown keys are errors, so a typo fails loudly. The names say `uagent` because uah shares uagent's directories.
+A flag wins over the environment, which wins over a resumed session's settings (its provider, model, effort, fast mode, and permission mode), then the project file, the user file, and the defaults. Unknown keys are errors, so a typo fails loudly. The names say `uagent` because uah shares uagent's directories.
 
 `/config` in the TUI changes the basic settings in the user file (see [Change settings](#change-settings)). Every key, by group. The [configuration reference](docs/configuration.md) gives each one's type, default, flag, and merge rule, and the environment variables.
 
 | Group | Keys |
 | --- | --- |
 | Model and engine | `provider`, `model`, `effort`, `fast`, `engine`, `timeout`, `max_disk` |
-| Sandbox | `sandbox_mode`; `[sandbox_workspace_write]` `network_access`, `writable_roots`; `[shell_environment_policy]` `inherit`, `ignore_default_excludes`, `exclude`, `include_only`, `set` |
+| Sandbox | `permission_mode`, `sandbox_mode`; `[sandbox_workspace_write]` `network_access`, `writable_roots`; `[shell_environment_policy]` `inherit`, `ignore_default_excludes`, `exclude`, `include_only`, `set` |
 | Approvals | `approval_policy`, `approvals_reviewer`; `[approvals]` `allow`, `forbid`; `[review]` `model`, `effort`, `timeout` |
 | Compaction | `auto_compact_percent`, `model_auto_compact_token_limit`, `model_context_window`, `compact_model`, `compact_effort`, `compact_prompt`, `experimental_compact_prompt_file`, `compact_user_message_max_tokens` |
 | Instructions and skills | `project_doc_fallback_filenames`, `project_root_markers`, `project_doc_max_bytes`; `[instructions]` `enabled`, `max_bytes` |
@@ -235,7 +251,7 @@ Read more: [sessions](internal/session/README.md), [the session index](internal/
 ### Engines
 
 <!-- memoria:import src="internal/engine/README.md#summary" -->
-An engine starts runs of unreal-agent-runner for a session: the embedded engine (the default) runs the runner's packages inside uah, so messages, model, effort, and fast mode reach a live run, and the process engine spawns the runner binary through uagent. Both keep uagent's guards, session lock, and run records, and write the same session files, so a session can move between them.
+An engine starts runs of unreal-agent-runner for a session: the embedded engine (the default) runs the runner's packages inside uah, so messages, model, effort, fast mode, and the permission mode reach a live run, and the process engine spawns the runner binary through uagent. Both keep uagent's guards, session lock, and run records, and write the same session files, so a session can move between them.
 <!-- /memoria:import -->
 
 `embedded` is the default; choose with `--engine` or `engine`. The [engine README](internal/engine/README.md) has a table of what each engine supports.
@@ -265,7 +281,7 @@ Read more: [sandbox](internal/sandbox/README.md).
 ### Approvals, rules, and auto-review
 
 <!-- memoria:import src="internal/approval/README.md#summary" -->
-On the embedded engine, each command runs in the sandbox unless a rule or an approval says otherwise: a command rule can allow, forbid, or ask; the model can ask to run a command outside the sandbox; and an escalation goes to the auto-reviewer, then PermissionRequest hooks, then the user. The defaults are Codex's: workspace-write, on-request, and auto-review.
+On the embedded engine, each command runs in the sandbox unless a rule or an approval says otherwise: a command rule can allow, forbid, or ask; the model can ask to run a command outside the sandbox; and an escalation goes to the auto-reviewer, then PermissionRequest hooks, then the user. The permission mode, which shift+tab cycles, picks the sandbox and whether the auto-reviewer decides alone. The defaults are Codex's: workspace-write, on-request, and auto-review.
 <!-- /memoria:import -->
 
 Read more: [approvals](internal/approval/README.md), [rules](internal/rules/README.md), and [auto-review](internal/review/README.md).

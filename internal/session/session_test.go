@@ -13,6 +13,7 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
+	"github.com/viktordanov/uagent-harness/internal/approval"
 	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
@@ -66,6 +67,7 @@ type fakeRun struct {
 	result core.Result
 	sent   []core.UserInput
 	effort string
+	mode   approval.Mode
 	// unread accepts live messages without ever reading them, like a run
 	// that went idle just as they arrived.
 	unread bool
@@ -103,10 +105,19 @@ func (r *fakeRun) SetEffort(e string) error {
 
 func (r *fakeRun) SetModel(string) error       { return engine.ErrUnsupported }
 func (r *fakeRun) SetServiceTier(string) error { return engine.ErrUnsupported }
-func (r *fakeRun) Compact(string) error        { return engine.ErrUnsupported }
-func (r *fakeRun) Clear() error                { return engine.ErrUnsupported }
-func (r *fakeRun) Interrupt()                  { r.finish(core.StatusInterrupted) }
-func (r *fakeRun) Kill()                       { r.finish(core.StatusInterrupted) }
+
+func (r *fakeRun) SetMode(m approval.Mode) error {
+	if !r.caps.LiveMode {
+		return engine.ErrUnsupported
+	}
+	r.mode = m
+
+	return nil
+}
+func (r *fakeRun) Compact(string) error { return engine.ErrUnsupported }
+func (r *fakeRun) Clear() error         { return engine.ErrUnsupported }
+func (r *fakeRun) Interrupt()           { r.finish(core.StatusInterrupted) }
+func (r *fakeRun) Kill()                { r.finish(core.StatusInterrupted) }
 
 func (r *fakeRun) Wait() (core.Result, error) {
 	<-r.done

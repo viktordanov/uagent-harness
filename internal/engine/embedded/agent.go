@@ -23,8 +23,9 @@ type agent struct {
 	cancel context.CancelFunc
 	inputs *inbox.Inbox
 	llm    *switcher
-	// compactor is set once the agent is wired.
+	// compactor and mode are set once the agent is wired.
 	compactor *compactor
+	mode      *modeCell
 
 	interrupted atomic.Bool
 	stopOnce    sync.Once
