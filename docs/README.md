@@ -1,4 +1,4 @@
-<!-- memoria:section id="overview" files="design/harness.md design/tui.md design/implementation.md design/state.md design/sandbox-research.md design/sandbox.md design/subagents.md design/compaction.md design/mcp.md configuration.md ledger.md documentation/architecture.md documentation/memoria.md" -->
+<!-- memoria:section id="overview" files="design/harness.md design/tui.md design/implementation.md design/state.md design/sandbox-research.md design/sandbox.md design/subagents.md design/compaction.md design/mcp.md design/shell-mode.md configuration.md ledger.md documentation/architecture.md documentation/memoria.md" -->
 # Documentation
 
 <!-- memoria:export id="summary" -->
@@ -16,6 +16,7 @@ Design:
 7. [Subagents](design/subagents.md): how Codex and Claude Code run subagents, and the plan for uah.
 8. [Compaction](design/compaction.md): how Codex compacts, what the runner supports, and the design with its open decisions.
 9. [MCP](design/mcp.md): how Codex runs MCP servers, how their tools run as the runner's remote jobs, OAuth, the validation findings, and the open decisions.
+10. [Shell mode](design/shell-mode.md): how Codex and Claude Code run a `!` command the user types, and how uah runs it and adds it to the conversation.
 
 Reference:
 

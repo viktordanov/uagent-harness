@@ -13,6 +13,7 @@ uah is a pure core with well-organized infrastructure around it, not layered DDD
 | `internal/sandbox` | Sandbox policies and the sandboxing shell: Seatbelt on macOS, bubblewrap on Linux. |
 | `internal/rules` | Codex's `.rules` files (Starlark `prefix_rule`) and command splitting for matching. |
 | `internal/approval` | The approver: rules and the approval policy decide whether a command runs sandboxed, unsandboxed, or not, and ask the user through the session. |
+| `internal/usershell` | A command the user types in the TUI's `!` shell mode: running it (outside the sandbox and the rules unless `user_shell_sandbox`), its bounded output, and Codex's `<user_shell_command>` record the agent sees. The session runs it and holds the record for the next message. |
 | `internal/agents` | Subagents behind the `engine.Subagents` seam: Codex's v1 tools, child sessions on the parent's engine, their limits, depth, approvals through the parent, SubagentStop hooks, resume, and Codex role files. The embedded engine only offers the tools and runs their calls; see the package README. |
 | `internal/compaction` | Compaction the Codex way: the request rewrite, the summary call over any `llm.Adapter`, token estimates, the window table, and the compaction log. The embedded engine decides when to compact. |
 | `internal/llmcall` | One model call outside the agent loop over any runner `llm.Adapter`, for summaries and reviews. |

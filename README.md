@@ -12,7 +12,7 @@
 The [ledger](docs/ledger.md) tracks what is built and what is next.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="usage" files="cmd/uah/main.go cmd/uah/models.go cmd/uah/run.go cmd/uah/resume.go cmd/uah/sessions.go cmd/uah/tui.go cmd/uah/tuiconfig.go cmd/uah/print.go cmd/uah/completion.go cmd/uah/doctor.go internal/app/doctor.go internal/app/doctorchecks.go cmd/uah/flags.go cmd/uah/prompts.go" -->
+<!-- memoria:section id="usage" files="cmd/uah/main.go cmd/uah/models.go cmd/uah/run.go cmd/uah/resume.go cmd/uah/sessions.go cmd/uah/tui.go cmd/uah/tuiconfig.go cmd/uah/print.go cmd/uah/completion.go cmd/uah/doctor.go internal/app/doctor.go internal/app/doctorchecks.go cmd/uah/flags.go cmd/uah/prompts.go internal/app/usershell.go internal/usershell/usershell.go internal/usershell/record.go internal/usershell/capture.go" -->
 ## Get started
 
 1. Install it (Go 1.27.1 or later):
@@ -118,6 +118,18 @@ Press shift+tab in the TUI. It cycles three modes, and the footer shows the curr
 - A resumed session keeps its mode, with its model, effort, and fast mode.
 - To start in a mode, set `permission_mode` in the [configuration](#configuration). `--sandbox read-only` or `--sandbox workspace-write` also picks a mode for one session.
 - Full access (no sandbox) is not in the cycle. Set it with `--sandbox danger-full-access` or `permission_mode = "full-access"`; shift+tab then moves to read only.
+
+### Run a command yourself
+
+1. Type `!` in the empty composer. The λ becomes `!`, and the footer says `! shell mode`.
+2. Type the command, such as `go test ./...`, and press enter. It runs in the workspace at once, also while the agent works, and its output streams into the transcript with the exit status.
+3. Send your next message. The agent gets the command, its exit code, and its output with it, in Codex's `<user_shell_command>` format. The command alone never starts a turn.
+
+- Backspace on the empty composer, or esc, leaves shell mode. Esc esc stops a running command.
+- The output the agent sees is cut to 40,000 characters, keeping the start and the end. A command stops after an hour.
+- The command runs as your own, outside the sandbox and the command rules, as in Codex and Claude Code. `user_shell_sandbox = true` in the [configuration](#configuration) runs it like the agent's commands instead: in the sandbox of the current permission mode, and refused by a `forbid` rule.
+
+The [shell mode design](docs/design/shell-mode.md) compares Codex and Claude Code.
 
 ### Add an MCP server
 
