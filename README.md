@@ -12,7 +12,7 @@
 The [ledger](docs/ledger.md) tracks what is built and what is next.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="usage" files="cmd/uah/main.go cmd/uah/models.go cmd/uah/run.go cmd/uah/resume.go cmd/uah/sessions.go cmd/uah/tui.go cmd/uah/tuiconfig.go cmd/uah/print.go cmd/uah/completion.go cmd/uah/doctor.go internal/app/doctor.go internal/app/doctorchecks.go cmd/uah/flags.go" -->
+<!-- memoria:section id="usage" files="cmd/uah/main.go cmd/uah/models.go cmd/uah/run.go cmd/uah/resume.go cmd/uah/sessions.go cmd/uah/tui.go cmd/uah/tuiconfig.go cmd/uah/print.go cmd/uah/completion.go cmd/uah/doctor.go internal/app/doctor.go internal/app/doctorchecks.go cmd/uah/flags.go cmd/uah/prompts.go" -->
 ## Get started
 
 1. Install it (Go 1.27.1 or later):
@@ -130,6 +130,17 @@ uah mcp list                                             # every server, its sta
 
 `uah mcp add` writes Codex's `[mcp_servers.<name>]` format into your user file, so a Codex configuration copies over. `/mcp` in the TUI shows each server and its tools; `/new` picks up a server added or logged in while the TUI runs.
 
+To stop a server's tools from asking for approval:
+
+```sh
+uah mcp add docs --approve -- npx -y @example/docs-mcp   # its tools never ask
+uah mcp approve docs search --mode approve              # one tool never asks
+uah mcp approve docs --mode prompt                      # every other tool always asks
+uah mcp approve docs                                    # print the current modes
+```
+
+When the TUI asks about an MCP call, answer `a` ("Yes, and don't ask again for this tool"). It saves `approval_mode = "approve"` for the tool, and the session stops asking at once.
+
 ### Give the agent instructions
 
 Put them in `AGENTS.md` at the repository root or in any directory below it, as for Codex. To read `CLAUDE.md` too, set `project_doc_fallback_filenames = ["CLAUDE.md"]`. Skills go in `.agents/skills/<name>/SKILL.md`. `/context` shows how much of the context window they take.
@@ -160,6 +171,15 @@ To watch a subagent work, type `/agents <name>` (tab completes the names): the T
 
 uah compacts automatically at 90% of the context window. `/compact` compacts now, and `/compact keep the failing test names` tells the summary what to focus on. `/context` shows what fills the window. The summary model, its prompt, and when compaction starts are [configurable](docs/configuration.md#compaction). `/clear` starts the agent fresh in the same session: its next request carries nothing from before, while the session keeps its history. `/new` starts a new session.
 
+### Customize the prompts
+
+```sh
+uah prompts init           # writes ~/.config/uagent/prompts/review.md and compact.md
+uah prompts show review    # prints a built-in prompt
+```
+
+`uah prompts init` starts from the built-in auto-review policy and compaction prompt, and prints the lines to add to your user file: `[review] policy_file` and `experimental_compact_prompt_file`. Edit the files; each new session reads them. It overwrites existing files only with `--force`.
+
 ### Run a command at an event
 
 Add a hook, for example a notification when the agent is idle:
@@ -180,7 +200,7 @@ Type `/config` in the TUI. It lists auto-compact and its token limit, the compac
 `uah config` shows each setting's value and where it came from. `uah doctor` checks that everything works.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="configuration" files="internal/config/config.go cmd/uah/flags.go cmd/uah/config.go internal/app/resolve.go internal/app/setup.go internal/app/explain.go internal/app/explain_files.go internal/app/compaction.go internal/app/configedit.go internal/config/edit.go .uagent/config.toml .uagent/hooks/guard.sh" -->
+<!-- memoria:section id="configuration" files="internal/config/config.go cmd/uah/flags.go cmd/uah/config.go internal/app/resolve.go internal/app/setup.go internal/app/explain.go internal/app/explain_files.go internal/app/compaction.go internal/app/configedit.go internal/config/edit.go .uagent/config.toml" -->
 ## Configuration
 
 Two TOML files:
@@ -198,7 +218,7 @@ A flag wins over the environment, which wins over a resumed session's settings (
 | --- | --- |
 | Model and engine | `provider`, `model`, `effort`, `fast`, `engine`, `timeout`, `max_disk` |
 | Sandbox | `permission_mode`, `sandbox_mode`; `[sandbox_workspace_write]` `network_access`, `writable_roots`; `[shell_environment_policy]` `inherit`, `ignore_default_excludes`, `exclude`, `include_only`, `set` |
-| Approvals | `approval_policy`, `approvals_reviewer`; `[approvals]` `allow`, `forbid`; `[review]` `model`, `effort`, `timeout` |
+| Approvals | `approval_policy`, `approvals_reviewer`; `[approvals]` `allow`, `forbid`; `[review]` `model`, `effort`, `timeout`, `policy_file` |
 | Compaction | `auto_compact_percent`, `model_auto_compact_token_limit`, `model_context_window`, `compact_model`, `compact_effort`, `compact_prompt`, `experimental_compact_prompt_file`, `compact_user_message_max_tokens` |
 | Instructions and skills | `project_doc_fallback_filenames`, `project_root_markers`, `project_doc_max_bytes`; `[instructions]` `enabled`, `max_bytes` |
 | Hooks | `[[hooks.<Event>]]` `matcher`, `command`, `timeout` |
@@ -226,7 +246,7 @@ args = ["-y", "@example/docs-mcp"]
 trusted = true   # apply this workspace's .uagent/config.toml
 ```
 
-This repository's own [.uagent/config.toml](.uagent/config.toml) and [guard hook](.uagent/hooks/guard.sh) are a working project file.
+This repository's own [.uagent/config.toml](.uagent/config.toml) is a working project file: its `[approvals] forbid` rules keep the agent from `rm -rf /`, force pushes, and `git reset --hard`.
 <!-- /memoria:section -->
 
 ## How it works
@@ -307,11 +327,11 @@ Hooks run a command at a session event with Claude Code's contract: the event ar
 Read more: [hooks](internal/hooks/README.md), with every event and its payload.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="mcp" files="internal/app/mcp.go internal/app/mcpcli.go cmd/uah/mcp.go cmd/uah/mcpprint.go" -->
+<!-- memoria:section id="mcp" files="internal/app/mcp.go internal/app/mcpcli.go cmd/uah/mcp.go cmd/uah/mcpprint.go cmd/uah/mcpapprove.go" -->
 ### MCP servers
 
 <!-- memoria:import src="internal/mcp/README.md#summary" -->
-uah runs the MCP servers in `[mcp_servers]` (Codex's format) on the embedded engine through the official Go SDK: stdio and streamable HTTP servers, their tools offered as `mcp__<server>__<tool>` and called without blocking the agent, Codex's approval modes, OAuth logins with `uah mcp login` kept in the OS keyring, and `uah mcp` to list, add, and remove servers.
+uah runs the MCP servers in `[mcp_servers]` (Codex's format) on the embedded engine through the official Go SDK: stdio and streamable HTTP servers, their tools offered as `mcp__<server>__<tool>` and called without blocking the agent, Codex's approval modes, OAuth logins with `uah mcp login` kept in the OS keyring, and `uah mcp` to list, add, remove, and approve servers.
 <!-- /memoria:import -->
 
 - Servers start on the first run (or `/mcp`) and stop with the session. One that fails to start is left out, unless it has `required = true`.
