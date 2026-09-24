@@ -17,6 +17,7 @@ import (
 	"github.com/viktordanov/uagent-harness/internal/engine/process"
 	"github.com/viktordanov/uagent-harness/internal/hooks"
 	"github.com/viktordanov/uagent-harness/internal/instructions"
+	"github.com/viktordanov/uagent-harness/internal/sandbox"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
 
@@ -67,6 +68,7 @@ func Setup(in Inputs, logOutput io.Writer) (Result, error) {
 	if opts.Hooks, err = loadHooks(cfg, in.Workspace); err != nil {
 		return Result{}, err
 	}
+	r.Sandbox = absPolicy(r.Sandbox, in.Workspace)
 	logger := slog.New(slog.NewTextHandler(logOutput, &slog.HandlerOptions{Level: LogLevels[in.LogLevel]}))
 	eng, err := newEngine(r, in.Runner, stateDir, logger, &opts)
 	if err != nil {
@@ -100,6 +102,7 @@ func loadHooks(cfg config.Config, workspace string) (*hooks.Runner, error) {
 
 // newEngine builds the resolved engine and adds its notices to opts.
 func newEngine(r Resolved, runnerPath, stateDir string, logger *slog.Logger, opts *session.Options) (engine.Engine, error) {
+	sandboxDir := filepath.Join(stateDir, "sandbox")
 	if r.Engine == EngineProcess {
 		runner, err := harness.FindRunner(runnerPath)
 		if err != nil {
@@ -108,15 +111,58 @@ func newEngine(r Resolved, runnerPath, stateDir string, logger *slog.Logger, opt
 		if opts.Hooks.Has(hooks.PreToolUse, "") {
 			opts.Notices = append(opts.Notices, "PreToolUse hooks need the embedded engine; they do not run on the process engine")
 		}
+		// The runner runs each command with $SHELL, so a sandboxing shell
+		// sandboxes every command without changing the runner.
+		shell, err := sandbox.Shell(sandboxDir, r.Sandbox, RealShell())
+		if errors.Is(err, sandbox.ErrUnavailable) {
+			opts.Notices = append(opts.Notices, "no sandbox is available on this system; commands run without one")
+			shell = RealShell()
+		} else if err != nil {
+			return nil, err
+		}
+		backend := harness.RunnerBackend{Path: runner, Env: []string{"SHELL=" + shell}}
 
-		return process.New(harness.Config{RunnerPath: runner, StateDir: stateDir, MaxDisk: r.MaxDisk, Logger: logger}), nil
+		return process.New(harness.Config{Backend: backend, StateDir: stateDir, MaxDisk: r.MaxDisk, Logger: logger}), nil
 	}
-	emb := embedded.New(embedded.Config{StateDir: stateDir, MaxDisk: r.MaxDisk, Logger: logger, Provider: r.Settings.Provider, Hooks: opts.Hooks})
+	emb := embedded.New(embedded.Config{
+		StateDir: stateDir, MaxDisk: r.MaxDisk, Logger: logger, Provider: r.Settings.Provider, Hooks: opts.Hooks,
+		Sandbox: &r.Sandbox, SandboxDir: sandboxDir,
+	})
 	if r.Settings.ServiceTier != "" && !emb.Capabilities().ServiceTier {
 		return nil, usage(errors.New("--fast needs the openai or openai-codex provider"))
 	}
 
 	return emb, nil
+}
+
+// RealShell is the user's shell for commands: $SHELL, or /bin/sh.
+func RealShell() string {
+	if s := strings.TrimSpace(os.Getenv("SHELL")); s != "" {
+		return s
+	}
+
+	return "/bin/sh"
+}
+
+// absPolicy makes the policy's paths absolute: the workspace, and writable
+// roots with ~ for the home directory and others relative to the workspace.
+func absPolicy(p sandbox.Policy, workspace string) sandbox.Policy {
+	p.Workspace = workspace
+	roots := make([]string, 0, len(p.WritableRoots))
+	for _, r := range p.WritableRoots {
+		if rest, ok := strings.CutPrefix(r, "~"); ok && (rest == "" || strings.HasPrefix(rest, "/")) {
+			if home, err := os.UserHomeDir(); err == nil {
+				r = home + rest
+			}
+		}
+		if !filepath.IsAbs(r) {
+			r = filepath.Join(workspace, r)
+		}
+		roots = append(roots, filepath.Clean(r))
+	}
+	p.WritableRoots = roots
+
+	return p
 }
 
 // HookTrustFile records the project hook commands the user approved.

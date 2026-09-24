@@ -1,6 +1,7 @@
 package render
 
 import (
+	"cmp"
 	"fmt"
 	"os"
 	"slices"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 
+	"github.com/viktordanov/uagent-harness/internal/sandbox"
 	"github.com/viktordanov/uagent-harness/internal/tui/state"
 )
 
@@ -100,7 +102,7 @@ func transcript(s state.State, c *Cache, w, height int) []string {
 }
 
 func headerLine(s state.State, w int) string {
-	left := fmt.Sprintf(" uah · %s · %s/%s · %s · %s", short(s.SessionID), s.Settings.Provider, s.Settings.Model, s.Settings.Effort, home(s.Settings.Workspace))
+	left := fmt.Sprintf(" uah · %s · %s/%s · %s · sandbox %s · %s", short(s.SessionID), s.Settings.Provider, s.Settings.Model, s.Settings.Effort, cmp.Or(s.Settings.Sandbox, "none"), home(s.Settings.Workspace))
 	var right string
 	switch {
 	case s.SessionID == "":
@@ -197,7 +199,12 @@ func footerLine(s state.State, w int) string {
 		if s.Settings.ServiceTier != "" {
 			fast = "fast"
 		}
-		for _, p := range []string{s.Settings.Model, s.Settings.Effort, fast, home(s.Settings.Workspace)} {
+		// The default sandbox goes unsaid; a looser or stricter one shows.
+		box := ""
+		if s.Settings.Sandbox != "" && s.Settings.Sandbox != string(sandbox.WorkspaceWrite) {
+			box = s.Settings.Sandbox
+		}
+		for _, p := range []string{s.Settings.Model, s.Settings.Effort, fast, box, home(s.Settings.Workspace)} {
 			if p != "" {
 				parts = append(parts, p)
 			}

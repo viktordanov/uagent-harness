@@ -37,7 +37,7 @@ func apply(s state.State, evs ...any) state.State {
 func base() state.State {
 	return apply(state.New(t0), session.SessionOpened{
 		At: t0, ID: "3f2a1b2c-0000-4000-8000-000000000000", Engine: "process",
-		Settings: session.Settings{Provider: "openai-codex", Model: "gpt-6-sol", Effort: "high", Workspace: "/workspace/proj"},
+		Settings: session.Settings{Provider: "openai-codex", Model: "gpt-6-sol", Effort: "high", Workspace: "/workspace/proj", Sandbox: "workspace-write"},
 	})
 }
 

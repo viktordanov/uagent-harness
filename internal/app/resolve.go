@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/viktordanov/uagent-harness/internal/config"
+	"github.com/viktordanov/uagent-harness/internal/sandbox"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
 
@@ -54,6 +55,8 @@ type Inputs struct {
 	MaxDiskSet bool
 	Fast       bool
 	FastSet    bool
+	// Sandbox is the --sandbox mode.
+	Sandbox string
 
 	AllowDotenv    bool
 	NoInstructions bool
@@ -67,6 +70,9 @@ type Resolved struct {
 	MaxDisk  int64
 	// Instructions reports whether to load AGENTS.md and CLAUDE.md files.
 	Instructions bool
+	// Sandbox is the policy commands run under. Its Workspace and
+	// WritableRoots are as given; Setup makes them absolute.
+	Sandbox sandbox.Policy
 }
 
 // UsageError is an error in what the user asked for, such as an invalid
@@ -110,8 +116,27 @@ func Resolve(in Inputs, resumed session.Info, cfg config.Config) (Resolved, erro
 	if err != nil {
 		return Resolved{}, err
 	}
+	policy, err := pickSandbox(in, cfg, s.Workspace)
+	if err != nil {
+		return Resolved{}, err
+	}
+	s.Sandbox = string(policy.Mode)
 
-	return Resolved{Settings: s, Engine: eng, MaxDisk: maxDisk, Instructions: !in.NoInstructions && cfg.InstructionsEnabled()}, nil
+	return Resolved{Settings: s, Engine: eng, MaxDisk: maxDisk, Instructions: !in.NoInstructions && cfg.InstructionsEnabled(), Sandbox: policy}, nil
+}
+
+// pickSandbox is the --sandbox flag, the configured sandbox_mode, or
+// workspace-write, Codex's default for trusted projects.
+func pickSandbox(in Inputs, cfg config.Config, workspace string) (sandbox.Policy, error) {
+	mode, err := sandbox.ParseMode(first(in.Sandbox, cfg.SandboxMode, string(sandbox.WorkspaceWrite)))
+	if err != nil {
+		return sandbox.Policy{}, usage(err)
+	}
+
+	return sandbox.Policy{
+		Mode: mode, Workspace: workspace,
+		WritableRoots: cfg.SandboxWorkspaceWrite.WritableRoots, Network: cfg.SandboxWorkspaceWrite.NetworkAccess,
+	}, nil
 }
 
 // pickModel is the model for provider. A provider flag that changes the

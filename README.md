@@ -85,6 +85,21 @@ Later files are more specific. The total stops at 32 KiB. `--no-instructions` tu
 
 <!-- /memoria:section -->
 
+<!-- memoria:section id="sandbox" files="internal/sandbox/sandbox.go internal/sandbox/shell.go internal/engine/embedded/sandboxtool.go internal/engine/embedded/tools.go internal/app/setup.go internal/app/resolve.go" -->
+### Sandbox
+
+Commands run in the operating system's sandbox, as in Codex: Seatbelt (`sandbox-exec`) on macOS and bubblewrap (`bwrap`, which must be installed) on Linux. The mode comes from `--sandbox`, `UAH_SANDBOX`, or `sandbox_mode`:
+
+| Mode | Commands can |
+| --- | --- |
+| `workspace-write` (default) | Read any file; write the workspace, `/tmp`, `$TMPDIR`, and `writable_roots`, except `.git`, `.uagent`, `.agents`, and `.codex`; no network unless `network_access = true` |
+| `read-only` | Read any file; write nothing; no network |
+| `danger-full-access` | Anything your user can: no sandbox |
+
+On the embedded engine the model can ask to run a command outside the sandbox (`sandbox_permissions: "require_escalated"` with a `justification`). This version refuses those requests with a reason; approvals, rules, and auto-review come next ([plan](docs/design/sandbox.md)). When a command fails in a way that looks like the sandbox blocked it, the model is told so. On the process engine, the runner's `SHELL` is a script that sandboxes each command. Where no sandbox is available, uah says so and runs commands without one. `/sandbox` in the TUI shows the mode; the detailed view's header always does.
+
+<!-- /memoria:section -->
+
 <!-- memoria:section id="hooks" files="internal/hooks/hooks.go internal/hooks/exec.go internal/hooks/payload.go internal/hooks/trust.go internal/engine/embedded/pretooluse.go internal/engine/embedded/tools.go cmd/uah/hooks.go internal/app/setup.go internal/session/hooks.go" -->
 ### Hooks
 
@@ -133,10 +148,15 @@ timeout = "30m"
 max_disk = "5G"
 engine = "embedded"   # or "process"
 fast = false          # priority processing
+sandbox_mode = "workspace-write"   # read-only, workspace-write, danger-full-access
 
 [instructions]
 enabled = true
 max_bytes = 32768
+
+[sandbox_workspace_write]
+network_access = false
+writable_roots = ["~/Library/Caches/go-build"]   # ~ is home; relative paths are in the workspace
 
 [tui]
 details = false   # start in the detailed view

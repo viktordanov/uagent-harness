@@ -12,7 +12,7 @@ require (
 	github.com/stretchr/testify v1.12.1
 	github.com/unreallabsai/unreal-agent v0.1.1
 	github.com/urfave/cli/v3 v3.13.0
-	github.com/viktordanov/uagent v0.4.0
+	github.com/viktordanov/uagent v0.4.1
 )
 
 require (

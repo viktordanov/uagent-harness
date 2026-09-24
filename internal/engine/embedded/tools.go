@@ -2,6 +2,7 @@ package embedded
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -14,6 +15,8 @@ import (
 	"github.com/unreallabsai/unreal-agent/harness/tool/viewimage"
 
 	"github.com/viktordanov/uagent/core"
+
+	"github.com/viktordanov/uagent-harness/internal/sandbox"
 )
 
 // tools builds the registry the coordinator runs: Bash, ViewImage, and
@@ -26,7 +29,10 @@ func (w *wiring) tools(ctx context.Context, req core.Request, sessionID session.
 		return nil, err
 	}
 	skills, skillErrs := tool.DiscoverSkills(filepath.Join(req.Workspace, ".harness", "skills"))
-	registry := tool.NewRegistry(translators, toolNames(req, len(skills) > 0)...)
+	var registry tool.Registry = tool.NewRegistry(translators, toolNames(req, len(skills) > 0)...)
+	if b, ok := translators.Bash.(sandboxedBash); ok {
+		registry = sandboxRegistry{Registry: registry, policy: w.policy(req, b.mode)}
+	}
 	if err := registerSkills(registry, skills); err != nil {
 		return nil, err
 	}
@@ -50,11 +56,31 @@ func (w *wiring) translators(req core.Request, sessionID session.ID) (tool.Stati
 	if shell == "" {
 		shell = "/bin/sh"
 	}
+	var run tool.Translator = bash.New(bash.Config{Shell: shell, Directory: req.Workspace, BaseDirectory: opsDir})
+	if p := w.e.cfg.Sandbox; p != nil && p.Mode != sandbox.FullAccess {
+		sandboxed, err := sandbox.Shell(w.e.cfg.SandboxDir, w.policy(req, p.Mode), shell)
+		switch {
+		case errors.Is(err, sandbox.ErrUnavailable):
+			_, _ = fmt.Fprintf(w.l.Stderr, "embedded: %v; commands run without one\n", err)
+		case err != nil:
+			return tool.StaticTranslators{}, err
+		default:
+			run = sandboxedBash{
+				Translator: bash.New(bash.Config{Shell: sandboxed, Directory: req.Workspace, BaseDirectory: opsDir}),
+				mode:       p.Mode,
+			}
+		}
+	}
 
-	return tool.StaticTranslators{
-		Bash:      bash.New(bash.Config{Shell: shell, Directory: req.Workspace, BaseDirectory: opsDir}),
-		ViewImage: viewimage.New(viewimage.Config{Directory: req.Workspace}),
-	}, nil
+	return tool.StaticTranslators{Bash: run, ViewImage: viewimage.New(viewimage.Config{Directory: req.Workspace})}, nil
+}
+
+// policy is the configured sandbox policy for the request's workspace.
+func (w *wiring) policy(req core.Request, mode sandbox.Mode) sandbox.Policy {
+	p := *w.e.cfg.Sandbox
+	p.Mode, p.Workspace = mode, req.Workspace
+
+	return p
 }
 
 // toolNames returns the tools to enable: Bash, ViewImage, and SkillUse when

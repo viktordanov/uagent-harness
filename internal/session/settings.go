@@ -30,6 +30,9 @@ type Settings struct {
 	AllowDotenv bool
 	// SystemPrompt replaces the runner's host prompt when set.
 	SystemPrompt string
+	// Sandbox is the sandbox mode commands run in, for display; the engine
+	// enforces the mode it was built with.
+	Sandbox string
 }
 
 // Validate checks values without asking the provider which models exist.

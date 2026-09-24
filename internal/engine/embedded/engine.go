@@ -17,6 +17,7 @@ import (
 
 	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/hooks"
+	"github.com/viktordanov/uagent-harness/internal/sandbox"
 )
 
 const tierPriority = "priority"
@@ -37,6 +38,11 @@ type Config struct {
 	Providers []Provider
 	// Hooks, when set, runs PreToolUse hooks before each tool call.
 	Hooks *hooks.Runner
+	// Sandbox, when set, is the policy Bash commands run under; its
+	// Workspace is replaced by each request's. SandboxDir holds the
+	// sandboxing shells.
+	Sandbox    *sandbox.Policy
+	SandboxDir string
 }
 
 // Engine runs the agent in process.
