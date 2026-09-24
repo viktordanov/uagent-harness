@@ -25,14 +25,17 @@ const (
 	PreToolUse       Event = "PreToolUse"
 	PostToolUse      Event = "PostToolUse"
 	Stop             Event = "Stop"
-	PreCompact       Event = "PreCompact"
+	// SubagentStop runs when a subagent finishes; a block with a reason
+	// sends the reason to the subagent as its next message.
+	SubagentStop Event = "SubagentStop"
+	PreCompact   Event = "PreCompact"
 	// PermissionRequest runs before the user is asked to approve a command
 	// or an MCP call; "allow" or "deny" answers for the user.
 	PermissionRequest Event = "PermissionRequest"
 )
 
 // Events are the supported events.
-var Events = []Event{SessionStart, SessionEnd, UserPromptSubmit, PreToolUse, PostToolUse, Stop, PreCompact, PermissionRequest}
+var Events = []Event{SessionStart, SessionEnd, UserPromptSubmit, PreToolUse, PostToolUse, Stop, SubagentStop, PreCompact, PermissionRequest}
 
 const (
 	// DefaultTimeout applies when a hook sets none.
@@ -140,6 +143,17 @@ func (r *Runner) TrustState(h Hook) (bool, string) {
 	return r.trust.Check(r.workspace, h.Command)
 }
 
+// Clone returns a runner with the same hooks and trust and its own
+// OnResult, for another session of the process, such as a subagent's. A nil
+// runner stays nil.
+func (r *Runner) Clone() *Runner {
+	if r == nil {
+		return nil
+	}
+
+	return &Runner{hooks: slices.Clone(r.hooks), trust: r.trust, workspace: r.workspace}
+}
+
 // OnResult sets a function that sees every result, from any goroutine.
 func (r *Runner) OnResult(fn func(Result)) {
 	if r == nil {
@@ -238,7 +252,7 @@ func (d *Decision) add(event Event, res Result) {
 		return
 	}
 	out := res.Output
-	if out.Continue != nil && !*out.Continue && event != Stop {
+	if out.Continue != nil && !*out.Continue && event != Stop && event != SubagentStop {
 		d.Block, d.Reason = true, firstNonEmpty(out.StopReason, "stopped by a hook")
 
 		return

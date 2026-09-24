@@ -36,6 +36,7 @@ command = "osascript -e 'display notification \"uah is idle\"'"
 | `PreToolUse` | Before each tool call | Deny it (exit 2, or `permissionDecision` `"deny"` or `"ask"`); the reason is the tool's error. Rewrite it (`updatedInput`) | embedded engine |
 | `PostToolUse` | After each tool call | Observe only | session |
 | `Stop` | When the agent finished and nothing is queued | Keep it going: `"decision": "block"` with a `reason` sends the reason as the next message, at most 5 times in a row. `stop_hook_active` is true after the first | session |
+| `SubagentStop` | When a subagent finished (`agent_id`, `agent_type`, `agent_transcript_path`, `last_assistant_message`; `session_id` is the parent's) | Keep it going: `"decision": "block"` with a `reason` sends the reason to the subagent, at most 5 times in a row | internal/agents |
 | `PermissionRequest` | Before the user is asked to approve an escalated command, a `prompt` rule, or an MCP call | Answer for the user with `permissionDecision` `"allow"` or `"deny"` (exit 2 denies); works headless too | session |
 | `PreCompact` | Before a compaction (`trigger`: manual or auto) | Stop it (exit 2 or `"decision": "block"`) | embedded engine |
 | `SessionEnd` | When the session closes | Observe only, with at most a second | session |

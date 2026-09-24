@@ -64,7 +64,7 @@ The transcript is a list of `Item`s, each with a stable key. The reducer updates
 | `KindTool` | `call:<call ID>` | `ToolCalled`, `ToolStarted`, `ToolFinished` |
 | `KindAssistant`, `KindReasoning` | `text:<n>`, `reason:<n>` | `AssistantMessage`, `ReasoningSummary` |
 | `KindNotice` | `notice:<n>` | Session notices, hook results, command output, approvals |
-| `KindAgent` | `agent:<ID>` | `engine.AgentUpdated` (a subagent) |
+| `KindAgent` | `agent:<ID>` | `engine.AgentUpdated` (a subagent); its tool calls from `engine.AgentActivity` go into `Sub`, drawn under it in the detailed view |
 | `KindContext` | `context:<n>` | `/context` (`ContextShown`) |
 | `KindMCP` | `mcp:<n>` | `/mcp` (`MCPListed`): one line per server; `Final` asks for the verbose form (`render/mcp.go`) |
 

@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/viktordanov/uagent/core"
@@ -9,78 +10,58 @@ import (
 	"github.com/viktordanov/uagent-harness/internal/approval"
 )
 
-// Subagents runs the child agents a session's agent spawns (see
-// docs/design/subagents.md). The embedded engine offers the agent tools
-// when its configuration has one; internal/agents implements it.
+// Subagents runs the child agents a session's agent starts; internal/agents
+// implements it (see its README). The embedded engine offers the tools
+// Attach returns and runs each call in the background as a remote job; it
+// knows nothing of what the tools do.
 type Subagents interface {
-	// Attach records the parent's current run: its settings, how its
-	// children ask for approval, and where their progress goes. It reports
-	// whether the session may spawn children at all (its depth).
-	Attach(parent AgentParent) bool
-	// Roles are the agent types spawn_agent offers.
-	Roles() []AgentRole
-	// Spawn starts a child with its first message and returns at once.
-	Spawn(ctx context.Context, parentID string, req SpawnRequest) (AgentRef, error)
-	// Send gives a running or finished child another message.
-	Send(parentID, id, message string) error
-	// Wait returns when any of the children reaches a final status, with
-	// the final ones' statuses, or when the timeout passes (timedOut).
-	Wait(ctx context.Context, parentID string, ids []string, timeout time.Duration) (statuses map[string]AgentStatus, timedOut bool, err error)
-	// CloseAgent stops a child and returns its status before it stopped.
-	CloseAgent(parentID, id string) (AgentStatus, error)
+	// Attach records the parent's current run and returns the tools to
+	// offer it: none when the session may not start children.
+	Attach(parent AgentParent) []AgentTool
+	// ToolNames are every tool name Call accepts, offered or not, so a
+	// session with past calls resumes where the tools are not offered.
+	ToolNames() []string
+	// Call runs one of the parent's tool calls and returns the result for
+	// the model. It blocks as long as the tool needs (a wait); ctx ends
+	// when the call is canceled or the run stops.
+	Call(ctx context.Context, parentID, tool string, args json.RawMessage) (string, error)
+	// Interrupt stops the live runs of the parent's children and their
+	// own children, because the user interrupted the parent.
+	Interrupt(parentID string)
 }
 
 // AgentParent is a parent session's live run.
 type AgentParent struct {
 	SessionID string
-	// Request is the parent run's request: the children's default
-	// provider, model, effort, workspace, and host prompt.
-	Request core.Request
-	// Ask asks the parent's user (nil: no one can, so children are denied).
+	// Request and ServiceTier are the parent run's: its children start
+	// with the same settings.
+	Request     core.Request
+	ServiceTier string
+	// Ask asks the parent's user, also after the parent's run ends (nil:
+	// no one can, so children are declined).
 	Ask approval.Ask
-	// Emit adds an event to the parent run's stream, such as AgentUpdated.
+	// Emit adds an event to the parent session's stream, also after the
+	// run ends, such as AgentUpdated.
 	Emit func(core.Event)
 }
 
-// AgentRole is an agent type from a role file.
-type AgentRole struct {
+// AgentTool is a tool a run is offered, with its JSON Schema parameters.
+type AgentTool struct {
 	Name        string
 	Description string
-}
-
-// SpawnRequest is a spawn_agent call. Empty fields take the role's, the
-// configured, or the parent's values.
-type SpawnRequest struct {
-	Message   string
-	AgentType string
-	Model     string
-	Effort    string
-}
-
-// AgentRef names a spawned child.
-type AgentRef struct {
-	ID       string `json:"id"`
-	Nickname string `json:"nickname"`
+	Parameters  map[string]any
 }
 
 // Agent states, as Codex reports them.
 const (
-	AgentRunning   = "running"
-	AgentCompleted = "completed"
-	AgentErrored   = "errored"
-	AgentShutdown  = "shutdown"
-	AgentNotFound  = "not_found"
+	AgentPendingInit = "pending_init"
+	AgentRunning     = "running"
+	AgentInterrupted = "interrupted"
+	AgentCompleted   = "completed"
+	AgentErrored     = "errored"
+	AgentShutdown    = "shutdown"
+	AgentNotFound    = "not_found"
 )
-
-// AgentStatus is a child's state; Message is a completed child's final
-// answer or an errored child's error.
-type AgentStatus struct {
-	State   string `json:"state"`
-	Message string `json:"message,omitempty"`
-}
-
-// Final reports whether the child has stopped working.
-func (s AgentStatus) Final() bool { return s.State != AgentRunning }
 
 // AgentUpdated reports a child's progress in its parent's stream.
 type AgentUpdated struct {
@@ -93,4 +74,14 @@ type AgentUpdated struct {
 	Started time.Time
 }
 
-func (e AgentUpdated) OccurredAt() time.Time { return e.At }
+// AgentActivity is one of a child's tool events (core.ToolCalled,
+// core.ToolStarted, or core.ToolFinished) in its parent's stream, for the
+// detailed view.
+type AgentActivity struct {
+	At    time.Time
+	ID    string
+	Event core.Event
+}
+
+func (e AgentUpdated) OccurredAt() time.Time  { return e.At }
+func (e AgentActivity) OccurredAt() time.Time { return e.At }

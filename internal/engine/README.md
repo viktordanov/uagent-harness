@@ -41,9 +41,9 @@ Optional interfaces are the seams the session probes with a type assertion:
 | `MCPLister` | `/mcp`: each MCP server's state and tools | embedded |
 | `ContextReporter` | `/context`: the breakdown of the session's last model request | embedded |
 | `io.Closer` | The session closes the engine with itself, stopping MCP servers and subagents | embedded |
-| `Subagents` | The agent tools; the embedded engine calls it, `internal/agents` implements it | `internal/agents` |
+| `Subagents` | The agent tools: `Attach` returns the tools to offer a run, `ToolNames` every name it answers, `Call` runs one, `Interrupt` stops a parent's children. The engine knows no tool name, schema, or result; [internal/agents](../agents/README.md) implements it | `internal/agents` |
 
-The engine's own events join the run's stream: `CompactionStarted`, `Compacted`, `AutoReviewed`, and `AgentUpdated`.
+The engine's own events join the run's stream: `CompactionStarted`, `Compacted`, `AutoReviewed`, `AgentUpdated`, and `AgentActivity` (a child's tool events, for the parent's view).
 <!-- /memoria:section -->
 
 <!-- memoria:section id="support" files="engine.go process/process.go embedded/engine.go embedded/tools.go" -->
@@ -107,7 +107,7 @@ The coordinator calls one `llm.Adapter`. Two adapters sit in front of the provid
 
 ### The event stream
 
-`lockedSink` wraps the run's sink so the engine can add its own events: one goroutine at a time, and none after `RunFinished`. Its `tap` sees every event first and feeds the auto-reviewer's transcript (`autoreview.go`): the user's messages and the latest tool calls, without their output.
+`lockedSink` wraps the run's sink so the engine can add its own events: one goroutine at a time, and none after `RunFinished`. Its `tap` sees every event first and feeds the auto-reviewer's transcript (`autoreview.go`), one per session ID so a subagent's reviews see only its own session: the user's messages and the latest tool calls, without their output.
 
 ### The tool registry
 
@@ -123,7 +123,7 @@ The coordinator calls one `llm.Adapter`. Two adapters sit in front of the provid
 A tool's static definition is what the model is offered, so a change in a layer reaches both the model and the translator.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="jobs" files="embedded/mcptool.go embedded/mcpjobs.go embedded/agenttool.go embedded/agentjobs.go embedded/agentprompt.go" -->
+<!-- memoria:section id="jobs" files="embedded/mcptool.go embedded/mcpjobs.go embedded/agenttool.go embedded/agentjobs.go" -->
 ## Remote jobs
 
 A slow tool must not hold up the coordinator. MCP calls and the agent tools therefore run as the runner's remote jobs: the translator returns a remote job plan, and a `RemoteJobHandler` runs it on its own goroutine and reports `awaiting`, then the result, on its updates channel. The model keeps working meanwhile.
@@ -131,7 +131,7 @@ A slow tool must not hold up the coordinator. MCP calls and the agent tools ther
 | Plan type | Handler | Runs |
 | --- | --- | --- |
 | `uah.mcp_call` (version 1) | `mcpJobs` | One MCP tool call through `internal/mcp` |
-| `uah.agent` (version 1) | `agentJobs` | `spawn_agent`, `send_input`, `wait`, and `close_agent` through `engine.Subagents` |
+| `uah.agent` (version 1) | `agentJobs` | Whatever tools `engine.Subagents.Attach` returned (Codex's `spawn_agent`, `send_input`, `resume_agent`, `wait_agent`, `close_agent`), each through `Subagents.Call` |
 
 A job that had already started before the run stopped fails with "interrupted" when the session resumes, instead of running twice. Cancelling a job cancels its context.
 <!-- /memoria:section -->
