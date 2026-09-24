@@ -103,6 +103,9 @@ type State struct {
 	Config *ConfigPanel
 	// Mouse reports the mouse to the TUI, so the wheel scrolls.
 	Mouse bool
+	// Shell is shell mode: enter runs the composer's line as a command
+	// (shell.go).
+	Shell bool
 
 	// Status is a transient hint in the footer, such as a pending confirmation.
 	Status      string

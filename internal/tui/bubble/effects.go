@@ -36,6 +36,10 @@ func (m Model) run(e state.Effect) tea.Cmd { //nolint:gocyclo // a dispatch swit
 		return withSession(func(s *session.Session) error { _, err := s.Submit(e.Text); return err })
 	case state.EffSteer:
 		return withSession(func(s *session.Session) error { _, err := s.SteerNow(e.Text); return err })
+	case state.EffShell:
+		ctx := m.ctx
+
+		return withSession(func(s *session.Session) error { _, err := s.RunShell(ctx, e.Command); return err })
 	case state.EffInterrupt:
 		return withSession(func(s *session.Session) error { return s.Interrupt() })
 	case state.EffClear:

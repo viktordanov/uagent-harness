@@ -236,6 +236,9 @@ func (st *Styles) footerLine(s state.State, w int) string {
 		if s.Scroll > 0 {
 			hint = "scrolled up · end returns "
 		}
+		if s.Shell {
+			hint = shellHint
+		}
 		if pct, ok := s.ContextLeft(); ok {
 			hint = fmt.Sprintf("%d%% context left · %s", pct, hint)
 		}
@@ -262,12 +265,18 @@ func (st *Styles) footerLine(s state.State, w int) string {
 		text += fmt.Sprintf(" · %d%% context left", left)
 		hint = "/ commands "
 	}
+	if s.Shell {
+		hint = shellHint
+	}
 	if gap := w - ansi.StringWidth(text) - ansi.StringWidth(hint); gap > 0 {
 		text += strings.Repeat(" ", gap) + hint
 	}
 
 	return st.dim.Render(ansi.Truncate(text, w, ""))
 }
+
+// shellHint replaces the footer's hint in shell mode.
+const shellHint = "! shell mode · enter runs the command · esc leaves "
 
 // modeText is the permission mode, which shift+tab changes, as the footer
 // and the detailed header show it ("" without one).
