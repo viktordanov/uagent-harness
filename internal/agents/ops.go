@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/viktordanov/uagent-harness/internal/engine"
@@ -37,13 +38,13 @@ func (m *Manager) spawn(ctx context.Context, call engine.AgentCall, a spawnArgs)
 	}
 	if a.ForkContext {
 		if err := m.fork(ctx, c, call); err != nil {
-			m.closeTree(c)
+			m.discard(c)
 
 			return spawnResult{}, err
 		}
 	}
 	if _, err := m.submit(c, a.Message, false); err != nil {
-		m.closeTree(c)
+		m.discard(c)
 
 		return spawnResult{}, err
 	}
@@ -143,7 +144,7 @@ func (m *Manager) start(parentID, id string, role Role, rec record, resumed bool
 
 		return old, nil
 	}
-	if open := m.openIn(m.root(parentID)); open >= m.cfg.MaxThreads {
+	if open := m.openIn(m.treeRoot(parentID)); open >= m.cfg.MaxThreads {
 		m.mu.Unlock()
 
 		return nil, fmt.Errorf("agent limit reached: %d agents are open; close one with close_agent first", open)
@@ -249,19 +250,21 @@ func (m *Manager) send(parentID, id, message string, interrupt bool) (string, er
 func (m *Manager) wait(ctx context.Context, parentID string, ids []string, timeout time.Duration) (map[string]Status, bool, error) {
 	timer := time.NewTimer(timeout)
 	defer timer.Stop()
+	// The same children are counted down as up, even if resume_agent
+	// replaces one meanwhile.
+	var watched []*child
 	m.mu.Lock()
 	for _, id := range ids {
 		if c, ok := m.find(parentID, id); ok {
 			c.waiters++
+			watched = append(watched, c)
 		}
 	}
 	m.mu.Unlock()
 	defer func() {
 		m.mu.Lock()
-		for _, id := range ids {
-			if c, ok := m.find(parentID, id); ok {
-				c.waiters--
-			}
+		for _, c := range watched {
+			c.waiters--
 		}
 		m.mu.Unlock()
 	}()
@@ -325,6 +328,19 @@ func (m *Manager) closeTree(c *child) {
 			_ = s.Close()
 		}
 	}
+}
+
+// discard closes a child that failed to start and removes its sidecar and
+// agent record, so resume_agent and uah sessions do not offer a child that
+// never ran.
+func (m *Manager) discard(c *child) {
+	m.closeTree(c)
+	dir := m.template().SessionsDir
+	_ = session.RemoveSidecar(dir, c.id)
+	_ = os.Remove(recordPath(dir, c.id))
+	m.mu.Lock()
+	delete(m.children, c.id)
+	m.mu.Unlock()
 }
 
 // resume opens a closed child again, or one from an earlier process, as

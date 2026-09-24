@@ -17,12 +17,29 @@ var agentTargets = map[string]bool{
 	"wait_agent": true, "wait": true, "close_agent": true, "send_input": true, "resume_agent": true,
 }
 
+// callLabel is what a tool call's line shows: the agent tools name their
+// subagents by nickname, and arguments of one string field show as that
+// string (`{"name":"i-have-adhd"}` is i-have-adhd). It is shaped once,
+// when the call arrives, so drawing does no parsing.
+func (s *State) callLabel(name, label string) string {
+	if agentTargets[name] {
+		return s.agentCallLabel(label)
+	}
+	var args map[string]any
+	if json.Unmarshal([]byte(label), &args) == nil && len(args) == 1 {
+		for _, v := range args {
+			if str, ok := v.(string); ok {
+				return str
+			}
+		}
+	}
+
+	return label
+}
+
 // agentCallLabel is the label of an agent tool call that names subagents:
 // their nicknames, then the message a send_input carries.
-func (s *State) agentCallLabel(name, label string) string {
-	if !agentTargets[name] {
-		return label
-	}
+func (s *State) agentCallLabel(label string) string {
 	var args struct {
 		Targets []string `json:"targets"`
 		Target  string   `json:"target"`
@@ -93,25 +110,10 @@ func settle(prev, next string) string {
 // sends the main agent as a message, as a line of the transcript:
 // "Ada completed; the main agent was told".
 func (s *State) agentNote(text string) (string, bool) {
-	body, ok := strings.CutPrefix(strings.TrimSpace(text), "<subagent_notification>")
+	id, state, ok := engine.ParseSubagentNotification(text)
 	if !ok {
 		return "", false
 	}
-	body, _ = strings.CutSuffix(body, "</subagent_notification>")
-	var n struct {
-		AgentPath string          `json:"agent_path"`
-		Status    json.RawMessage `json:"status"`
-	}
-	if json.Unmarshal([]byte(strings.TrimSpace(body)), &n) != nil {
-		return "", false
-	}
-	state := strings.Trim(string(n.Status), `"`)
-	var obj map[string]json.RawMessage
-	if json.Unmarshal(n.Status, &obj) == nil {
-		for k := range obj {
-			state = k
-		}
-	}
 
-	return fmt.Sprintf("%s %s; the main agent was told", s.agentName(n.AgentPath), state), true
+	return fmt.Sprintf("%s %s; the main agent was told", s.agentName(id), state), true
 }

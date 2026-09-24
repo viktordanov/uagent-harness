@@ -35,6 +35,7 @@ func (s *State) onAgentUpdated(e engine.AgentUpdated) {
 	it := Item{Kind: KindAgent, Key: key, Name: e.Nickname, Label: e.Role, Text: e.ID}
 	set(&it)
 	s.put(it)
+	s.agentIDs = append(s.agentIDs, e.ID)
 	s.labelSpawn(e)
 }
 
@@ -72,10 +73,7 @@ func subTool(it *Item, callID string, fn func(*Item)) {
 // listAgents lists the session's subagents with their state.
 func listAgents(s *State) {
 	var b strings.Builder
-	for _, it := range s.Items {
-		if it.Kind != KindAgent {
-			continue
-		}
+	for _, it := range s.Agents() {
 		if b.Len() > 0 {
 			b.WriteString("\n")
 		}
@@ -88,7 +86,7 @@ func listAgents(s *State) {
 			fmt.Fprintf(&b, ": %s", it.Agent.Message)
 		}
 		if it.Detail == engine.AgentRunning {
-			fmt.Fprintf(&b, " %s", time.Since(it.Started).Round(time.Second))
+			fmt.Fprintf(&b, " %s", s.Now.Sub(it.Started).Round(time.Second))
 		}
 		fmt.Fprintf(&b, " · %s", it.Text)
 	}

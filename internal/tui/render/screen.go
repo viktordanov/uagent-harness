@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/viktordanov/uagent-harness/internal/sandbox"
+	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/internal/tui/state"
 )
 
@@ -30,6 +31,9 @@ type Frame struct {
 func Screen(s state.State, c *Cache, f Frame) (string, int) {
 	if f.Width <= 0 || f.Height <= 0 {
 		return "", 0
+	}
+	if len(s.Items) == 0 && len(c.entries) > 0 {
+		c.entries = map[string]cacheEntry{} // /clear, /new, or a reload: the old lines go
 	}
 	if s.Mode == state.ModePicker {
 		return picker(s, f), -1
@@ -118,7 +122,7 @@ func transcript(s state.State, c *Cache, w, height int, head []string) []string 
 }
 
 func headerLine(s state.State, w int) string {
-	left := fmt.Sprintf(" uah · %s · %s/%s · %s · sandbox %s · %s", short(s.SessionID), s.Settings.Provider, s.Settings.Model, s.Settings.Effort, cmp.Or(s.Settings.Sandbox, "none"), home(s.Settings.Workspace))
+	left := fmt.Sprintf(" uah · %s · %s/%s · %s · sandbox %s · %s", session.ShortID(s.SessionID), s.Settings.Provider, s.Settings.Model, s.Settings.Effort, cmp.Or(s.Settings.Sandbox, "none"), home(s.Settings.Workspace))
 	var right string
 	switch {
 	case s.SessionID == "":
@@ -287,7 +291,7 @@ func picker(s state.State, f Frame) string {
 	start := max(0, min(s.Picker.Selected-room/2, len(list)-room))
 	for i := start; i < len(list) && i < start+room; i++ {
 		in := list[i]
-		row := fmt.Sprintf(" %s  %-9s %7s  %-11s %-12s ", short(in.ID), age(s.Now, in.LastActivity), plural(in.Runs, "run"), in.Status, in.Model)
+		row := fmt.Sprintf(" %s  %-9s %7s  %-11s %-12s ", session.ShortID(in.ID), age(s.Now, in.LastActivity), plural(in.Runs, "run"), in.Status, in.Model)
 		if s.Picker.All {
 			row += fmt.Sprintf("%-24s ", ansi.Truncate(home(in.Workspace), 24, "…"))
 		}
@@ -313,8 +317,6 @@ func plural(n int, noun string) string {
 
 	return fmt.Sprintf("%d %ss", n, noun)
 }
-
-func short(id string) string { return id[:min(8, len(id))] }
 
 func oneLine(s string) string { return strings.Join(strings.Fields(s), " ") }
 

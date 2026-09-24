@@ -11,8 +11,8 @@ import (
 // own, since their keys are the agent's.
 func agentScreen(s state.State, c *Cache, f Frame) (string, int) {
 	v := s.View
-	if c.view == nil || c.viewID != v.ID {
-		c.view, c.viewID = NewCache(), v.ID
+	if c.view == nil || c.viewID != v.ID || c.viewGen != v.Gen {
+		c.view, c.viewID, c.viewGen = NewCache(), v.ID, v.Gen
 	}
 	f.Height = max(f.Height-1, 1)
 	out, row := Screen(*v.St, c.view, f)

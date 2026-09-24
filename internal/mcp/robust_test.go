@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -52,13 +54,11 @@ func TestSerialCallsWaitTheirTurn(t *testing.T) {
 	}
 
 	// A call canceled while it waits for its turn never reaches the server.
-	started := make(chan struct{})
+	mark := filepath.Join(t.TempDir(), "running")
 	go func() {
-		close(started)
-		_, _ = call(t, m, "serial", "sleep", `{"ms":600}`)
+		_, _ = call(t, m, "serial", "sleep", `{"ms":600,"mark":"`+mark+`"}`)
 	}()
-	<-started
-	time.Sleep(100 * time.Millisecond)
+	require.Eventually(t, func() bool { _, err := os.Stat(mark); return err == nil }, 5*time.Second, 5*time.Millisecond, "the first call holds the server")
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
 	_, err = m.Call(ctx, "serial", "echo", nil)

@@ -12,6 +12,8 @@ import (
 	"strings"
 
 	"github.com/unreallabsai/unreal-agent/harness/llm"
+
+	"github.com/viktordanov/uagent-harness/internal/compaction"
 )
 
 // Category names, in the order /context lists them.
@@ -70,11 +72,11 @@ var skillTag = regexp.MustCompile(`(?s)<skill><name>(.*?)</name>.*?</skill>`)
 
 // Analyze splits the request into categories. reported is the provider's
 // input token count for it (0 when unknown); estimates are scaled to it so
-// the categories add up to what the provider counted. autoLimit is the
-// tokens at which automatic compaction starts (0: off); the rest of the
-// window is the buffer. files are the instruction files the host
+// the categories add up to what the provider counted. auto is the
+// compaction configuration: the window above its automatic limit is the
+// buffer (none when automatic compaction is off). files are the instruction files the host
 // prompt holds, in order, as "## <path>" headers name them.
-func Analyze(req llm.Request, reported, window, autoLimit int64, files []string) Usage {
+func Analyze(req llm.Request, reported, window int64, auto compaction.Settings, files []string) Usage {
 	cats := map[string]*Category{}
 	add := func(cat, item, text string) {
 		c, ok := cats[cat]
@@ -110,8 +112,8 @@ func Analyze(req llm.Request, reported, window, autoLimit int64, files []string)
 		}
 	}
 	u.Used, u.Estimated = scale(u.Categories, reported)
-	if autoLimit > 0 && window > 0 {
-		u.Buffer = max(window-autoLimit, 0)
+	if limit := auto.Limit(window); limit > 0 {
+		u.Buffer = window - limit
 	}
 
 	return u

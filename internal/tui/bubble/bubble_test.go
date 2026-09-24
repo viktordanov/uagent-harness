@@ -177,6 +177,7 @@ func TestTUI_CommandsAndPrompt(t *testing.T) {
 	d.key(tea.KeyEnter, 0)
 	d.waitFor("unknown command /nope")
 
+	d.waitIdle() // ctrl+c while a run is live only arms the quit
 	d.key('c', tea.ModCtrl)
 	d.waitQuit()
 }

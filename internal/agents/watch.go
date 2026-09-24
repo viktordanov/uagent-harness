@@ -100,8 +100,10 @@ func (m *Manager) unwatch(c *child, next chan core.Event) {
 // It holds m.mu.
 func (c *child) record(e core.Event) {
 	c.log = append(c.log, e)
-	if len(c.log) > maxLogged {
-		c.log = slices.Delete(c.log, 0, len(c.log)-maxLogged)
+	// Trimmed in steps of a quarter, so a long child does not copy the
+	// whole log on every event.
+	if len(c.log) > maxLogged+maxLogged/4 {
+		c.log = slices.Clone(c.log[len(c.log)-maxLogged:])
 	}
 	c.subs = slices.DeleteFunc(c.subs, func(next chan core.Event) bool {
 		select {
