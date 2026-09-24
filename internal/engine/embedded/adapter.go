@@ -26,6 +26,9 @@ type switcher struct {
 	// tools, when set, rewrites each request's tools, such as Bash for the
 	// run's current permission mode.
 	tools func([]llm.Tool) []llm.Tool
+	// images, when set, gives the model the images pasted into user
+	// messages (images.go).
+	images func(llm.Request) llm.Request
 }
 
 func newSwitcher(model string, priority bool, build func(bool) (Client, error)) (*switcher, error) {
@@ -46,6 +49,9 @@ func (s *switcher) Respond(ctx context.Context, req llm.Request, opts llm.Reques
 	}
 	if s.tools != nil {
 		req.Tools = s.tools(req.Tools)
+	}
+	if s.images != nil {
+		req = s.images(req)
 	}
 	if s.cacheKey != "" {
 		opts.CacheKey = s.cacheKey
@@ -112,6 +118,9 @@ func (s *switcher) direct() llm.Adapter {
 		s.mu.Unlock()
 		if req.Model.ID == "" {
 			req.Model.ID = model
+		}
+		if s.images != nil {
+			req = s.images(req) // a compaction summary sees the pasted images too
 		}
 		if s.cacheKey != "" {
 			opts.CacheKey = s.cacheKey
