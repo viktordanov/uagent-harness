@@ -35,8 +35,8 @@ func (p *printer) print(event core.Event) {
 		if e.Settings.ServiceTier != "" {
 			fast = " · fast"
 		}
-		fmt.Fprintf(p.w, "uah · session %s%s · %s/%s · effort %s%s · %s engine · %s\n",
-			short(e.ID), resumed, e.Settings.Provider, modelLabel(e.Settings.Model), e.Settings.Effort, fast, e.Engine, e.Settings.Workspace)
+		fmt.Fprintf(p.w, "uah · session %s%s · %s/%s · effort %s%s · %s engine · sandbox %s · %s\n",
+			short(e.ID), resumed, e.Settings.Provider, modelLabel(e.Settings.Model), e.Settings.Effort, fast, e.Engine, sandboxLabel(e.Settings.Sandbox), e.Settings.Workspace)
 	case session.InstructionsLoaded:
 		note := ""
 		if e.Truncated {
@@ -135,4 +135,12 @@ func commas(n int64) string {
 	}
 
 	return b.String()
+}
+
+func sandboxLabel(mode string) string {
+	if mode == "" {
+		return "none"
+	}
+
+	return mode
 }

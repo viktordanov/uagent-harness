@@ -27,6 +27,10 @@ type Config struct {
 	Engine string `toml:"engine"`
 	// Fast asks for priority processing on the embedded engine.
 	Fast bool `toml:"fast"`
+	// SandboxMode is read-only, workspace-write (the default), or
+	// danger-full-access; the names match Codex's.
+	SandboxMode           string                `toml:"sandbox_mode"`
+	SandboxWorkspaceWrite SandboxWorkspaceWrite `toml:"sandbox_workspace_write"`
 
 	Instructions Instructions `toml:"instructions"`
 	TUI          TUI          `toml:"tui"`
@@ -76,6 +80,16 @@ func (c Config) HookList() ([]hooks.Hook, error) {
 	}
 
 	return out, nil
+}
+
+// SandboxWorkspaceWrite configures the workspace-write sandbox, as Codex's
+// [sandbox_workspace_write] does.
+type SandboxWorkspaceWrite struct {
+	// NetworkAccess lets sandboxed commands use the network.
+	NetworkAccess bool `toml:"network_access"`
+	// WritableRoots are extra writable directories; ~ is the home directory,
+	// and relative paths are relative to the workspace.
+	WritableRoots []string `toml:"writable_roots"`
 }
 
 // TUI configures the terminal UI.
@@ -204,6 +218,9 @@ func merge(base, over Config) Config {
 	set(&base.Timeout, over.Timeout)
 	set(&base.MaxDisk, over.MaxDisk)
 	set(&base.Engine, over.Engine)
+	set(&base.SandboxMode, over.SandboxMode)
+	base.SandboxWorkspaceWrite.NetworkAccess = base.SandboxWorkspaceWrite.NetworkAccess || over.SandboxWorkspaceWrite.NetworkAccess
+	base.SandboxWorkspaceWrite.WritableRoots = append(base.SandboxWorkspaceWrite.WritableRoots, over.SandboxWorkspaceWrite.WritableRoots...)
 	base.Fast = base.Fast || over.Fast
 	base.TUI.Details = base.TUI.Details || over.TUI.Details
 	for event, list := range over.Hooks {

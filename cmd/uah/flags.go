@@ -13,6 +13,7 @@ import (
 	"github.com/viktordanov/uagent/harness"
 
 	"github.com/viktordanov/uagent-harness/internal/app"
+	"github.com/viktordanov/uagent-harness/internal/sandbox"
 	"github.com/viktordanov/uagent-harness/internal/config"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
@@ -48,6 +49,10 @@ func sessionFlags() []cli.Flag {
 			DefaultText: app.EngineEmbedded, Sources: cli.EnvVars("UAH_ENGINE"), Validator: oneOf("engine", app.Engines),
 		},
 		&cli.BoolFlag{Name: "fast", Usage: "priority processing (service_tier priority; embedded engine, openai and openai-codex)"},
+		&cli.StringFlag{
+			Name: "sandbox", Usage: "where commands may write: read-only, workspace-write, or danger-full-access (no sandbox)",
+			DefaultText: "workspace-write", Sources: cli.EnvVars("UAH_SANDBOX"), Validator: oneOf("sandbox", sandboxModes()),
+		},
 		&cli.StringFlag{
 			Name: "runner", Usage: "path to unreal-agent-runner, for the process engine", DefaultText: "~/.local/bin, then PATH",
 			Sources: cli.EnvVars("UAGENT_RUNNER"), TakesFile: true,
@@ -116,6 +121,7 @@ func inputs(cmd *cli.Command) app.Inputs {
 		MaxDiskSet:     cmd.IsSet("max-disk"),
 		Fast:           cmd.Bool("fast"),
 		FastSet:        cmd.IsSet("fast"),
+		Sandbox:        cmd.String("sandbox"),
 		AllowDotenv:    cmd.Bool("allow-dotenv"),
 		NoInstructions: cmd.Bool("no-instructions"),
 	}
@@ -143,3 +149,12 @@ func oneOfMap[V any](flag string, allowed map[string]V) func(string) error {
 }
 
 func defaultStateDir() string { return harness.DefaultStateDir() }
+
+func sandboxModes() []string {
+	out := make([]string, 0, len(sandbox.Modes))
+	for _, m := range sandbox.Modes {
+		out = append(out, string(m))
+	}
+
+	return out
+}

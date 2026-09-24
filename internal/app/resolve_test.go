@@ -10,6 +10,7 @@ import (
 
 	"github.com/viktordanov/uagent-harness/internal/app"
 	"github.com/viktordanov/uagent-harness/internal/config"
+	"github.com/viktordanov/uagent-harness/internal/sandbox"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
 
@@ -156,6 +157,25 @@ func TestResolve(t *testing.T) {
 			want: func(r *app.Resolved) { r.Instructions = false },
 		},
 		{
+			name: "the config file sets the sandbox",
+			cfg: config.Config{SandboxMode: "read-only", SandboxWorkspaceWrite: config.SandboxWorkspaceWrite{
+				NetworkAccess: true, WritableRoots: []string{"~/.cache"},
+			}},
+			want: func(r *app.Resolved) {
+				r.Settings.Sandbox = "read-only"
+				r.Sandbox = sandbox.Policy{Mode: sandbox.ReadOnly, WritableRoots: []string{"~/.cache"}, Network: true}
+			},
+		},
+		{
+			name: "--sandbox beats the config file",
+			in:   func(in *app.Inputs) { in.Sandbox = "danger-full-access" },
+			cfg:  config.Config{SandboxMode: "read-only"},
+			want: func(r *app.Resolved) {
+				r.Settings.Sandbox = "danger-full-access"
+				r.Sandbox.Mode = sandbox.FullAccess
+			},
+		},
+		{
 			name: "base URL and dotenv pass through",
 			in:   func(in *app.Inputs) { in.BaseURL, in.AllowDotenv = "http://llm", true },
 			want: func(r *app.Resolved) { r.Settings.BaseURL, r.Settings.AllowDotenv = "http://llm", true },
@@ -170,11 +190,13 @@ func TestResolve(t *testing.T) {
 			want := app.Resolved{
 				Settings: session.Settings{
 					Provider: app.CodexProvider, Model: app.DefaultCodexModel, Effort: app.DefaultEffort,
-					Workspace: "/ws", Timeout: 30 * time.Minute,
+					Workspace: "/ws", Timeout: 30 * time.Minute, Sandbox: string(sandbox.WorkspaceWrite),
 				},
 				Engine: app.EngineEmbedded, MaxDisk: 5 << 30, Instructions: true,
+				Sandbox: sandbox.Policy{Mode: sandbox.WorkspaceWrite},
 			}
 			tt.want(&want)
+			want.Sandbox.Workspace = want.Settings.Workspace
 
 			got, err := app.Resolve(in, tt.resumed, tt.cfg)
 
@@ -197,6 +219,7 @@ func TestResolveUsageErrors(t *testing.T) {
 		{name: "invalid model", in: func(in *app.Inputs) { in.Model = "-x" }, want: "starts with a dash"},
 		{name: "invalid config max disk", cfg: config.Config{MaxDisk: "lots"}, want: `max_disk: invalid size "LOTS"`},
 		{name: "invalid config engine", cfg: config.Config{Engine: "turbo"}, want: "invalid engine turbo (want embedded or process)"},
+		{name: "invalid sandbox mode", cfg: config.Config{SandboxMode: "yolo"}, want: `invalid sandbox mode "yolo"`},
 		{
 			name: "fast on the process engine",
 			in:   func(in *app.Inputs) { in.Fast, in.FastSet, in.Engine = true, true, app.EngineProcess },
