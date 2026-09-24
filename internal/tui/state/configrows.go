@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/viktordanov/uagent-harness/internal/approval"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
 
@@ -31,6 +32,7 @@ const (
 	keyModel        = "model"
 	keyEffort       = "effort"
 	keyFast         = "fast"
+	keyMode         = "permission_mode"
 	keyDetails      = "tui.details"
 	keyMouse        = "tui.mouse"
 )
@@ -68,12 +70,17 @@ var configKeys = []struct {
 	{keyModel, "Model", rowModel},
 	{keyEffort, "Effort", rowChoice},
 	{keyFast, "Fast mode", rowToggle},
+	{keyMode, "Permission mode", rowChoice},
 	{keyDetails, "Details view", rowToggle},
 	{keyMouse, "Mouse", rowToggle},
 }
 
 // autoPercents are the auto-compact choices; 0 is off.
 var autoPercents = []int{0, 50, 60, 70, 80, 85, 90, 95}
+
+// cycledModes are the permission modes /config steps through, as
+// shift+tab does; full access stays a value to type into the file.
+var cycledModes = []string{string(approval.ModeReadOnly), string(approval.ModeWorkspace), string(approval.ModeAuto)}
 
 // sessionModel is the compaction model's choice for "the session's model".
 const sessionModel = "session model"
@@ -126,8 +133,11 @@ func (s State) next(row ConfigRow, delta int) (value any, ok bool) {
 	case rowModel:
 		return s.nextModel(row, current, delta)
 	}
-	if row.Key == keyEffort {
+	switch row.Key {
+	case keyEffort:
 		return cycle(session.Efforts, current, delta), true
+	case keyMode:
+		return cycle(cycledModes, current, delta), true
 	}
 	percent, _ := strconv.Atoi(current)
 	i := slices.Index(autoPercents, percent)

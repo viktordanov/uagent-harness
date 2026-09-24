@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/viktordanov/uagent-harness/internal/approval"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
 
@@ -180,8 +181,9 @@ func (s *State) commitTyped() []Effect {
 }
 
 // save writes the value, shows it at once, and applies it to the running
-// session where that works live: the model, effort, and fast mode through
-// the session, the details view and the mouse in the TUI.
+// session where that works live: the model, effort, fast mode, and
+// permission mode through the session (as /model, /effort, /fast, and
+// shift+tab do), the details view and the mouse in the TUI.
 func (s *State) save(key string, value any) []Effect {
 	p := s.Config
 	p.Values[key] = ConfigValue{Value: valueText(value), Source: SourceUser}
@@ -200,6 +202,9 @@ func (s *State) save(key string, value any) []Effect {
 		if on, _ := value.(bool); on {
 			next.ServiceTier = "priority"
 		}
+	case keyMode:
+		mode, _ := value.(string)
+		next = next.WithMode(approval.Mode(mode))
 	case keyDetails:
 		s.Details, _ = value.(bool)
 	case keyMouse:
@@ -246,7 +251,7 @@ func appliesWhen(key string, fastLive bool) string {
 		return "applies now"
 	case key == keyFast && !fastLive:
 		return "applies to new sessions on an engine and provider with fast mode"
-	case slices.Contains([]string{keyModel, keyEffort, keyFast}, key):
+	case slices.Contains([]string{keyModel, keyEffort, keyFast, keyMode}, key):
 		return "this session changes too"
 	}
 
