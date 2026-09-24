@@ -138,6 +138,8 @@ func (d *driver) waitQuit() {
 func TestTUI_SendAMessageAndQuit(t *testing.T) {
 	d := start(t, deps(t, "simple.jsonl"))
 	assert.Contains(t, d.view(), "Opening the session")
+	d.until("the session is open", func() bool { return d.m.(bubble.Model).Exit().SessionID != "" })
+	assert.False(t, d.m.(bubble.Model).Exit().Resumable, "a session that never ran has nothing to resume")
 
 	d.typeText("hi there") // typed before the session opens: it is held, not lost
 	d.key(tea.KeyEnter, 0)
@@ -150,6 +152,10 @@ func TestTUI_SendAMessageAndQuit(t *testing.T) {
 	d.waitFor("● answer")
 	d.key('t', tea.ModCtrl)
 	d.until("the compact view again", func() bool { return !strings.Contains(d.view(), "1 run ·") })
+
+	exit := d.m.(bubble.Model).Exit()
+	assert.True(t, exit.Resumable, "after a run, uah names the command that resumes it")
+	assert.NotEmpty(t, exit.SessionID)
 
 	d.typeText("/quit")
 	d.key(tea.KeyEnter, 0)

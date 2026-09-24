@@ -30,7 +30,7 @@ The layout, screens, and framework choice are recorded in the [TUI design](../..
 | `render` | Draws `State` into lines with lipgloss: `Screen(state, cache, frame)` returns the frame and the composer's row | Import Bubble Tea. It gets the composer's rendered view in `Frame` |
 | `bubble` | The Bubble Tea `Model`: maps keys to intents, runs effects as `tea.Cmd`s, batches session events, owns the composer textarea, and draws frames with `render` | Hold UI state of its own beyond the composer, the window size, and the open session |
 
-Because `state` and `render` have no framework code, a different terminal library would replace only `bubble`. `cmd/uah/tui.go` builds `bubble.Deps` (how to open a session, list sessions, and count activity) and calls `bubble.Run`.
+When the program ends, `bubble.Run` returns an `Exit` (the open session and its token totals), and `cmd/uah` prints Codex's exit summary from it: the token usage and "To continue this session, run: uah resume <id>", only for a session that ran. Because `state` and `render` have no framework code, a different terminal library would replace only `bubble`. `cmd/uah/tui.go` builds `bubble.Deps` (how to open a session, list sessions, and count activity) and calls `bubble.Run`.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="flow" files="bubble/model.go bubble/effects.go bubble/keys.go state/reduce.go state/effects.go render/screen.go render/items.go" -->

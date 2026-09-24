@@ -97,7 +97,9 @@ func openTUI(ctx context.Context, cmd *cli.Command, launch tuiLaunch) error {
 			return session.Interactive(infos), err
 		},
 	}
-	if err := bubble.Run(ctx, deps); err != nil {
+	exit, err := bubble.Run(ctx, deps)
+	printExit(os.Stdout, exit)
+	if err != nil {
 		return fmt.Errorf("the TUI stopped: %w", err)
 	}
 
