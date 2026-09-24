@@ -1,11 +1,12 @@
 package embedded
 
 // The providers' Responses clients, built as unreal-agent-runner v0.1.1
-// builds them (harness/llm/clients/*/client.go, MIT License, Copyright (c)
-// 2026 Unreal Labs) but over an *http.Client uah makes, whose transport
-// sees each attempt of a model request (reconnect.go). The runner's
-// constructors make their own and take no transport. The request each
-// client sends is the runner's (TestClients_MatchTheRunner).
+// builds them (harness/llm/clients/*/client.go and the HTTP client of
+// harness/primitives/remote.go, MIT License, Copyright (c) 2026 Unreal
+// Labs; see THIRD_PARTY_NOTICES.md) but over an *http.Client uah makes,
+// whose transport sees each attempt of a model request (reconnect.go). The
+// runner's constructors make their own and take no transport. The request
+// each client sends is the runner's (TestClients_MatchTheRunner).
 
 import (
 	"context"
