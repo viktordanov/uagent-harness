@@ -193,7 +193,7 @@ func TestAgents_ToolsWhenOff(t *testing.T) {
 		fakellm.Reply{Calls: []fakellm.Call{call("wait_agent", `{"targets":["x"]}`)}},
 		fakellm.Reply{Text: "done"},
 	)
-	e.mgr = agents.New(agents.Config{SessionsDir: e.cfg.SessionsDir})
+	e.mgr = agents.New(agents.Config{})
 	s, ev := e.open(t, false)
 
 	_, err := s.Submit("wait")

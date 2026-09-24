@@ -8,8 +8,8 @@ import (
 	"sync"
 
 	"github.com/viktordanov/uagent-harness/internal/engine"
-	"github.com/viktordanov/uagent-harness/internal/hooks"
 	"github.com/viktordanov/uagent-harness/internal/instructions"
+	"github.com/viktordanov/uagent-harness/internal/mcp"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
 
@@ -31,14 +31,6 @@ type Config struct {
 	Model  string
 	Effort string
 	Roles  []Role
-	// SessionsDir holds the children's sidecars and records.
-	SessionsDir string
-	// Base carries what a run's request does not: the service tier, the
-	// sandbox mode for display, and the context window.
-	Base session.Settings
-	// Hooks, when set, runs SubagentStop hooks when a child finishes, and
-	// the children's PostToolUse hooks.
-	Hooks *hooks.Runner
 }
 
 // Manager implements engine.Subagents. Children are ordinary sessions on the
@@ -46,8 +38,11 @@ type Config struct {
 type Manager struct {
 	cfg Config
 
-	mu       sync.Mutex
-	eng      engine.Engine
+	mu  sync.Mutex
+	eng engine.Engine
+	// tmpl is how the process opens its sessions; children open the same
+	// way (see childOptions).
+	tmpl     session.Options
 	parents  map[string]engine.AgentParent
 	children map[string]*child
 	// changed is closed and replaced whenever a child's status changes.
@@ -68,16 +63,35 @@ func New(cfg Config) *Manager {
 	}
 }
 
-// Bind sets the engine children run on: the parent's.
-func (m *Manager) Bind(eng engine.Engine) {
+// Bind sets the engine children run on, the parent's, and the options the
+// process opens its sessions with; children open with the same, less what
+// makes them children (see childOptions).
+func (m *Manager) Bind(eng engine.Engine, template session.Options) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.eng = childEngine{eng}
+	m.eng, m.tmpl = childEngine{eng}, template
 }
 
-// childEngine hides the engine's Close, so closing a child leaves the
-// shared MCP servers running.
+// template is the process's session options.
+func (m *Manager) template() session.Options {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	return m.tmpl
+}
+
+// childEngine is the parent's engine without Close, so closing a child
+// leaves the shared engine and its MCP servers running.
 type childEngine struct{ engine.Engine }
+
+// MCPServers reports the shared engine's MCP servers.
+func (e childEngine) MCPServers() []mcp.ServerStatus {
+	if l, ok := e.Engine.(engine.MCPLister); ok {
+		return l.MCPServers()
+	}
+
+	return nil
+}
 
 // Attach records the parent's run and offers the tools when the session
 // may spawn: its depth is below MaxDepth.
@@ -101,7 +115,7 @@ func (m *Manager) depth(id string) int {
 		parent := ""
 		if c, ok := m.children[id]; ok {
 			parent = c.parent
-		} else if sc, found, err := session.ReadSidecar(m.cfg.SessionsDir, id); err == nil && found && sc.Source == session.SourceSubagent {
+		} else if sc, found, err := session.ReadSidecar(m.tmpl.SessionsDir, id); err == nil && found && sc.Source == session.SourceSubagent {
 			parent = sc.Parent
 		}
 		if parent == "" {
@@ -152,21 +166,26 @@ func (m *Manager) role(name string) (Role, error) {
 	return m.cfg.Roles[i], nil
 }
 
-// settings are a child's: the parent run's, then the configured defaults,
-// the role's, and the call's model and effort, and the role's instructions
-// after the host prompt.
-func (m *Manager) settings(p engine.AgentParent, role Role, model, effort string) session.Settings {
-	r := p.Request
-	s := m.cfg.Base
-	s.Provider, s.Workspace, s.BaseURL, s.Timeout, s.AllowDotenv = r.Provider, r.Workspace, r.BaseURL, r.Timeout, r.AllowDotenv
-	s.Model = first(model, role.Model, m.cfg.Model, r.Model)
-	s.Effort = first(effort, role.Effort, m.cfg.Effort, r.Effort)
-	s.SystemPrompt = r.SystemPrompt
+// childOptions are a child's session options: the process's, as the root
+// session opens with, and the parent run's settings. Only what makes it a
+// child differs: its ID, its sidecar's source and parent, approvals asked
+// through the parent, and the model, effort, and instructions the spawn
+// call, the role, and the configured defaults override, in that order.
+// Hooks are the same, in a runner of its own. It holds m.mu.
+func (m *Manager) childOptions(p engine.AgentParent, c *child, role Role, rec record, resumed bool) session.Options {
+	opts := m.tmpl
+	opts.ID, opts.Resumed, opts.Source, opts.Parent = c.id, resumed, session.SourceSubagent, c.parent
+	opts.Ask, opts.Hooks = m.askFor(c), opts.Hooks.Clone()
+	s := opts.Settings.WithRequest(p.Request)
+	s.ServiceTier = p.ServiceTier
+	s.Model = first(rec.Model, role.Model, m.cfg.Model, s.Model)
+	s.Effort = first(rec.Effort, role.Effort, m.cfg.Effort, s.Effort)
 	if role.DeveloperInstructions != "" {
 		s.SystemPrompt = first(s.SystemPrompt, instructions.RunnerHostPrompt) + "\n\n" + strings.TrimSpace(role.DeveloperInstructions)
 	}
+	opts.Settings = s
 
-	return s
+	return opts
 }
 
 // subtree is c and its open descendants, parents first. It holds m.mu.

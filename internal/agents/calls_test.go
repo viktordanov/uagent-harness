@@ -14,7 +14,7 @@ import (
 // TestCall_Errors checks the tools' argument errors and unknown agents,
 // with Codex's messages.
 func TestCall_Errors(t *testing.T) {
-	m := agents.New(agents.Config{SessionsDir: t.TempDir()})
+	m := agents.New(agents.Config{})
 	for _, tc := range []struct{ tool, args, want string }{
 		{"spawn_agent", `{"message":"  "}`, "empty message can't be sent to an agent"},
 		{"spawn_agent", `{"message":"hi"}`, "subagents are not available in this session"},

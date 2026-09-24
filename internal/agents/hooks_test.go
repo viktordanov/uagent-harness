@@ -37,11 +37,12 @@ exit 2
 		{Event: hooks.PostToolUse, Matcher: "Bash", Command: "cat >/dev/null; echo Bash >> " + tools, Source: hooks.SourceUser},
 	}, nil, "")
 	require.NoError(t, err)
-	e := newEnv(t, agents.Config{Hooks: runner},
+	e := newEnv(t, agents.Config{},
 		fakellm.Reply{Calls: []fakellm.Call{call("spawn_agent", `{"message":"CHILD-S review"}`)}},
 		callWith("wait_agent", `{"targets":["ID"]}`),
 		fakellm.Reply{Text: "done"},
 	)
+	e.hooks = runner
 	e.llm.Route("CHILD-S", fakellm.Reply{Commands: []string{"echo looked"}}, fakellm.Reply{Text: "first answer"}, fakellm.Reply{Text: "answer with tests"})
 	s, ev := e.open(t, false)
 
@@ -71,7 +72,7 @@ exit 2
 	assert.Equal(t, "default", first.AgentType)
 	assert.Equal(t, "first answer", first.LastAssistantMessage)
 	assert.False(t, first.StopHookActive)
-	assert.Equal(t, filepath.Join(e.cfg.SessionsDir, childID+".session.jsonl"), first.AgentTranscriptPath)
+	assert.Equal(t, filepath.Join(e.sessionsDir(), childID+".session.jsonl"), first.AgentTranscriptPath)
 	assert.Contains(t, lines[1], `"stop_hook_active":true`)
 
 	ran, err := os.ReadFile(tools)

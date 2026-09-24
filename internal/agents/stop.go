@@ -12,10 +12,11 @@ import (
 // forever, as the session does for Stop hooks.
 const maxStopContinuations = 5
 
-// stopCheck is a completed child's SubagentStop check: the inputs it had
-// when it finished, and the status it reports unless a hook keeps it going.
+// stopCheck is a completed child's SubagentStop check: how many messages
+// it had when it finished, and the status it reports unless a hook keeps it
+// going.
 type stopCheck struct {
-	inputs int
+	gen    int
 	status Status
 }
 
@@ -26,10 +27,10 @@ func (m *Manager) checkStop(c *child, check stopCheck) {
 	m.mu.Lock()
 	in := m.stopInput(c, check.status.Message)
 	m.mu.Unlock()
-	d := m.cfg.Hooks.Run(context.Background(), in)
+	d := m.template().Hooks.Run(context.Background(), in)
 
 	m.mu.Lock()
-	if c.closed || c.inputs != check.inputs {
+	if c.closed || c.gen != check.gen {
 		m.mu.Unlock()
 
 		return // closed, or the parent sent a message meanwhile
@@ -58,9 +59,9 @@ func (m *Manager) stopInput(c *child, answer string) hooks.Input {
 		StopHookActive: c.stopStreak > 0, AgentID: c.id, AgentType: first(c.role, "default"),
 		LastAssistantMessage: answer,
 	}
-	if m.cfg.SessionsDir != "" {
-		in.TranscriptPath = filepath.Join(m.cfg.SessionsDir, c.parent+".session.jsonl")
-		in.AgentTranscriptPath = filepath.Join(m.cfg.SessionsDir, c.id+".session.jsonl")
+	if dir := m.tmpl.SessionsDir; dir != "" {
+		in.TranscriptPath = filepath.Join(dir, c.parent+".session.jsonl")
+		in.AgentTranscriptPath = filepath.Join(dir, c.id+".session.jsonl")
 	}
 
 	return in

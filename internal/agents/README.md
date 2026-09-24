@@ -8,14 +8,15 @@ Subagents are child sessions that a session's agent starts, messages, waits for,
 This README describes how the package works for someone changing it. The root README describes the feature for users, and [the design record](../../docs/design/subagents.md) keeps the research, the decisions, and the validation findings.
 
 1. [The seam](#the-seam)
-2. [A child's lifecycle](#a-childs-lifecycle)
-3. [The tools](#the-tools)
-4. [Approvals](#approvals)
-5. [Events and hooks](#events-and-hooks)
-6. [Persistence and resume](#persistence-and-resume)
-7. [Limits](#limits)
-8. [Roles](#roles)
-9. [Extending](#extending)
+2. [Parity with the root session](#parity-with-the-root-session)
+3. [A child's lifecycle](#a-childs-lifecycle)
+4. [The tools](#the-tools)
+5. [Approvals](#approvals)
+6. [Events and hooks](#events-and-hooks)
+7. [Persistence and resume](#persistence-and-resume)
+8. [Limits](#limits)
+9. [Roles](#roles)
+10. [Extending](#extending)
 <!-- /memoria:section -->
 
 <!-- memoria:section id="seam" files="manager.go tools.go" -->
@@ -28,7 +29,24 @@ This README describes how the package works for someone changing it. The root RE
 - `Call` runs one tool call with its JSON arguments and returns the JSON result for the model. The engine runs each call as a remote job (`uah.agent` v1) on its own goroutine, so a long `wait_agent` never holds up the parent's coordinator. The call's context ends when the coordinator cancels the call or the run stops.
 - `Interrupt` runs when the user interrupts the parent's run.
 
-The engine knows no tool name, schema, or result, and the session knows children only as sessions with `source: "subagent"` and a `parent` in their sidecar. `app.Setup` builds the manager for the embedded engine, even when subagents are off, and binds it to that engine with `Bind`. `Close` closes every child; the engine calls it when a session on it closes, and the manager stays usable for the engine's next session.
+The engine knows no tool name, schema, or result, and the session knows children only as sessions with `source: "subagent"` and a `parent` in their sidecar. `app.Setup` builds the manager for the embedded engine, even when subagents are off, and binds it with `Bind` to that engine and to the session options it returns, the ones the root session opens with. `Close` closes every child; the engine calls it when a session on it closes, and the manager stays usable for the engine's next session.
+<!-- /memoria:section -->
+
+<!-- memoria:section id="parity" files="manager.go ops.go" -->
+## Parity with the root session
+
+A subagent is the root agent in every way except what makes it a child. `childOptions` starts from the options `app.Setup` returned for the root session and opens the child with `session.Open` on the same engine, so the child gets the same instructions and skills, sandbox, rules, approvals policy and auto-review, hooks, MCP servers, compaction, context meter, tool output limits, index, and sidecar. Its settings are the parent run's: `Settings.WithRequest` inverts the request the parent's run started with, and the run's service tier follows.
+
+The only differences:
+
+1. its session ID, and its sidecar's `source: "subagent"` and `parent`;
+2. the spawn tools, offered only below `max_depth`;
+3. approvals, asked through the parent session;
+4. the model, effort, and instructions a role, the spawn call, or `[agents]` defaults set;
+5. a hook runner of its own with the same hooks, so hook results stay with the child's session;
+6. its engine handle, which does not close the shared engine when the child closes.
+
+`TestSetup_SubagentParity` (in `internal/app`) and `TestParity_ChildOptions` pin this: a child's model request has the root's system prompt, model, effort, service tier, and tools with the same schemas, less the spawn tools, and its options equal the root's but for the differences above. A capability added to the root session reaches children without a change here.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="lifecycle" files="child.go ops.go status.go" -->
@@ -36,9 +54,9 @@ The engine knows no tool name, schema, or result, and the session knows children
 
 A child is a `session.Session` on the parent's engine. The engine is wrapped so that closing a child leaves the shared MCP servers running. The manager's lock guards every child's fields.
 
-1. **Start.** `start` checks the limit, registers the child, and opens its session with the parent run's provider, model, effort, workspace, and host prompt. The configured defaults, the role, and the spawn call override the model and effort in that order, and a role's `developer_instructions` follow the host prompt. A goroutine, `watch`, then follows the session's events until it closes.
+1. **Start.** `start` checks the limit, registers the child, and opens its session with `childOptions` (see [Parity](#parity-with-the-root-session)). The spawn call, the role, and the configured defaults override the model and effort in that order, and a role's `developer_instructions` follow the host prompt. A goroutine, `watch`, then follows the session's events until it closes.
 2. **Running.** `submit` sends a message and marks the child `running`. The session queues the message while a run is live, so a child reads a second message after its current run.
-3. **Finished.** When the session reports `Idle` and has accepted every message sent (`queued` catches up with `inputs`, so an `Idle` from before a message does not count), the child is `completed` with the last run's answer, `interrupted`, or `errored`. With `SubagentStop` hooks, a completed child first runs them (see [Events and hooks](#events-and-hooks)).
+3. **Finished.** When the session reports `Idle` and has queued every message sent (tracked by message ID, so an `Idle` from before a message, or a message the session added itself, such as a Stop hook's, does not count), the child is `completed` with the last run's answer, `interrupted`, or `errored`. With `SubagentStop` hooks, a completed child first runs them (see [Events and hooks](#events-and-hooks)).
 4. **Closed.** `close_agent`, closing the parent, or `Close` closes the child's session and its open descendants. The watcher then reports `shutdown`.
 
 A status encodes as Codex's `AgentStatus`: a string (`pending_init`, `running`, `interrupted`, `shutdown`, `not_found`) or `{"completed": message}` and `{"errored": message}`. Every status but `pending_init` and `running` is final. Unlike in Codex, `interrupted` is final, because only the parent's `send_input` starts such a child again.
@@ -89,7 +107,7 @@ Waiters sleep on a channel that is closed and replaced at every change.
 Hooks come from `Config.Hooks`, the session's runner:
 
 - **SubagentStop** runs when a child completes, with Claude Code's payload: the parent's `session_id` and `transcript_path`, and the child's `agent_id`, `agent_type` (its role, or `default`), `agent_transcript_path`, and `last_assistant_message`. A block with a reason sends the reason to the child as its next message, at most 5 times in a row (`stop_hook_active` is true after the first). The child stays `running` while the hooks run; a message from the parent meanwhile makes their decision moot.
-- **PreToolUse** runs on the engine for every session, children included. **PostToolUse** runs in the child's session, which gets a runner with only those hooks (`hooks.Runner.Only`). SessionStart, UserPromptSubmit, Stop, and SessionEnd do not run for children.
+- **Every other hook** runs for a child as for the root session: PreToolUse on the engine, and SessionStart, UserPromptSubmit, PostToolUse, Stop, PreCompact, and SessionEnd in the child's session, which has its own runner (`hooks.Runner.Clone`). PermissionRequest runs in the parent session, where the child's approvals go.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="resume" files="record.go ops.go" -->

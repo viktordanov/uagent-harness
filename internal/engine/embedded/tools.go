@@ -72,7 +72,7 @@ func (w *wiring) withAgents(registry tool.Registry, req core.Request) tool.Regis
 	if emit == nil {
 		emit = func(core.Event) {}
 	}
-	offered := a.Attach(engine.AgentParent{SessionID: req.SessionID, Request: req, Ask: w.askAnytime, Emit: emit})
+	offered := a.Attach(engine.AgentParent{SessionID: req.SessionID, Request: req, ServiceTier: w.tier, Ask: w.askAnytime, Emit: emit})
 
 	return withAgents(registry, offered, a.ToolNames(), req.DisallowedTools)
 }

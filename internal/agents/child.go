@@ -28,9 +28,12 @@ type child struct {
 	// started is when the child's current work began.
 	started time.Time
 	closed  bool
-	// inputs counts the messages sent and queued the ones the session has
-	// accepted, so an Idle from before a message does not end its work.
-	inputs, queued int
+	// gen counts the messages sent. sending are the ones being submitted,
+	// pending the ones submitted that the session has not queued yet, and
+	// early the ones it queued before their submit returned, so an Idle from
+	// before a message does not end the child's work.
+	gen, sending   int
+	pending, early map[string]bool
 	// last is the last run's result; failed is a run that did not start.
 	last   *core.Result
 	failed string
@@ -43,7 +46,10 @@ type child struct {
 }
 
 func newChild(id, parent, role, nickname string) *child {
-	c := &child{id: id, parent: parent, role: role, nickname: nickname, started: time.Now(), status: Status{State: engine.AgentRunning}}
+	c := &child{
+		id: id, parent: parent, role: role, nickname: nickname, started: time.Now(), status: Status{State: engine.AgentRunning},
+		pending: map[string]bool{}, early: map[string]bool{},
+	}
 	c.asks, c.cancel = context.WithCancel(context.Background())
 
 	return c
@@ -95,7 +101,8 @@ func (m *Manager) nickname(parentID string, role Role, preferred string) string 
 // marks it running. It returns the message's ID.
 func (m *Manager) submit(c *child, message string, now bool) (string, error) {
 	m.mu.Lock()
-	c.inputs++
+	c.gen++
+	c.sending++
 	if c.status.Final() {
 		c.started = time.Now()
 	}
@@ -108,6 +115,13 @@ func (m *Manager) submit(c *child, message string, now bool) (string, error) {
 		submit = s.SteerNow
 	}
 	in, err := submit(message)
+	m.mu.Lock()
+	c.sending--
+	if err == nil && !c.early[in.ID] {
+		c.pending[in.ID] = true
+	}
+	delete(c.early, in.ID)
+	m.mu.Unlock()
 	if err != nil {
 		return "", fmt.Errorf("failed to send the agent the message: %w", err)
 	}
@@ -141,7 +155,13 @@ func (m *Manager) watch(c *child) {
 func (m *Manager) observe(c *child, e core.Event) (bool, *stopCheck) {
 	switch e := e.(type) {
 	case session.InputQueued:
-		c.queued++
+		if c.pending[e.Input.ID] {
+			delete(c.pending, e.Input.ID)
+		} else {
+			c.early[e.Input.ID] = true // or the session's own, such as a Stop hook's
+		}
+	case session.InputFailed:
+		c.failed = e.Reason
 	case core.RunFinished:
 		r := e.Result
 		c.last, c.failed = &r, ""
@@ -150,13 +170,14 @@ func (m *Manager) observe(c *child, e core.Event) (bool, *stopCheck) {
 			c.failed = e.Message
 		}
 	case session.Idle:
-		if c.queued < c.inputs || c.closed {
+		if c.sending > 0 || len(c.pending) > 0 || c.closed {
 			return false, nil
 		}
 		status := c.final()
 		c.last, c.failed = nil, ""
-		if status.State == engine.AgentCompleted && m.cfg.Hooks.Has(hooks.SubagentStop, "") {
-			return false, &stopCheck{inputs: c.inputs, status: status}
+		clear(c.early)
+		if status.State == engine.AgentCompleted && m.tmpl.Hooks.Has(hooks.SubagentStop, "") {
+			return false, &stopCheck{gen: c.gen, status: status}
 		}
 		c.status, c.stopStreak = status, 0
 

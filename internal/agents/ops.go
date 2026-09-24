@@ -9,7 +9,6 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/viktordanov/uagent-harness/internal/engine"
-	"github.com/viktordanov/uagent-harness/internal/hooks"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
 
@@ -63,14 +62,11 @@ func (m *Manager) start(parentID, id string, role Role, rec record, resumed bool
 		c.status = Status{State: engine.AgentPendingInit}
 	}
 	m.children[id] = c
-	eng := m.eng
+	eng, opts := m.eng, m.childOptions(parent, c, role, rec, resumed)
 	m.mu.Unlock()
 
 	// Children outlive the call that started them; Close stops them.
-	s, err := session.Open(context.Background(), eng, session.Options{ //nolint:contextcheck // children outlive the spawning call
-		ID: id, Resumed: resumed, Settings: m.settings(parent, role, rec.Model, rec.Effort), SessionsDir: m.cfg.SessionsDir,
-		Source: session.SourceSubagent, Parent: parentID, Ask: m.askFor(c), Hooks: m.cfg.Hooks.Only(hooks.PostToolUse),
-	})
+	s, err := session.Open(context.Background(), eng, opts) //nolint:contextcheck // children outlive the spawning call
 	if err != nil {
 		m.mu.Lock()
 		delete(m.children, id)
@@ -84,7 +80,7 @@ func (m *Manager) start(parentID, id string, role Role, rec record, resumed bool
 		return nil, errors.New("the agent was closed before it started")
 	}
 	rec.Nickname = c.nickname
-	_ = writeRecord(m.cfg.SessionsDir, id, rec) // only resume_agent's nickname and role depend on it
+	_ = writeRecord(opts.SessionsDir, id, rec) // only resume_agent's nickname and role depend on it
 	go m.watch(c)
 	m.notify(c)
 
@@ -116,7 +112,7 @@ func (m *Manager) find(parentID, id string) (*child, bool) {
 // notFound says a child is unknown, and how to reach one from an earlier
 // process.
 func (m *Manager) notFound(parentID, id string) error {
-	if sc, found, err := session.ReadSidecar(m.cfg.SessionsDir, id); id != "" && err == nil && found && sc.Parent == parentID {
+	if sc, found, err := session.ReadSidecar(m.template().SessionsDir, id); id != "" && err == nil && found && sc.Parent == parentID {
 		return fmt.Errorf("agent with id %s is not loaded; resume it with resume_agent first", id)
 	}
 
@@ -231,11 +227,12 @@ func (m *Manager) resume(_ context.Context, parentID, id string) (Status, error)
 		return status, nil
 	}
 	m.mu.Unlock()
-	sc, found, err := session.ReadSidecar(m.cfg.SessionsDir, id)
+	dir := m.template().SessionsDir
+	sc, found, err := session.ReadSidecar(dir, id)
 	if id == "" || err != nil || !found || sc.Source != session.SourceSubagent || sc.Parent != parentID {
 		return Status{State: engine.AgentNotFound}, fmt.Errorf("agent with id %s not found", id)
 	}
-	rec, _ := readRecord(m.cfg.SessionsDir, id)
+	rec, _ := readRecord(dir, id)
 	role, err := m.role(rec.Role)
 	if err != nil {
 		role = Role{} // the role file is gone: the default agent with the child's model
