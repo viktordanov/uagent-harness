@@ -32,6 +32,9 @@ type Config struct {
 	Model  string
 	Effort string
 	Roles  []Role
+	// Models are the models spawn_agent may name, as Codex checks them
+	// against its catalog; empty accepts any (see CodexModels).
+	Models []Model
 }
 
 // Manager implements engine.Subagents. Children are ordinary sessions on the

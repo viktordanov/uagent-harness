@@ -23,10 +23,14 @@ func (m *Manager) spawn(ctx context.Context, call engine.AgentCall, a spawnArgs)
 	if err := m.checkDepth(parentID); err != nil {
 		return spawnResult{}, err
 	}
+	if err := m.checkModel(a.Model); err != nil {
+		return spawnResult{}, err
+	}
 	role, rec, err := m.spawnRole(parentID, a)
 	if err != nil {
 		return spawnResult{}, err
 	}
+	rec.CallID, rec.Task = call.CallID, a.Message
 	c, err := m.start(parentID, session.NewSubagentID(), role, rec, false) //nolint:contextcheck // children outlive the call that started them
 	if err != nil {
 		return spawnResult{}, err
@@ -145,12 +149,13 @@ func (m *Manager) start(parentID, id string, role Role, rec record, resumed bool
 		return nil, fmt.Errorf("agent limit reached: %d agents are open; close one with close_agent first", open)
 	}
 	c := newChild(id, parentID, role.Name, m.nickname(parentID, role, rec.Nickname))
-	c.forked = rec.Fork
+	c.forked, c.callID, c.task = rec.Fork, rec.CallID, rec.Task
 	if resumed {
 		c.status = Status{State: engine.AgentPendingInit}
 	}
 	m.children[id] = c
 	eng, opts, key := m.eng, m.childOptions(parent, c, role, rec, resumed), m.treeRoot(parentID)
+	c.model, c.effort = opts.Settings.Model, opts.Settings.Effort
 	m.mu.Unlock()
 	if f, ok := m.forker(); ok {
 		f.SetCacheKey(id, key) // as Codex keys every agent by its tree's session

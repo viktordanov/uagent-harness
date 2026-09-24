@@ -89,15 +89,29 @@ const (
 	AgentNotFound    = "not_found"
 )
 
-// AgentUpdated reports a child's progress in its parent's stream.
+// AgentUpdated reports a child's progress in its parent's stream. Every
+// update carries the whole picture, so the latest one is enough to draw
+// the child.
 type AgentUpdated struct {
 	At       time.Time
 	ID       string
 	Nickname string
 	Role     string
 	State    string
+	// Message says why an errored child failed, in one line: the
+	// provider's message when it gave one.
+	Message string
 	// Started is when the child's current work began.
 	Started time.Time
+	// CallID is the parent's spawn_agent call that started the child
+	// ("" for a resumed child), Task that call's message, and Model and
+	// Effort the child's settings as it runs.
+	CallID string
+	Task   string
+	Model  string
+	Effort string
+	// Forked is a child started with fork_context.
+	Forked bool
 }
 
 // AgentActivity is one of a child's tool events (core.ToolCalled,
