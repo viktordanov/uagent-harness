@@ -1,0 +1,24 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+• MCP servers
+  • docs: ready · stdio · 2 tools
+  • tracker: needs login · streamable_http
+      run `uah mcp login tracker`, then /new or restart uah
+  • broken: failed · stdio
+      failed to connect: exec: "missing": not found
+  • off: disabled · stdio
+  /mcp verbose (or ctrl+t) lists each tool and its approval mode
+────────────────────────────────────────────────────────────────────────────────────────────────────
+›
+ gpt-6-sol · high · /workspace/proj                                     ctrl+t details · / commands

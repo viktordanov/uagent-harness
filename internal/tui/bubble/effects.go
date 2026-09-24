@@ -93,7 +93,7 @@ func (m Model) run(e state.Effect) tea.Cmd {
 			}
 			servers, ok := sess.MCPServers()
 
-			return state.MCPListed{Servers: servers, Supported: ok}
+			return state.MCPListed{Servers: servers, Supported: ok, Verbose: e.Verbose}
 		}
 	case state.EffContext:
 		return func() tea.Msg {

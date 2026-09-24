@@ -64,6 +64,11 @@ type Config struct {
 	Hooks map[string][]Hook `toml:"hooks"`
 	// MCPServers are keyed by server name, in Codex's format.
 	MCPServers map[string]mcp.ServerConfig `toml:"mcp_servers"`
+	// Codex's MCP OAuth keys: where logins are kept (auto, file, or
+	// keyring) and the callback `uah mcp login` listens on.
+	MCPOAuthCredentialsStore string `toml:"mcp_oauth_credentials_store"`
+	MCPOAuthCallbackPort     int    `toml:"mcp_oauth_callback_port"`
+	MCPOAuthCallbackURL      string `toml:"mcp_oauth_callback_url"`
 	// Agents configures subagents, as Codex's [agents].
 	Agents Agents `toml:"agents"`
 

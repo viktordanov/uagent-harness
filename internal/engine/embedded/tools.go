@@ -111,7 +111,7 @@ func (w *wiring) mcpTools(ctx context.Context) ([]mcp.Tool, error) {
 		return nil, fmt.Errorf("failed to start MCP servers: %w", err)
 	}
 	for _, s := range m.Status() { //nolint:contextcheck // started above; servers outlive the run
-		if s.State == mcp.StateFailed {
+		if s.State == mcp.StateFailed || s.State == mcp.StateNeedsLogin {
 			_, _ = fmt.Fprintf(w.l.Stderr, "mcp> %s: %s\n", s.Name, s.Error)
 		}
 	}

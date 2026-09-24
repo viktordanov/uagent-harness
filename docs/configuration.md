@@ -20,6 +20,7 @@ The configuration directory is `$XDG_CONFIG_HOME/uagent`, or `~/.config/uagent` 
 | `<config dir>/rules/*.rules` | The user's command rules (Starlark `prefix_rule`); "don't ask again" appends to `default.rules` | Always |
 | `<workspace>/.uagent/rules/*.rules` | The project's command rules | The workspace is trusted, with or without a project file |
 | `<config dir>/trusted-hooks.json` | The project hook commands `uah hooks trust` approved, by SHA-256 | Written by uah; do not edit |
+| `<config dir>/mcp-credentials.json` | MCP OAuth logins from `uah mcp login`, readable only by you (0600) | Written by uah when `mcp_oauth_credentials_store` is `file`, or `auto` without a usable OS keyring; do not edit |
 | `<config dir>/AGENTS.md`, `$CODEX_HOME/AGENTS.md` | User instructions; see [Instructions and skills](../README.md#instructions-and-skills) | Unless `--no-instructions` or `[instructions] enabled = false` |
 | `<config dir>/skills`, `$CODEX_HOME/skills`, `.agents/skills` | Skills; see [Instructions and skills](../README.md#instructions-and-skills) | Embedded engine |
 
@@ -177,6 +178,27 @@ Each `[mcp_servers.<name>]` table is one server, in Codex's format, so a Codex s
 
 `[mcp_servers.<name>.tools.<tool>]` sets one tool's `approval_mode`: `auto` (ask unless the annotations say read-only, or non-destructive and closed-world), `prompt` (always ask), `writes` (ask unless read-only), or `approve` (never ask).
 
+OAuth for streamable HTTP servers, with Codex's keys. A server that answers 401 and advertises OAuth needs `uah mcp login <name>`; until then it shows "needs login" in `/mcp` and `uah doctor`. A server with `bearer_token_env_var` or an `Authorization` header never uses OAuth.
+
+| Key | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `auth` | string | `oauth` | How uah authorizes; only `oauth` is supported (Codex's `chatgpt` and `ema_auth` need a Codex account) |
+| `scopes` | list of strings | the scopes the server advertises | The scopes `uah mcp login` asks for; `--scopes` replaces them |
+| `oauth_resource` | string | the server's own | The RFC 8707 resource sent with the authorization and token requests |
+| `oauth.client_id` | string | none: uah registers a client dynamically | A client registered with the authorization server ahead of time, in `[mcp_servers.<name>.oauth]` |
+| `oauth.callback_url` | string | `http://127.0.0.1:<port>/callback` | The redirect URI sent to the server; the listener still binds 127.0.0.1. Overrides `mcp_oauth_callback_url` |
+| `oauth.callback_port` | integer | a port the OS picks | The listener's port. Overrides `mcp_oauth_callback_port` |
+
+Top-level OAuth keys, merged as override:
+
+| Key | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `mcp_oauth_credentials_store` | string | `auto` | Where logins are kept: `keyring` (the OS keyring, service "uah MCP Credentials"), `file` (`<config dir>/mcp-credentials.json`, 0600), or `auto` (the keyring, else the file, as Codex does) |
+| `mcp_oauth_callback_port` | integer | a port the OS picks | The port `uah mcp login` listens on for the browser's redirect |
+| `mcp_oauth_callback_url` | string | `http://127.0.0.1:<port>/callback` | The redirect URI sent to the authorization server, for a callback that reaches 127.0.0.1 some other way |
+
+Codex keys uah does not support are errors: `bearer_token`, `http_headers_helper`, `environment_id`, `omit_tools_from`, `oauth.authorization_server_issuer`, `tools.<tool>.output_token_limit`, `env_vars` entries written as tables, and the top-level `tool_output_token_limit`.
+
 ### Subagents
 
 `[agents]` (embedded engine; [README](../README.md#subagents)):
@@ -223,6 +245,7 @@ Roles are Codex role files in `~/.config/uagent/agents/*.toml` and, for a truste
 | `UAGENT_RUNNER` | `--runner` | none | unreal-agent-runner, for the process engine |
 | `XDG_CONFIG_HOME` | none | none | The parent of the configuration directory |
 | `CODEX_HOME` | none | none | Codex's directory (`~/.codex`) for `AGENTS.md` and skills |
+| `BROWSER` | none | none | The program `uah mcp login` opens the authorization URL with, instead of the system's opener |
 
 ## uah config
 
@@ -315,6 +338,10 @@ http_headers = { "X-Team" = "core" }
 env_http_headers = { "X-Org" = "TRACKER_ORG" }
 enabled_tools = ["search", "get_issue"]
 startup_timeout_ms = 20000
+
+[mcp_servers.linear]               # streamable HTTP with OAuth: `uah mcp login linear`
+url = "https://mcp.linear.app/mcp"
+scopes = ["read"]
 
 [projects."/Users/me/code/proj"]
 trusted = true                     # apply proj/.uagent/config.toml and its rules

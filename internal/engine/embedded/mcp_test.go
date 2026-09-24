@@ -189,3 +189,35 @@ func TestEmbedded_MCPApproval(t *testing.T) {
 		})
 	}
 }
+
+// A huge result reaches the model bounded by the runner, as other tool
+// output is; arguments that are not a JSON object are refused before
+// anyone is asked to approve them.
+func TestEmbedded_MCPBoundsOutputAndChecksArguments(t *testing.T) {
+	e := newEnv(t,
+		fakellm.Reply{Calls: []fakellm.Call{call("mcp__test__big", `{"n":2000000}`), call("mcp__test__echo", `not json`), call("mcp__test__echo", `[1]`)}},
+		fakellm.Reply{Text: "waiting"},
+		fakellm.Reply{Text: "done"},
+	)
+	m := mcpManager(t, e, mcp.ServerConfig{Tools: map[string]mcp.ToolConfig{"echo": {ApprovalMode: mcp.ApprovalPrompt}}})
+	s, err := session.Open(context.Background(), e.withMCP(m, nil), session.Options{Settings: e.settings(), Interactive: true})
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = s.Close() })
+	ev := &events{t: t, s: s}
+
+	_, err = s.Submit("go")
+	require.NoError(t, err)
+	assert.Equal(t, core.StatusOK, ev.finished().Status)
+	assert.Zero(t, countKind[session.ApprovalRequested](ev.all), "nothing to approve")
+	reqs := e.llm.Requests()
+	var big []string
+	outputs := reqs[len(reqs)-1].ToolOutputs
+	for _, out := range outputs {
+		if strings.Contains(out, "bytes truncated") {
+			big = append(big, out)
+		}
+	}
+	require.Len(t, big, 1, "the result arrived, bounded")
+	assert.Less(t, len(big[0]), 60_000)
+	assert.Equal(t, 2, strings.Count(strings.Join(outputs, "\n"), "the arguments must be a JSON object"))
+}

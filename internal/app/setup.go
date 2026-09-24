@@ -77,7 +77,7 @@ func Setup(ctx context.Context, in Inputs, logOutput io.Writer) (Result, error) 
 	}
 	r.Sandbox = absPolicy(r.Sandbox, in.Workspace)
 	logger := slog.New(slog.NewTextHandler(logOutput, &slog.HandlerOptions{Level: LogLevels[in.LogLevel]}))
-	servers, err := mcpManager(cfg, in.Workspace, logOutput)
+	servers, err := mcpManager(cfg, in.Workspace, logger)
 	if err != nil {
 		return Result{}, err
 	}

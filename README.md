@@ -23,6 +23,7 @@ uah resume --last                                          # resume this directo
 uah --session 3f2a                                         # the TUI, resuming a session with its transcript
 uah --fast                                                 # priority processing (openai and openai-codex)
 uah doctor                                                 # check the runner, credentials, sandbox, config, hooks, MCP servers, and state (--json; exit 1 on a ✗)
+uah mcp list                                               # MCP servers and their auth; add, get, remove, login, logout (see MCP servers)
 
 uah run -C ~/code/proj "Fix the failing test in pkg/foo"   # a session: progress on stderr, answers on stdout
 uah sessions                                               # this directory's sessions, most recent first (--all: every directory)
@@ -131,10 +132,14 @@ Hooks run a command at a session event with Claude Code's contract: the event ar
 
 <!-- /memoria:section -->
 
-<!-- memoria:section id="mcp" files="internal/mcp/config.go internal/mcp/manager.go internal/mcp/names.go internal/mcp/result.go internal/mcp/transport.go internal/app/mcp.go" -->
+<!-- memoria:section id="mcp" files="internal/app/mcp.go internal/app/mcpcli.go cmd/uah/mcp.go cmd/uah/mcpprint.go" -->
 ### MCP servers
 
-On the embedded engine, uah starts the MCP servers in `[mcp_servers]` and offers their tools to the model as `mcp__<server>__<tool>`. The configuration is Codex's, so a Codex `[mcp_servers]` section copies over:
+<!-- memoria:import src="internal/mcp/README.md#summary" -->
+uah runs the MCP servers in `[mcp_servers]` (Codex's format) on the embedded engine through the official Go SDK: stdio and streamable HTTP servers, their tools offered as `mcp__<server>__<tool>` and called without blocking the agent, Codex's approval modes, OAuth logins with `uah mcp login` kept in the OS keyring, and `uah mcp` to list, add, and remove servers.
+<!-- /memoria:import -->
+
+The configuration is Codex's, so a Codex `[mcp_servers]` section copies over:
 
 ```toml
 [mcp_servers.docs]               # stdio
@@ -148,12 +153,29 @@ disabled_tools = ["delete_page"] # or enabled_tools = [...] to allow only those
 [mcp_servers.docs.tools.search]
 approval_mode = "approve"        # auto (default), prompt, writes, approve
 
-[mcp_servers.tracker]            # streamable HTTP
+[mcp_servers.tracker]            # streamable HTTP with a token
 url = "https://mcp.example.com/mcp"
 bearer_token_env_var = "TRACKER_TOKEN"
+
+[mcp_servers.linear]             # streamable HTTP with OAuth: uah mcp login linear
+url = "https://mcp.linear.app/mcp"
 ```
 
-Servers start on the first run (or `/mcp`) and stop when the session closes; a stdio server gets only `HOME`, `PATH`, `USER`, and a few other basic variables unless `env` or `env_vars` adds more, as in Codex. A server that fails to start is left out (`required = true` fails the run instead). A call runs in the background, so the model keeps working while it runs; a call past its timeout, or to a server that crashed, returns an error to the model. Results reach the model as text and images; structured content arrives as JSON text. Disabled tools are hidden. A tool whose `approval_mode` needs approval asks through the same prompt as sandbox escalations, as in Codex: `prompt` always, `writes` unless the tool is read-only, and `auto` (the default) unless its annotations say it is read-only, or both non-destructive and closed-world. Headless runs and `approval_policy = "never"` refuse such calls with a reason. PreToolUse hook matchers see the `mcp__` names. `/mcp` lists each server, its state, and its tools. The process engine does not run MCP servers and says so. Unsupported Codex keys (OAuth, `bearer_token`, `http_headers_helper`) are errors ([plan](docs/design/mcp.md)).
+`uah mcp` manages them as `codex mcp` does:
+
+```sh
+uah mcp list                          # a table per transport, with each server's auth; --json
+uah mcp get docs                      # one server; --json
+uah mcp add docs -- npx -y @example/docs-mcp   # --env KEY=VALUE for stdio
+uah mcp add linear --url https://mcp.linear.app/mcp   # --bearer-token-env-var, --oauth-client-id, --oauth-resource
+uah mcp remove docs
+uah mcp login linear                  # OAuth in the browser; --scopes a,b, --no-browser
+uah mcp logout linear
+```
+
+`add` and `remove` edit the user file (`--config`) and leave its comments and other keys alone. `login` opens the server's authorization page, waits for the redirect on 127.0.0.1, and stores the tokens in the OS keyring, or in `~/.config/uagent/mcp-credentials.json` (0600) without one (`mcp_oauth_credentials_store`); uah refreshes them as they expire.
+
+Servers start on the first run (or `/mcp`) and stop when the session closes; a stdio server gets only `HOME`, `PATH`, `USER`, and a few other basic variables unless `env` or `env_vars` adds more, as in Codex, and its standard error goes to the log. A server that fails to start is left out (`required = true` fails the run instead). A server that asks for OAuth without a login shows "needs login" in `/mcp` and `uah doctor`, with the `uah mcp login` command that fixes it. A call runs in the background, so the model keeps working while it runs; a call past its timeout, or to a server that crashed, returns an error to the model. Results reach the model as text (cut to 40,000 characters) and images; structured content arrives as JSON text. Disabled tools are hidden. A tool whose `approval_mode` needs approval asks through the same prompt as sandbox escalations, as in Codex: `prompt` always, `writes` unless the tool is read-only, and `auto` (the default) unless its annotations say it is read-only, or both non-destructive and closed-world. Headless runs and `approval_policy = "never"` refuse such calls with a reason. PreToolUse hook matchers see the `mcp__` names. `/mcp` shows each server's state, transport, and tool count; `/mcp verbose` (or the detailed view, ctrl+t) adds each tool with its approval mode and description, and an HTTP server's auth. The process engine does not run MCP servers and says so. How it works inside: [internal/mcp](internal/mcp/README.md); decisions and validation: [plan](docs/design/mcp.md).
 
 <!-- /memoria:section -->
 

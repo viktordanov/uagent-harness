@@ -98,14 +98,15 @@ func (t mcpTranslator) Translate(ctx tool.Context, call llm.ToolCall) tool.CallS
 		return tool.ErrorStatus(fmt.Sprintf("tool %q is not available: no running MCP server offers it", t.name), 0)
 	}
 	args := bytes.TrimSpace([]byte(call.Arguments))
-	if reason := t.gate.check(*t.tool, string(args)); reason != "" {
-		return tool.ErrorStatus(reason, 0)
-	}
 	if len(args) == 0 {
 		args = []byte("{}")
 	}
+	// Checked before asking, so the user never approves a call that cannot run.
 	if !json.Valid(args) || args[0] != '{' {
 		return tool.ErrorStatus("the arguments must be a JSON object", 0)
+	}
+	if reason := t.gate.check(*t.tool, string(args)); reason != "" {
+		return tool.ErrorStatus(reason, 0)
 	}
 	data, err := json.Marshal(mcpPlan{Server: t.tool.Server, Tool: t.tool.Tool, Arguments: args})
 	if err != nil {
@@ -119,27 +120,10 @@ func (t mcpTranslator) Translate(ctx tool.Context, call llm.ToolCall) tool.CallS
 	return tool.CallStatus{WaitingFor: []operation.ID{ctx.Submit(spec)}}
 }
 
-// needsApproval applies approval_mode as Codex does: prompt always asks,
-// writes asks unless the tool is read-only, auto follows the tool's
-// annotations, and approve never asks.
-func needsApproval(t mcp.Tool) bool {
-	switch t.Approval {
-	case mcp.ApprovalApprove:
-		return false
-	case mcp.ApprovalAuto:
-		return t.AutoAsks
-	case mcp.ApprovalWrites:
-		return !t.ReadOnly
-	case mcp.ApprovalPrompt:
-	}
-
-	return true
-}
-
 // check returns why the call may not run, or "". It blocks while the user
 // decides, as a sandbox escalation does.
 func (g mcpGate) check(t mcp.Tool, args string) string {
-	if !needsApproval(t) {
+	if !t.NeedsApproval() {
 		return ""
 	}
 	why := fmt.Sprintf("the MCP tool %s needs the user's approval (approval_mode %q)", t.Name, t.Approval)

@@ -37,6 +37,17 @@ env_http_headers = { "X-Team" = "TEAM" }
 enabled = false
 required = true
 startup_timeout_ms = 1500
+
+[mcp_servers.linear]
+url = "https://mcp.linear.app/mcp"
+auth = "oauth"
+scopes = ["read", "write"]
+oauth_resource = "https://mcp.linear.app"
+
+[mcp_servers.linear.oauth]
+client_id = "uah-client"
+callback_url = "https://callback.example.com/cb"
+callback_port = 8765
 `
 
 func TestMCPServers(t *testing.T) {
@@ -68,7 +79,19 @@ func TestMCPServers(t *testing.T) {
 	assert.False(t, tracker.IsEnabled())
 	assert.Equal(t, "TEAM", tracker.EnvHTTPHeaders["X-Team"])
 
-	write(t, user2, "[mcp_servers.x]\ncommand = \"x\"\noauth_resource = \"r\"\n")
+	linear := cfg.MCPServers["linear"]
+	require.NoError(t, linear.Validate())
+	assert.Equal(t, []string{"read", "write"}, linear.Scopes)
+	assert.Equal(t, "uah-client", linear.OAuth.ClientID)
+	assert.Equal(t, 8765, *linear.OAuth.CallbackPort)
+
+	write(t, user2, "[mcp_servers.x]\nurl = \"https://x\"\nhttp_headers_helper = \"h\"\n")
 	_, _, err = config.Load(user2, ws)
 	require.ErrorContains(t, err, "unknown key", "unsupported Codex keys are errors, not ignored")
+
+	write(t, user2, "mcp_oauth_credentials_store = \"file\"\nmcp_oauth_callback_port = 5555\nmcp_oauth_callback_url = \"http://localhost:5555/cb\"\n")
+	cfg, _, err = config.Load(user2, ws)
+	require.NoError(t, err)
+	assert.Equal(t, "file", cfg.MCPOAuthCredentialsStore)
+	assert.Equal(t, 5555, cfg.MCPOAuthCallbackPort)
 }

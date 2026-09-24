@@ -183,7 +183,8 @@ func checkHooks(cfg config.Config, workspace, trustFile string) []Check {
 }
 
 // checkMCP starts the configured MCP servers, each within its startup
-// timeout, and reports how many tools each offers.
+// timeout, and reports how many tools each offers. A server that needs an
+// OAuth login is a warning (a failure when it is required).
 func checkMCP(ctx context.Context, cfg config.Config, engine, workspace string, stderr io.Writer) []Check {
 	if len(cfg.MCPServers) == 0 {
 		return []Check{ok("mcp", "no servers configured")}
@@ -191,27 +192,44 @@ func checkMCP(ctx context.Context, cfg config.Config, engine, workspace string, 
 	if engine == EngineProcess {
 		return []Check{warn("mcp", fmt.Sprintf("%d servers configured; they start only on the embedded engine", len(cfg.MCPServers)), "use --engine embedded")}
 	}
-	m, err := mcpManager(cfg, workspace, stderr)
+	m, err := mcpManager(cfg, workspace, slog.New(slog.NewTextHandler(stderr, nil)))
 	if err != nil {
 		return []Check{fail("mcp", err.Error(), "fix the [mcp_servers] entry")}
 	}
 	defer m.Close()
 	_, _ = m.Tools(ctx) // waits for each server; a failed one is reported below
-	var checks []Check
+	checks := make([]Check, 0, len(cfg.MCPServers))
 	for _, st := range m.Status() { //nolint:contextcheck // Tools already started them
-		name, timeout := "mcp "+st.Name, cfg.MCPServers[st.Name].StartupTimeout()
-		switch st.State {
-		case mcp.StateReady:
-			checks = append(checks, ok(name, fmt.Sprintf("started, %d tools (startup timeout %s)", len(st.Tools), timeout)))
-		case mcp.StateDisabled:
-			checks = append(checks, ok(name, "disabled"))
-		default:
-			checks = append(checks, fail(name, fmt.Sprintf("%s (startup timeout %s)", st.Error, timeout),
-				"check its command or url; a slow server needs a larger startup_timeout_sec"))
-		}
+		checks = append(checks, mcpCheck(st, cfg.MCPServers[st.Name]))
 	}
 
 	return checks
+}
+
+func mcpCheck(st mcp.ServerStatus, c mcp.ServerConfig) Check {
+	name, timeout := "mcp "+st.Name, c.StartupTimeout()
+	switch st.State {
+	case mcp.StateReady:
+		auth := ""
+		if st.Transport == mcp.TransportHTTP {
+			auth = ", auth " + st.Auth.Text()
+		}
+
+		return ok(name, fmt.Sprintf("started, %d tools%s (startup timeout %s)", len(st.Tools), auth, timeout))
+	case mcp.StateDisabled:
+		return ok(name, "disabled")
+	case mcp.StateNeedsLogin:
+		check := warn
+		if c.Required {
+			check = fail
+		}
+
+		return check(name, "needs login", "run `uah mcp login "+st.Name+"`")
+	case mcp.StateStarting, mcp.StateFailed:
+	}
+
+	return fail(name, fmt.Sprintf("%s (startup timeout %s)", st.Error, timeout),
+		"check its command or url; a slow server needs a larger startup_timeout_sec")
 }
 
 // checkState makes sure the state directory is writable and the session

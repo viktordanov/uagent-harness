@@ -1,28 +1,41 @@
 package state
 
 import (
-	"fmt"
-	"strings"
-
 	"github.com/viktordanov/uagent-harness/internal/mcp"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
 
 // EffListMCP asks the session for its MCP servers.
-type EffListMCP struct{}
+type EffListMCP struct {
+	Verbose bool
+}
 
 func (EffListMCP) effect() {}
 
 // MCPListed reports the MCP servers for /mcp. Supported is false when the
-// engine does not run MCP servers.
+// engine does not run MCP servers; Verbose lists every tool.
 type MCPListed struct {
 	Servers   []mcp.ServerStatus
 	Supported bool
+	Verbose   bool
 }
 
-func cmdMCP(*State, string) []Effect { return []Effect{EffListMCP{}} }
+// cmdMCP is Codex's /mcp: a line per server, and with "verbose" its
+// transport, auth, and tools.
+func cmdMCP(s *State, args string) []Effect {
+	switch args {
+	case "":
+		return []Effect{EffListMCP{}}
+	case "verbose":
+		return []Effect{EffListMCP{Verbose: true}}
+	}
+	s.notice(session.LevelWarning, "Usage: /mcp [verbose]")
 
-// showMCP lists each server with its state and tools.
+	return nil
+}
+
+// showMCP adds the MCP panel: a KindMCP item holding the servers, drawn
+// compact unless Final (verbose) or the detailed view is on.
 func (s *State) showMCP(e MCPListed) {
 	switch {
 	case !e.Supported:
@@ -30,25 +43,9 @@ func (s *State) showMCP(e MCPListed) {
 
 		return
 	case len(e.Servers) == 0:
-		s.notice(session.LevelInfo, "no MCP servers are configured; add [mcp_servers.<name>] to the configuration")
+		s.notice(session.LevelInfo, "no MCP servers are configured; add one with `uah mcp add` or [mcp_servers.<name>] in the configuration")
 
 		return
 	}
-	var b strings.Builder
-	for i, srv := range e.Servers {
-		if i > 0 {
-			b.WriteString("\n")
-		}
-		fmt.Fprintf(&b, "%s · %s", srv.Name, srv.State)
-		switch {
-		case srv.Error != "":
-			fmt.Fprintf(&b, ": %s", srv.Error)
-		case srv.State == mcp.StateReady:
-			fmt.Fprintf(&b, " · %d tools", len(srv.Tools))
-			if len(srv.Tools) > 0 {
-				b.WriteString(": " + strings.Join(srv.Tools, ", "))
-			}
-		}
-	}
-	s.notice(session.LevelInfo, b.String())
+	s.put(Item{Kind: KindMCP, Key: s.nextKey("mcp"), MCP: e.Servers, Final: e.Verbose})
 }

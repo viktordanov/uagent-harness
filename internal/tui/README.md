@@ -51,7 +51,7 @@ A frame: `View` calls `render.Screen`. The transcript is virtualized: it renders
 Effects made before the first session opens (the startup prompt, for example) are held and run once it opens.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="items" files="state/items.go state/runevents.go state/agents.go state/contextview.go state/approval.go render/items.go" -->
+<!-- memoria:section id="items" files="state/items.go state/runevents.go state/agents.go state/contextview.go state/approval.go state/mcp.go render/items.go render/mcp.go" -->
 ## Transcript items
 
 The transcript is a list of `Item`s, each with a stable key. The reducer updates an item in place by key and raises its `Version`, so a tool call that finishes after later turns updates its original row.
@@ -66,6 +66,7 @@ The transcript is a list of `Item`s, each with a stable key. The reducer updates
 | `KindNotice` | `notice:<n>` | Session notices, hook results, command output, approvals |
 | `KindAgent` | `agent:<ID>` | `engine.AgentUpdated` (a subagent) |
 | `KindContext` | `context:<n>` | `/context` (`ContextShown`) |
+| `KindMCP` | `mcp:<n>` | `/mcp` (`MCPListed`): one line per server; `Final` asks for the verbose form (`render/mcp.go`) |
 
 The compact view draws one line per tool call, as Codex does; the detailed view (ctrl+t) adds the header, run dividers, turns, and token totals. `LevelDebug` notices show only in the detailed view.
 <!-- /memoria:section -->
@@ -116,7 +117,7 @@ In the picker, ↑/↓ choose, enter resumes, tab switches between this director
 | `/compact` | Compact the context before the next model request (embedded engine) | Yes |
 | `/context` | Break down what fills the context window | Yes |
 | `/status` | Session, settings, totals, and a 12-week activity heatmap | Yes |
-| `/mcp` | MCP servers, their state, and their tools | Yes |
+| `/mcp [verbose]` | MCP servers: state, transport, tool count, and a login hint; `verbose` (or the detailed view) adds each server's command or URL, auth, and tools with their approval mode | Yes |
 | `/agents` | Subagents and their state | Yes |
 | `/sandbox` | The sandbox mode and what commands may do | Yes |
 | `/reasoning` | Show or hide reasoning summaries | Yes |
