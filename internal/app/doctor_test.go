@@ -90,6 +90,12 @@ func TestDoctor_Problems(t *testing.T) {
 			},
 			check: "credentials", status: app.CheckWarn, detail: "expires in",
 		},
+		"a Codex auth file others can read": {
+			prepare: func(t *testing.T, e *harnesstest.Env, _ *app.Inputs, _ *app.DoctorOptions) {
+				require.NoError(t, os.Chmod(filepath.Join(e.CodexHome, "auth.json"), 0o644)) //nolint:gosec // the point of the test
+			},
+			check: "credentials", status: app.CheckFail, detail: "private permissions",
+		},
 		"no API key": {
 			prepare: func(_ *testing.T, _ *harnesstest.Env, in *app.Inputs, opts *app.DoctorOptions) {
 				in.Provider, in.Model = "openai", "gpt-test"
