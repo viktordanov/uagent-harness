@@ -80,6 +80,7 @@ type State struct {
 	Details bool
 	Scroll  int // lines scrolled up from the bottom
 	Picker  Picker
+	Menu    Menu
 	Now     time.Time
 
 	// Status is a transient hint in the footer, such as a pending confirmation.

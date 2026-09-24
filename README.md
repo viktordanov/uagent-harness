@@ -35,7 +35,7 @@ uah run --stream "..."                                     # JSONL: uagent's run
 
 <!-- /memoria:section -->
 
-<!-- memoria:section id="tui" files="internal/tui/state/commands.go internal/tui/state/reduce.go internal/tui/bubble/keys.go internal/tui/bubble/model.go internal/tui/render/items.go internal/tui/render/screen.go internal/tui/render/markdown.go" -->
+<!-- memoria:section id="tui" files="internal/tui/state/commands.go internal/tui/state/reduce.go internal/tui/bubble/keys.go internal/tui/bubble/model.go internal/tui/render/items.go internal/tui/render/screen.go internal/tui/render/markdown.go internal/tui/state/menu.go internal/tui/bubble/files.go" -->
 ### The TUI
 
 The default view is compact, like Codex: your messages, one line per command (`• Ran go test ./...`), and the answers, with Markdown drawn as Codex draws it (highlighted code blocks, `code`, bold, headings, lists). ctrl+t (or `/details`) switches to the detailed view with the header, run dividers, turns with token counts, and session totals; `[tui] details = true` starts there.
@@ -49,6 +49,7 @@ The default view is compact, like Codex: your messages, one line per command (`�
 | ↑ on an empty composer | Take the last queued message back to edit it |
 | alt+, / alt+. | Lower or raise the effort for the next run |
 | ctrl+s, ctrl+n | Session picker, new session |
+| `/` or `@` then tab, ↑/↓, enter, esc | The menu: commands and their values after `/`, workspace files (fuzzy) after `@`. Tab fills the selection in, enter runs a command, esc closes the menu |
 | ctrl+t | Compact or detailed view |
 | ctrl+r | Show or hide reasoning summaries |
 | mouse wheel, shift+↑ / shift+↓, pgup / pgdn | Scroll the transcript; end returns to the bottom. While the TUI reports the mouse, select text with Option (iTerm2, Terminal) or Shift (most others) held |

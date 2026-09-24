@@ -20,6 +20,10 @@ type (
 	EffLoadSessions struct{}
 	// EffLoadActivity counts recent runs per day for /status.
 	EffLoadActivity struct{}
+	// EffLoadFiles lists the workspace's files for "@".
+	EffLoadFiles struct{}
+	// EffSetDraft replaces the composer's text.
+	EffSetDraft struct{ Text string }
 	// EffOpenSession closes the current session and opens another ("" for a new one).
 	EffOpenSession struct{ ID string }
 	// EffQuit closes the session and exits.
@@ -33,5 +37,7 @@ func (EffWithdraw) effect()     {}
 func (EffSetSettings) effect()  {}
 func (EffLoadSessions) effect() {}
 func (EffLoadActivity) effect() {}
+func (EffLoadFiles) effect()    {}
+func (EffSetDraft) effect()     {}
 func (EffOpenSession) effect()  {}
 func (EffQuit) effect()         {}

@@ -6,6 +6,13 @@ import (
 	"github.com/viktordanov/uagent-harness/internal/tui/state"
 )
 
+// Keys named in more than one mode.
+const (
+	keyEnter = "enter"
+	keyEsc   = "esc"
+	keyCtrlN = "ctrl+n"
+)
+
 // onKey maps keys to intents. The keys never change meaning: Enter sends
 // (queueing while the agent works), Ctrl+Enter sends now, Shift+Enter adds a
 // line.
@@ -14,8 +21,22 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.onPickerKey(msg)
 	}
 	draft := m.composer.Value()
+	if m.st.MenuOpen(draft) {
+		switch msg.String() {
+		case "tab":
+			return m.dispatch(state.MenuAccept{Draft: draft})
+		case keyEnter:
+			return m.dispatch(state.MenuEnter{Draft: draft})
+		case "up", "ctrl+p":
+			return m.dispatch(state.MenuMove{Draft: draft, Delta: -1})
+		case "down", keyCtrlN:
+			return m.dispatch(state.MenuMove{Draft: draft, Delta: 1})
+		case keyEsc:
+			return m.dispatch(state.MenuClose{Draft: draft})
+		}
+	}
 	switch msg.String() {
-	case "enter":
+	case keyEnter:
 		if trimmed(draft) == "" {
 			return m, nil
 		}
@@ -29,7 +50,7 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.composer.Reset()
 
 		return m.dispatch(state.Steer{Text: draft})
-	case "esc":
+	case keyEsc:
 		return m.dispatch(state.Esc{})
 	case "ctrl+c":
 		if draft != "" {
@@ -61,7 +82,7 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.dispatch(state.StepEffort{Delta: 1})
 	case "ctrl+s":
 		return m.dispatch(state.OpenPicker{})
-	case "ctrl+n":
+	case keyCtrlN:
 		return m.dispatch(state.Submit{Text: "/new"})
 	case "ctrl+r":
 		return m.dispatch(state.ToggleReasoning{})
@@ -70,6 +91,11 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	}
 	var cmd tea.Cmd
 	m.composer, cmd = m.composer.Update(msg)
+	if next := m.composer.Value(); next != draft {
+		model, effects := m.dispatch(state.DraftChanged{Draft: next})
+
+		return model, tea.Batch(cmd, effects)
+	}
 
 	return m, cmd
 }
@@ -78,9 +104,9 @@ func (m Model) onPickerKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "up", "ctrl+p":
 		return m.dispatch(state.PickerMove{Delta: -1})
-	case "down", "ctrl+n":
+	case "down", keyCtrlN:
 		return m.dispatch(state.PickerMove{Delta: 1})
-	case "enter":
+	case keyEnter:
 		return m.dispatch(state.PickerChoose{})
 	case "ctrl+c":
 		if m.st.SessionID == "" {
@@ -88,7 +114,7 @@ func (m Model) onPickerKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 
 		return m.dispatch(state.PickerCancel{})
-	case "esc":
+	case keyEsc:
 		return m.dispatch(state.PickerCancel{})
 	case "backspace":
 		return m.dispatch(state.PickerType{Text: "\b"})
