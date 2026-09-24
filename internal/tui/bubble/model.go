@@ -127,13 +127,7 @@ func newComposer(theme *render.Styles) textarea.Model {
 	ta.ShowLineNumbers = false
 	// The λ marks the composer's first row only; the rows below it line up
 	// under the text, as Codex's composer does.
-	ta.SetPromptFunc(2, func(p textarea.PromptInfo) string {
-		if p.LineNumber == 0 {
-			return "λ "
-		}
-
-		return "  "
-	})
+	ta.SetPromptFunc(2, firstRowPrompt("λ "))
 	ta.DynamicHeight = true
 	ta.MinHeight = 1
 	ta.MaxHeight = 8
@@ -143,6 +137,28 @@ func newComposer(theme *render.Styles) textarea.Model {
 	ta.Focus()
 
 	return ta
+}
+
+// firstRowPrompt marks the composer's first row only: λ, or ! in shell
+// mode (render.ShellPrompt).
+func firstRowPrompt(mark string) func(textarea.PromptInfo) string {
+	return func(p textarea.PromptInfo) string {
+		if p.LineNumber == 0 {
+			return mark
+		}
+
+		return "  "
+	}
+}
+
+// syncShell draws the composer for shell mode after it changed: its mark
+// and placeholder come from the state, through render.
+func (m *Model) syncShell(was bool) {
+	if m.st.Shell == was {
+		return
+	}
+	m.composer.SetPromptFunc(2, firstRowPrompt(render.ShellPrompt(m.st)))
+	m.composer.Placeholder = render.ShellPlaceholder(m.st)
 }
 
 // onBackground picks the theme for the terminal's background.
@@ -281,7 +297,9 @@ func (m Model) onOpened(msg openedMsg) (tea.Model, tea.Cmd) {
 // dispatch reduces an intent and runs the effects it returns.
 func (m Model) dispatch(intent any) (tea.Model, tea.Cmd) {
 	var effects []state.Effect
+	shell := m.st.Shell
 	m.st, effects = state.Reduce(m.st, intent)
+	m.syncShell(shell)
 	cmds := []tea.Cmd{m.afterChange()}
 	for _, e := range effects {
 		if d, ok := e.(state.EffSetDraft); ok {
@@ -308,7 +326,7 @@ func (m Model) dispatch(intent any) (tea.Model, tea.Cmd) {
 
 // afterChange keeps the clock ticking while anything moves on screen.
 func (m *Model) afterChange() tea.Cmd {
-	moving := m.st.Busy || m.st.Live != nil || m.st.Status != "" || m.st.AgentsRunning()
+	moving := m.st.Busy || m.st.Live != nil || m.st.Status != "" || m.st.AgentsRunning() || m.st.ShellRunning()
 	if v := m.st.View; v != nil {
 		moving = moving || v.St.Busy || v.St.Live != nil // the viewed agent's spinner
 	}
@@ -385,7 +403,7 @@ func trimmed(s string) string { return strings.TrimSpace(s) }
 // needsSession reports whether an effect talks to the open session.
 func needsSession(e state.Effect) bool {
 	switch e.(type) {
-	case state.EffSubmit, state.EffSteer, state.EffSetSettings:
+	case state.EffSubmit, state.EffSteer, state.EffSetSettings, state.EffShell:
 		return true
 	}
 

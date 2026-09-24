@@ -1,0 +1,90 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+╭────────────────────────────────────────────────╮
+│ λ uah                                          │
+│                                                │
+│ model:     gpt-6-sol high   /model to change   │
+│ directory: /workspace/proj                     │
+╰────────────────────────────────────────────────╯
+
+
+
+! go test ./...  ✗ exit 1 · 2.3s
+
+  line 1
+  line 2
+  line 3
+  line 4
+  line 5
+  … 20 more lines
+  line 26
+  line 27
+  line 28
+  line 29
+  line 30
+  · the agent sees this with your next message
+
+
+! git status --short  ✓ · 0.0s
+
+  (no output)
+
+
+! rm -rf build  ✗ not run
+
+  not run: a rule forbids this command.
+
+
+! sleep 5  ⠋ running 0:03
+
+  waiting
+
+
+λ
+
+ gpt-6-sol high · workspace mode · /workspace/proj  ctrl+t details · / commands

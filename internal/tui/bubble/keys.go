@@ -16,6 +16,8 @@ const (
 	keyDown  = "down"
 	keyUp    = "up"
 	keyCtrlP = "ctrl+p"
+
+	keyBackspace = "backspace"
 )
 
 // onKey maps keys to intents. The keys never change meaning: Enter sends
@@ -110,7 +112,15 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) { //nolint:gocycl
 	case "ctrl+s":
 		return m.dispatch(state.OpenPicker{})
 	case keyCtrlN:
-		return m.dispatch(state.Submit{Text: "/new"})
+		return m.dispatch(state.NewSession{})
+	case "!":
+		if draft == "" {
+			return m.dispatch(state.EnterShell{})
+		}
+	case keyBackspace:
+		if draft == "" {
+			return m.dispatch(state.LeaveShell{})
+		}
 	case "ctrl+r":
 		return m.dispatch(state.ToggleReasoning{})
 	case "ctrl+t":
@@ -161,7 +171,7 @@ func (m Model) onPickerKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.dispatch(state.PickerCancel{})
 	case keyEsc:
 		return m.dispatch(state.PickerCancel{})
-	case "backspace":
+	case keyBackspace:
 		return m.dispatch(state.PickerType{Text: "\b"})
 	case "tab":
 		return m.dispatch(state.PickerToggleAll{})
@@ -255,7 +265,7 @@ func (m Model) onConfigKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		if !editing {
 			return m.dispatch(state.ConfigChange{Delta: 1})
 		}
-	case "backspace":
+	case keyBackspace:
 		return m.dispatch(state.ConfigType{Text: "\b"})
 	}
 	if editing && msg.Text != "" {

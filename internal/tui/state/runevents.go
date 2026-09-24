@@ -19,6 +19,9 @@ func (s *State) onRunEvent(ev core.Event) { //nolint:gocyclo // a dispatch switc
 	case core.UserMessage:
 		// The runner's echo delivers a message this session sent; any other
 		// message comes from history or another client.
+		if s.shellMessage(e) {
+			return
+		}
 		if note, ok := s.agentNote(e.Text); ok {
 			s.put(Item{Kind: KindNotice, Key: "msg:" + e.ID, Text: note, Level: session.LevelInfo})
 

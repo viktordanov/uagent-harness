@@ -34,6 +34,10 @@ const (
 	// KindMCP is the /mcp panel: MCP holds the servers, and Final asks for
 	// the verbose form.
 	KindMCP
+	// KindShell is a command the user ran in shell mode (shell.go): Text
+	// is the command, Detail its output, Tool its state, Exit its exit
+	// code, Label why it was refused, and Input whether the agent has it.
+	KindShell
 )
 
 // InputState tracks a user message from the queue to the runner.
@@ -97,6 +101,9 @@ type Item struct {
 	// KindContext
 	Context *contextusage.Usage
 
+	// KindShell
+	Exit int
+
 	// KindAgent
 	Sub []Item
 	// Agent is the latest update of a KindAgent: its spawn call's ID and
@@ -108,5 +115,6 @@ type Item struct {
 // and must not be served from a cache.
 func (it Item) Live() bool {
 	return (it.Kind == KindTurn && it.Pending) || (it.Kind == KindTool && (it.Tool == ToolRunning || it.Tool == ToolCalled)) ||
+		(it.Kind == KindShell && it.Tool == ToolRunning) ||
 		(it.Kind == KindRun && it.Status == core.StatusRunning) || (it.Kind == KindAgent && it.Detail == engine.AgentRunning)
 }
