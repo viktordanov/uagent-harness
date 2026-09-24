@@ -25,7 +25,7 @@ const (
 )
 
 // mcpCommand is `uah mcp`, Codex's `codex mcp`: list, get, add, remove,
-// login, and logout.
+// login, and logout, and approve.
 func mcpCommand() *cli.Command {
 	common := func(extra ...cli.Flag) []cli.Flag {
 		return append([]cli.Flag{
@@ -37,7 +37,7 @@ func mcpCommand() *cli.Command {
 
 	return &cli.Command{
 		Name:  "mcp",
-		Usage: "manage MCP servers: list, get, add, remove, login, logout",
+		Usage: "manage MCP servers: list, get, add, remove, approve, login, logout",
 		Description: "Servers are [mcp_servers.<name>] tables in Codex's format. add and remove edit the user\n" +
 			"configuration file and keep the rest of it as it was. login runs OAuth for an HTTP server\n" +
 			"that asks for it and keeps the tokens in the OS keyring or " + app.MCPCredentialsFile() + ".",
@@ -49,6 +49,7 @@ func mcpCommand() *cli.Command {
 				ArgsUsage: nameArg + " (--url <url> | -- <command> [args...])", Flags: common(addFlags()...), OnUsageError: onUsageError, Action: mcpAdd,
 			},
 			{Name: "remove", Usage: "remove a server from the user configuration", ArgsUsage: nameArg, Flags: common(), OnUsageError: onUsageError, Action: mcpRemove},
+			mcpApproveCommand(common),
 			{
 				Name: "login", Usage: "log in to an HTTP server with OAuth", ArgsUsage: nameArg, OnUsageError: onUsageError, Action: mcpLogin,
 				Flags: common(
@@ -68,6 +69,7 @@ func addFlags() []cli.Flag {
 		&cli.StringFlag{Name: "bearer-token-env-var", Usage: "the variable holding an HTTP server's bearer token"},
 		&cli.StringFlag{Name: "oauth-client-id", Usage: "an OAuth client registered ahead of time"},
 		&cli.StringFlag{Name: "oauth-resource", Usage: "the RFC 8707 resource to ask tokens for"},
+		&cli.BoolFlag{Name: "approve", Usage: "run the server's tools without asking (default_tools_approval_mode = \"approve\")"},
 	}
 }
 
@@ -205,6 +207,9 @@ func serverFromFlags(cmd *cli.Command, command []string) (mcp.ServerConfig, erro
 		}
 	default:
 		return s, errors.New("give --url <url> or -- <command> [args...]")
+	}
+	if cmd.Bool("approve") {
+		s.DefaultToolsApprovalMode = mcp.ApprovalApprove
 	}
 
 	return s, nil

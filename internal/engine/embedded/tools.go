@@ -51,7 +51,7 @@ func (w *wiring) tools(ctx context.Context, req core.Request, sessionID session.
 		return nil, err
 	}
 	never := w.e.cfg.Approver != nil && w.e.cfg.Approver.Policy() == approval.Never
-	registry = withMCP(registry, mcpTools, req.DisallowedTools, mcpGate{ctx: ctx, ask: w.ask, never: never})
+	registry = withMCP(registry, mcpTools, req.DisallowedTools, w.mcpGate(ctx, never))
 	registry = withPatch(registry, offersPatch(w.e.models, req), w.patchGate(ctx, req))
 	req.SessionID = string(sessionID)
 	registry = w.withAgents(registry, req)
@@ -115,6 +115,14 @@ func (w *wiring) translators(req core.Request, sessionID session.ID) (tool.Stati
 	}
 
 	return tool.StaticTranslators{Bash: run, ViewImage: viewimage.New(viewimage.Config{Directory: req.Workspace})}, nil
+}
+
+// mcpGate asks about MCP calls whose approval_mode needs it, with the
+// manager's live approval modes.
+func (w *wiring) mcpGate(ctx context.Context, never bool) mcpGate {
+	warn := func(msg string) { _, _ = fmt.Fprintf(w.l.Stderr, "mcp> %s\n", msg) }
+
+	return mcpGate{ctx: ctx, ask: w.ask, never: never, m: w.e.cfg.MCP, warn: warn}
 }
 
 // mcpTools starts the MCP servers on the first run and returns their

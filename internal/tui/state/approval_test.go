@@ -36,3 +36,21 @@ func TestApproval(t *testing.T) {
 	assert.False(t, ok)
 	assert.Equal(t, "✗ declined: git push", s.Items[len(s.Items)-1].Text)
 }
+
+// An MCP prompt offers "don't ask again for this tool"; a command prompt
+// does not.
+func TestApproval_MCPTool(t *testing.T) {
+	opened := session.SessionOpened{At: t0, ID: "s1", Settings: settings()}
+	s, _ := apply(state.New(t0), opened,
+		session.ApprovalRequested{At: t0, ID: "a1", Command: "git push"},
+		session.ApprovalRequested{At: t0, ID: "a2", Command: `mcp__docs__search {}`, MCPTool: "mcp__docs__search"})
+
+	s, effects := apply(s, state.Answer{Answer: approval.ApproveTool})
+	assert.Empty(t, effects, "not an MCP tool")
+	s, _ = apply(s, state.Answer{Answer: approval.Approve}, session.ApprovalResolved{At: t0, ID: "a1", Decision: approval.Approve})
+
+	s, effects = apply(s, state.Answer{Answer: approval.ApproveTool})
+	assert.Equal(t, []state.Effect{state.EffResolve{ID: "a2", Answer: approval.ApproveTool}}, effects)
+	s, _ = apply(s, session.ApprovalResolved{At: t0, ID: "a2", Decision: approval.ApproveTool})
+	assert.Equal(t, "✔ approved, and from now on the tool mcp__docs__search: mcp__docs__search {}", s.Items[len(s.Items)-1].Text)
+}

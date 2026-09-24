@@ -2,10 +2,10 @@
 # internal/mcp: MCP servers for the embedded engine
 
 <!-- memoria:export id="summary" -->
-uah runs the MCP servers in `[mcp_servers]` (Codex's format) on the embedded engine through the official Go SDK: stdio and streamable HTTP servers, their tools offered as `mcp__<server>__<tool>` and called without blocking the agent, Codex's approval modes, OAuth logins with `uah mcp login` kept in the OS keyring, and `uah mcp` to list, add, and remove servers.
+uah runs the MCP servers in `[mcp_servers]` (Codex's format) on the embedded engine through the official Go SDK: stdio and streamable HTTP servers, their tools offered as `mcp__<server>__<tool>` and called without blocking the agent, Codex's approval modes, OAuth logins with `uah mcp login` kept in the OS keyring, and `uah mcp` to list, add, remove, and approve servers.
 <!-- /memoria:export -->
 
-This package owns everything MCP that is not engine or UI wiring: the configuration, starting and watching servers, naming and calling tools, OAuth, stored logins, and editing the configuration file for `uah mcp add` and `remove`. The embedded engine, `internal/app`, `cmd/uah`, and the TUI use it through a small surface: `Manager` (`Tools`, `Call`, `Status`, `Close`), `Login`, `Logout`, `AuthStatusOf`, `AddServer`, and `RemoveServer`.
+This package owns everything MCP that is not engine or UI wiring: the configuration, starting and watching servers, naming and calling tools, OAuth, stored logins, and editing the configuration file for `uah mcp add` and `remove`. The embedded engine, `internal/app`, `cmd/uah`, and the TUI use it through a small surface: `Manager` (`Tools`, `Call`, `Status`, `Close`), `Login`, `Logout`, `AuthStatusOf`, `AddServer`, `RemoveServer`, and `SetApproval`.
 
 1. [Lifecycle of a server](#lifecycle-of-a-server)
 2. [How a call flows](#how-a-call-flows)
@@ -39,10 +39,14 @@ A goroutine watches each connection. When a stdio server exits or an HTTP server
 A job that was still running when uah stopped fails as interrupted on resume instead of calling the tool twice.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="approvals" files="config.go manager.go" -->
+<!-- memoria:section id="approvals" files="config.go manager.go approve.go" -->
 ## Approvals
 
 Each tool has Codex's `approval_mode`: its own from `[mcp_servers.<name>.tools.<tool>]`, else `default_tools_approval_mode`, else `auto`. `Tool.NeedsApproval` decides: `approve` never asks, `prompt` always asks, `writes` asks unless the tool is annotated read-only, and `auto` asks unless the annotations say read-only, or both non-destructive and closed-world. The engine asks through the session's approval prompt, which PermissionRequest hooks can answer; headless runs and `approval_policy = "never"` refuse with a reason the model reads. `enabled_tools` and `disabled_tools` decide which tools exist at all.
+
+The prompt for an MCP call offers "Yes, and don't ask again for this tool" beside yes and no, as Codex's MCP prompt offers "Allow and don't ask me again" (`codex-rs/core/src/mcp_tool_call.rs:1430`). The answer is `approval.ApproveTool`, and the engine calls `Manager.AlwaysAllow`: the tool's mode becomes `approve` in the manager at once, so the rest of the run and later runs stop asking, and `SetApproval` writes `[mcp_servers.<server>.tools.<tool>] approval_mode = "approve"` into the file `Options.ServerFile` names. `internal/app` names the file that configures the server, the trusted project file when it has the server and else the user file, as Codex does (`mcp_tool_call.rs:2345-2375`). When the file cannot be written, the session keeps the approval and the log says why.
+
+From the command line, `uah mcp add <name> --approve` writes `default_tools_approval_mode = "approve"`, and `uah mcp approve <name> [tool] --mode <mode>` sets the default or one tool's mode through `SetApproval`; without `--mode` it prints them.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="auth" files="auth.go login.go callback.go credentials.go" -->
@@ -57,12 +61,12 @@ A running server's `storedAuth` handler sends the stored token and lets the oaut
 Logins are stored as Codex stores them, under the server's name and a hash of its URL: in the OS keyring (service "uah MCP Credentials", through `github.com/zalando/go-keyring`), or in `<config dir>/mcp-credentials.json` (0600) when `mcp_oauth_credentials_store` is `file`, or `auto` (the default) and the keyring fails. `AuthStatusOf` reports "Bearer token", "OAuth", "Not logged in", or "Unsupported" without starting the server, with at most 5 s of discovery.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="configuration" files="config.go configfile.go" -->
+<!-- memoria:section id="configuration" files="config.go configfile.go approve.go" -->
 ## Configuration and Codex
 
 `ServerConfig` has Codex's keys and meanings, so a Codex `[mcp_servers]` section copies over; unsupported Codex keys are errors rather than ignored. The keys, defaults, and merge rules are in [the configuration reference](../../docs/configuration.md#mcp-servers). Differences from Codex: tool names are at most 64 characters (flat function names instead of namespaces), `auth` accepts only `oauth`, and client ID metadata documents are not offered.
 
-`AddServer` and `RemoveServer` edit a configuration file for `uah mcp add` and `remove` without rewriting it, with the editor in [internal/config/tomledit](../config/tomledit/tomledit.go) that the TUI's `/config` also uses: the go-toml parser finds the server's `[mcp_servers.<name>]` tables, those bytes are cut, and a new table is appended. Comments and the other keys stay as they were. The result must parse and validate before it replaces the file atomically with the same permissions; a server written as an inline table is refused.
+`AddServer` and `RemoveServer` edit a configuration file for `uah mcp add` and `remove` without rewriting it, with the editor in [internal/config/tomledit](../config/tomledit/tomledit.go) that the TUI's `/config` also uses: the go-toml parser finds the server's `[mcp_servers.<name>]` tables, those bytes are cut, and a new table is appended. Comments and the other keys stay as they were. The result must parse and validate before it replaces the file atomically with the same permissions; a server written as an inline table is refused. `SetApproval` sets one key the same way, with `tomledit.Set`.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="extending" files="manager.go server.go" -->

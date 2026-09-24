@@ -30,7 +30,7 @@ For each Bash call on the embedded engine:
 5. **Policy.** With `approval_policy = "never"`, or with no one to ask (`uah run` without an auto-reviewer or a PermissionRequest hook), the command is denied with a reason for the model.
 6. **Auto-review.** With `approvals_reviewer = "auto_review"`, the [auto-reviewer](../review/README.md) judges the action: allow runs it, deny refuses it with the reviewer's reason, and "ask the user" (after too many denials) passes it on. A failed review denies. In Auto mode the reviewer judges whatever `approvals_reviewer` says, and it decides alone: "ask the user" is a decline with its reason, and steps 7 and 8 never run.
 7. **PermissionRequest hooks** can answer "allow" or "deny" for the user (`internal/session/approvals.go`).
-8. **The user.** The TUI shows Codex's three choices: "Yes, proceed", "Yes, and don't ask again for commands that start with `<prefix>`", and "No, and tell the agent what to do differently". The agent waits; an interrupt declines.
+8. **The user.** The TUI shows Codex's three choices: "Yes, proceed", "Yes, and don't ask again for commands that start with `<prefix>`", and "No, and tell the agent what to do differently". For an MCP tool, the middle choice is "Yes, and don't ask again for this tool" (`a`), which sets the tool's `approval_mode` to `approve` in the file that configures its server and in the running session ([MCP approvals](../mcp/README.md#approvals)). The agent waits; an interrupt declines.
 
 An approved escalation runs outside the sandbox, with network. An approved `prompt` rule on a command that did not ask for escalation runs in the sandbox. A denied command is not run, and the model gets the reason as the tool's error.
 
@@ -101,8 +101,8 @@ A change reaches a live run on the embedded engine from its next command and mod
 | --- | --- |
 | `Request` | The command, the working directory, whether the model asked for escalation, its justification and suggested `prefix_rule`, and whether no sandbox is available |
 | `Decision` | `Sandboxed`, `Unsandboxed`, or `Deny`, with the reason the model hears |
-| `Prompt` | What the user is asked: the command, the justification, whether it is an escalation, and the proposed prefix |
-| `Answer` | `Approve`, `ApprovePrefix`, `Decline`, or `DeclineBecause(reason)`, which carries a reason such as the auto-reviewer's |
+| `Prompt` | What the user is asked: the command, the justification, whether it is an escalation, the proposed prefix, and, for an MCP call, the tool's qualified name (`MCPTool`) |
+| `Answer` | `Approve`, `ApprovePrefix`, `ApproveTool` (an MCP tool, from now on), `Decline`, or `DeclineBecause(reason)`, which carries a reason such as the auto-reviewer's |
 | `Ask` | `func(ctx, Prompt) Answer`. Nil means no one can answer |
 
 "Don't ask again" is offered only when no rule matched. The prefix is the model's suggestion when it covers every simple command, else the whole command when it is one simple command, and never a bare shell, interpreter, `git`, `rm`, `sudo`, or `env` (Codex's list, in `prefix.go`). Choosing it appends `prefix_rule(pattern=[...], decision="allow")` to `~/.config/uagent/rules/default.rules` and applies it at once, also when the file cannot be written.

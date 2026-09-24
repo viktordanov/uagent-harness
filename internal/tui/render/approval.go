@@ -13,7 +13,10 @@ import (
 // their keys.
 func (st *Styles) approvalLines(a state.Approval, w int) []string {
 	title := "Run this command?"
-	if a.Escalation {
+	switch {
+	case a.MCPTool != "":
+		title = "Call this MCP tool?"
+	case a.Escalation:
 		title = "Run outside the sandbox?"
 	}
 	out := []string{st.warn.Bold(true).Render(ansi.Truncate(" "+title, w, "…"))}
@@ -34,6 +37,10 @@ func (st *Styles) approvalLines(a state.Approval, w int) []string {
 	choices := [][2]string{{"y", "Yes, proceed"}}
 	if len(a.Prefix) > 0 {
 		choices = append(choices, [2]string{"s", "Yes, and don't ask again for commands that start with `" + strings.Join(a.Prefix, " ") + "`"})
+	}
+	if a.MCPTool != "" {
+		// Codex's MCP prompt says "Allow and don't ask me again".
+		choices = append(choices, [2]string{"a", "Yes, and don't ask again for this tool"})
 	}
 	choices = append(choices, [2]string{"n", "No, and tell the agent what to do differently (esc)"})
 	for _, c := range choices {

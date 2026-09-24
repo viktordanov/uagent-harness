@@ -52,6 +52,10 @@ type mcpGate struct {
 	ctx   context.Context
 	ask   approval.Ask // nil: no one can answer (headless)
 	never bool         // approval_policy "never"
+	// m, when set, has the tools' live approval modes and saves "don't ask
+	// again for this tool"; warn reports a save that failed.
+	m    *mcp.Manager
+	warn func(string)
 }
 
 // withMCP adds the tools the request does not disallow.
@@ -123,6 +127,11 @@ func (t mcpTranslator) Translate(ctx tool.Context, call llm.ToolCall) tool.CallS
 // check returns why the call may not run, or "". It blocks while the user
 // decides, as a sandbox escalation does.
 func (g mcpGate) check(t mcp.Tool, args string) string {
+	if g.m != nil {
+		if mode, ok := g.m.ToolApproval(t.Name); ok {
+			t.Approval = mode // "don't ask again" applies at once
+		}
+	}
 	if !t.NeedsApproval() {
 		return ""
 	}
@@ -133,7 +142,16 @@ func (g mcpGate) check(t mcp.Tool, args string) string {
 	if g.ask == nil || g.ctx == nil {
 		return "not run: " + why + ", and no one can approve it in this run. Tell the user what you wanted to do with it."
 	}
-	answer := g.ask(g.ctx, approval.Prompt{Command: t.Name + " " + args, Justification: t.Description})
+	p := approval.Prompt{Command: t.Name + " " + args, Justification: t.Description}
+	if g.m != nil {
+		p.MCPTool = t.Name
+	}
+	answer := g.ask(g.ctx, p)
+	if answer == approval.ApproveTool && g.m != nil {
+		if err := g.m.AlwaysAllow(t.Name); err != nil && g.warn != nil {
+			g.warn(err.Error())
+		}
+	}
 	if reason, ok := answer.DeclineReason(); ok {
 		return "not run: " + reason
 	}

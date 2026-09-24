@@ -123,3 +123,39 @@ func TestMCPLogin(t *testing.T) {
 	res = uahWith(t, env, "", "mcp", "logout", "remote", "-C", ws)
 	assert.Equal(t, "No OAuth credentials stored for 'remote'.\n", res.stdout)
 }
+
+// TestMCPApprove sets approval modes with add --approve and mcp approve,
+// keeping the file's comments, and prints them.
+func TestMCPApprove(t *testing.T) {
+	user, env := mcpEnv(t)
+	ws := t.TempDir()
+
+	res := uahWith(t, env, "", "mcp", "add", "docs", "--approve", "--", "docs-server")
+	require.Equal(t, 0, res.code, res.stderr)
+	data, err := os.ReadFile(user)
+	require.NoError(t, err)
+	assert.Contains(t, string(data), "default_tools_approval_mode = 'approve'")
+
+	res = uahWith(t, env, "", "mcp", "approve", "docs", "search", "--mode", "prompt", "-C", ws)
+	require.Equal(t, 0, res.code, res.stderr)
+	assert.Equal(t, "Set tools.search.approval_mode = \"prompt\" for MCP server 'docs' in "+user+".\n", res.stdout)
+	res = uahWith(t, env, "", "mcp", "approve", "docs", "--mode", "writes", "-C", ws)
+	require.Equal(t, 0, res.code, res.stderr)
+
+	res = uahWith(t, env, "", "mcp", "approve", "docs", "-C", ws)
+	require.Equal(t, 0, res.code, res.stderr)
+	assert.Equal(t, "docs\n  default_tools_approval_mode: writes\n  tools.search.approval_mode: prompt\n", res.stdout)
+	res = uahWith(t, env, "", "mcp", "approve", "docs", "fetch", "-C", ws)
+	require.Equal(t, 0, res.code, res.stderr)
+	assert.Equal(t, "docs fetch: writes (the server's default)\n", res.stdout)
+	data, err = os.ReadFile(user)
+	require.NoError(t, err)
+	assert.True(t, strings.HasPrefix(string(data), "# keep me\n"), string(data))
+
+	res = uahWith(t, env, "", "mcp", "approve", "docs", "--mode", "sometimes", "-C", ws)
+	assert.Equal(t, 2, res.code)
+	assert.Contains(t, res.stderr, "invalid approval mode")
+	res = uahWith(t, env, "", "mcp", "approve", "nope", "--mode", "approve", "-C", ws)
+	assert.Equal(t, 2, res.code)
+	assert.Contains(t, res.stderr, "no MCP server named 'nope'")
+}

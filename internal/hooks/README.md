@@ -70,6 +70,30 @@ The session runs its hooks on one worker goroutine, in order, so a slow hook nev
 
 `Decision` combines one event's results. The JSON output can set `continue: false` with a `stopReason`, `decision: "block"` with a `reason`, a `systemMessage` to show, and `hookSpecificOutput` with `permissionDecision`, `permissionDecisionReason`, `updatedInput`, or `additionalContext`. For `UserPromptSubmit` and `SessionStart`, plain stdout without JSON is context, as in Claude Code.
 
+An example: a PreToolUse hook that blocks destructive commands before the agent runs them. The configuration:
+
+```toml
+[[hooks.PreToolUse]]
+matcher = "Bash"
+command = ".uagent/hooks/guard.sh"
+timeout = "5s"
+```
+
+The script, `.uagent/hooks/guard.sh`:
+
+```sh
+#!/bin/sh
+# The tool call arrives as JSON on stdin. Exit 2 blocks it, and stderr
+# becomes the error the model sees.
+input=$(cat)
+if printf '%s' "$input" | grep -Eq 'rm -rf /|git push (-f|--force)|git reset --hard'; then
+	echo "blocked by .uagent/hooks/guard.sh: destructive command" >&2
+	exit 2
+fi
+```
+
+For fixed command prefixes, `[approvals] forbid` in the configuration does the same without a script, and it also covers a command inside a pipeline or a list; this repository's `.uagent/config.toml` uses it. A hook suits a check that needs code, such as one on the arguments of an MCP tool.
+
 To add an event: add it to `Events` in `hooks.go` and any payload fields to `Input`, then fire it where it happens with `Runner.Has` and `Runner.Run`. `internal/config` accepts `[[hooks.<Event>]]` for every name in `Events`.
 <!-- /memoria:section -->
 

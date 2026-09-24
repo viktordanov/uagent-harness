@@ -1,0 +1,24 @@
+
+
+
+
+
+
+╭────────────────────────────────────────────────╮
+│ λ uah                                          │
+│                                                │
+│ model:     gpt-6-sol high   /model to change   │
+│ directory: /workspace/proj                     │
+╰────────────────────────────────────────────────╯
+
+ Call this MCP tool?
+ Reason: Search the docs.
+ $ mcp__docs__search {"q":"x"}
+   y  Yes, proceed
+   a  Yes, and don't ask again for this tool
+   n  No, and tell the agent what to do differently (esc)
+
+
+λ
+
+ gpt-6-sol high · workspace mode · /workspace/proj                      ctrl+t details · / commands

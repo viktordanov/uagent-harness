@@ -3,8 +3,13 @@
 
 effort = "medium"
 
-# Block destructive commands before the agent runs them (embedded engine).
-[[hooks.PreToolUse]]
-matcher = "Bash"
-command = ".uagent/hooks/guard.sh"
-timeout = "5s"
+# Commands the agent never runs, whatever the sandbox or an approval says
+# (embedded engine). Each entry is a command prefix; a rule matches every
+# simple command in a pipeline or a list.
+[approvals]
+forbid = [
+  "rm -rf /",
+  "git push --force",
+  "git push -f",
+  "git reset --hard",
+]

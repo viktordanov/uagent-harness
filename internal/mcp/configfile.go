@@ -129,6 +129,8 @@ type writtenServer struct {
 	BearerTokenEnvVar string            `toml:"bearer_token_env_var,omitempty"`
 	OAuthResource     string            `toml:"oauth_resource,omitempty"`
 	OAuth             *writtenOAuth     `toml:"oauth,omitempty"`
+	// DefaultToolsApprovalMode is `uah mcp add --approve`.
+	DefaultToolsApprovalMode ApprovalMode `toml:"default_tools_approval_mode,omitempty"`
 }
 
 type writtenOAuth struct {
@@ -139,6 +141,7 @@ func written(c ServerConfig) writtenServer {
 	w := writtenServer{
 		Command: c.Command, Args: c.Args, Env: c.Env, URL: c.URL,
 		BearerTokenEnvVar: c.BearerTokenEnvVar, OAuthResource: c.OAuthResource,
+		DefaultToolsApprovalMode: c.DefaultToolsApprovalMode,
 	}
 	if c.OAuth != nil && c.OAuth.ClientID != "" {
 		w.OAuth = &writtenOAuth{ClientID: c.OAuth.ClientID}

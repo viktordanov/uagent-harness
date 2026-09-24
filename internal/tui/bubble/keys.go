@@ -128,13 +128,16 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) { //nolint:gocycl
 }
 
 // onApprovalKey answers the approval overlay: y approves, s approves and
-// allows the proposed prefix, n, esc, and ctrl+c decline. Other keys wait.
+// allows the proposed prefix, a approves and always allows the MCP tool,
+// n, esc, and ctrl+c decline. Other keys wait.
 func (m Model) onApprovalKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "y":
 		return m.dispatch(state.Answer{Answer: approval.Approve})
 	case "s", "p":
 		return m.dispatch(state.Answer{Answer: approval.ApprovePrefix})
+	case "a":
+		return m.dispatch(state.Answer{Answer: approval.ApproveTool})
 	case "n", keyEsc, keyCtrlC:
 		return m.dispatch(state.Answer{Answer: approval.Decline})
 	}

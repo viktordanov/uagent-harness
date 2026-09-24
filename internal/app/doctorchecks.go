@@ -192,7 +192,7 @@ func checkMCP(ctx context.Context, cfg config.Config, engine, workspace string, 
 	if engine == EngineProcess {
 		return []Check{warn("mcp", fmt.Sprintf("%d servers configured; they start only on the embedded engine", len(cfg.MCPServers)), "use --engine embedded")}
 	}
-	m, err := mcpManager(cfg, workspace, slog.New(slog.NewTextHandler(stderr, nil)))
+	m, err := mcpManager(cfg, workspace, slog.New(slog.NewTextHandler(stderr, nil)), "")
 	if err != nil {
 		return []Check{fail("mcp", err.Error(), "fix the [mcp_servers] entry")}
 	}
