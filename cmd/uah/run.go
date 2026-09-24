@@ -64,9 +64,9 @@ func runAction(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	st.options.Source = session.SourceRun
+	st.Options.Source = session.SourceRun
 	// The session gets its own context so Ctrl+C can close it gracefully.
-	s, err := session.Open(context.WithoutCancel(ctx), st.engine, st.options)
+	s, err := session.Open(context.WithoutCancel(ctx), st.Engine, st.Options)
 	if err != nil {
 		return cli.Exit(err.Error(), exitUsage)
 	}

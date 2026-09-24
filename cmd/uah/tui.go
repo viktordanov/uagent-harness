@@ -38,7 +38,7 @@ func openTUI(ctx context.Context, cmd *cli.Command, launch tuiLaunch) error {
 	if err != nil {
 		return err
 	}
-	logFile, err := openTUILog(st.stateDir)
+	logFile, err := openTUILog(st.StateDir)
 	if err != nil {
 		return err
 	}
@@ -49,26 +49,26 @@ func openTUI(ctx context.Context, cmd *cli.Command, launch tuiLaunch) error {
 	}
 
 	deps := bubble.Deps{
-		SessionID:   st.options.ID,
+		SessionID:   st.Options.ID,
 		Prompt:      launch.prompt,
 		Cwd:         cwd,
 		Picker:      launch.picker,
 		AllSessions: launch.all,
-		Details:     st.config.TUI.Details,
+		Details:     st.Config.TUI.Details,
 		Open: func(ctx context.Context, id string) (*session.Session, []session.LoadedRun, error) {
 			setup, err := setupFor(cmd, logFile, id)
 			if err != nil {
 				return nil, nil, err
 			}
-			setup.options.Source = session.SourceTUI
-			s, err := session.Open(context.WithoutCancel(ctx), setup.engine, setup.options)
+			setup.Options.Source = session.SourceTUI
+			s, err := session.Open(context.WithoutCancel(ctx), setup.Engine, setup.Options)
 			if err != nil {
 				return nil, nil, err
 			}
-			if !setup.options.Resumed {
+			if !setup.Options.Resumed {
 				return s, nil, nil
 			}
-			history, err := session.Load(setup.stateDir, s.ID())
+			history, err := session.Load(setup.StateDir, s.ID())
 			if err != nil {
 				_ = s.Close()
 
@@ -78,7 +78,7 @@ func openTUI(ctx context.Context, cmd *cli.Command, launch tuiLaunch) error {
 			return s, history, nil
 		},
 		Sessions: func() ([]session.Info, error) {
-			infos, err := session.Sessions(st.stateDir)
+			infos, err := session.Sessions(st.StateDir)
 
 			return session.Interactive(infos), err
 		},
