@@ -24,6 +24,9 @@ const (
 type agentPlan struct {
 	Tool      string          `json:"tool"`
 	Arguments json.RawMessage `json:"arguments"`
+	// CallID is the model's call ID (absent in plans from before it was
+	// recorded).
+	CallID string `json:"call_id,omitempty"`
 }
 
 // agentRegistry offers the subagent tools of the run, and resolves every
@@ -78,7 +81,7 @@ func (t agentTranslator) Translate(ctx tool.Context, call llm.ToolCall) tool.Cal
 	if !json.Valid(args) || args[0] != '{' {
 		return tool.ErrorStatus("the arguments must be a JSON object", 0)
 	}
-	data, err := json.Marshal(agentPlan{Tool: t.name, Arguments: args})
+	data, err := json.Marshal(agentPlan{Tool: t.name, Arguments: args, CallID: call.CallID})
 	if err != nil {
 		return tool.ErrorStatus(fmt.Sprintf("failed to encode the agent call: %v", err), 0)
 	}

@@ -56,7 +56,7 @@ func (m *Manager) stopInput(c *child, answer string) hooks.Input {
 	p := m.parents[c.parent].Request
 	in := hooks.Input{
 		Event: hooks.SubagentStop, SessionID: c.parent, Cwd: p.Workspace, Model: p.Model,
-		StopHookActive: c.stopStreak > 0, AgentID: c.id, AgentType: first(c.role, "default"),
+		StopHookActive: c.stopStreak > 0, AgentID: c.id, AgentType: first(c.role, defaultRole),
 		LastAssistantMessage: answer,
 	}
 	if dir := m.tmpl.SessionsDir; dir != "" {

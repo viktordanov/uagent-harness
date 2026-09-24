@@ -21,6 +21,8 @@ type switcher struct {
 	clients  map[bool]Client
 	// seen, when set, sees each request sent and the usage reported for it.
 	seen func(llm.Request, llm.Usage)
+	// cacheKey, when set, replaces the session's ID as the prompt cache key.
+	cacheKey string
 }
 
 func newSwitcher(model string, priority bool, build func(bool) (Client, error)) (*switcher, error) {
@@ -38,6 +40,9 @@ func (s *switcher) Respond(ctx context.Context, req llm.Request, opts llm.Reques
 	s.mu.Unlock()
 	if model != "" {
 		req.Model.ID = model
+	}
+	if s.cacheKey != "" {
+		opts.CacheKey = s.cacheKey
 	}
 	resp, err := client.Respond(ctx, req, opts)
 	if err == nil && s.seen != nil {
@@ -101,6 +106,9 @@ func (s *switcher) direct() llm.Adapter {
 		s.mu.Unlock()
 		if req.Model.ID == "" {
 			req.Model.ID = model
+		}
+		if s.cacheKey != "" {
+			opts.CacheKey = s.cacheKey
 		}
 
 		return client.Respond(ctx, req, opts) //nolint:wrapcheck // llmcall wraps model errors

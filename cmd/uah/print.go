@@ -110,7 +110,11 @@ func (p *printer) print(event core.Event) {
 		p.say(fmt.Sprintf("auto-review: %s (%s risk) %s — %s", e.Outcome, e.Risk, oneLine(e.Command, 80), e.Reason))
 	case engine.AgentUpdated:
 		p.agents[e.ID] = e.Nickname
-		p.say(fmt.Sprintf("agent %s: %s", e.Nickname, e.State))
+		if e.State == engine.AgentErrored && e.Message != "" {
+			p.say(fmt.Sprintf("agent %s: failed: %s", e.Nickname, e.Message))
+		} else {
+			p.say(fmt.Sprintf("agent %s: %s", e.Nickname, e.State))
+		}
 	case engine.AgentActivity:
 		if f, ok := e.Event.(core.ToolFinished); ok && p.verbose {
 			p.say(fmt.Sprintf("  agent %s: %s  %s (%s, %.1fs)", p.agents[e.ID], f.Name, f.Label, f.Detail, f.Duration.Seconds()))
@@ -127,7 +131,7 @@ func (p *printer) say(msg string) {
 	fmt.Fprintf(p.w, "[%6.1fs] %s\n", time.Since(p.origin).Seconds(), msg)
 }
 
-func short(id string) string { return id[:min(8, len(id))] }
+func short(id string) string { return session.ShortID(id) }
 
 func modelLabel(model string) string {
 	if model == "" {

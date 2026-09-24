@@ -13,6 +13,7 @@ import (
 	"github.com/viktordanov/uagent/core"
 
 	"github.com/viktordanov/uagent-harness/internal/agents"
+	"github.com/viktordanov/uagent-harness/internal/app"
 	"github.com/viktordanov/uagent-harness/internal/approval"
 	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/engine/embedded"
@@ -69,6 +70,7 @@ func TestAgents_SpawnWaitAnswer(t *testing.T) {
 		}
 	}
 	assert.NotContains(t, child.Tools, "spawn_agent", "depth 1: a child cannot spawn")
+	assert.Equal(t, e.llm.Requests()[0].CacheKey, child.CacheKey, "as in Codex, every agent of a tree uses the root session's prompt cache key")
 	assert.Contains(t, child.Tools, "Bash")
 
 	updates := 0
@@ -86,6 +88,10 @@ func TestAgents_SpawnWaitAnswer(t *testing.T) {
 	i := slices.IndexFunc(infos, func(in session.Info) bool { return in.ID != s.ID() })
 	assert.Equal(t, session.SourceSubagent, infos[i].Source)
 	assert.Equal(t, s.ID(), infos[i].Parent)
+	assert.True(t, strings.HasPrefix(infos[i].ID, session.SubagentIDPrefix), "a child's ID is subagent-<uuid>: %s", infos[i].ID)
+	found, err := app.FindSession(context.Background(), e.StateDir, session.ShortID(infos[i].ID))
+	require.NoError(t, err, "uah resume finds a child by the short ID uah sessions prints")
+	assert.Equal(t, infos[i].ID, found.ID)
 	picker := session.Interactive(infos)
 	require.Len(t, picker, 1)
 	assert.Equal(t, s.ID(), picker[0].ID)

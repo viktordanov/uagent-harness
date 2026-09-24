@@ -99,7 +99,7 @@ func (j *agentJobs) call(ctx context.Context, plan agentPlan) (string, error) {
 		return "", errors.New("subagents are not enabled")
 	}
 
-	return j.agents.Call(ctx, j.parentID, plan.Tool, plan.Arguments) //nolint:wrapcheck // the subagents' errors are for the model
+	return j.agents.Call(ctx, engine.AgentCall{ParentID: j.parentID, CallID: plan.CallID, Tool: plan.Tool, Args: plan.Arguments}) //nolint:wrapcheck // the subagents' errors are for the model
 }
 
 // finish sends a step's operation; a step that cannot be built was already

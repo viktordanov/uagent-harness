@@ -10,9 +10,9 @@ import (
 // (codex-rs/core/src/tools/handlers/multi_agents_spec.rs), Copyright 2025
 // OpenAI, licensed under the Apache License, Version 2.0
 // (http://www.apache.org/licenses/LICENSE-2.0). Changes: the `items`
-// inputs and `fork_context` are left out, the fork and upload wording is
-// dropped because children share the parent's workspace, and wait_agent
-// does not promise a completion notification.
+// inputs are left out, the forked-workspace and upload wording is dropped
+// because children share the parent's workspace, and wait_agent does not
+// promise a completion notification.
 const spawnGuidance = `Spawn a sub-agent for a well-scoped task. Returns the spawned agent id plus the user-facing nickname when available. The agent works in the background in your workspace, with your sandbox and approvals. Spawned agents inherit your current model by default. Do not set the ` + "`model`" + ` field unless the user explicitly asks for a different model.
 
 Do not spawn sub-agents unless the user or applicable AGENTS.md/skill instructions explicitly ask for sub-agents, delegation, or parallel agent work.
@@ -68,7 +68,8 @@ func oneLine(s string) string { return strings.Join(strings.Fields(s), " ") }
 const (
 	spawnSchema = `{"type":"object","properties":{` +
 		`"message":{"type":"string","description":"Initial plain-text task for the new agent."},` +
-		`"agent_type":{"type":"string","description":"Agent type for the new agent, from the list in the tool description. Omit for the default agent."},` +
+		`"agent_type":{"type":"string","description":"Agent type override for the new agent. Omit to inherit the parent agent type with a full-history fork; otherwise, ` + "`default`" + ` is used. The types are listed in the tool description."},` +
+		`"fork_context":{"type":"boolean","description":"True forks the current thread history into the new agent; false or omitted starts with only the initial prompt."},` +
 		`"model":{"type":"string","description":"Model override for the new agent. Omit unless an explicit override is needed."},` +
 		`"reasoning_effort":{"type":"string","enum":["low","medium","high","xhigh","max"],"description":"Reasoning effort override for the new agent. Omit to inherit the parent effort."}` +
 		`},"required":["message"],"additionalProperties":false}`
