@@ -42,8 +42,9 @@ Optional interfaces are the seams the session probes with a type assertion:
 | `ContextReporter` | `/context`: the breakdown of the session's last model request | embedded |
 | `io.Closer` | The session closes the engine with itself, stopping MCP servers and subagents | embedded |
 | `Subagents` | The agent tools: `Attach` returns the tools to offer a run, `ToolNames` every name it answers, `Call` runs one, `Interrupt` stops a parent's children. The engine knows no tool name, schema, or result; [internal/agents](../agents/README.md) implements it | `internal/agents` |
+| `Forker` | `Fork` copies a parent's history into a new child session for `spawn_agent`'s `fork_context`; `SetCacheKey` gives a session another prompt cache key (every subagent uses its root session's) | embedded |
 
-The engine's own events join the run's stream: `CompactionStarted`, `Compacted`, `AutoReviewed`, `AgentUpdated`, and `AgentActivity` (a child's tool events, for the parent's view).
+The engine's own events join the run's stream: `CompactionStarted`, `Compacted`, `AutoReviewed`, `AgentUpdated`, and `AgentActivity` (a child's tool events, for the parent's view). The embedded engine's `Subagents()` returns its `Subagents`, so a session can follow one child's whole stream (`session.WatchAgent`).
 <!-- /memoria:section -->
 
 <!-- memoria:section id="support" files="engine.go process/process.go embedded/engine.go embedded/tools.go" -->
@@ -75,7 +76,7 @@ Both engines read the host prompt with the instruction files from the request, k
 The runner runs each command with `$SHELL`. `internal/app/setup.go` points `SHELL` at a script from `sandbox.Shell` that runs the real shell inside the sandbox, so commands are sandboxed without changing the runner. That script cannot ask for more access.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="embedded" files="embedded/engine.go embedded/wiring.go embedded/agent.go embedded/adapter.go embedded/client.go embedded/providers.go embedded/codexauth.go embedded/store.go embedded/observer.go embedded/tools.go embedded/sandboxtool.go embedded/sandboxschema.go embedded/skills.go embedded/pretooluse.go embedded/autoreview.go embedded/compact.go embedded/context.go" -->
+<!-- memoria:section id="embedded" files="embedded/engine.go embedded/wiring.go embedded/agent.go embedded/adapter.go embedded/client.go embedded/providers.go embedded/codexauth.go embedded/store.go embedded/observer.go embedded/tools.go embedded/sandboxtool.go embedded/sandboxschema.go embedded/skills.go embedded/pretooluse.go embedded/autoreview.go embedded/compact.go embedded/context.go embedded/fork.go" -->
 ## The embedded engine
 
 The embedded engine is a uagent `harness.Backend`. uagent still owns the run: the guards, the session lock, the run record, and the output stream. The backend (`wiring.go`) reproduces unreal-agent-runner v0.1.1's `Run` (`cmd/internal/agentrunner/run.go`) in the same order:
@@ -103,7 +104,11 @@ The coordinator calls one `llm.Adapter`. Two adapters sit in front of the provid
 | `compactor` | `compact.go` | Decides when to compact (`/compact`, or the context in use reaching `auto_compact_percent` of the window), runs the compaction as a job under the run's context, and rewrites every request with the session's latest compaction. The rewrite, the summary call, and the log live in [internal/compaction](../compaction/README.md) |
 | `switcher` | `adapter.go` | Applies the live model to each request and routes to the priority client when fast mode is on, so `/model` and `/fast` apply from the next request. It records each session's last request for `/context` (`context.go`) |
 
-`switcher.direct()` is the same client without the live model override, for one-shot calls that choose their own model: the auto-reviewer and the compaction summary.
+`switcher.direct()` is the same client without the live model override, for one-shot calls that choose their own model: the auto-reviewer and the compaction summary. The switcher also replaces the prompt cache key when the session has another (`SetCacheKey`).
+
+### Forked sessions
+
+`Fork` (`fork.go`) copies a parent's history into a new child session for `spawn_agent`'s `fork_context`: the items before the parent's turn that made the spawn call, through the runner store's append methods (its own `Store.Fork` drops the operation snapshots of inherited tool calls in v0.1.1), with unfinished operations recorded as canceled, and the parent's compactions until then. On the child's first run, `openStore` adds the run's messages and effort to the store before the coordinator restores it, because the coordinator asks the model at once for the copied inputs; the inbox then drops the messages as seen. [internal/agents](../agents/README.md#forking) describes the behavior.
 
 ### The event stream
 
@@ -131,9 +136,9 @@ A slow tool must not hold up the coordinator. MCP calls and the agent tools ther
 | Plan type | Handler | Runs |
 | --- | --- | --- |
 | `uah.mcp_call` (version 1) | `mcpJobs` | One MCP tool call through `internal/mcp` |
-| `uah.agent` (version 1) | `agentJobs` | Whatever tools `engine.Subagents.Attach` returned (Codex's `spawn_agent`, `send_input`, `resume_agent`, `wait_agent`, `close_agent`), each through `Subagents.Call` |
+| `uah.agent` (version 1) | `agentJobs` | Whatever tools `engine.Subagents.Attach` returned (Codex's `spawn_agent`, `send_input`, `resume_agent`, `wait_agent`, `close_agent`), each through `Subagents.Call`. The plan keeps the model's call ID, which `fork_context` needs |
 
-A job that had already started before the run stopped fails with "interrupted" when the session resumes, instead of running twice. Cancelling a job cancels its context.
+A job that had already started before the run stopped fails with "interrupted" when the session resumes, instead of running twice. Cancelling a job cancels its context. The calls of one model turn run at the same time, each on its own goroutine (`TestAgents_ParallelCalls`).
 <!-- /memoria:section -->
 
 <!-- memoria:section id="extending" files="engine.go embedded/tools.go embedded/providers.go embedded/wiring.go" -->

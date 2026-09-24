@@ -14,9 +14,10 @@ The layout, screens, and framework choice are recorded in the [TUI design](../..
 3. [Transcript items](#transcript-items)
 4. [Keys](#keys)
 5. [Slash commands](#slash-commands)
-6. [The look](#the-look)
-7. [Extending the TUI](#extending-the-tui)
-8. [Tests](#tests)
+6. [The agent view](#the-agent-view)
+7. [The look](#the-look)
+8. [Extending the TUI](#extending-the-tui)
+9. [Tests](#tests)
 <!-- /memoria:section -->
 
 <!-- memoria:section id="packages" files="state/state.go state/reduce.go state/effects.go render/screen.go render/items.go bubble/model.go bubble/effects.go bubble/keys.go" -->
@@ -65,7 +66,7 @@ The transcript is a list of `Item`s, each with a stable key. The reducer updates
 | `KindTool` | `call:<call ID>` | `ToolCalled`, `ToolStarted`, `ToolFinished` |
 | `KindAssistant`, `KindReasoning` | `text:<n>`, `reason:<n>` | `AssistantMessage`, `ReasoningSummary` |
 | `KindNotice` | `notice:<n>` | Session notices, hook results, command output, approvals |
-| `KindAgent` | `agent:<ID>` | `engine.AgentUpdated` (a subagent); its tool calls from `engine.AgentActivity` go into `Sub`, drawn under it in the detailed view |
+| `KindAgent` | `agent:<ID>` | `engine.AgentUpdated` (a subagent): `Name` is the nickname, `Text` the ID, `Detail` the state, and `Agent` the latest update (spawn call ID and message, model, effort, why it failed); its tool calls from `engine.AgentActivity` go into `Sub`, drawn under it in the detailed view |
 | `KindContext` | `context:<n>` | `/context` (`ContextShown`) |
 | `KindFinish` | `done:<run ID>` | `RunFinished`: the end of a run in the compact view |
 | `KindMCP` | `mcp:<n>` | `/mcp` (`MCPListed`): one line per server; `Final` asks for the verbose form (`render/mcp.go`) |
@@ -120,7 +121,7 @@ In the picker, ↑/↓ choose, enter resumes, tab switches between this director
 | `/context` | Break down what fills the context window | Yes |
 | `/status` | Session, settings, totals, and a 12-week activity heatmap | Yes |
 | `/mcp [verbose]` | MCP servers: state, transport, tool count, and a login hint; `verbose` (or the detailed view) adds each server's command or URL, auth, and tools with their approval mode | Yes |
-| `/agents` | Subagents and their state | Yes |
+| `/agents [name]` | Subagents and their state; with a nickname or ID, that agent's live transcript (see [The agent view](#the-agent-view)) | Yes |
 | `/sandbox` | The sandbox mode and what commands may do | Yes |
 | `/reasoning` | Show or hide reasoning summaries | Yes |
 | `/details` | Compact or detailed view | Yes |
@@ -128,6 +129,17 @@ In the picker, ↑/↓ choose, enter resumes, tab switches between this director
 | `/quit` (`/exit`) | Close the session and exit | Yes |
 
 `/model`, `/effort`, and `/fast` apply from the next model request on the embedded engine, and from the next run on the process engine; the session's `SettingsChanged` event says which.
+<!-- /memoria:section -->
+
+<!-- memoria:section id="agentview" files="state/agentview.go bubble/agentview.go render/agentview.go" -->
+## The agent view
+
+`/agents Ada` (or an ID prefix; the menu completes the nicknames) shows a subagent's transcript in place of the session's, under one header line: `viewing agent Ada · esc returns`. It follows Codex's `/subagents` switch, where the TUI shows another thread of the session and the user can type to it.
+
+- `state.AgentView` holds a second `State` for the agent, reduced from its events by the same reducer and drawn by the same renderer, with a cache of its own. The session's own events keep reducing into the main state meanwhile.
+- The shell follows the agent with `Session.WatchAgent` (see [internal/session](../session/README.md)): its earlier runs become a `HistoryLoaded`, then its events arrive in 16 ms batches as `state.AgentEvents`, like the session's.
+- A message typed in the view goes to the agent (`EffAgentSend`), as the parent's `send_input` does. `/agents` and `/quit` work as usual; other commands are for the main agent and say so. esc, or opening another agent, ends the view.
+- An approval waiting in the session shows the session's screen until it is answered.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="look" files="render/theme.go render/compact.go render/screen.go render/markdown.go bubble/model.go" -->
