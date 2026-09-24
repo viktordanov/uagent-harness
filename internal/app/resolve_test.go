@@ -180,6 +180,11 @@ func TestResolve(t *testing.T) {
 			in:   func(in *app.Inputs) { in.BaseURL, in.AllowDotenv = "http://llm", true },
 			want: func(r *app.Resolved) { r.Settings.BaseURL, r.Settings.AllowDotenv = "http://llm", true },
 		},
+		{
+			name: "compaction keys",
+			cfg:  config.Config{AutoCompactPercent: new(0), ModelContextWindow: 128_000},
+			want: func(r *app.Resolved) { r.AutoCompactPercent, r.Settings.ContextWindow = 0, 128_000 },
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -193,7 +198,7 @@ func TestResolve(t *testing.T) {
 					Workspace: "/ws", Timeout: 30 * time.Minute, Sandbox: string(sandbox.WorkspaceWrite),
 				},
 				Engine: app.EngineEmbedded, MaxDisk: 5 << 30, Instructions: true,
-				Sandbox: sandbox.Policy{Mode: sandbox.WorkspaceWrite},
+				Sandbox: sandbox.Policy{Mode: sandbox.WorkspaceWrite}, AutoCompactPercent: 90,
 			}
 			tt.want(&want)
 			want.Sandbox.Workspace = want.Settings.Workspace
@@ -219,6 +224,8 @@ func TestResolveUsageErrors(t *testing.T) {
 		{name: "invalid model", in: func(in *app.Inputs) { in.Model = "-x" }, want: "starts with a dash"},
 		{name: "invalid config max disk", cfg: config.Config{MaxDisk: "lots"}, want: `max_disk: invalid size "LOTS"`},
 		{name: "invalid config engine", cfg: config.Config{Engine: "turbo"}, want: "invalid engine turbo (want embedded or process)"},
+		{name: "invalid auto_compact_percent", cfg: config.Config{AutoCompactPercent: new(101)}, want: "invalid auto_compact_percent 101"},
+		{name: "invalid model_context_window", cfg: config.Config{ModelContextWindow: -1}, want: "invalid model_context_window -1"},
 		{name: "invalid sandbox mode", cfg: config.Config{SandboxMode: "yolo"}, want: `invalid sandbox mode "yolo"`},
 		{
 			name: "fast on the process engine",

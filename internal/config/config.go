@@ -34,6 +34,13 @@ type Config struct {
 	// ShellEnvironmentPolicy is which environment variables commands get.
 	ShellEnvironmentPolicy ShellEnvironmentPolicy `toml:"shell_environment_policy"`
 
+	// AutoCompactPercent compacts the context once a response used this
+	// share of the model's window (default 90; 0 turns it off).
+	AutoCompactPercent *int `toml:"auto_compact_percent"`
+	// ModelContextWindow overrides the model's context window in tokens, as
+	// Codex's key does.
+	ModelContextWindow int64 `toml:"model_context_window"`
+
 	Instructions Instructions `toml:"instructions"`
 	TUI          TUI          `toml:"tui"`
 	// Hooks are keyed by event name: [[hooks.PreToolUse]].
@@ -245,6 +252,12 @@ func merge(base, over Config) Config {
 			env.Set = map[string]string{}
 		}
 		env.Set[k] = v
+	}
+	if over.AutoCompactPercent != nil {
+		base.AutoCompactPercent = over.AutoCompactPercent
+	}
+	if over.ModelContextWindow != 0 {
+		base.ModelContextWindow = over.ModelContextWindow
 	}
 	base.Fast = base.Fast || over.Fast
 	base.TUI.Details = base.TUI.Details || over.TUI.Details
