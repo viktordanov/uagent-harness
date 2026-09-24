@@ -246,11 +246,13 @@ func (m *Manager) notify(c *child) {
 		update.Message = c.status.Message
 	}
 	note := m.completionNote(c, current)
-	if parent.Emit != nil && current {
-		m.outboxOf(c.parent).push(func() { parent.Emit(update) })
-	}
+	// The notification goes before the update: once the parent's session
+	// shows the child ended, a message sent after that carries the note.
 	if note != "" && parent.Inject != nil {
 		m.outboxOf(c.parent).push(func() { parent.Inject(note) })
+	}
+	if parent.Emit != nil && current {
+		m.outboxOf(c.parent).push(func() { parent.Emit(update) })
 	}
 }
 
