@@ -26,6 +26,11 @@ type Cache struct {
 	view    *Cache
 	viewID  string
 	viewGen int
+	// rows are the transcript lines the last frame's window showed, one
+	// per row from screen row top, with window its lines (selection.go).
+	rows   []state.TextPos
+	window []string
+	top    int
 }
 
 // MaxScroll is how far the last frame's transcript could scroll up, or -1

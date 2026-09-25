@@ -44,10 +44,16 @@ var (
 	}
 	xclip = tool{
 		name: "xclip",
-		list: func() []string { return []string{"-selection", "clipboard", "-t", "TARGETS", "-o"} },
-		read: func(typ string) []string { return []string{"-selection", "clipboard", "-t", typ, "-o"} },
+		list: func() []string { return xclipArgs("-t", "TARGETS", "-o") },
+		read: func(typ string) []string { return xclipArgs("-t", typ, "-o") },
 	}
 )
+
+// xclipArgs are xclip's arguments for the clipboard, not the primary
+// selection, then args.
+func xclipArgs(args ...string) []string {
+	return append([]string{"-selection", "clipboard"}, args...)
+}
 
 func (l Linux) ReadImage(ctx context.Context) (Content, error) {
 	t, ok := l.pick()

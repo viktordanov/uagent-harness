@@ -28,7 +28,7 @@ func TestSetValue(t *testing.T) {
 
 	cfg, _, err := config.Load(path, t.TempDir())
 	require.NoError(t, err)
-	assert.True(t, cfg.TUI.Mouse)
+	assert.True(t, cfg.TUI.MouseOn())
 	assert.Equal(t, 80, *cfg.AutoCompactPercent)
 }
 

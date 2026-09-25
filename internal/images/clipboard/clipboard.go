@@ -1,7 +1,8 @@
 // Package clipboard reads an image from the system clipboard through the
 // system's own tools, without cgo: osascript on macOS, and wl-paste or
-// xclip on Linux. The commands run through Exec, so tests use a fake and
-// never touch a real clipboard.
+// xclip on Linux. It also writes text there, for the TUI's copy: pbcopy,
+// wl-copy, or xclip. The commands run through Exec and Input, so tests use
+// fakes and never touch a real clipboard.
 package clipboard
 
 import (

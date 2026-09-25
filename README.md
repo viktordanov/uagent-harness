@@ -34,7 +34,7 @@ The [ledger](docs/ledger.md) lists what's next.
 
 ---
 
-<!-- memoria:section id="usage" files="cmd/uah/main.go cmd/uah/models.go cmd/uah/run.go cmd/uah/resume.go cmd/uah/sessions.go cmd/uah/tui.go cmd/uah/tuiconfig.go cmd/uah/print.go cmd/uah/completion.go cmd/uah/doctor.go internal/app/doctor.go internal/app/doctorchecks.go cmd/uah/flags.go cmd/uah/prompts.go internal/images/images.go internal/images/store.go internal/images/paths.go internal/images/clipboard/clipboard.go internal/images/clipboard/macos.go internal/images/clipboard/linux.go internal/app/usershell.go internal/usershell/usershell.go internal/usershell/record.go internal/usershell/capture.go cmd/uah/usage.go internal/app/planusage.go" -->
+<!-- memoria:section id="usage" files="cmd/uah/main.go cmd/uah/models.go cmd/uah/run.go cmd/uah/resume.go cmd/uah/sessions.go cmd/uah/tui.go cmd/uah/tuiconfig.go cmd/uah/print.go cmd/uah/completion.go cmd/uah/doctor.go internal/app/doctor.go internal/app/doctorchecks.go cmd/uah/flags.go cmd/uah/prompts.go internal/images/images.go internal/images/store.go internal/images/paths.go internal/images/clipboard/clipboard.go internal/images/clipboard/macos.go internal/images/clipboard/linux.go internal/images/clipboard/write.go internal/app/usershell.go internal/usershell/usershell.go internal/usershell/record.go internal/usershell/capture.go cmd/uah/usage.go internal/app/planusage.go" -->
 ## Get started
 
 1. Install it:
@@ -73,6 +73,7 @@ Keys worth knowing:
 | `/` | Commands, such as `/model`, `/effort`, `/compact`, `/context`, `/mcp`, `/agents`, `/status`, `/resume`, and `/new` |
 | `@` | Mention a workspace file (fuzzy search) |
 | ctrl+t | The detailed view: turns, tokens, and each tool's result |
+| drag, double click, triple click | Select transcript text, a word, or a line, and copy it to the clipboard. `[tui] mouse = false` leaves selection to the terminal |
 
 The [TUI README](internal/tui/README.md) lists every key and command.
 
@@ -93,6 +94,10 @@ When you quit the TUI, it prints the session's token usage and the command that 
 ### Go back to an earlier message
 
 Press esc twice on an empty prompt while the agent is idle, or type `/rewind`: your latest message is selected. Esc or ↑ selects an earlier one and ↓ a later one; enter puts the message back in the prompt, with its images, to edit and send again. The message and everything after it leave the agent's context and the screen, as Codex's backtrack does, and a resumed session keeps the cut. The session file keeps the old branch, and `uah sessions show` prints it. Files the agent changed stay changed. It needs the embedded engine; see the [rewind design](docs/design/rewind.md).
+
+### Select and copy text
+
+Drag over the transcript to select text; double click selects a word and triple click a line. Letting go copies the selection to the clipboard, and the footer says how many lines. Dragging to the top row scrolls, and the wheel keeps scrolling during a drag. Esc or a click clears the selection. The copy leaves out the `λ` and `•` columns and the padding around code, so a code block pastes as code. uah copies with OSC 52, which also works over ssh, and with `pbcopy`, `wl-copy`, or `xclip`. To use the terminal's own selection, hold Option (iTerm2, Terminal) or Shift (most others), or set `[tui] mouse = false`. See the [selection design](docs/design/selection.md).
 
 ### Headless mode
 
@@ -500,7 +505,7 @@ Pushing a `v1.2.3` tag builds the release archives for macOS and Linux (arm64 an
 CI runs the build, the race tests, the Markdown renderer's benchmarks once (so they keep running; its tests hold the bounds), and the linter on each push; the linter also fails on a function above 20 cyclomatic complexity, a backstop for the rule of about 15. Design records, the architecture rules, and the documentation procedure are in [docs](docs/README.md):
 
 <!-- memoria:import src="docs/README.md#summary" -->
-The configuration reference, design records for the harness, the TUI, state storage, sandboxing, compaction, MCP, subagents, pasted images, streaming, Markdown rendering, and going back to an earlier message, plus the architecture rules and documentation procedure for uagent-harness.
+The configuration reference, design records for the harness, the TUI, state storage, sandboxing, compaction, MCP, subagents, pasted images, streaming, Markdown rendering, going back to an earlier message, and selecting text with the mouse, plus the architecture rules and documentation procedure for uagent-harness.
 <!-- /memoria:import -->
 
 `bench/tui` is a separate Go module with the benchmark behind choosing Bubble Tea v2. `go test -run '^$' -bench Markdown -benchmem ./internal/tui/render` measures the Markdown renderer.

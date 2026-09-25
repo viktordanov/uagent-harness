@@ -334,7 +334,7 @@ developer_instructions = "Review the diff you are given. List only real bugs, ea
 | Key | Type | Default | Merge | Meaning |
 | --- | --- | --- | --- | --- |
 | `details` | bool | false | OR | Start in the detailed view; ctrl+t toggles it |
-| `mouse` | bool | false | OR | Report the mouse to the TUI so the wheel scrolls the transcript; selecting text then needs Option (iTerm2, Terminal) or Shift held. Off, the terminal selects text as usual and its wheel sends ↑ and ↓, which scroll the transcript while the composer is empty |
+| `mouse` | bool | true | override, can unset | Report the mouse to the TUI: the wheel scrolls the transcript, and a drag, a double click, or a triple click selects its text and copies it to the clipboard (OSC 52 and pbcopy, wl-copy, or xclip); the terminal's own selection then needs Option (iTerm2, Terminal) or Shift held. `false` leaves the mouse to the terminal: it selects text as usual and its wheel sends ↑ and ↓, which scroll the transcript while the composer is empty. See the [selection design](design/selection.md) |
 
 ### Projects
 
@@ -434,7 +434,7 @@ timeout = "90s"
 
 [tui]
 details = false
-mouse = false
+mouse = true                       # false: the terminal selects text
 
 [[hooks.PreToolUse]]               # embedded engine only
 matcher = "Bash"                   # the whole tool name, as a regular expression

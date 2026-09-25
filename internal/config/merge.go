@@ -21,7 +21,9 @@ func merge(base, over Config) Config {
 	set(&base.Engine, over.Engine)
 	base.Fast = base.Fast || over.Fast
 	base.TUI.Details = base.TUI.Details || over.TUI.Details
-	base.TUI.Mouse = base.TUI.Mouse || over.TUI.Mouse
+	if over.TUI.Mouse != nil {
+		base.TUI.Mouse = over.TUI.Mouse
+	}
 	if over.AutoCompactPercent != nil {
 		base.AutoCompactPercent = over.AutoCompactPercent
 	}

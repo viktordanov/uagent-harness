@@ -46,6 +46,7 @@ func TestTUI_ConfigSavesToTheUserFile(t *testing.T) {
 	configDeps(t, d)
 	require.NoError(t, os.MkdirAll(filepath.Dir(d.path), 0o700))
 	require.NoError(t, os.WriteFile(d.path, []byte("# my settings\neffort = \"high\" # keep\n"), 0o600))
+	d.Mouse = true
 	dr := start(t, d.Deps)
 	dr.typeText("hi")
 	dr.key(tea.KeyEnter, 0)
@@ -59,8 +60,8 @@ func TestTUI_ConfigSavesToTheUserFile(t *testing.T) {
 
 	dr.key(tea.KeyUp, 0) // wraps to Mouse
 	dr.key(tea.KeySpace, 0)
-	dr.waitFor("saved tui.mouse = true")
-	assert.Equal(t, tea.MouseModeCellMotion, dr.m.View().MouseMode, "the mouse is on at once")
+	dr.waitFor("saved tui.mouse = false") // on by default
+	assert.Equal(t, tea.MouseModeNone, dr.m.View().MouseMode, "the mouse is off at once")
 
 	dr.key(tea.KeyDown, 0)
 	dr.key(tea.KeyDown, 0) // the token limit
@@ -72,7 +73,7 @@ func TestTUI_ConfigSavesToTheUserFile(t *testing.T) {
 
 	data, err := os.ReadFile(d.path)
 	require.NoError(t, err)
-	assert.Equal(t, "# my settings\neffort = \"high\" # keep\nmodel_auto_compact_token_limit = 50000\n\n[tui]\nmouse = true\n", string(data))
+	assert.Equal(t, "# my settings\neffort = \"high\" # keep\nmodel_auto_compact_token_limit = 50000\n\n[tui]\nmouse = false\n", string(data))
 
 	dr.key(tea.KeyEscape, 0)
 	assert.NotContains(t, dr.view(), "enter or space change", "esc closes the panel")

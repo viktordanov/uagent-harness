@@ -38,6 +38,8 @@ type Theme struct {
 	// whole line, in the edit tool's diffs and in diff code blocks;
 	// DiffAddWord and DiffDelWord mark the changed words in them.
 	DiffAdd, DiffDel, DiffAddWord, DiffDelWord color.Color
+	// Selection is the background of text selected with the mouse.
+	Selection color.Color
 }
 
 // Amber is the default theme, for dark terminals: a saturated amber for
@@ -50,6 +52,7 @@ var Amber = Theme{
 	Keyword: hex("#ffc400"), Name: hex("#ffd75e"), String: hex("#9be564"), Number: hex("#ff9f43"), Comment: hex("#8a8272"),
 	// Codex's dark diff tints, and stronger ones for the changed words.
 	DiffAdd: hex("#212922"), DiffDel: hex("#3c170f"), DiffAddWord: hex("#2f5a32"), DiffDelWord: hex("#6e2a18"),
+	Selection: hex("#5c4608"),
 }
 
 // AmberLight is Amber for light terminals: deep amber ink.
@@ -61,6 +64,7 @@ var AmberLight = Theme{
 	Keyword: hex("#b86e00"), Name: hex("#9a5c00"), String: hex("#4f8a10"), Number: hex("#c4501a"), Comment: hex("#9a917f"),
 	// GitHub's light diff colors, as Codex uses on light terminals.
 	DiffAdd: hex("#e6ffec"), DiffDel: hex("#ffebe9"), DiffAddWord: hex("#abf2bc"), DiffDelWord: hex("#ffc1c0"),
+	Selection: hex("#f7d98b"),
 }
 
 // ThemeFor picks Amber or AmberLight for the terminal's background and
@@ -95,7 +99,9 @@ type Styles struct {
 	bandOn, addOn, delOn string
 	// dimOn switches the dim foreground on, for lines faded while going
 	// back to an earlier message.
-	dimOn     string
+	dimOn string
+	// selectOn switches the selection's background on (selection.go).
+	selectOn  string
 	breath    []lipgloss.Style
 	codeStyle *chroma.Style
 	// categoryColors color /context's categories.
@@ -135,6 +141,8 @@ func NewStyles(t Theme) *Styles {
 	st.bandOn, st.addOn, st.delOn = backgroundOn(t.Band), backgroundOn(t.DiffAdd), backgroundOn(t.DiffDel)
 	r, g, b := rgb(t.Dim)
 	st.dimOn = fmt.Sprintf("\x1b[38;2;%d;%d;%dm", r, g, b)
+	r, g, b = rgb(t.Selection)
+	st.selectOn = fmt.Sprintf("\x1b[48;2;%d;%d;%dm", r, g, b)
 	st.breath = make([]lipgloss.Style, 0, len(t.Breath))
 	for _, c := range t.Breath {
 		st.breath = append(st.breath, lipgloss.NewStyle().Foreground(c).Bold(true))

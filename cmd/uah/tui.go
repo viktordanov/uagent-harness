@@ -67,12 +67,13 @@ func openTUI(ctx context.Context, cmd *cli.Command, launch tuiLaunch) error {
 		Picker:      launch.picker,
 		AllSessions: launch.all,
 		Details:     st.Config.TUI.Details,
-		Mouse:       st.Config.TUI.Mouse,
+		Mouse:       st.Config.TUI.MouseOn(),
 		Version:     buildVersion(),
 		Config:      tuiConfig(cmd),
 		SaveConfig:  tuiSaveConfig(ctx, cmd),
 		Images:      &images.Store{Dir: images.DirIn(st.StateDir)},
 		Clipboard:   clipboard.System(),
+		CopyText:    clipboard.SystemWriter().WriteText,
 		Open: func(ctx context.Context, id string) (*session.Session, []session.LoadedRun, error) {
 			setup, err := setupFor(ctx, cmd, logFile, id)
 			if err != nil {

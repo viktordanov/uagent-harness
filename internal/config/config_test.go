@@ -228,3 +228,25 @@ default_subagent_reasoning_effort = "low"
 	_, _, err = config.Load(user, ws)
 	require.ErrorContains(t, err, `unknown key "agents.max_thread"`)
 }
+
+// TestMouse: the TUI reports the mouse unless a file sets mouse = false,
+// and a trusted project file can turn it off or on again.
+func TestMouse(t *testing.T) {
+	root := t.TempDir()
+	ws := filepath.Join(root, "ws")
+	user := filepath.Join(root, "config.toml")
+	cfg, _, err := config.Load(user, ws)
+	require.NoError(t, err)
+	assert.True(t, cfg.TUI.MouseOn(), "on by default")
+
+	write(t, user, "[tui]\nmouse = false\n")
+	cfg, _, err = config.Load(user, ws)
+	require.NoError(t, err)
+	assert.False(t, cfg.TUI.MouseOn())
+
+	write(t, user, "[tui]\nmouse = false\n[projects.\""+ws+"\"]\ntrusted = true\n")
+	write(t, config.ProjectFile(ws), "[tui]\nmouse = true\n")
+	cfg, _, err = config.Load(user, ws)
+	require.NoError(t, err)
+	assert.True(t, cfg.TUI.MouseOn(), "the project file wins")
+}
