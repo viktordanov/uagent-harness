@@ -50,6 +50,9 @@ func RealRunner(tb testing.TB) string {
 	return runnerPath
 }
 
+// realHome is HOME when the test binary started, before any test changed it.
+var realHome = os.Getenv("HOME")
+
 // FakeRunner builds uagent's fake runner once per test binary and returns its path.
 func FakeRunner(tb testing.TB) string {
 	tb.Helper()
@@ -63,6 +66,9 @@ func FakeRunner(tb testing.TB) string {
 		}
 		buildPath = filepath.Join(dir, "fakerunner")
 		build := exec.CommandContext(context.Background(), "go", "build", "-o", buildPath, "github.com/viktordanov/uagent/testing/fakerunner")
+		// A test may point HOME at a temporary directory; the build keeps the
+		// real one, so Go's module cache (read-only files) stays out of it.
+		build.Env = append(os.Environ(), "HOME="+realHome)
 		out, err := build.CombinedOutput()
 		if err != nil {
 			errBuild = fmt.Errorf("build fakerunner: %w\n%s", err, out)
