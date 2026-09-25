@@ -1,0 +1,24 @@
+│ λ uah                                          │
+│                                                │
+│ model:     gpt-6-sol high   /model to change   │
+│ directory: /workspace/proj                     │
+╰────────────────────────────────────────────────╯
+
+
+
+λ show m[e 界面 main                                                                                 ]
+[                                                                                                    ]
+[  RAN            ls]
+
+[• Here it is:]
+[  ]
+[   func] main() {}
+
+  Done.
+
+  12:00 AM · worked 0s
+
+
+λ
+
+ gpt-6-sol high · workspace mode · /workspace/proj                      ctrl+t details · / commands

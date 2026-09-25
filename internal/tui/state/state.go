@@ -5,6 +5,7 @@
 package state
 
 import (
+	"strings"
 	"time"
 
 	"github.com/viktordanov/uagent/core"
@@ -119,7 +120,8 @@ type State struct {
 	View *AgentView
 	// Config, when set, is the /config panel (see config.go).
 	Config *ConfigPanel
-	// Mouse reports the mouse to the TUI, so the wheel scrolls.
+	// Mouse reports the mouse to the TUI, so the wheel scrolls and a drag
+	// selects transcript text.
 	Mouse bool
 	// Shell is shell mode: enter runs the composer's line as a command
 	// (shell.go).
@@ -130,10 +132,15 @@ type State struct {
 	// Backtrack, when set, is the earlier message selected to go back to
 	// (backtrack.go).
 	Backtrack *Backtrack
+	// Selection, when set, is transcript text selected with the mouse
+	// (selection.go); click counts double and triple clicks.
+	Selection *Selection
+	click     clicks
 
 	// Status is a transient hint in the footer, such as a pending confirmation.
 	Status      string
 	escArmed    time.Time
+	copied      time.Time // when Status became the copy notice
 	quitArmed   time.Time
 	Quitting    bool
 	nextNoticeN int
@@ -229,4 +236,8 @@ func (s State) Item(key string) (Item, bool) {
 	}
 
 	return s.Items[i], true
+}
+
+func containsFold(s, sub string) bool {
+	return strings.Contains(strings.ToLower(s), strings.ToLower(sub))
 }

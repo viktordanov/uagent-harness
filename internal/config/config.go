@@ -218,11 +218,14 @@ type Review struct {
 type TUI struct {
 	// Details starts in the detailed view (ctrl+t toggles it).
 	Details bool `toml:"details"`
-	// Mouse reports the mouse to the TUI, so the wheel scrolls the
-	// transcript; selecting text then needs Option or Shift held. Off, the
-	// terminal selects text and turns the wheel into ↑ and ↓.
-	Mouse bool `toml:"mouse"`
+	// Mouse reports the mouse to the TUI (on when unset, MouseOn), so the
+	// wheel scrolls the transcript and a drag selects and copies its text.
+	// Off, the terminal selects text and turns the wheel into ↑ and ↓.
+	Mouse *bool `toml:"mouse"`
 }
+
+// MouseOn reports whether the TUI reports the mouse: on unless set false.
+func (t TUI) MouseOn() bool { return t.Mouse == nil || *t.Mouse }
 
 // Project is per-workspace configuration from the user file.
 type Project struct {

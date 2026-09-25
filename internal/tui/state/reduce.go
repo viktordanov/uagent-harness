@@ -24,7 +24,7 @@ func Reduce(s State, ev any) (State, []Effect) {
 	if s.index == nil {
 		s.index = map[string]int{}
 	}
-	if effects, ok := s.onShell(ev); ok {
+	if effects, ok := s.onSelectionOrShell(ev); ok {
 		return s, effects
 	}
 	if s.View != nil {
@@ -382,17 +382,4 @@ func (s *State) nextKey(prefix string) string {
 
 func (s *State) resetTranscript() {
 	s.Items, s.index, s.agentIDs, s.Totals, s.Scroll, s.Files, s.ContextUsed = nil, map[string]int{}, nil, Totals{}, 0, nil, 0
-}
-
-func turnKey(live *Live, turn int) string {
-	run := ""
-	if live != nil {
-		run = live.RunID
-	}
-
-	return fmt.Sprintf("turn:%s:%d", run, turn)
-}
-
-func containsFold(s, sub string) bool {
-	return strings.Contains(strings.ToLower(s), strings.ToLower(sub))
 }

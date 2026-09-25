@@ -1,6 +1,7 @@
 package state
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/viktordanov/uagent/core"
@@ -75,4 +76,13 @@ func (s *State) onRunEvent(ev core.Event) { //nolint:gocyclo // a dispatch switc
 		s.dropStreamed()
 		s.finishRun(e.Result)
 	}
+}
+
+func turnKey(live *Live, turn int) string {
+	run := ""
+	if live != nil {
+		run = live.RunID
+	}
+
+	return fmt.Sprintf("turn:%s:%d", run, turn)
 }

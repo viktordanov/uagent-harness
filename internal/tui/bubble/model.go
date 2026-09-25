@@ -54,9 +54,13 @@ type Deps struct {
 	AllSessions bool
 	// Details starts in the detailed view: turns, run dividers, and tokens.
 	Details bool
-	// Mouse reports the mouse, so the wheel scrolls; off, the terminal
-	// selects text and its wheel sends ↑ and ↓.
+	// Mouse reports the mouse, so the wheel scrolls and a drag selects
+	// transcript text; off, the terminal selects text and its wheel sends
+	// ↑ and ↓.
 	Mouse bool
+	// CopyText writes text to the system clipboard with its own tool, next
+	// to OSC 52 (optional; internal/images/clipboard.WriteText).
+	CopyText func(ctx context.Context, text string) error
 	// Config loads the effective configuration for /config: the user file
 	// and each key's value and source (optional). SaveConfig writes one key
 	// to the user file, keeping its comments; a nil value removes it.
@@ -230,6 +234,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.onBackground(msg), nil
 	case tea.MouseWheelMsg:
 		return m.onWheel(msg)
+	case tea.MouseClickMsg, tea.MouseMotionMsg, tea.MouseReleaseMsg:
+		return m.onMouse(msg)
 	case tea.KeyPressMsg:
 		return m.onKey(msg)
 	case tea.PasteMsg:
@@ -272,7 +278,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case state.Failed, state.SessionsLoaded, state.ActivityLoaded, state.FilesLoaded, state.MCPListed, state.ContextShown,
 		state.ModelsLoaded, state.ConfigLoaded, state.ConfigSaved, state.ImageAttached, state.ImageFailed:
 		return m.dispatch(msg)
-	case state.UsageLoaded:
+	case state.UsageLoaded, state.Copied:
 		return m.dispatch(msg)
 	}
 	var cmd tea.Cmd
@@ -355,17 +361,22 @@ func (m *Model) afterChange() tea.Cmd {
 	return tea.Tick(tickInterval, func(t time.Time) tea.Msg { return tickMsg(t) })
 }
 
+// frame is what render.Screen draws around the state.
+func (m Model) frame() render.Frame {
+	return render.Frame{
+		Width: m.w, Height: m.h, Composer: m.composer.View(), ComposerHeight: m.composer.Height(), Draft: m.composer.Value(), Version: m.deps.Version,
+	}
+}
+
 func (m Model) View() tea.View {
-	draft := m.composer.Value()
-	content, composerRow := render.Screen(m.st, m.cache, render.Frame{
-		Width: m.w, Height: m.h, Composer: m.composer.View(), ComposerHeight: m.composer.Height(), Draft: draft, Version: m.deps.Version,
-	})
+	content, composerRow := render.Screen(m.st, m.cache, m.frame())
 	v := tea.NewView(content)
 	v.AltScreen = true
-	// With the mouse reported, wheel events scroll the transcript and
-	// selecting text needs the terminal's modifier (Option in iTerm2 and
-	// Terminal, Shift in most others). Without it, which is the default, the
-	// terminal selects text and turns the wheel into ↑ and ↓ (keys.go).
+	// With the mouse reported, which is the default, wheel events scroll
+	// the transcript and a drag selects its text (mouse.go); the terminal's
+	// own selection needs its modifier (Option in iTerm2 and Terminal,
+	// Shift in most others). Without it, the terminal selects text and
+	// turns the wheel into ↑ and ↓ (keys.go).
 	if m.st.Mouse {
 		v.MouseMode = tea.MouseModeCellMotion
 	}

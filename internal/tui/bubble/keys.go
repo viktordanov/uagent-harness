@@ -225,14 +225,25 @@ func (m Model) onWheel(msg tea.MouseWheelMsg) (tea.Model, tea.Cmd) {
 	if m.st.Mode == state.ModePicker {
 		return m, nil
 	}
+	lines := wheelLines
 	switch msg.Button {
 	case tea.MouseWheelUp:
-		return m.scroll(wheelLines)
 	case tea.MouseWheelDown:
-		return m.scroll(-wheelLines)
+		lines = -wheelLines
 	default:
 		return m, nil
 	}
+	model, cmd := m.scroll(lines)
+	if sel := m.st.Selection; sel != nil && sel.Dragging {
+		// The text under the mouse moved: the selection follows it.
+		m = model.(Model) //nolint:forcetypeassert // scroll returns a Model
+		m.View()
+		next, drag := m.drag(msg.X, msg.Y)
+
+		return next, tea.Batch(cmd, drag)
+	}
+
+	return model, cmd
 }
 
 // scroll moves the transcript, stopping at its first line.

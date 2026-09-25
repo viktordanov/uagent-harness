@@ -1,0 +1,137 @@
+package bubble_test
+
+import (
+	"context"
+	"strings"
+	"testing"
+
+	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+// selectionOn is the Amber theme's selection background, as drawn.
+const selectionOn = "\x1b[48;2;92;70;8m"
+
+// copyDeps report the mouse and copy into copies instead of a clipboard.
+func copyDeps(t *testing.T) (*driver, chan string) {
+	t.Helper()
+	d := deps(t, "simple.jsonl")
+	d.Mouse = true
+	copies := make(chan string, 8)
+	d.CopyText = func(_ context.Context, text string) error { copies <- text; return nil }
+
+	return start(t, d), copies
+}
+
+// at is the screen cell where text starts: its column and row.
+func (d *driver) at(text string) (x, y int) {
+	d.t.Helper()
+	for row, line := range strings.Split(d.view(), "\n") {
+		if i := strings.Index(line, text); i >= 0 {
+			return ansi.StringWidth(line[:i]), row
+		}
+	}
+	d.t.Fatalf("%q is not on the screen:\n%s", text, d.view())
+
+	return 0, 0
+}
+
+func (d *driver) press(x, y int) { d.send(tea.MouseClickMsg{X: x, Y: y, Button: tea.MouseLeft}) }
+func (d *driver) move(x, y int)  { d.send(tea.MouseMotionMsg{X: x, Y: y, Button: tea.MouseLeft}) }
+func (d *driver) release(x, y int) {
+	d.send(tea.MouseReleaseMsg{X: x, Y: y, Button: tea.MouseLeft})
+}
+
+// copied waits for the next copy and its notice in the footer.
+func (d *driver) copied(copies chan string, notice string) string {
+	d.t.Helper()
+	var text string
+	d.until("a copy", func() bool {
+		select {
+		case text = <-copies:
+			return true
+		default:
+			return false
+		}
+	})
+	d.waitFor(notice)
+
+	return text
+}
+
+// TestTUI_SelectAndCopy: a drag over the transcript selects its text and
+// copies it on release, a double click copies a word, esc and a click on
+// the composer clear the selection, and the mouse is reported.
+func TestTUI_SelectAndCopy(t *testing.T) {
+	d, copies := copyDeps(t)
+	assert.Equal(t, tea.MouseModeCellMotion, d.m.View().MouseMode)
+	d.typeText("hi there")
+	d.key(tea.KeyEnter, 0)
+	d.waitFor("• hello")
+	d.waitIdle()
+
+	x, y := d.at("hi there")
+	d.press(x, y)
+	d.move(x+3, y)
+	assert.Contains(t, d.m.View().Content, selectionOn, "the selection shows while dragging")
+	d.move(x+7, y)
+	d.release(x+7, y)
+	assert.Equal(t, "hi there", d.copied(copies, "copied 1 line"))
+
+	d.key(tea.KeyEscape, 0)
+	assert.NotContains(t, d.m.View().Content, selectionOn, "esc clears it")
+
+	x, y = d.at("hello")
+	for range 2 {
+		d.press(x+2, y)
+		d.release(x+2, y)
+	}
+	assert.Equal(t, "hello", d.copied(copies, "copied 1 line"))
+	assert.Contains(t, d.m.View().Content, selectionOn)
+
+	_, y = d.at("Ask uah to do anything")
+	d.press(4, y)
+	d.release(4, y)
+	assert.NotContains(t, d.m.View().Content, selectionOn, "a click on the composer clears it")
+	assert.Empty(t, copies)
+}
+
+// TestTUI_SelectWhileScrolling: dragging to the transcript's top row
+// scrolls it and the selection grows with it, and so does the wheel during
+// a drag; the copy has every line selected.
+func TestTUI_SelectWhileScrolling(t *testing.T) {
+	d, copies := copyDeps(t)
+	d.send(tea.WindowSizeMsg{Width: 100, Height: 60})
+	for i, text := range []string{"first message", "second message"} {
+		d.typeText(text)
+		d.key(tea.KeyEnter, 0)
+		d.until("the answer", func() bool { return strings.Count(d.view(), "• hello") == i+1 })
+		d.waitIdle()
+	}
+	d.send(tea.WindowSizeMsg{Width: 100, Height: 14})
+	require.NotContains(t, d.view(), "first message", "the window is too short for both")
+
+	x, y := d.at("second message")
+	d.press(x+6, y)
+	for range 16 {
+		d.move(0, 0) // the top row: each move scrolls a line
+	}
+	assert.Contains(t, d.view(), "scrolled up")
+	assert.Contains(t, d.view(), "first message")
+	d.release(0, 0)
+	text := d.copied(copies, "copied ")
+	assert.True(t, strings.HasSuffix(text, "second"), text)
+	assert.Contains(t, text, "hello\n")
+
+	d.key(tea.KeyEnd, 0)
+	x, y = d.at("second message")
+	d.press(x+13, y)
+	d.move(x+5, y)
+	d.send(tea.MouseWheelMsg{X: x + 5, Y: y, Button: tea.MouseWheelUp})
+	d.release(x+5, y)
+	text = d.copied(copies, "copied ")
+	assert.True(t, strings.HasSuffix(text, "second message"), "the wheel moved the text under the mouse: %q", text)
+	assert.Greater(t, strings.Count(text, "\n"), 0, text)
+}

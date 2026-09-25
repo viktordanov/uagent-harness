@@ -75,9 +75,11 @@ func Screen(s state.State, c *Cache, f Frame) (string, int) {
 	lines = append(lines, body...)
 	composerRow := len(lines) + composerTop
 	lines = append(lines, bottom...)
+	c.top = len(top)
 	if excess := len(lines) - f.Height; excess > 0 {
 		lines = lines[excess:]
 		composerRow -= excess
+		c.top -= excess
 	}
 
 	return strings.Join(lines, "\n"), composerRow
@@ -93,6 +95,7 @@ func transcript(s state.State, c *Cache, w, height int, head []string) []string 
 	}
 	need := height + s.Scroll
 	var rev [][]string
+	var keys []string // each of rev's items
 	// below and selected place the message selected to go back to: the
 	// lines under it and its own.
 	count, below, selected := 0, -1, 0
@@ -105,7 +108,7 @@ func transcript(s state.State, c *Cache, w, height int, head []string) []string 
 		if s.Backtrack != nil && s.Items[i].Key == s.Backtrack.Key {
 			below, selected = count, len(lines)
 		}
-		rev = append(rev, lines)
+		rev, keys = append(rev, lines), append(keys, s.Items[i].Key)
 		count += len(lines)
 	}
 	all := make([]string, 0, count)
@@ -130,6 +133,7 @@ func transcript(s state.State, c *Cache, w, height int, head []string) []string 
 	if s.Backtrack != nil {
 		c.styles.fade(out[height-len(window):], start, len(all)-below-selected, selected)
 	}
+	c.selectWindow(s, out, rowRefs(keys, rev, len(all)-count)[start:end])
 
 	return out
 }
