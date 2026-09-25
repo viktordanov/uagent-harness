@@ -10,7 +10,7 @@ A rebuildable SQLite index of the run records makes session listing, full-text s
 The [state storage record](../../docs/design/state.md) explains why the files stay authoritative and how the index differs from the first design.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="index" files="store.go query.go store_test.go" -->
+<!-- memoria:section id="index" files="store.go query.go copy.go store_test.go" -->
 ## How it works
 
 1. `Open` creates `uah.db` in WAL mode, so several uah processes can share it, and drops and recreates the tables when the schema version changed.
@@ -23,6 +23,8 @@ The [state storage record](../../docs/design/state.md) explains why the files st
 | `List` | `uah sessions`, `uah resume`, the TUI picker, `--last`, shell completion. Falls back to the file scan |
 | `SearchIn` | `uah sessions --search`. Each word is quoted, so user text is never FTS syntax |
 | `ActivityIn` | `/status`'s 12-week heatmap |
+
+`CopyIndex` copies an index into another state directory for the one-time move to `~/.uah` (`internal/home/migrate`). SQLite writes a consistent snapshot with `VACUUM INTO`, so another uah may hold it open; the old directory is only read (opened immutable when no WAL exists, so no `-wal` or `-shm` file appears next to it). The copy's `dir` column is repointed at the new `runs/`.
 
 No code writes to the index except `Reconcile`, so runs written by `uagent` or by another uah process appear on the next open. `TestIndexMatchesTheFiles` requires the index and the file scan to return the same sessions.
 <!-- /memoria:section -->

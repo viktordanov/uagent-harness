@@ -20,7 +20,7 @@ The keys are in the [configuration reference](../../docs/configuration.md#instru
 
 `Discover(workspace, userFiles, options)` lists the files in the order they apply:
 
-1. The user file: `~/.config/uagent/AGENTS.md`, or else `$CODEX_HOME/AGENTS.md` (`~/.codex/AGENTS.md` by default). The first that exists wins.
+1. The user file: `~/.uah/AGENTS.md`, or else `$CODEX_HOME/AGENTS.md` (`~/.codex/AGENTS.md` by default). The first that exists wins.
 2. The project root: the nearest ancestor of the workspace that holds one of `project_root_markers` (`.git` by default). `[]` means the workspace only, and so does a workspace with no marker above it.
 3. One file per directory from the project root down to the workspace: `AGENTS.override.md`, else `AGENTS.md`, else the first of `project_doc_fallback_filenames` that exists (none by default; `["CLAUDE.md"]` reads Claude Code's files). A fallback name with a path separator is ignored, as in Codex.
 
@@ -44,7 +44,7 @@ Skills are Codex's `<name>/SKILL.md` folders. The embedded engine (`internal/eng
 
 1. `.agents/skills` in each directory from the workspace up to the project root.
 2. The runner's `<workspace>/.harness/skills`.
-3. `~/.config/uagent/skills`.
+3. `~/.uah/skills`.
 4. `$CODEX_HOME/skills` (`~/.codex/skills` by default).
 
 A name found in a more specific folder wins. The process engine offers only the runner's `.harness/skills`.

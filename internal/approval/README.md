@@ -51,7 +51,7 @@ An `apply_patch` call (see [patches](../patch/README.md)) goes through the same 
 | Auto | Applies | The auto-reviewer decides |
 | Full access | Applies | Applies |
 
-A protected path (`.git`, `.uagent`, `.agents`, `.codex`) is not inside the writable roots, and a symlink is followed before the check. A patch that needs approval becomes a `Request` with `Command` `apply_patch <paths>` (so a rule on the prefix `apply_patch` allows or forbids such patches), `Escalated`, the reason (`the patch writes outside the writable roots`, or `the sandbox is read-only`), and `Tool` and `Input` set. PermissionRequest hooks then see `tool_name` `apply_patch` with Codex's `{"command": "<patch>"}`, and the auto-reviewer sees the patch. A decline, or no one to ask, is the tool's error, and nothing is written. A patch that cannot apply fails before anyone is asked.
+A protected path (`.git`, `.uah`, `.uagent`, `.agents`, `.codex`) is not inside the writable roots, and a symlink is followed before the check. A patch that needs approval becomes a `Request` with `Command` `apply_patch <paths>` (so a rule on the prefix `apply_patch` allows or forbids such patches), `Escalated`, the reason (`the patch writes outside the writable roots`, or `the sandbox is read-only`), and `Tool` and `Input` set. PermissionRequest hooks then see `tool_name` `apply_patch` with Codex's `{"command": "<patch>"}`, and the auto-reviewer sees the patch. A decline, or no one to ask, is the tool's error, and nothing is written. A patch that cannot apply fails before anyone is asked.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="modes" files="mode.go" -->
@@ -84,7 +84,7 @@ A change reaches a live run on the embedded engine from its next command and mod
 | `permission_mode` | `workspace` (workspace-write, ask) | The `auto` preset ("Default") |
 | `sandbox_mode` | `workspace-write` | The same for trusted projects |
 | `network_access` | false | The same |
-| Protected paths | `.git`, `.uagent`, `.agents`, `.codex` | `.git`, `.agents`, `.codex` |
+| Protected paths | `.git`, `.uah`, `.uagent`, `.agents`, `.codex` | `.git`, `.agents`, `.codex` |
 | `approval_policy` | `on-request` (`on-failure` is accepted as `on-request`) | The same |
 | `approvals_reviewer` | `user` (auto mode uses the reviewer) | `user`; `auto_review` with "Approve for me" |
 | Review model | `codex-auto-review` on openai-codex, else the session's model; low effort; 90 s timeout | `codex-auto-review` |
@@ -117,7 +117,7 @@ A change reaches a live run on the embedded engine from its next command and mod
 
 `internal/app/approvals.go` builds the approver:
 
-1. Every `*.rules` file in `~/.config/uagent/rules`, then, for a trusted workspace, in `<workspace>/.uagent/rules`.
+1. Every `*.rules` file in `~/.uah/rules`, then, for a trusted workspace, in `<workspace>/.uah/rules`.
 2. `[approvals] allow` and `forbid` from the configuration, as prefix rules with `allow` and `forbidden` decisions. A trusted project file adds to the user file's lists.
 3. The policy from `--ask`, `UAH_ASK`, or `approval_policy`.
 <!-- /memoria:section -->

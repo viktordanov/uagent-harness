@@ -58,7 +58,7 @@ An HTTP server authorizes with a bearer token (`bearer_token_env_var` or an `Aut
 
 A running server's `storedAuth` handler sends the stored token and lets the oauth2 package refresh it; each new token is saved back. A 401 never opens a browser: the server becomes `needs_login` with "Run `uah mcp login <name>`", which `/mcp`, `uah doctor`, and `uah mcp list` show.
 
-Logins are stored as Codex stores them, under the server's name and a hash of its URL: in the OS keyring (service "uah MCP Credentials", through `github.com/zalando/go-keyring`), or in `<config dir>/mcp-credentials.json` (0600) when `mcp_oauth_credentials_store` is `file`, or `auto` (the default) and the keyring fails. `AuthStatusOf` reports "Bearer token", "OAuth", "Not logged in", or "Unsupported" without starting the server, with at most 5 s of discovery.
+Logins are stored as Codex stores them, under the server's name and a hash of its URL: in the OS keyring (service "uah MCP Credentials", through `github.com/zalando/go-keyring`), or in `~/.uah/mcp-credentials.json` (0600) when `mcp_oauth_credentials_store` is `file`, or `auto` (the default) and the keyring fails. `AuthStatusOf` reports "Bearer token", "OAuth", "Not logged in", or "Unsupported" without starting the server, with at most 5 s of discovery.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="configuration" files="config.go configfile.go approve.go" -->

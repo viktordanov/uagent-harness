@@ -1,5 +1,7 @@
 # State storage: decision record
 
+Update, 2026-09-25: uah keeps its state in its own home, `~/.uah` (ledger item 43), no longer in the directory it shared with uagent; the first start copies uah's part of `~/.local/state/unreal-agent` there. The paths below are relative to that directory.
+
 Status: built, 2026-09-24. The sidecar (with `source`) and the index (`internal/store`, `<state>/uah.db`) are implemented. As built, the index has no `sessions` table: sessions are folded from the `runs` rows at query time, the same way the file scan folds them, and a test checks the two agree. Listing falls back to the file scan when the index cannot be opened. `/status` draws a 12-week activity heatmap from it, and `uah sessions --search` uses its full-text table.
 
 1. [What is stored today](#what-is-stored-today)

@@ -4,7 +4,7 @@
 The sandbox package runs shell commands inside the operating system's sandbox, as Codex does: Seatbelt (`/usr/bin/sandbox-exec`) on macOS and bubblewrap (`bwrap`, which must be installed) on Linux. It decides what a command may write and whether it has network; it does not decide whether a command runs at all, which is [the approver's job](../approval/README.md).
 
 <!-- memoria:export id="summary" -->
-Commands run in the operating system's sandbox, as in Codex: Seatbelt on macOS and bubblewrap on Linux. The default mode, workspace-write, lets commands read the whole disk and write only the workspace and temporary directories, without network, and keeps .git, .uagent, .agents, and .codex read-only.
+Commands run in the operating system's sandbox, as in Codex: Seatbelt on macOS and bubblewrap on Linux. The default mode, workspace-write, lets commands read the whole disk and write only the workspace and temporary directories, without network, and keeps .git, .uah, .agents, and .codex read-only.
 <!-- /memoria:export -->
 
 The profile and the bubblewrap layout are adapted from Codex rust-v0.156.1 (Apache-2.0; see `seatbelt/LICENSE-codex`). The decisions are recorded in the [sandbox plan](../../docs/design/sandbox.md), and the keys are in the [configuration reference](../../docs/configuration.md#sandbox-and-approvals).
@@ -27,7 +27,7 @@ The mode comes from `--sandbox`, `UAH_SANDBOX`, or `sandbox_mode`. The names are
 | `read-only` | Read any file; write nothing; no network |
 | `danger-full-access` | Anything the user can: no sandbox |
 
-`Policy.Writable` returns the writable roots with symlinks resolved. `Protected` returns the paths that stay read-only inside each root: `.git`, `.uagent`, `.agents`, and `.codex`, and the directory a worktree's `.git` file points to. They are protected because a sandboxed command could otherwise plant code that runs later outside the sandbox, such as a git hook. So `git commit` needs an escalation.
+`Policy.Writable` returns the writable roots with symlinks resolved. `Protected` returns the paths that stay read-only inside each root: `.git`, `.uah`, `.agents`, and `.codex` (and `.uagent`, the old project directory, until it is moved), and the directory a worktree's `.git` file points to. They are protected because a sandboxed command could otherwise plant code that runs later outside the sandbox, such as a git hook. So `git commit` needs an escalation.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="shell" files="shell.go denied.go sandbox.go" -->

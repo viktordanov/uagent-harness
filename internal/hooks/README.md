@@ -22,7 +22,7 @@ Hooks are `[[hooks.<Event>]]` entries in the configuration; the keys are in the 
 ```toml
 [[hooks.PreToolUse]]            # embedded engine only
 matcher = "Bash"                # a regular expression on the whole tool name
-command = "~/.config/uagent/hooks/no-rm-rf.sh"
+command = "~/.uah/hooks/no-rm-rf.sh"
 timeout = "10s"                 # default 60s
 
 [[hooks.Stop]]
@@ -75,11 +75,11 @@ An example: a PreToolUse hook that blocks destructive commands before the agent 
 ```toml
 [[hooks.PreToolUse]]
 matcher = "Bash"
-command = ".uagent/hooks/guard.sh"
+command = ".uah/hooks/guard.sh"
 timeout = "5s"
 ```
 
-The script, `.uagent/hooks/guard.sh`:
+The script, `.uah/hooks/guard.sh`:
 
 ```sh
 #!/bin/sh
@@ -87,7 +87,7 @@ The script, `.uagent/hooks/guard.sh`:
 # becomes the error the model sees.
 input=$(cat)
 if printf '%s' "$input" | grep -Eq 'rm -rf /|git push (-f|--force)|git reset --hard'; then
-	echo "blocked by .uagent/hooks/guard.sh: destructive command" >&2
+	echo "blocked by .uah/hooks/guard.sh: destructive command" >&2
 	exit 2
 fi
 ```
@@ -100,7 +100,7 @@ To add an event: add it to `Events` in `hooks.go` and any payload fields to `Inp
 <!-- memoria:section id="trust" files="trust.go script.go" -->
 ## Trust
 
-Hooks in the user file run as written. Hooks in a trusted project's `.uagent/config.toml` run only after `uah hooks trust` records them in `~/.config/uagent/trusted-hooks.json`. Trust is based on content:
+Hooks in the user file run as written. Hooks in a trusted project's `.uah/config.toml` run only after `uah hooks trust` records them in `~/.uah/trusted-hooks.json`. Trust is based on content:
 
 1. Each command is recorded by its SHA-256, so a changed command needs trust again.
 2. When the command's first word is a path to a local file (absolute, relative to the workspace, or through a variable such as `"$UAH_PROJECT_DIR"/check.sh`), the entry also records the script's path and SHA-256. An edited script is reported as untrusted ("the script changed") until `uah hooks trust` runs again.

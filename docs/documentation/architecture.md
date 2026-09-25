@@ -8,6 +8,7 @@ uah is a pure core with well-organized infrastructure around it, not layered DDD
 | `internal/engine` | How runs execute: `process` spawns the runner through uagent; `embedded` runs the runner's packages in process as a uagent `harness.Backend`. |
 | `internal/instructions` | AGENTS.md discovery and the host prompt, following Codex. |
 | `internal/config` | TOML configuration: the user file and trusted project files. |
+| `internal/home` | uah's home, `~/.uah` or `$UAH_HOME`, where every file uah reads and writes lives; `migrate` copies the folders earlier versions used into it once, at startup. |
 | `internal/hooks` | Hook contract, execution, and the trust store (commands, and the content of a local script a command runs). |
 | `internal/mcp` | MCP servers in Codex's configuration format, through the official Go SDK: starting and watching them, naming and calling their tools, OAuth logins and their storage, and editing `[mcp_servers]` in the user file. Its own README describes it. |
 | `internal/sandbox` | Sandbox policies and the sandboxing shell: Seatbelt on macOS, bubblewrap on Linux. |

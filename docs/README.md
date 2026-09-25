@@ -22,7 +22,7 @@ Design:
 
 Reference:
 
-1. [Configuration](configuration.md): every configuration key with its type, default, flag, and merge rule; the files, the precedence, and complete examples.
+1. [Configuration](configuration.md): every configuration key with its type, default, flag, and merge rule; the home `~/.uah` and its files, the precedence, and complete examples.
 
 Work:
 
