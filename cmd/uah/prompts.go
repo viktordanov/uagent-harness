@@ -45,7 +45,7 @@ var builtinPrompts = []builtinPrompt{
 	{name: "system", text: func() string { return instructions.RunnerHostPrompt }, key: "model_instructions_file"},
 	{
 		name: "system-codex", text: func() string { return instructions.CodexPrompt }, key: "model_instructions_file",
-		alternative: "Or Codex's own prompt (gpt-6-astra's; it names Codex's tools, see docs/configuration.md):",
+		alternative: "Or Codex's own prompt (gpt-6-sol's; it names Codex's tools, see docs/configuration.md):",
 	},
 	{name: "review", text: review.DefaultPolicy, table: "review", key: "policy_file"},
 }

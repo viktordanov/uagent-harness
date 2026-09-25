@@ -36,7 +36,7 @@ Later files are more specific. Empty files are skipped. `ProjectDirs` is exporte
 
 The runner's context builder always puts its own preamble and the skill list before this prompt. `--no-instructions` or `[instructions] enabled = false` turns discovery off, but a `model_instructions_file` still applies. Subagents get the parent's system prompt, and a role's instructions follow it.
 
-`CodexPrompt` (`codex.go`, `codex_prompt.md`) is Codex's base instructions for gpt-6-astra at rust-v0.156.1, word for word. uah never uses it by default. `uah prompts init` writes it as `system-codex.md`, and `model_instructions_file` can name that file. The [configuration reference](../../docs/configuration.md#codexs-prompt) explains why uah copies this prompt and lists the tools it names that uah does not have.
+`CodexPrompt` (`codex.go`, `codex_prompt.md`) is Codex's base instructions for gpt-6-sol at rust-v0.156.1, word for word. uah never uses it by default. `uah prompts init` writes it as `system-codex.md`, and `model_instructions_file` can name that file. The [configuration reference](../../docs/configuration.md#codexs-prompt) explains why uah copies this prompt and lists the tools it names that uah does not have.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="skills" files="instructions.go" -->
