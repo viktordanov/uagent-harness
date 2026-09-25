@@ -122,7 +122,7 @@ func TestSelectedText(t *testing.T) {
 	assert.Equal(t, "+ added", text, "a diff line on its tint, without its label")
 
 	text, lines = copied(pos(msg, 2, 0), pos(answer, 99, 99))
-	assert.Equal(t, "show me 界面 main\n\n  RAN            ls\n\nHere it is:\n\nfunc main() {}\n\n+ added\n\nDone.", text)
+	assert.Equal(t, "show me 界面 main\n\nRAN            ls\n\nHere it is:\n\nfunc main() {}\n\n+ added\n\nDone.", text)
 	assert.Equal(t, 11, lines)
 
 	text, _ = render.SelectedText(s, c, f)
@@ -160,4 +160,18 @@ func TestAt(t *testing.T) {
 	got, _, ok = c.At(0, -1, true)
 	require.True(t, ok)
 	assert.Equal(t, state.BannerKey, got.Key, "clamped to the window's first line, the banner's")
+}
+
+// TestSelectedTextMarkdown: a copied answer keeps its words and its
+// structure: a quote without its “ ” marks, an alert's title and its
+// text, a table's columns without the zebra's padding, list markers and
+// nesting, and code dedented without its language.
+func TestSelectedTextMarkdown(t *testing.T) {
+	s := apply(base(), core.AssistantMessage{At: t0, Final: true, Text: "> a quote long enough to wrap onto a second line of the quote\n\n" +
+		"> [!WARNING]\n> be careful\n\n| Name | Val |\n|---|---|\n| one | 1 |\n| two | 2 |\n\n" +
+		"1. first\n   - nested\n\n```go\nif ok {\n\treturn\n}\n```"})
+	answer := s.Items[len(s.Items)-1].Key
+	text, _ := render.SelectedText(selecting(s, pos(answer, 0, 0), pos(answer, 99, 99)), render.NewCache(render.Amber), render.Frame{Width: 44, Height: 24})
+	assert.Equal(t, "a quote long enough to wrap onto a\nsecond line of the quote\n\n! Warning\n  be careful\n\n"+
+		"Name    Val\none     1\ntwo     2\n\n1. first\n   ◦ nested\n\nif ok {\n    return\n}", text)
 }
