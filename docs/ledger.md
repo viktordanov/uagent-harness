@@ -12,6 +12,7 @@ Asked for by the owner after v1.0.1.
 | --- | --- | --- | --- |
 | 41 | Survive a lost connection: retry model requests up to 10 attempts with exponential backoff, and show the retry in the TUI ("reconnecting, attempt 3 of 10"). Today the runner retries 5 attempts at 2, 4, 8, and 16 s (about 30 s in all), which a Wi-Fi switch can outlast, and the TUI shows nothing while it waits | lane reconnect | done (10 attempts by default, `request_max_attempts` or `--max-attempts`; the embedded engine shows each retry and says when it gave up; the process engine only retries, see the engine table) |
 | 42 | Ctrl+enter on an empty composer sends every queued message now, in order. Today it does nothing (an empty `Steer` becomes an empty `Submit`), so queued messages wait for the run to end | lane queueflush | done (`Session.SteerQueued`; also the agent view's queue) |
+| 43 | One home, as Codex and Claude Code have: everything uah reads and writes lives in `~/.uah/` (`UAH_HOME` overrides it): config, `AGENTS.md`, agents, prompts, skills, hook trust, MCP credentials, sessions, the index, images, the model cache, and logs. Project config moves from `.uagent/` to `.uah/` (a found `.uagent/` gets a notice with `git mv .uagent .uah`; uah never moves repo files). A one-time forward migration copies `~/.config/uagent` and uah's state from `~/.local/state/unreal-agent`, leaving both untouched | lane home | pending |
 
 ## Pending (round 3)
 
