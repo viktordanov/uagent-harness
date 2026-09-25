@@ -1,0 +1,60 @@
+== width 80 ==
+● Run <c>go test</> and <b>check</> the <i>output</>, then <s>ignore</> the rest.
+  A soft break keeps its line, and a hard break
+  ends one too. Nested: <b>bold with </><b><c>code</></><b> and </><b><i>italic</></><b> inside</>.
+
+  Links: the docs <d>(https://example.com/docs)</>, https://example.com/auto, and a
+  bare https://github.com/yuin/goldmark.
+  Images: a diagram <d>(img/diagram.png)</>. Escapes: *not italic*, & © #.
+  Words: snake_case_names and 2 * 3 * 4 stay as they are; a
+  very_long_identifier_name_that_will_need_wrapping_somewhere too.
+== width 40 ==
+● Run <c>go test</> and <b>check</> the <i>output</>, then
+  <s>ignore</> the rest.
+  A soft break keeps its line, and a
+  hard break
+  ends one too. Nested: <b>bold with </><b><c>code</></><b></>
+  <b>and </><b><i>italic</></><b> inside</>.
+
+  Links: the docs
+  <d>(https://example.com/docs)</>,
+  https://example.com/auto, and a bare
+  https://github.com/yuin/goldmark.
+  Images: a diagram <d>(img/diagram.png)</>.
+  Escapes: *not italic*, & © #.
+  Words: snake_case_names and 2 * 3 * 4
+  stay as they are; a
+  very_long_identifier_name_that_will_ne
+  ed_wrapping_somewhere too.
+== width 20 ==
+● Run <c>go test</> and
+  <b>check</> the <i>output</>,
+  then <s>ignore</> the
+  rest.
+  A soft break keeps
+  its line, and a
+  hard break
+  ends one too.
+  Nested: <b>bold with</>
+  <b></><b><c>code</></><b> and </><b><i>italic</></><b></>
+  <b>inside</>.
+
+  Links: the docs
+  <d>(https://example.c</>
+  <d>om/docs)</>,
+  https://example.co
+  m/auto, and a bare
+  https://github.com
+  /yuin/goldmark.
+  Images: a diagram
+  <d>(img/diagram.png)</>.
+  Escapes: *not
+  italic*, & © #.
+  Words:
+  snake_case_names
+  and 2 * 3 * 4 stay
+  as they are; a
+  very_long_identifi
+  er_name_that_will_
+  need_wrapping_some
+  where too.

@@ -15,6 +15,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 
 	"github.com/viktordanov/uagent-harness/internal/contextusage"
+	"github.com/viktordanov/uagent-harness/internal/tui/render/markdown"
 )
 
 // Theme is every color the TUI draws with. Text is left to the terminal,
@@ -96,6 +97,8 @@ type Styles struct {
 	categoryColors map[string]lipgloss.Style
 	// diffStyles draw added and removed diff lines.
 	diffStyles map[string]diffStyle
+	// markdown draws agent messages and keeps their finished blocks.
+	markdown *markdown.Renderer
 }
 
 // NewStyles builds a theme's styles.
@@ -144,6 +147,7 @@ func NewStyles(t Theme) *Styles {
 		chroma.OperatorWord:        "bold " + hexOf(t.Keyword),
 		chroma.LiteralStringEscape: hexOf(t.Number),
 	})
+	st.markdown = st.newMarkdown()
 
 	return st
 }

@@ -1,0 +1,36 @@
+== width 80 ==
+● <details>
+  <summary>More</summary>
+
+  Inline <kbd>html</kbd> stays as text.
+
+  </details>
+
+  <d>────────────────────────────────────────</>
+
+  <d>────────────────────────────────────────</>
+== width 40 ==
+● <details>
+  <summary>More</summary>
+
+  Inline <kbd>html</kbd> stays as text.
+
+  </details>
+
+  <d>──────────────────────────────────────</>
+
+  <d>──────────────────────────────────────</>
+== width 20 ==
+● <details>
+  <summary>More</sum
+  mary>
+
+  Inline
+  <kbd>html</kbd>
+  stays as text.
+
+  </details>
+
+  <d>──────────────────</>
+
+  <d>──────────────────</>

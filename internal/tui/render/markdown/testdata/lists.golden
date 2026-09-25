@@ -1,0 +1,84 @@
+== width 80 ==
+● <d>•</> first item
+    <d>•</> nested item that is long enough to wrap at a narrow width
+      <d>•</> third level
+  <d>•</> second item
+
+  <d>3.</> three
+  <d>4.</> four
+  <d>5.</> ten
+
+  <d>1)</> paren marker
+  <d>2)</> second
+
+  <d>•</> loose item one
+
+  <d>•</> loose item two
+    with a second line
+
+  <d>•</> <d>[x]</> a done task
+  <d>•</> <d>[ ]</> an open task
+
+  <d>•</> item with code:
+
+     <c>x := 1</>░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+
+    <d>│ </><d>and a quote</>
+== width 40 ==
+● <d>•</> first item
+    <d>•</> nested item that is long enough to
+      wrap at a narrow width
+      <d>•</> third level
+  <d>•</> second item
+
+  <d>3.</> three
+  <d>4.</> four
+  <d>5.</> ten
+
+  <d>1)</> paren marker
+  <d>2)</> second
+
+  <d>•</> loose item one
+
+  <d>•</> loose item two
+    with a second line
+
+  <d>•</> <d>[x]</> a done task
+  <d>•</> <d>[ ]</> an open task
+
+  <d>•</> item with code:
+
+     <c>x := 1</>░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+
+    <d>│ </><d>and a quote</>
+== width 20 ==
+● <d>•</> first item
+    <d>•</> nested item
+      that is long
+      enough to wrap
+      at a narrow
+      width
+      <d>•</> third level
+  <d>•</> second item
+
+  <d>3.</> three
+  <d>4.</> four
+  <d>5.</> ten
+
+  <d>1)</> paren marker
+  <d>2)</> second
+
+  <d>•</> loose item one
+
+  <d>•</> loose item two
+    with a second
+    line
+
+  <d>•</> <d>[x]</> a done task
+  <d>•</> <d>[ ]</> an open task
+
+  <d>•</> item with code:
+
+     <c>x := 1</>░░░░░░░░░
+
+    <d>│ </><d>and a quote</>

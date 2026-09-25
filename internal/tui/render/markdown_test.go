@@ -24,9 +24,13 @@ func TestMarkdownLines(t *testing.T) {
 		"",
 		"  • first item",
 		"    • nested",
+		"",
 		"  1. numbered",
+		"",
 		"  │ quoted",
+		"",
 		"  ────────────────────────────────────────",
+		"",
 		"  See the docs (https://example.com).",
 	}, plain)
 	assert.NotEqual(t, got[4], "   func main() {}", "code is highlighted")
@@ -41,4 +45,11 @@ func TestMarkdownWrapsListItemsWithAHangingIndent(t *testing.T) {
 	got := amber.markdownLines("- "+strings.Repeat("word ", 12), 30, "", "")
 	assert.Greater(t, len(got), 1)
 	assert.True(t, strings.HasPrefix(ansi.Strip(got[1]), "  word"), ansi.Strip(got[1]))
+}
+
+func TestMarkdownFollowsTheTheme(t *testing.T) {
+	code := "```go\nfunc main() {}\n```"
+	dark, light := NewStyles(Amber).markdownLines(code, 40, "", ""), NewStyles(AmberLight).markdownLines(code, 40, "", "")
+	assert.Equal(t, ansi.Strip(dark[0]), ansi.Strip(light[0]))
+	assert.NotEqual(t, dark[0], light[0], "each theme's cache has its own colors")
 }

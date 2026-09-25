@@ -40,6 +40,10 @@ jobs:
           # The real bwrap tests in internal/sandbox fail instead of skipping.
           UAH_REQUIRE_BWRAP: "1"
         run: go test -race ./...
+      # The Markdown benchmarks run once, so they keep compiling and running
+      # (docs/design/markdown.md); the tests hold the bounds.
+      - name: Benchmarks
+        run: go test -run '^$' -bench . -benchtime 1x ./internal/tui/render/...
 
   lint:
     runs-on: ubuntu-24.04
