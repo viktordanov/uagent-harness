@@ -248,7 +248,7 @@ uah compacts automatically at 90% of the context window. `/compact` compacts now
 ### Custom prompts
 
 ```sh
-uah prompts init           # writes ~/.config/uagent/prompts/review.md and compact.md
+uah prompts init           # writes ~/.uah/prompts/review.md and compact.md
 uah prompts show review    # prints a built-in prompt
 ```
 
@@ -263,7 +263,7 @@ Add a hook, for example a notification when the agent is idle:
 command = "osascript -e 'display notification \"uah is idle\"'"
 ```
 
-Hooks in a project's `.uagent/config.toml` run only after `uah hooks trust`; `uah hooks` lists them and whether each runs.
+Hooks in a project's `.uah/config.toml` run only after `uah hooks trust`; `uah hooks` lists them and whether each runs.
 
 ### The `/config` panel
 
@@ -276,17 +276,21 @@ Type `/config` in the TUI. It lists the basic settings (compaction, the model an
 
 ---
 
-<!-- memoria:section id="configuration" files="internal/config/config.go cmd/uah/flags.go cmd/uah/config.go internal/app/resolve.go internal/app/setup.go internal/app/explain.go internal/app/explain_files.go internal/app/compaction.go internal/app/configedit.go internal/config/edit.go .uagent/config.toml" -->
+<!-- memoria:section id="configuration" files="internal/config/config.go cmd/uah/flags.go cmd/uah/config.go internal/app/resolve.go internal/app/setup.go internal/app/explain.go internal/app/explain_files.go internal/app/compaction.go internal/app/configedit.go internal/config/edit.go internal/config/legacy.go internal/home/home.go internal/home/migrate/migrate.go .uagent/config.toml" -->
 ## Configuration
+
+Everything uah reads and writes lives in `~/.uah`, as Codex keeps `~/.codex`: the configuration, `AGENTS.md`, agents, prompts, skills, hook trust, MCP credentials, sessions, run records, the session index, pasted images, the model cache, and logs. `UAH_HOME` names another home; `--config` (`UAH_CONFIG`) and `--state-dir` (`UAH_STATE_DIR`) move just the user file or the state.
 
 Two TOML files:
 
 | File | Applies to | When |
 | --- | --- | --- |
-| `~/.config/uagent/config.toml` (or `$XDG_CONFIG_HOME/uagent/config.toml`, or `--config`) | Every workspace | Always |
-| `<workspace>/.uagent/config.toml` | One workspace | The user file marks the workspace `trusted` under `[projects]`; its hooks also need `uah hooks trust` |
+| `~/.uah/config.toml` (or `--config`) | Every workspace | Always |
+| `<workspace>/.uah/config.toml` | One workspace | The user file marks the workspace `trusted` under `[projects]`; its hooks also need `uah hooks trust` |
 
-A flag wins over the environment, which wins over a resumed session's settings (its provider, model, effort, fast mode, and permission mode), then the project file, the user file, and the defaults. Unknown keys are errors, so a typo fails loudly. The names say `uagent` because uah shares uagent's directories.
+A flag wins over the environment, which wins over a resumed session's settings (its provider, model, effort, fast mode, and permission mode), then the project file, the user file, and the defaults. Unknown keys are errors, so a typo fails loudly.
+
+Earlier versions used `~/.config/uagent`, `~/.local/state/unreal-agent`, and a project's `.uagent`. On its first start without `~/.uah`, uah copies the two folders into `~/.uah` and says so; the old folders are only read. It never moves a project's `.uagent`: uah and `uah doctor` show the `git mv .uagent .uah` that does. `UAGENT_CONFIG` and `UAGENT_STATE_DIR` are no longer read, and uah warns when either is set.
 
 `/config` in the TUI changes the basic settings in the user file (see [Change settings](#the-config-panel)). Every key, by group. The [configuration reference](docs/configuration.md) gives each one's type, default, flag, and merge rule, and the environment variables.
 
@@ -319,7 +323,7 @@ command = "npx"
 args = ["-y", "@example/docs-mcp"]
 
 [projects."/Users/me/code/proj"]
-trusted = true   # apply this workspace's .uagent/config.toml
+trusted = true   # apply this workspace's .uah/config.toml
 ```
 
 This repository's own [.uagent/config.toml](.uagent/config.toml) is a working project file: its `[approvals] forbid` rules keep the agent from `rm -rf /`, force pushes, and `git reset --hard`.
@@ -342,7 +346,7 @@ A session owns its settings, a message queue, at most one live run, pending appr
 The TUI is a pure reducer from session events and user intents to state and effects, a pure renderer from state to screen lines, and a thin Bubble Tea v2 shell that turns keys into intents and runs the effects against the session. Keys never change meaning: enter queues while the agent works, ctrl+enter sends now, esc esc interrupts, and ctrl+v pastes an image.
 <!-- /memoria:import -->
 
-Read more: [sessions](internal/session/README.md), [the session index](internal/store/README.md), and [the TUI](internal/tui/README.md) with its look. Diagnostics go to `<state-dir>/logs/uah-tui.log`.
+Read more: [sessions](internal/session/README.md), [the session index](internal/store/README.md), and [the TUI](internal/tui/README.md) with its look. Diagnostics go to `~/.uah/logs/uah-tui.log`.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="engines" files="internal/app/resolve.go internal/app/setup.go internal/app/features.go internal/app/process.go" -->
@@ -379,7 +383,7 @@ uah finds instruction files the way Codex does: the user's AGENTS.md, then one f
 ### Sandbox
 
 <!-- memoria:import src="internal/sandbox/README.md#summary" -->
-Commands run in the operating system's sandbox, as in Codex: Seatbelt on macOS and bubblewrap on Linux. The default mode, workspace-write, lets commands read the whole disk and write only the workspace and temporary directories, without network, and keeps .git, .uagent, .agents, and .codex read-only.
+Commands run in the operating system's sandbox, as in Codex: Seatbelt on macOS and bubblewrap on Linux. The default mode, workspace-write, lets commands read the whole disk and write only the workspace and temporary directories, without network, and keeps .git, .uah, .agents, and .codex read-only.
 <!-- /memoria:import -->
 
 Read more: [sandbox](internal/sandbox/README.md).

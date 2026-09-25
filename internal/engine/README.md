@@ -77,7 +77,7 @@ Features that are on by default, such as live input or subagents, get no notice;
 | MCP servers | `MCP` | Yes | No |
 | Subagents | `Subagents` | Yes | No |
 | Codex's `apply_patch` and its diffs | `ApplyPatch` | On openai and openai-codex models | No |
-| Codex skills (`.agents/skills`, `~/.config/uagent/skills`, `$CODEX_HOME/skills`) | `CodexSkills` | Yes | Only the runner's `.harness/skills` |
+| Codex skills (`.agents/skills`, `~/.uah/skills`, `$CODEX_HOME/skills`) | `CodexSkills` | Yes | Only the runner's `.harness/skills` |
 | `/context` | `ContextUsage` | Yes | No |
 | A lost connection to the model | `Reconnect` | Retried; each retry is reported (`Reconnecting`) and shown in the TUI, and a run that loses every attempt says it gave up after N attempts | Retried the same way by the runner, but nothing shows the attempts, and a failed run shows the runner's error |
 | Images pasted into the prompt | `Images` | Sent to the model with the message | The TUI shows the notice and keeps a pasted path as text; the model can still open an image file with ViewImage |

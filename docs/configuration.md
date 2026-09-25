@@ -11,18 +11,22 @@ uah reads its configuration from TOML files and combines it with flags, the envi
 
 ## Files
 
-The configuration directory is `$XDG_CONFIG_HOME/uagent`, or `~/.config/uagent` when `XDG_CONFIG_HOME` is unset. The names say `uagent` because uah shares uagent's directories.
+Everything uah reads and writes lives in its home, `~/.uah`, as Codex keeps `~/.codex`. `UAH_HOME` names another directory. The home holds the files below and the state: `sessions/`, `runs/`, the index `uah.db`, pasted `images/`, the model cache `models/`, `logs/`, and the sandbox's scratch files `sandbox/`. `--state-dir` (or `UAH_STATE_DIR`) moves the state elsewhere; `--config` (or `UAH_CONFIG`) names another user file.
+
+The first time uah starts without `~/.uah` and without `UAH_HOME`, it copies the folders it used before: the configuration directory (`$XDG_CONFIG_HOME/uagent` or `~/.config/uagent`) and its part of the state directory it shared with uagent (`$UAGENT_STATE_DIR`, `$XDG_STATE_HOME/unreal-agent`, or `~/.local/state/unreal-agent`): sessions, run records, images, the model cache, and the index. It prints "uah: moved your config and sessions to ~/.uah (the old folders are untouched)". The old folders are only read. Once `~/.uah` exists, uah never copies again, and `uah doctor` says where the home came from.
 
 | File | What it holds | Applies when |
 | --- | --- | --- |
-| `<config dir>/config.toml` | The user file: every key | Always. `--config` or `UAGENT_CONFIG` names another file |
-| `<workspace>/.uagent/config.toml` | The project file: every key except `[projects]` | The user file has `[projects."<workspace>"]` with `trusted = true`. The path is the absolute workspace path, symlinks not resolved |
-| `<config dir>/rules/*.rules` | The user's command rules (Starlark `prefix_rule`); "don't ask again" appends to `default.rules` | Always |
-| `<workspace>/.uagent/rules/*.rules` | The project's command rules | The workspace is trusted, with or without a project file |
-| `<config dir>/trusted-hooks.json` | The project hook commands `uah hooks trust` approved, by SHA-256 | Written by uah; do not edit |
-| `<config dir>/mcp-credentials.json` | MCP OAuth logins from `uah mcp login`, readable only by you (0600) | Written by uah when `mcp_oauth_credentials_store` is `file`, or `auto` without a usable OS keyring; do not edit |
-| `<config dir>/AGENTS.md`, `$CODEX_HOME/AGENTS.md` | User instructions; see [Instructions and skills](../README.md#instructions-and-skills) | Unless `--no-instructions` or `[instructions] enabled = false` |
-| `<config dir>/skills`, `$CODEX_HOME/skills`, `.agents/skills` | Skills; see [Instructions and skills](../README.md#instructions-and-skills) | Embedded engine |
+| `~/.uah/config.toml` | The user file: every key | Always. `--config` or `UAH_CONFIG` names another file |
+| `<workspace>/.uah/config.toml` | The project file: every key except `[projects]` | The user file has `[projects."<workspace>"]` with `trusted = true`. The path is the absolute workspace path, symlinks not resolved |
+| `~/.uah/rules/*.rules` | The user's command rules (Starlark `prefix_rule`); "don't ask again" appends to `default.rules` | Always |
+| `<workspace>/.uah/rules/*.rules` | The project's command rules | The workspace is trusted, with or without a project file |
+| `~/.uah/trusted-hooks.json` | The project hook commands `uah hooks trust` approved, by SHA-256 | Written by uah; do not edit |
+| `~/.uah/mcp-credentials.json` | MCP OAuth logins from `uah mcp login`, readable only by you (0600) | Written by uah when `mcp_oauth_credentials_store` is `file`, or `auto` without a usable OS keyring; do not edit |
+| `~/.uah/AGENTS.md`, `$CODEX_HOME/AGENTS.md` | User instructions; see [Instructions and skills](../README.md#instructions-and-skills) | Unless `--no-instructions` or `[instructions] enabled = false` |
+| `~/.uah/skills`, `$CODEX_HOME/skills`, `.agents/skills` | Skills; see [Instructions and skills](../README.md#instructions-and-skills) | Embedded engine |
+
+uah no longer reads a workspace's `.uagent` directory. When a workspace has `.uagent` and no `.uah`, uah and `uah doctor` show the command that moves it: `git mv .uagent .uah` in a repository, else `mv .uagent .uah`. uah never moves the files itself.
 
 A missing file is not an error. An unknown key is, in either file, so a typo fails loudly. A project file with a `[projects]` table is an error.
 
@@ -134,7 +138,7 @@ On the process engine, each configured feature it does not run (MCP servers, Pre
 | `timeout` | duration | `90s` | override | The limit for one review; a review that times out denies |
 | `policy_file` | path | Codex's review policy | override | A file whose text replaces the review policy, as Codex's `[auto_review] policy` does inline. The fixed framing and the answer format stay. An absolute path or one under `~/`; a missing or empty file stops the session from starting |
 
-`uah prompts init` writes the built-in review policy and summary prompt to `<config dir>/prompts/review.md` and `compact.md` as a starting point, and prints the `policy_file` and `experimental_compact_prompt_file` lines that use them; it overwrites only with `--force`. `uah prompts show review` or `show compact` prints one.
+`uah prompts init` writes the built-in review policy and summary prompt to `~/.uah/prompts/review.md` and `compact.md` as a starting point, and prints the `policy_file` and `experimental_compact_prompt_file` lines that use them; it overwrites only with `--force`. `uah prompts show review` or `show compact` prints one.
 
 ### Compaction
 
@@ -229,7 +233,7 @@ Top-level OAuth keys, merged as override:
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `mcp_oauth_credentials_store` | string | `auto` | Where logins are kept: `keyring` (the OS keyring, service "uah MCP Credentials"), `file` (`<config dir>/mcp-credentials.json`, 0600), or `auto` (the keyring, else the file, as Codex does) |
+| `mcp_oauth_credentials_store` | string | `auto` | Where logins are kept: `keyring` (the OS keyring, service "uah MCP Credentials"), `file` (`~/.uah/mcp-credentials.json`, 0600), or `auto` (the keyring, else the file, as Codex does) |
 | `mcp_oauth_callback_port` | integer | a port the OS picks | The port `uah mcp login` listens on for the browser's redirect |
 | `mcp_oauth_callback_url` | string | `http://127.0.0.1:<port>/callback` | The redirect URI sent to the authorization server, for a callback that reaches 127.0.0.1 some other way |
 
@@ -250,7 +254,7 @@ Codex keys uah does not support are errors: `bearer_token`, `http_headers_helper
 
 There is no `default_subagent_service_tier`: Codex has no such key. Fast mode for subagents comes from a role's `service_tier`, or from the parent's `/fast`, which its children inherit.
 
-Kinds of subagents (roles) are files in `~/.config/uagent/agents/` and, for a trusted workspace, `<workspace>/.uagent/agents/`, searched recursively: Markdown files with YAML front matter (`*.md`, as Claude Code's `.claude/agents/*.md`) and Codex role files (`*.toml`). A project file replaces a user file of the same name; in one directory, a Markdown file replaces a TOML file of the same name, with a notice. uah reads these keys and warns about the others:
+Kinds of subagents (roles) are files in `~/.uah/agents/` and, for a trusted workspace, `<workspace>/.uah/agents/`, searched recursively: Markdown files with YAML front matter (`*.md`, as Claude Code's `.claude/agents/*.md`) and Codex role files (`*.toml`). A project file replaces a user file of the same name; in one directory, a Markdown file replaces a TOML file of the same name, with a notice. uah reads these keys and warns about the others:
 
 | Markdown key | TOML key | Type | Meaning |
 | --- | --- | --- | --- |
@@ -285,7 +289,7 @@ Review the diff you are given. List only real bugs, each with its file and line.
 ```
 
 ```toml
-# ~/.config/uagent/agents/fast-reviewer.toml
+# ~/.uah/agents/fast-reviewer.toml
 name = "fast-reviewer"
 description = "Reviews a diff quickly for correctness bugs."
 model = "gpt-6-luna"
@@ -311,7 +315,7 @@ developer_instructions = "Review the diff you are given. List only real bugs, ea
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `trusted` | bool | false | Apply the workspace's `.uagent/config.toml` and `.uagent/rules/*.rules` |
+| `trusted` | bool | false | Apply the workspace's `.uah/config.toml` and `.uah/rules/*.rules` |
 
 ## Environment variables
 
@@ -324,16 +328,18 @@ developer_instructions = "Review the diff you are given. List only real bugs, ea
 | `UAH_ENGINE` | `--engine` | `engine` | The engine |
 | `UAH_SANDBOX` | `--sandbox` | `sandbox_mode` | The sandbox mode, and the permission mode of that sandbox |
 | `UAH_ASK` | `--ask` | `approval_policy` | The approval policy |
-| `UAGENT_CONFIG` | `--config` | none | The user file |
-| `UAGENT_STATE_DIR` | `--state-dir` | none | Sessions, logs, and run records |
+| `UAH_HOME` | none | none | uah's home, `~/.uah` by default |
+| `UAH_CONFIG` | `--config` | none | The user file, `<home>/config.toml` by default |
+| `UAH_STATE_DIR` | `--state-dir` | none | Sessions, logs, and run records; the home by default |
 | `UAGENT_RUNNER` | `--runner` | none | unreal-agent-runner, for the process engine |
-| `XDG_CONFIG_HOME` | none | none | The parent of the configuration directory |
 | `CODEX_HOME` | none | none | Codex's directory (`~/.codex`) for `AGENTS.md` and skills |
 | `BROWSER` | none | none | The program `uah mcp login` opens the authorization URL with, instead of the system's opener |
 
+`UAGENT_CONFIG` and `UAGENT_STATE_DIR` are no longer read. When either is set, uah prints a line naming its replacement, and `uah doctor` warns.
+
 ## uah config
 
-`uah config` takes the session flags and shows what a session started with them would use: the workspace, the files read, and one line per key with its value and source (`flag`, `env`, `session`, `project file`, `user file`, or `default`). Keys that append or OR list every file that set them, such as `user file + project file`. `--json` prints the same as JSON. A flag equal to its environment variable's value is reported as `env`.
+`uah config` takes the session flags and shows what a session started with them would use: the home, the workspace, the files read, and one line per key with its value and source (`flag`, `env`, `session`, `project file`, `user file`, or `default`). Keys that append or OR list every file that set them, such as `user file + project file`. `--json` prints the same as JSON. A flag equal to its environment variable's value is reported as `env`.
 
 ```sh
 uah config                     # the current directory
@@ -346,7 +352,7 @@ uah config --json | jq '.settings[] | select(.sources != ["default"])'
 
 ## Examples
 
-A complete user file, `~/.config/uagent/config.toml`:
+A complete user file, `~/.uah/config.toml`:
 
 ```toml
 provider = "openai-codex"
@@ -368,7 +374,7 @@ model_context_window = 272000      # tokens; overrides the model catalog
 # compact_model = "gpt-6-luna"              # a cheaper summary model; default: the session's
 # compact_effort = "medium"
 # compact_prompt = "Summarize for a handoff: decisions, open work, file paths."
-# experimental_compact_prompt_file = "~/.config/uagent/compact.md"
+# experimental_compact_prompt_file = "~/.uah/compact.md"
 # compact_user_message_max_tokens = 20000  # default: 20000, at most a quarter of the window
 project_doc_fallback_filenames = ["CLAUDE.md"]   # also read Claude Code's files
 project_root_markers = [".git"]
@@ -404,7 +410,7 @@ mouse = false
 
 [[hooks.PreToolUse]]               # embedded engine only
 matcher = "Bash"                   # the whole tool name, as a regular expression
-command = "~/.config/uagent/hooks/no-rm-rf.sh"
+command = "~/.uah/hooks/no-rm-rf.sh"
 timeout = "10s"                    # default 60s
 
 [[hooks.Stop]]
@@ -440,10 +446,10 @@ url = "https://mcp.linear.app/mcp"
 scopes = ["read"]
 
 [projects."/Users/me/code/proj"]
-trusted = true                     # apply proj/.uagent/config.toml and its rules
+trusted = true                     # apply proj/.uah/config.toml and its rules
 ```
 
-A project file, `/Users/me/code/proj/.uagent/config.toml`, applied because the user file trusts the workspace:
+A project file, `/Users/me/code/proj/.uah/config.toml`, applied because the user file trusts the workspace:
 
 ```toml
 effort = "medium"                  # override: replaces the user's "high"
@@ -459,7 +465,7 @@ forbid = ["git push --force"]      # append: never run, whatever an approval say
 
 [[hooks.PostToolUse]]              # append; runs only after `uah hooks trust`
 matcher = "apply_patch"
-command = ".uagent/hooks/format.sh"
+command = ".uah/hooks/format.sh"
 timeout = "5s"
 
 [mcp_servers.docs]                 # replace by name: the user's docs server is not used here

@@ -31,7 +31,7 @@ prefix_rule(
 
 `match` and `not_match` are checked when the file loads, so a wrong rule fails loudly. `host_executable` and `network_rule` are accepted and ignored, so Codex rules files load unchanged. A first word that is an absolute path also matches by its base name.
 
-`LoadDirs` reads every `*.rules` file of each directory in name order: `~/.config/uagent/rules`, then `<workspace>/.uagent/rules` for a trusted workspace. `AppendAllow` adds a "don't ask again" rule to `default.rules`. `FromPrefixes` turns the configuration's `[approvals] allow` and `forbid` prefixes into rules.
+`LoadDirs` reads every `*.rules` file of each directory in name order: `~/.uah/rules`, then `<workspace>/.uah/rules` for a trusted workspace. `AppendAllow` adds a "don't ask again" rule to `default.rules`. `FromPrefixes` turns the configuration's `[approvals] allow` and `forbid` prefixes into rules.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="matching" files="shell.go rules.go" -->
