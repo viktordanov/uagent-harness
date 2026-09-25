@@ -472,4 +472,4 @@ timeout = "5s"
 url = "https://docs.internal.example.com/mcp"
 ```
 
-This repository's own [.uagent/config.toml](../.uagent/config.toml) is a working project file.
+This repository's own [.uah/config.toml](../.uah/config.toml) is a working project file.
