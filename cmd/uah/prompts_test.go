@@ -28,7 +28,7 @@ func TestPrompts(t *testing.T) {
 	assert.Equal(t, "Wrote "+compact+"\nWrote "+system+"\nWrote "+codex+"\nWrote "+review+"\n\nTo use them, add to "+user+":\n\n"+
 		"experimental_compact_prompt_file = \""+compact+"\"\n\n"+
 		"model_instructions_file = \""+system+"\"\n"+
-		"# Or Codex's own prompt (gpt-6-astra's; it names Codex's tools, see docs/configuration.md):\n"+
+		"# Or Codex's own prompt (gpt-6-sol's; it names Codex's tools, see docs/configuration.md):\n"+
 		"# model_instructions_file = \""+codex+"\"\n\n"+
 		"[review]\npolicy_file = \""+review+"\"\n", res.stdout)
 	data, err := os.ReadFile(review)

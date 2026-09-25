@@ -154,6 +154,6 @@ func TestHostPrompt(t *testing.T) {
 // line and its size at rust-v0.156.1.
 func TestCodexPrompt(t *testing.T) {
 	assert.True(t, strings.HasPrefix(instructions.CodexPrompt, "You are Codex, an agent based on GPT-6."))
-	assert.Len(t, instructions.CodexPrompt, 21269)
+	assert.Len(t, instructions.CodexPrompt, 18998)
 	assert.NotContains(t, instructions.CodexPrompt, "\n"+instructions.ProjectHeader, "/context can tell it from the instructions")
 }
