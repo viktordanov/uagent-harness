@@ -14,6 +14,8 @@ Asked for by the owner after v1.0.1.
 | 42 | Ctrl+enter on an empty composer sends every queued message now, in order. Today it does nothing (an empty `Steer` becomes an empty `Submit`), so queued messages wait for the run to end | lane queueflush | done (`Session.SteerQueued`; also the agent view's queue) |
 | 43 | One home, as Codex and Claude Code have: everything uah reads and writes lives in `~/.uah/` (`UAH_HOME` overrides it): config, `AGENTS.md`, agents, prompts, skills, hook trust, MCP credentials, sessions, the index, images, the model cache, and logs. Project config moves from `.uagent/` to `.uah/` (a found `.uagent/` gets a notice with `git mv .uagent .uah`; uah never moves repo files). A one-time forward migration copies `~/.config/uagent` and uah's state from `~/.local/state/unreal-agent`, leaving both untouched | lane home | done (`internal/home`; `UAH_CONFIG` and `UAH_STATE_DIR` replace the `UAGENT_` variables, which warn; the index copies through `VACUUM INTO`; everything else is stored relative to the state directory, so no data needed rewriting, and the repository's own project file moved to `.uah/config.toml`) |
 | 44 | The system prompt from a file on disk, with Codex's key (`model_instructions_file`), and `uah prompts init`/`show` covering it: the runner's default as `system.md`, and Codex's own prompt as an explicit alternative file, so using Codex's is a visible choice | lane sysprompt | done (`model_instructions_file` replaces the host prompt, after the runner's fixed preamble; `system-codex.md` is gpt-6-sol's template from Codex's models.json) |
+| 45 | Streaming: the assistant's answer (and reasoning summaries where shown) appears in the TUI as the model writes it, not all at once when it finishes; the runner stays unchanged | lane stream | pending |
+| 46 | Transcript editing, as Codex's backtrack: pick an earlier message of yours, edit it (or drop it), and continue from there; what came after leaves the model's context, and the old branch stays on disk | lane rewind | pending |
 
 ## Pending (round 3)
 
@@ -315,6 +317,7 @@ Done: items 13–27. `/context`, shell completion, module READMEs and a root REA
 
 Ideas that come up while working go here, not into the items.
 
+- Stop reading `~/.codex/AGENTS.md` and `~/.codex/skills` by default; `uah import codex` copies them into `~/.uah` once, visibly, and an opt-in `codex_home = true` keeps live sharing. Repository `AGENTS.md` and `.agents/skills` stay (owner, 2026-09-25).
 - Subagents: stopping a child while the parent is idle; Codex's v2 tools, `items`, and `fork_context`; Codex's completion notification into the parent's history (see docs/design/subagents.md, Validation).
 - Auto-review: Codex sends only the transcript delta per review and lets the reviewer run read-only commands; uah sends the whole trimmed context each time. The openai API-key provider reviews with the session model (Codex uses gpt-5.6-luna).
 - Approvals: "No, and tell the agent what to do" has no text field; no per-session cache of approved commands; the process engine ignores rules and approvals.
