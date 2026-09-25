@@ -90,7 +90,10 @@ type Styles struct {
 	quoteBar           string
 	// bandOn switches the band's background on; it is re-applied after every
 	// reset inside a band line.
-	bandOn    string
+	bandOn string
+	// dimOn switches the dim foreground on, for lines faded while going
+	// back to an earlier message.
+	dimOn     string
 	breath    []lipgloss.Style
 	codeStyle *chroma.Style
 	// categoryColors color /context's categories.
@@ -129,6 +132,8 @@ func NewStyles(t Theme) *Styles {
 	st.diffStyles = newDiffStyles(t)
 	r, g, b := rgb(t.Band)
 	st.bandOn = fmt.Sprintf("\x1b[48;2;%d;%d;%dm", r, g, b)
+	r, g, b = rgb(t.Dim)
+	st.dimOn = fmt.Sprintf("\x1b[38;2;%d;%d;%dm", r, g, b)
 	st.breath = make([]lipgloss.Style, 0, len(t.Breath))
 	for _, c := range t.Breath {
 		st.breath = append(st.breath, lipgloss.NewStyle().Foreground(c).Bold(true))
