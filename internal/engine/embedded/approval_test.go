@@ -41,6 +41,8 @@ type approvalOpts struct {
 	autoReview  bool
 	// mode, when set, is the session's permission mode.
 	mode approval.Mode
+	// stream asks for the model's text as it arrives.
+	stream bool
 }
 
 // newApprovalEnv opens the session; replies gets the outside directory.
@@ -74,7 +76,7 @@ func newApprovalEnv(t *testing.T, o approvalOpts, replies func(outside string) [
 	if o.mode != "" {
 		settings = settings.WithMode(o.mode)
 	}
-	e.s, err = session.Open(context.Background(), eng, session.Options{Settings: settings, Interactive: o.interactive, Hooks: runner})
+	e.s, err = session.Open(context.Background(), eng, session.Options{Settings: settings, Interactive: o.interactive, Hooks: runner, Stream: o.stream})
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = e.s.Close() })
 	e.ev = &events{t: t, s: e.s}

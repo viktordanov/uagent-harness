@@ -78,7 +78,7 @@ func openTUI(ctx context.Context, cmd *cli.Command, launch tuiLaunch) error {
 			if err != nil {
 				return nil, nil, err
 			}
-			setup.Options.Source, setup.Options.Interactive = session.SourceTUI, true
+			setup.Options.Source, setup.Options.Interactive, setup.Options.Stream = session.SourceTUI, true, true
 			setup.Options.Notices = append(setup.Options.Notices, startupNotes()...) // the first session shows them
 			s, err := session.Open(context.WithoutCancel(ctx), setup.Engine, setup.Options)
 			if err != nil {

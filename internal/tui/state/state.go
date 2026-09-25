@@ -82,6 +82,9 @@ type State struct {
 
 	Items []Item
 	index map[string]int
+	// streaming are the items the model is still writing, oldest first
+	// (stream.go).
+	streaming []streamed
 
 	Queue []Queued
 	// Approvals are commands waiting for the user, in order.

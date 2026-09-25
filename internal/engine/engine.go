@@ -76,6 +76,9 @@ type Options struct {
 	// with the next message (Session.Inject). A subagent's notification to
 	// its parent goes this way (nil: dropped).
 	Inject func(text string)
+	// Stream reports the model's text as it arrives, for the run's own
+	// turn requests (needs Capabilities.Stream).
+	Stream bool
 }
 
 // Forgetter is an engine that keeps per-session state across runs; the

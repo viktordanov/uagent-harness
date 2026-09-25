@@ -65,6 +65,8 @@ func runAction(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 	st.Options.Source = session.SourceRun
+	// Only --stream prints the answer as it arrives; otherwise it prints once.
+	st.Options.Stream = cmd.Bool("stream")
 	// The session gets its own context so Ctrl+C can close it gracefully.
 	s, err := session.Open(context.WithoutCancel(ctx), st.Engine, st.Options)
 	if err != nil {

@@ -73,6 +73,9 @@ type Item struct {
 	Input InputState
 	Final bool
 	Level string // KindNotice: "info", "warning", "error"
+	// Streaming means the model is still writing a KindAssistant or
+	// KindReasoning item (stream.go).
+	Streaming bool
 
 	// KindRun
 	RunID  string

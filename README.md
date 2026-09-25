@@ -98,8 +98,10 @@ When you quit the TUI, it prints the session's token usage and the command that 
 uah run "Fix the failing test in pkg/foo"
 uah run --last "Now update the changelog"       # continue this directory's latest session
 printf 'first\nsecond\n' | uah run --stdin       # each line is a message; lines queue while the agent works
-uah run --stream "..."                           # JSONL events for scripts
+uah run --stream "..."                           # JSONL events for scripts, with the answer as it arrives
 ```
+
+On the embedded engine, the TUI shows the answer as the model writes it, and `--stream` adds `text_delta`, `reasoning_delta`, and `stream_reset` events before the final `assistant_message`. Plain `uah run` prints each answer once, when it is complete. See the [streaming design](docs/design/streaming.md).
 
 It exits 0 when the run succeeds, 1 when it fails, 3 at the disk limit, 124 on a timeout, and 130 on an interrupt. Nobody can answer an approval headless, so commands that need one are declined with a reason. `uah run --help` lists the flags.
 
@@ -356,7 +358,7 @@ Read more: [sessions](internal/session/README.md), [the session index](internal/
 An engine starts runs of unreal-agent-runner for a session: the embedded engine (the default) runs the runner's packages inside uah, so messages, model, effort, fast mode, and the permission mode reach a live run, and the process engine spawns the runner binary through uagent. Both keep uagent's guards, session lock, and run records, apply the command rules, and write the same session files, so a session can move between them; one capability table says what the process engine does not run, and the session, `uah doctor`, and `/status` report it from there.
 <!-- /memoria:import -->
 
-`embedded` is the default; choose with `--engine` or `engine`. The process engine sandboxes every command and applies the `allow` and `forbidden` command rules in the shell it gives the runner, but it has no live input, approvals, compaction, PreToolUse hooks, MCP servers, subagents, `apply_patch`, pasted images, or a status line for a retried model request. A session on it shows one notice for each such feature the configuration uses, `uah doctor` warns about them in its `engine` check, and `/status` lists what the engine runs without. The [engine README](internal/engine/README.md#what-each-engine-supports) has the capability table and where each behavior lives.
+`embedded` is the default; choose with `--engine` or `engine`. The process engine sandboxes every command and applies the `allow` and `forbidden` command rules in the shell it gives the runner, but it has no live input, approvals, compaction, PreToolUse hooks, MCP servers, subagents, `apply_patch`, pasted images, a status line for a retried model request, or streaming: the answer appears when the model finishes it. A session on it shows one notice for each such feature the configuration uses, `uah doctor` warns about them in its `engine` check, and `/status` lists what the engine runs without. The [engine README](internal/engine/README.md#what-each-engine-supports) has the capability table and where each behavior lives.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="patch" files="cmd/uah/sessions.go" -->
@@ -494,7 +496,7 @@ Pushing a `v1.2.3` tag builds the release archives for macOS and Linux (arm64 an
 CI runs the build, the race tests, and the linter on each push; the linter also fails on a function above 20 cyclomatic complexity, a backstop for the rule of about 15. Design records, the architecture rules, and the documentation procedure are in [docs](docs/README.md):
 
 <!-- memoria:import src="docs/README.md#summary" -->
-The configuration reference, design records for the harness, the TUI, state storage, sandboxing, compaction, MCP, subagents, and pasted images, plus the architecture rules and documentation procedure for uagent-harness.
+The configuration reference, design records for the harness, the TUI, state storage, sandboxing, compaction, MCP, subagents, pasted images, and streaming, plus the architecture rules and documentation procedure for uagent-harness.
 <!-- /memoria:import -->
 
 `bench/tui` is a separate Go module with the benchmark behind choosing Bubble Tea v2.

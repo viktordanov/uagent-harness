@@ -72,6 +72,9 @@ type Options struct {
 	Ask approval.Ask
 	// Shell runs the commands the user types (RunShell); nil: none.
 	Shell *usershell.Runner
+	// Stream asks the engine for the model's text as it arrives
+	// (engine.TextDelta), for a TUI or `uah run --stream`.
+	Stream bool
 }
 
 // Session is safe to use from any goroutine. All state lives on one internal
@@ -110,6 +113,8 @@ type Session struct {
 	held        []core.UserInput
 	hooks       hookState
 	interactive bool
+	// stream is Options.Stream, for each run.
+	stream bool
 	// approvals are the pending approvals' reply channels by ID.
 	approvals map[string]pending
 	// askOverride is Options.Ask.
@@ -137,7 +142,7 @@ func Open(ctx context.Context, eng engine.Engine, opts Options) (*Session, error
 		ctx: runCtx, stop: stop, done: make(chan struct{}),
 		settings: opts.Settings, state: StateIdle, sent: map[string]bool{},
 		hooks:       hookState{runner: opts.Hooks, resumed: opts.Resumed, tools: map[string]core.ToolCalled{}},
-		interactive: opts.Interactive, approvals: map[string]pending{}, askOverride: opts.Ask,
+		interactive: opts.Interactive, stream: opts.Stream, approvals: map[string]pending{}, askOverride: opts.Ask,
 		sessionsDir: opts.SessionsDir, shell: opts.Shell, shells: map[string]context.CancelFunc{},
 	}
 	s.out <- SessionOpened{At: time.Now(), ID: id, Resumed: opts.Resumed, Engine: eng.Name(), Settings: opts.Settings}

@@ -209,7 +209,12 @@ func (st *Styles) statusLine(s state.State, w int) string {
 
 		return ansi.Truncate(st.breathing(s.Now.UnixMilli())+" "+st.bold.Render(verb)+st.dim.Render(" ("+wait+" • esc to interrupt)"), w, "…")
 	case s.Live != nil && !s.Live.TurnSince.IsZero():
-		return ansi.Truncate(st.workingLine(s.Now, "Thinking", s.Live.Started), w, "…")
+		verb := "Thinking"
+		if s.Writing() {
+			verb = "Writing"
+		}
+
+		return ansi.Truncate(st.workingLine(s.Now, verb, s.Live.Started), w, "…")
 	case s.Live != nil && s.Live.Tools > 0:
 		return ansi.Truncate(st.workingLine(s.Now, "Running "+plural(s.Live.Tools, "command"), s.Live.Started), w, "…")
 	case s.Live != nil:

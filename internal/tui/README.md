@@ -51,12 +51,14 @@ A session event:
 2. Each batch arrives as one `eventsMsg`. `Update` reduces every event in order and runs the effects they return (a finished run reads the plan's usage), then waits for the next batch; exactly one wait is pending at a time, which keeps order.
 3. Each session gets a generation number. Batches from a closed session are drained and dropped.
 
+A streamed answer changes with each batch, so it costs at most one render of its markdown per frame, about 60 a second.
+
 A frame: `View` calls `render.Screen`. The transcript is virtualized: it renders items from the bottom up until the window is full. Each item's lines are cached by key, version, width, and view; items that change with time (a running tool, a pending turn) are drawn fresh each frame. A 100 ms tick runs only while something moves on screen.
 
 Effects made before the first session opens (the startup prompt, for example) are held and run once it opens.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="items" files="state/items.go state/runevents.go state/agents.go state/contextview.go state/approval.go state/mcp.go render/items.go render/mcp.go state/patch.go state/shell.go render/shell.go" -->
+<!-- memoria:section id="items" files="state/items.go state/runevents.go state/stream.go state/agents.go state/contextview.go state/approval.go state/mcp.go render/items.go render/mcp.go state/patch.go state/shell.go render/shell.go" -->
 ## Transcript items
 
 The transcript is a list of `Item`s, each with a stable key. The reducer updates an item in place by key and raises its `Version`, so a tool call that finishes after later turns updates its original row.
@@ -67,7 +69,7 @@ The transcript is a list of `Item`s, each with a stable key. The reducer updates
 | `KindRun` | `run:<run ID>` | `RunStarted`, updated by `RunFinished` |
 | `KindTurn` | `turn:<run ID>:<n>` | `TurnStarted`, updated by `ModelResponded` |
 | `KindTool` | `call:<call ID>` | `ToolCalled`, `ToolStarted`, `ToolFinished`; `engine.PatchApplied` puts an `apply_patch` call's diff in `Diff` (`state/patch.go`) |
-| `KindAssistant`, `KindReasoning` | `text:<n>`, `reason:<n>` | `AssistantMessage`, `ReasoningSummary` |
+| `KindAssistant`, `KindReasoning` | `text:<n>`, `reason:<n>`; `stream:<n>` when streamed | `AssistantMessage`, `ReasoningSummary`; while the model writes them, `engine.TextDelta` and `engine.ReasoningDelta` (below) |
 | `KindNotice` | `notice:<n>` | Session notices, hook results, command output, approvals |
 | `KindAgent` | `agent:<ID>` | `engine.AgentUpdated` (a subagent): `Name` is the nickname, `Text` the ID, `Detail` the state, and `Agent` the latest update (spawn call ID and message, model, effort, why it failed); its tool calls from `engine.AgentActivity` go into `Sub`, drawn under it in the detailed view. `State.Agents` lists them in start order without walking the transcript |
 | `KindContext` | `context:<n>` | `/context` (`ContextShown`) |
@@ -76,6 +78,8 @@ The transcript is a list of `Item`s, each with a stable key. The reducer updates
 | `KindShell` | `msg:<command ID>` | A command you ran in shell mode: `session.ShellStarted`, `ShellOutput` (streamed into `Detail`), and `ShellFinished`; the runner's echo of its record marks it delivered, and a saved record makes it in a resumed transcript (`state/shell.go`, `render/shell.go`) |
 
 The compact view draws one line per tool call, as Codex does; the detailed view (ctrl+t) adds the header, run dividers, turns, and token totals. `LevelDebug` notices show only in the detailed view.
+
+The answer streams on the embedded engine (`state/stream.go`, the [streaming design](../../docs/design/streaming.md)). Each delta appends to a `KindAssistant` or `KindReasoning` item marked `Streaming`, one per model item (and summary part), which draws like a final message. The runner's `AssistantMessage` then replaces the oldest streamed answer in place, and each `ReasoningSummary` the oldest streamed summary part, so the recorded text wins. `engine.StreamReset` (a retry, a failed or canceled request) and the run's end drop streamed items no final message claimed. `State.Writing` reports an answer in progress, for the working line.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="keys" files="bubble/keys.go state/reduce.go state/approval.go state/mode.go state/shell.go render/shell.go bubble/model.go" -->
@@ -199,7 +203,7 @@ The compact view is shaped like Codex's, in amber. The choices came from the sty
 | Agent messages | `•` in the accent | `compactLines` |
 | Code blocks | On the band, highlighted with the theme's code colors, not wrapped | `markdownLines`, `highlight` |
 | Subagents | While running, at the bottom above the working line with a blank line before each: `AGENT Ada  42s`, and under it `└ ⠹ Read …`, its live tool call. A finished one is one line where it was spawned: `done in 1m 12s`, or `failed:` and the provider's reason; closing it afterwards keeps that | `activeAgents`, `agentLines` |
-| Working | A breathing `λ` (seven shades, one breath every 1.6 s) and `Working (12s • esc to interrupt)` | `workingLine`, `breathing` |
+| Working | A breathing `λ` (seven shades, one breath every 1.6 s) and `Working (12s • esc to interrupt)`; `Thinking` while a model request is out, `Writing` while its answer streams, `Running 2 commands` while tools run | `workingLine`, `breathing`, `statusLine` |
 | Reconnecting | While a model request waits to be sent again (`engine.Reconnecting`, embedded engine), the working line reads `Reconnecting, attempt 3 of 10 (retrying in 8s • esc to interrupt)`, counting down, then `(connecting • …)` while the attempt is in flight; the detailed view shows it in the footer. `State.Live.Reconnect` holds it until `engine.ReconnectEnded`, a response, or the run's end, and each retry leaves a `LevelDebug` notice with its reason | `statusLine`, `reconnectText`; `state/context.go` |
 | A finished run | `12:14 PM · worked 1m 12s`: Codex's time and Claude Code's duration; how it ended first when not ok | `finishLine` (a `KindFinish` item) |
 | Composer | `λ ` before its first row only (the rows under it line up with the text), on the band, with a band row above and below | `Screen`, `composerStyles` in `bubble/model.go` |
@@ -262,7 +266,7 @@ To add an item kind, follow `KindContext`:
 To add a key, map it to an intent in `bubble/keys.go` and handle the intent in `state.Reduce`. Keep the existing keys' meanings.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="tests" files="state/images_test.go bubble/images_test.go state/reduce_test.go state/menu_test.go state/contextview_test.go state/mode_test.go render/screen_test.go render/contextview_test.go render/mode_test.go bubble/bubble_test.go bubble/approval_test.go bubble/mode_test.go state/config_test.go bubble/config_test.go render/diff_test.go state/shell_test.go render/shell_test.go bubble/shell_test.go state/usage_test.go render/usage_test.go bubble/usage_test.go state/agents_test.go bubble/steer_test.go state/reconnect_test.go render/reconnect_test.go" -->
+<!-- memoria:section id="tests" files="state/images_test.go bubble/images_test.go state/reduce_test.go state/menu_test.go state/contextview_test.go state/mode_test.go render/screen_test.go render/contextview_test.go render/mode_test.go bubble/bubble_test.go bubble/approval_test.go bubble/mode_test.go state/config_test.go bubble/config_test.go render/diff_test.go state/shell_test.go render/shell_test.go bubble/shell_test.go state/usage_test.go render/usage_test.go bubble/usage_test.go state/agents_test.go bubble/steer_test.go state/reconnect_test.go render/reconnect_test.go state/stream_test.go render/stream_test.go bubble/stream_test.go" -->
 ## Tests
 
 | Test | Pins |
@@ -277,5 +281,6 @@ To add a key, map it to an intent in `bubble/keys.go` and handle the intent in `
 | `state/usage_test.go`, `render/usage_test.go`, `bubble/usage_test.go` | Plan usage: the read after each run, `/status` rows and staleness, the footer, warnings once per threshold, the limit notice, a provider without usage, and a real reader against a loopback backend |
 | `state/shell_test.go`, `render/shell_test.go`, `bubble/shell_test.go` | Shell mode: entering and leaving it, enter running the line, `/` as a path, the `!` prompt and the footer, the item from its events, the echo, and a resumed record (golden `shell`), and `!` through a real session on the process engine |
 | `state/reconnect_test.go`, `render/reconnect_test.go` | A retry held in `Live.Reconnect` until it ends, a response arrives, or the run finishes, its detail notice, and the working line's countdown, `connecting`, and the detailed footer |
+| `state/stream_test.go`, `render/stream_test.go`, `bubble/stream_test.go` | Streaming: deltas growing an item in place, the final message replacing it, a reset and the run's end dropping it, a streamed answer drawn as a final one with `Writing` in the working line, and a real embedded session whose answer shows while the response is held open |
 | `state/config_test.go`, `bubble/config_test.go` | `/config`: the rows and sources, toggles, cycles, typed values, what applies live, the warning when another source wins, and a real user file saved with its comments kept, with a change that would stop a session from starting undone |
 <!-- /memoria:section -->

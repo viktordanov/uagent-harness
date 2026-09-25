@@ -66,3 +66,34 @@ type ReconnectEnded struct {
 
 func (e Reconnecting) OccurredAt() time.Time   { return e.At }
 func (e ReconnectEnded) OccurredAt() time.Time { return e.At }
+
+// TextDelta is text the model is writing into its message ItemID, as it
+// arrives. Final means the message is the final answer, when the provider
+// says so. The runner's AssistantMessage for the response follows its
+// deltas and is authoritative. Only runs with Options.Stream report it
+// (Capabilities.Stream).
+type TextDelta struct {
+	At     time.Time
+	ItemID string
+	Text   string
+	Final  bool
+}
+
+// ReasoningDelta is text of part Part of reasoning item ItemID's summary,
+// as it arrives; the runner's ReasoningSummary for the part follows.
+type ReasoningDelta struct {
+	At     time.Time
+	ItemID string
+	Part   int
+	Text   string
+}
+
+// StreamReset means the text streamed since the last response is void: its
+// request failed, was canceled, or started over in a new attempt.
+type StreamReset struct {
+	At time.Time
+}
+
+func (e TextDelta) OccurredAt() time.Time      { return e.At }
+func (e ReasoningDelta) OccurredAt() time.Time { return e.At }
+func (e StreamReset) OccurredAt() time.Time    { return e.At }

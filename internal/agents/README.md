@@ -48,7 +48,8 @@ The only differences:
 4. the model, effort, service tier, and instructions a role, the spawn call, or `[agents]` defaults set, and a role's tools and pre-approvals;
 5. a hook runner of its own with the same hooks, so hook results stay with the child's session;
 6. its engine handle, which does not close the shared engine when the child closes;
-7. its prompt cache key, the root session's ID, as Codex keys every agent of a tree.
+7. its prompt cache key, the root session's ID, as Codex keys every agent of a tree;
+8. no streaming: `Stream` is off, since neither the parent nor the agent view shows a child's text as it arrives.
 
 `TestSetup_SubagentParity` (in `internal/app`) and `TestParity_ChildOptions` pin this: a child's model request has the root's system prompt, model, effort, service tier, and tools with the same schemas, less the spawn tools, and its options equal the root's but for the differences above. A capability added to the root session reaches children without a change here.
 <!-- /memoria:section -->

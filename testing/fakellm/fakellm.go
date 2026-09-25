@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 // Reply is one model response: tool calls, then a message. A reply with
@@ -49,6 +50,16 @@ type Reply struct {
 	// either, so the next reply answers the same request.
 	Drop bool
 	Cut  bool
+	// Deltas stream the message in these pieces before the response
+	// completes (Text defaults to them joined), and Reasoning streams a
+	// reasoning summary the same way, before the message. Pace waits
+	// between pieces; Hold, when set, holds the response after the pieces
+	// until it is closed or the request is canceled. With Cut, the
+	// connection closes after the pieces. See stream.go.
+	Deltas    []string
+	Reasoning []string
+	Pace      time.Duration
+	Hold      <-chan struct{}
 }
 
 // Call is a function call to a tool by name, with JSON arguments.
@@ -197,6 +208,9 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "text/event-stream")
+	if !streamPieces(w, r, n, reply) {
+		return // the request was canceled while held
+	}
 	if reply.Cut {
 		_, _ = fmt.Fprintf(w, "data: %s", event[:len(event)/2])
 		http.NewResponseController(w).Flush() //nolint:errcheck // the connection closes next
@@ -238,6 +252,7 @@ type (
 		Role      string        `json:"role,omitempty"`
 		Phase     string        `json:"phase,omitempty"`
 		Content   []contentPart `json:"content,omitempty"`
+		Summary   []contentPart `json:"summary,omitempty"`
 	}
 	contentPart struct {
 		Type        string `json:"type"`
@@ -283,14 +298,13 @@ func response(n int, reply Reply) responseBody {
 			CallID: fmt.Sprintf("call-%d-%d", n, i), Name: call.Name, Arguments: call.Args,
 		})
 	}
-	if reply.Text != "" {
-		phase := "final_answer"
-		if len(named) > 0 {
-			phase = "commentary"
-		}
+	if len(reply.Reasoning) > 0 {
+		output = append(output, reasoningItem(n, reply))
+	}
+	if text := reply.text(); text != "" {
 		output = append(output, outputItem{
-			ID: fmt.Sprintf("msg-%d", n), Type: "message", Role: "assistant", Status: completed, Phase: phase,
-			Content: []contentPart{{Type: "output_text", Text: reply.Text, Annotations: []any{}, Logprobs: []any{}}},
+			ID: messageID(n), Type: typeMessage, Role: "assistant", Status: completed, Phase: reply.phase(),
+			Content: []contentPart{{Type: "output_text", Text: text, Annotations: []any{}, Logprobs: []any{}}},
 		})
 	}
 
@@ -321,92 +335,4 @@ func failWith(w http.ResponseWriter, reply Reply) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(reply.Fail)
 	_, _ = w.Write(body)
-}
-
-func parseRequest(body []byte) Request {
-	var raw struct {
-		Model       string `json:"model"`
-		ServiceTier string `json:"service_tier"`
-		CacheKey    string `json:"prompt_cache_key"`
-		Reasoning   struct {
-			Effort string `json:"effort"`
-		} `json:"reasoning"`
-		Tools []struct {
-			Name       string          `json:"name"`
-			Parameters json.RawMessage `json:"parameters"`
-		} `json:"tools"`
-		Input []struct {
-			Type    string          `json:"type"`
-			Role    string          `json:"role"`
-			Content json.RawMessage `json:"content"`
-			Output  json.RawMessage `json:"output"`
-			CallID  string          `json:"call_id"`
-		} `json:"input"`
-	}
-	var items struct {
-		Input []json.RawMessage `json:"input"`
-		Tools []json.RawMessage `json:"tools"`
-	}
-	_ = json.Unmarshal(body, &raw)
-	_ = json.Unmarshal(body, &items)
-	req := Request{Model: raw.Model, ServiceTier: raw.ServiceTier, Effort: raw.Reasoning.Effort, Tools: map[string]string{}, Input: items.Input, ToolDefs: items.Tools, CacheKey: raw.CacheKey}
-	for _, t := range raw.Tools {
-		req.Tools[t.Name] = string(t.Parameters)
-		req.ToolNames = append(req.ToolNames, t.Name)
-	}
-	for _, in := range raw.Input {
-		if in.Type == "function_call_output" {
-			req.ToolOutputs = append(req.ToolOutputs, strings.Join(texts(in.Output), ""))
-			req.ToolImages = append(req.ToolImages, images(in.Output)...)
-
-			continue
-		}
-		if in.Type == "function_call" {
-			req.CallIDs = append(req.CallIDs, in.CallID)
-
-			continue
-		}
-		switch in.Role {
-		case "user":
-			req.UserTexts = append(req.UserTexts, texts(in.Content)...)
-		case "system", "developer":
-			req.System += strings.Join(texts(in.Content), "\n")
-		}
-	}
-
-	return req
-}
-
-// images reads the image URLs in content parts.
-func images(content json.RawMessage) []string {
-	var parts []struct {
-		ImageURL string `json:"image_url"`
-	}
-	_ = json.Unmarshal(content, &parts)
-	var out []string
-	for _, p := range parts {
-		if p.ImageURL != "" {
-			out = append(out, p.ImageURL)
-		}
-	}
-
-	return out
-}
-
-// texts reads message content: a string, or parts with text.
-func texts(content json.RawMessage) []string {
-	var text string
-	if json.Unmarshal(content, &text) == nil {
-		return []string{text}
-	}
-	var parts []struct {
-		Text string `json:"text"`
-	}
-	_ = json.Unmarshal(content, &parts)
-	out := make([]string, 0, len(parts))
-	for _, p := range parts {
-		out = append(out, p.Text)
-	}
-
-	return out
 }

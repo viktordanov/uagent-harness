@@ -66,12 +66,13 @@ func (s *State) onRunEvent(ev core.Event) { //nolint:gocyclo // a dispatch switc
 			s.put(Item{Kind: KindTool, Key: "call:" + e.CallID, Name: e.Name, Label: e.Label, Tool: state, Detail: e.Detail, Duration: e.Duration})
 		}
 	case core.AssistantMessage:
-		s.put(Item{Kind: KindAssistant, Key: s.nextKey("text"), Text: e.Text, Final: e.Final})
+		s.put(Item{Kind: KindAssistant, Key: s.finalKey(KindAssistant, "text"), Text: e.Text, Final: e.Final})
 	case core.ReasoningSummary:
-		s.put(Item{Kind: KindReasoning, Key: s.nextKey("reason"), Text: e.Text})
+		s.put(Item{Kind: KindReasoning, Key: s.finalKey(KindReasoning, "reason"), Text: e.Text})
 	case core.RunnerError:
 		s.notice(session.LevelError, e.Message)
 	case core.RunFinished:
+		s.dropStreamed()
 		s.finishRun(e.Result)
 	}
 }
