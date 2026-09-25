@@ -171,9 +171,17 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 // compaction lives until the run ends.
 func (w *wiring) compactor(ctx context.Context, s runStore, sw *switcher, first compaction.Trigger, focus string) (*compactor, error) {
 	log := compaction.OpenLog(w.l.SessionsDir, string(s.id))
-	rec, corrupt, err := log.Last()
+	records, corrupt, err := log.Records()
 	if err != nil {
 		return nil, err
+	}
+	cuts, err := compaction.OpenRewinds(w.l.SessionsDir, string(s.id)).Records()
+	if err != nil {
+		return nil, err
+	}
+	var rec *compaction.Record
+	if n := len(records); n > 0 {
+		rec, records = &records[n-1], records[:n-1]
 	}
 	if corrupt > 0 && w.e.cfg.Logger != nil {
 		w.e.cfg.Logger.WarnContext(ctx, "skipped unreadable lines in the compaction log",
@@ -200,7 +208,7 @@ func (w *wiring) compactor(ctx context.Context, s runStore, sw *switcher, first 
 
 	return &compactor{
 		ctx: ctx, next: sw, log: log, emit: emit, before: before, window: cfg.ContextWindow, windows: w.e.models.Window, settings: cfg.Compaction,
-		record: rec, pending: first, focus: focus, used: used,
+		record: rec, older: records, cuts: cuts, pending: first, focus: focus, used: used,
 	}, nil
 }
 

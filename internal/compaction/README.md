@@ -63,7 +63,7 @@ The history can be larger than the window, for example when one tool output fill
 The prompts are Codex's, under the Apache License 2.0 (`prompts/LICENSE-codex`).
 <!-- /memoria:section -->
 
-<!-- memoria:section id="persistence" files="log.go compaction.go" -->
+<!-- memoria:section id="persistence" files="log.go compaction.go rewind.go" -->
 ## Persistence and resume
 
 A compaction is one JSON line in `sessions/<id>.compaction.jsonl`, next to the runner's session file: the number of covered items, a SHA-256 hash of them, the summary, the trigger, the model, and the time. The last readable line applies. `Log.Append` syncs the file, and it ends a line that a crash cut short before it writes, so the new line stays readable.
@@ -71,6 +71,8 @@ A compaction is one JSON line in `sessions/<id>.compaction.jsonl`, next to the r
 A resumed run replays the session file into a fresh builder, which produces the same covered items, so the record applies again. Before each request, `Apply` checks the hash. When the history does not match (the session file was changed outside uah), the engine sends the full history and reports the mismatch once. A line that does not decode is skipped and logged, so one bad line does not stop a session from resuming.
 
 The log is also the source for a reloaded transcript: `session.Load` adds each record as an `engine.Compacted` event to the run it happened in. The runner's `events.jsonl` stays as the runner wrote it.
+
+Going back to an earlier message writes a `Rewind` to its own log, `sessions/<id>.rewind.jsonl` (`RewindLog`): the message, the first and last runner item sequences it cuts, the time, and the context the last response before the cut reported. `Cuts.Hides` tells the embedded engine's store which items to leave out, so the context builder rebuilds the history without them. Because the builder then produces different items after the cut, a compaction made before a rewind that covered the cut message no longer matches; `Cuts.After` lets the engine skip it silently and apply the one before it. `session.Load` adds each rewind as an `engine.Rewound` event. See the [rewind design](../../docs/design/rewind.md).
 <!-- /memoria:section -->
 
 <!-- memoria:section id="triggers" files="estimate.go window.go" -->

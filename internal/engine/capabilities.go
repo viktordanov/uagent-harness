@@ -51,6 +51,10 @@ type Capabilities struct {
 	// Stream means a run with Options.Stream reports the model's text as it
 	// arrives (TextDelta, ReasoningDelta, StreamReset).
 	Stream bool
+	// Rewind means a session can go back to an earlier message: the
+	// context is cut before it and the session continues from there
+	// (Rewinder).
+	Rewind bool
 }
 
 // Feature is something a session can use that not every engine runs.
@@ -77,6 +81,7 @@ const (
 	FeatureImages          Feature = "pasted images"
 	FeatureReconnect       Feature = "reconnect status"
 	FeatureStream          Feature = "streaming"
+	FeatureRewind          Feature = "rewind"
 )
 
 // Requirement is one row of the capability table: a feature, whether an
@@ -117,6 +122,7 @@ var Table = []Requirement{
 	{FeatureImages, func(c Capabilities) bool { return c.Images }, "an image cannot be attached to a message; the model can still open an image file with its ViewImage tool"},
 	{FeatureReconnect, func(c Capabilities) bool { return c.Reconnect }, "the runner still retries a lost connection, but nothing shows the attempts while it waits"},
 	{FeatureStream, func(c Capabilities) bool { return c.Stream }, "the answer appears when the model finishes it"},
+	{FeatureRewind, func(c Capabilities) bool { return c.Rewind }, "esc esc and /rewind cannot go back to an earlier message; /new starts over"},
 }
 
 // Lacks is every row of the table the capabilities do not run, in table

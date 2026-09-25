@@ -157,6 +157,8 @@ func (s *Session) handle(cmd any) (any, error) {
 		return struct{}{}, s.onCompact(c.focus)
 	case cmdClear:
 		return struct{}{}, s.onClear()
+	case cmdRewind:
+		return struct{}{}, s.onRewind(c.id)
 	case cmdResolve:
 		return struct{}{}, s.onResolve(c)
 	case cmdShell:

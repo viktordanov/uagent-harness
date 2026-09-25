@@ -88,12 +88,15 @@ func Screen(s state.State, c *Cache, f Frame) (string, int) {
 // head, when the whole transcript fits above the scroll position, comes
 // first: the banner.
 func transcript(s state.State, c *Cache, w, height int, head []string) []string {
+	if scroll, ok := backtrackScroll(s, c, w, height); ok {
+		s.Scroll = scroll
+	}
 	need := height + s.Scroll
 	var rev [][]string
 	count := 0
 	i := len(s.Items) - 1
 	for ; i >= 0 && count < need; i-- {
-		lines := c.lines(s.Items[i], w, s.Now, view{reasoning: s.ShowReasoning, details: s.Details})
+		lines := c.transcriptLines(s, i, w)
 		if len(lines) == 0 {
 			continue
 		}

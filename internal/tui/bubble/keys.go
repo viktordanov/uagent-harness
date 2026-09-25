@@ -32,6 +32,16 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) { //nolint:gocycl
 	if m.st.Config != nil {
 		return m.onConfigKey(msg)
 	}
+	if m.st.Backtrack != nil {
+		if intent := backtrackIntent(msg.String()); intent != nil {
+			return m.dispatch(intent)
+		}
+		// Any other key cancels, and then does what it does.
+		model, cancel := m.dispatch(state.BacktrackCancel{})
+		next, cmd := model.(Model).onKey(msg) //nolint:forcetypeassert // dispatch returns a Model
+
+		return next, tea.Batch(cancel, cmd)
+	}
 	draft := m.composer.Value()
 	if intent := menuIntent(m.st, msg.String(), draft); intent != nil {
 		return m.dispatch(intent)
@@ -52,7 +62,7 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) { //nolint:gocycl
 
 		return m.dispatch(state.Steer{Text: draft})
 	case keyEsc:
-		return m.dispatch(state.Esc{})
+		return m.dispatch(state.Esc{Empty: draft == ""})
 	case keyCtrlC:
 		if draft != "" {
 			m.composer.Reset()
@@ -139,6 +149,27 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) { //nolint:gocycl
 	}
 
 	return m, cmd
+}
+
+// backtrackIntent maps a key while an earlier message is selected, as
+// Codex's backtrack: esc, ↑, and ← select an earlier message, ↓ and → a
+// later one, enter goes back to it, and ctrl+c cancels. nil means the key
+// cancels and does what it does.
+func backtrackIntent(key string) any {
+	switch key {
+	case keyEsc:
+		return state.Esc{Empty: true}
+	case keyUp, "left":
+		return state.BacktrackMove{Delta: -1}
+	case keyDown, "right":
+		return state.BacktrackMove{Delta: 1}
+	case keyEnter:
+		return state.BacktrackSelect{}
+	case keyCtrlC:
+		return state.BacktrackCancel{}
+	}
+
+	return nil
 }
 
 // onApprovalKey answers the approval overlay: y approves, s approves and

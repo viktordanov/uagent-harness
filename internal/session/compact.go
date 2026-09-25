@@ -97,18 +97,24 @@ func withCompactions(stateDir, id string, runs []LoadedRun) ([]LoadedRun, error)
 		return nil, err
 	}
 	for _, rec := range records {
-		i := len(runs) - 1
-		for i > 0 && runs[i].Record.Result.StartedAt.After(rec.At) {
-			i--
-		}
-		ev := engine.Compacted{At: rec.At, Trigger: rec.Trigger, Summary: rec.Summary}
-		events := runs[i].Events
-		at := slices.IndexFunc(events, func(e core.Event) bool { return e.OccurredAt().After(rec.At) })
-		if at < 0 {
-			at = len(events)
-		}
-		runs[i].Events = slices.Insert(events, at, core.Event(ev))
+		place(runs, engine.Compacted{At: rec.At, Trigger: rec.Trigger, Summary: rec.Summary})
 	}
 
 	return runs, nil
+}
+
+// place adds an event to the run it happened in, the last one that started
+// before it, among that run's events in time order.
+func place(runs []LoadedRun, ev core.Event) {
+	at := ev.OccurredAt()
+	i := len(runs) - 1
+	for i > 0 && runs[i].Record.Result.StartedAt.After(at) {
+		i--
+	}
+	events := runs[i].Events
+	j := slices.IndexFunc(events, func(e core.Event) bool { return e.OccurredAt().After(at) })
+	if j < 0 {
+		j = len(events)
+	}
+	runs[i].Events = slices.Insert(events, j, ev)
 }

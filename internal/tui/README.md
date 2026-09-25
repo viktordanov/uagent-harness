@@ -42,7 +42,7 @@ A key press:
 
 1. `bubble.onKey` maps the key to an intent, such as `state.Submit{Text}` for enter. The approval overlay and the picker have their own key maps (`onApprovalKey`, `onPickerKey`), and an open menu takes tab, enter, ↑/↓, and esc first (`menuIntent`).
 2. `Model.dispatch` calls `state.Reduce`, which returns the new state and a list of effects, such as `EffSubmit{Text}`.
-3. `Model.run` (`bubble/effects.go`) turns each effect into a `tea.Cmd` that calls the session (`Submit`, `SteerNow`, `SteerQueued`, `Interrupt`, `Resolve`, `Compact`, `SetSettings`) or a dependency (`Deps.Sessions`, `Deps.Activity`) off the update loop.
+3. `Model.run` (`bubble/effects.go`) turns each effect into a `tea.Cmd` that calls the session (`Submit`, `SteerNow`, `SteerQueued`, `Interrupt`, `Resolve`, `Compact`, `Rewind`, `SetSettings`) or a dependency (`Deps.Sessions`, `Deps.Activity`) off the update loop.
 4. An effect that produces data returns it as a message, such as `state.ContextShown`. `Model.Update` routes these message types back to `dispatch`, so the reducer handles them like any other input.
 
 A session event:
@@ -65,7 +65,7 @@ The transcript is a list of `Item`s, each with a stable key. The reducer updates
 
 | Kind | Key | Made from |
 | --- | --- | --- |
-| `KindUser` | `msg:<input ID>` | `InputSent`, or the runner's `UserMessage` |
+| `KindUser` | `msg:<input ID>` | `InputSent`, or the runner's `UserMessage`; `Raw` keeps the message as sent, with its image tags. `engine.Rewound` removes it and everything after it |
 | `KindRun` | `run:<run ID>` | `RunStarted`, updated by `RunFinished` |
 | `KindTurn` | `turn:<run ID>:<n>` | `TurnStarted`, updated by `ModelResponded` |
 | `KindTool` | `call:<call ID>` | `ToolCalled`, `ToolStarted`, `ToolFinished`; `engine.PatchApplied` puts an `apply_patch` call's diff in `Diff` (`state/patch.go`) |
@@ -82,7 +82,7 @@ The compact view draws one line per tool call, as Codex does; the detailed view 
 The answer streams on the embedded engine (`state/stream.go`, the [streaming design](../../docs/design/streaming.md)). Each delta appends to a `KindAssistant` or `KindReasoning` item marked `Streaming`, one per model item (and summary part), which draws like a final message. The runner's `AssistantMessage` then replaces the oldest streamed answer in place, and each `ReasoningSummary` the oldest streamed summary part, so the recorded text wins. `engine.StreamReset` (a retry, a failed or canceled request) and the run's end drop streamed items no final message claimed. `State.Writing` reports an answer in progress, for the working line.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="keys" files="bubble/keys.go state/reduce.go state/approval.go state/mode.go state/shell.go render/shell.go bubble/model.go" -->
+<!-- memoria:section id="keys" files="bubble/keys.go state/reduce.go state/approval.go state/mode.go state/shell.go render/shell.go bubble/model.go state/backtrack.go render/backtrack.go" -->
 ## Keys
 
 | Key | Action |
@@ -90,7 +90,7 @@ The answer streams on the embedded engine (`state/stream.go`, the [streaming des
 | enter | Send. While the agent works, the message queues and goes out when the run ends |
 | ctrl+enter, alt+enter | Send now. The embedded engine gives the message to the running agent before its next model request; the process engine restarts the run with the queue and the message. On an empty composer it sends the queued messages now, in order, the same way, also a queue an interrupt kept (`EffSteerQueued`, `Session.SteerQueued`); with nothing queued it does nothing |
 | shift+enter, ctrl+j | New line |
-| esc esc | Interrupt the run (the second esc within 2 seconds); queued messages stay. It also stops a running shell-mode command |
+| esc esc | Interrupt the run (the second esc within 2 seconds); queued messages stay. It also stops a running shell-mode command. While idle with nothing queued, on an empty composer, it goes back to an earlier message instead (below) |
 | `!` on an empty composer | Shell mode (see below) |
 | ↑ on an empty composer | Take the last queued message back to edit it |
 | alt+, / alt+. | Lower or raise the effort |
@@ -116,6 +116,8 @@ The approval overlay replaces the composer keys while it is open:
 
 **Shell mode**, after Codex's and Claude Code's `!`: the composer's λ becomes an accent `!`, the placeholder and the footer's hint say so, and the menu stays closed, so `/bin/ls` is a path. Enter (or ctrl+enter) runs the line as a command in the workspace (`EffShell`, `Session.RunShell`) and returns the composer to messages; backspace on the empty composer, or esc, leaves shell mode first. The command runs at once, also while the agent works; its output streams into a `KindShell` item, drawn on the band after `!` with its exit status and its output folded to 10 rows (50 in the detailed view). Its record goes to the agent with your next message. `State.Shell` holds the mode, `render.ShellPrompt` draws the mark, and `bubble` only maps `!` and backspace and applies the prompt after each reduce. The research and decisions are in the [shell mode design](../../docs/design/shell-mode.md).
 
+**Going back to an earlier message**, as Codex's backtrack (`state/backtrack.go`): while the session is idle with nothing queued, esc on an empty composer primes it ("esc again to edit a previous message"), and a second esc within 2 seconds, or `/rewind`, selects your latest delivered message. The renderer marks it `▶ … ↵ edit from here` and scrolls it a third of the way down the window (`render/backtrack.go`). Esc, ↑, and ← select an earlier message; ↓ and → a later one; ctrl+c cancels, and any other key cancels and then does what it does. Enter returns `EffRewind` and puts the message, with its images (`Item.Raw` keeps its image tags), in the composer; the shell calls `Session.Rewind`. When `engine.Rewound` arrives, the reducer drops the message and every item after it, and the footer's meter takes the cut's tokens; a resumed transcript applies the same event after the run it followed. Since it needs an idle session, no streaming item exists when the cut happens. The process engine lacks it: `/rewind` shows the capability table's notice. The [rewind design](../../docs/design/rewind.md) has the research and the decisions.
+
 In the picker, ↑/↓ choose, enter resumes, tab switches between this directory and all directories, typing filters, and esc goes back.
 
 In the `/config` panel, ↑/↓ choose a setting, enter or space changes it, ←/→ cycle back and forth, and esc closes; while a value is being typed, enter saves it and esc cancels (see [/config](#config)).
@@ -135,6 +137,7 @@ In the `/config` panel, ↑/↓ choose a setting, enter or space changes it, ←
 | `/new` | Start a new session | No |
 | `/clear` | Start the agent fresh in this session: the screen clears, and the next request carries nothing from before; the session keeps its history (embedded engine) | Yes |
 | `/stop` | Interrupt the run; queued messages stay | Yes |
+| `/rewind` | Select your latest message to go back to, as esc esc does while idle (see [Keys](#keys); embedded engine) | No |
 | `/compact [focus]` | Compact the context before the next model request; words after it tell the summary what to focus on, as Claude Code's `/compact [instructions]` (embedded engine) | Yes |
 | `/context` | Break down what fills the context window | Yes |
 | `/config` | The settings panel: change the basic settings and save them to the user file (see [/config](#config)) | Yes |
@@ -269,7 +272,7 @@ To add an item kind, follow `KindContext`:
 To add a key, map it to an intent in `bubble/keys.go` and handle the intent in `state.Reduce`. Keep the existing keys' meanings.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="tests" files="state/images_test.go bubble/images_test.go state/reduce_test.go state/menu_test.go state/contextview_test.go state/mode_test.go render/screen_test.go render/contextview_test.go render/mode_test.go bubble/bubble_test.go bubble/approval_test.go bubble/mode_test.go state/config_test.go bubble/config_test.go render/diff_test.go state/shell_test.go render/shell_test.go bubble/shell_test.go state/usage_test.go render/usage_test.go bubble/usage_test.go state/agents_test.go bubble/steer_test.go state/reconnect_test.go render/reconnect_test.go state/stream_test.go render/stream_test.go bubble/stream_test.go render/markdown/markdown_test.go render/markdown/incremental_test.go render/markdown_test.go render/markdown_bench_test.go" -->
+<!-- memoria:section id="tests" files="state/images_test.go bubble/images_test.go state/reduce_test.go state/menu_test.go state/contextview_test.go state/mode_test.go render/screen_test.go render/contextview_test.go render/mode_test.go bubble/bubble_test.go bubble/approval_test.go bubble/mode_test.go state/config_test.go bubble/config_test.go render/diff_test.go state/shell_test.go render/shell_test.go bubble/shell_test.go state/usage_test.go render/usage_test.go bubble/usage_test.go state/agents_test.go bubble/steer_test.go state/reconnect_test.go render/reconnect_test.go state/stream_test.go render/stream_test.go bubble/stream_test.go render/markdown/markdown_test.go render/markdown/incremental_test.go render/markdown_test.go render/markdown_bench_test.go state/backtrack_test.go render/backtrack_test.go bubble/rewind_test.go" -->
 ## Tests
 
 | Test | Pins |
@@ -286,5 +289,6 @@ To add a key, map it to an intent in `bubble/keys.go` and handle the intent in `
 | `state/shell_test.go`, `render/shell_test.go`, `bubble/shell_test.go` | Shell mode: entering and leaving it, enter running the line, `/` as a path, the `!` prompt and the footer, the item from its events, the echo, and a resumed record (golden `shell`), and `!` through a real session on the process engine |
 | `state/reconnect_test.go`, `render/reconnect_test.go` | A retry held in `Live.Reconnect` until it ends, a response arrives, or the run finishes, its detail notice, and the working line's countdown, `connecting`, and the detailed footer |
 | `state/stream_test.go`, `render/stream_test.go`, `bubble/stream_test.go` | Streaming: deltas growing an item in place, the final message replacing it, a reset and the run's end dropping it, a streamed answer drawn as a final one with `Writing` in the working line, and a real embedded session whose answer shows while the response is held open |
+| `state/backtrack_test.go`, `render/backtrack_test.go`, `bubble/rewind_test.go` | Going back: priming, selecting, stepping, cancelling, the composer with the message and its image, the cut on `engine.Rewound` and in a resumed transcript, no backtrack while busy (also while an answer streams), with a draft, without messages, or on the process engine, the marked message and the scroll (goldens `backtrack-latest`, `backtrack-older`), and a real embedded session whose next request carries only the history before the edited message |
 | `state/config_test.go`, `bubble/config_test.go` | `/config`: the rows and sources, toggles, cycles, typed values, what applies live, the warning when another source wins, and a real user file saved with its comments kept, with a change that would stop a session from starting undone |
 <!-- /memoria:section -->

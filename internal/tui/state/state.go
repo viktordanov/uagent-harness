@@ -127,6 +127,9 @@ type State struct {
 	// Attached are the images pasted into the composer, in order; each
 	// placeholder in the draft names one (see images.go).
 	Attached []images.Image
+	// Backtrack, when set, is the earlier message selected to go back to
+	// (backtrack.go).
+	Backtrack *Backtrack
 
 	// Status is a transient hint in the footer, such as a pending confirmation.
 	Status      string
@@ -147,8 +150,10 @@ type (
 	Submit struct{ Text string }
 	// Steer is Ctrl+Enter with the composer text.
 	Steer struct{ Text string }
-	// Esc is the Escape key; twice while busy interrupts.
-	Esc struct{}
+	// Esc is the Escape key; twice while busy interrupts, and twice on an
+	// empty composer while idle goes back to an earlier message
+	// (backtrack.go). Empty says the composer is empty.
+	Esc struct{ Empty bool }
 	// Quit is Ctrl+C with an empty composer; twice while busy quits.
 	Quit struct{}
 	// EditLastQueued is Up on an empty composer.

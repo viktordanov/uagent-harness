@@ -193,6 +193,13 @@ func engineEventDTO(event core.Event) (any, bool) {
 		}{header("reasoning_delta", e.At), e.ItemID, e.Part, e.Text}, true
 	case engine.StreamReset:
 		return header("stream_reset", e.At), true
+	case engine.Rewound:
+		return struct {
+			sessionHeader
+
+			MessageID string `json:"message_id"`
+			Tokens    int64  `json:"tokens,omitempty"`
+		}{header("rewound", e.At), e.MessageID, e.Tokens}, true
 	}
 
 	return nil, false

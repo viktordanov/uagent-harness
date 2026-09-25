@@ -8,6 +8,7 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
+	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/images"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
@@ -30,6 +31,9 @@ func Reduce(s State, ev any) (State, []Effect) {
 		if effects, ok := s.onAgentView(ev); ok {
 			return s, effects
 		}
+	}
+	if effects, ok := s.onBacktrack(ev); ok {
+		return s, effects
 	}
 	switch e := ev.(type) {
 	case Tick:
@@ -106,7 +110,7 @@ func (s *State) onEvent(ev core.Event) {
 			}
 			q := s.Queue[i]
 			s.Queue = slices.Delete(s.Queue, i, i+1)
-			s.put(Item{Kind: KindUser, Key: "msg:" + q.ID, Text: images.Display(q.Text), Input: InputSent})
+			s.put(Item{Kind: KindUser, Key: "msg:" + q.ID, Text: images.Display(q.Text), Raw: q.Text, Input: InputSent})
 		}
 	case session.InputDelivered:
 		s.update("msg:"+e.ID, func(it *Item) { it.Input = InputDelivered })
@@ -176,8 +180,11 @@ func (s *State) loadHistory(h HistoryLoaded) {
 	for _, run := range h.Runs {
 		res := run.Record.Result
 		s.onRunEvent(core.RunStarted{At: res.StartedAt, RunID: res.Request.RunID, SessionID: res.Request.SessionID})
+		var rewinds []core.Event // after the run, as they happened
 		for _, e := range run.Events {
-			if !s.onEngineEvent(e) {
+			if _, ok := e.(engine.Rewound); ok {
+				rewinds = append(rewinds, e)
+			} else if !s.onEngineEvent(e) {
 				s.onRunEvent(e)
 			}
 		}
@@ -185,6 +192,9 @@ func (s *State) loadHistory(h HistoryLoaded) {
 			s.onRunEvent(core.RunFinished{At: res.StartedAt.Add(res.Wall), Result: res})
 		} else {
 			s.finishRun(core.Result{Request: res.Request, Status: core.StatusRunning})
+		}
+		for _, e := range rewinds {
+			s.onEngineEvent(e)
 		}
 	}
 	s.Live = nil

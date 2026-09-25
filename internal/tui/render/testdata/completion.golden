@@ -1,4 +1,3 @@
-╭────────────────────────────────────────────────╮
 │ λ uah                                          │
 │                                                │
 │ model:     gpt-6-sol high   /model to change   │
@@ -16,6 +15,7 @@
 
   12:00 AM · worked 5s
 › /resume [id]      open the session picker, or resume a session by ID prefix
+  /rewind           go back to an earlier message and edit it; what followed leaves the context (es…
   /reasoning        show or hide reasoning summaries
 
 

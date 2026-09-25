@@ -30,30 +30,36 @@ func (l Log) Path() string { return l.path }
 // write cut short by a crash, an edit) is skipped and counted in corrupt,
 // so one bad line does not stop the session from resuming.
 func (l Log) Records() (records []Record, corrupt int, err error) {
-	f, err := os.Open(l.path)
+	return readLines(l.path, "compaction", func(rec Record) bool { return rec.Covered > 0 && rec.Hash != "" })
+}
+
+// readLines reads the JSON-lines file at path, skipping and counting the
+// lines that do not decode or that valid rejects. A missing file is empty.
+func readLines[T any](path, what string, valid func(T) bool) (out []T, corrupt int, err error) {
+	f, err := os.Open(path)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, 0, nil
 	}
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to open the compaction log: %w", err)
+		return nil, 0, fmt.Errorf("failed to open the %s log: %w", what, err)
 	}
 	defer f.Close()
 	r := bufio.NewReader(f)
 	for {
 		line, rerr := r.ReadBytes('\n')
 		if line = bytes.TrimSpace(line); len(line) > 0 {
-			var rec Record
-			if json.Unmarshal(line, &rec) == nil && rec.Covered > 0 && rec.Hash != "" {
-				records = append(records, rec)
+			var v T
+			if json.Unmarshal(line, &v) == nil && valid(v) {
+				out = append(out, v)
 			} else {
 				corrupt++
 			}
 		}
 		if errors.Is(rerr, io.EOF) {
-			return records, corrupt, nil
+			return out, corrupt, nil
 		}
 		if rerr != nil {
-			return nil, 0, fmt.Errorf("failed to read the compaction log: %w", rerr)
+			return nil, 0, fmt.Errorf("failed to read the %s log: %w", what, rerr)
 		}
 	}
 }
@@ -71,13 +77,19 @@ func (l Log) Last() (rec *Record, corrupt int, err error) {
 // Append adds a compaction and syncs it. A line left without its newline by
 // an earlier crash is ended first, so the new line stays readable.
 func (l Log) Append(rec Record) error {
-	line, err := json.Marshal(rec)
+	return appendLine(l.path, "compaction", rec)
+}
+
+// appendLine adds v to the JSON-lines file at path and syncs it; what names
+// the file in errors.
+func appendLine(path, what string, v any) error {
+	line, err := json.Marshal(v)
 	if err != nil {
-		return fmt.Errorf("failed to encode the compaction: %w", err)
+		return fmt.Errorf("failed to encode the %s: %w", what, err)
 	}
-	f, err := os.OpenFile(l.path, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0o600)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0o600)
 	if err != nil {
-		return fmt.Errorf("failed to open the compaction log: %w", err)
+		return fmt.Errorf("failed to open the %s log: %w", what, err)
 	}
 	if unterminated(f) {
 		line = append([]byte{'\n'}, line...)
@@ -90,7 +102,7 @@ func (l Log) Append(rec Record) error {
 		err = cerr
 	}
 	if err != nil {
-		return fmt.Errorf("failed to write the compaction log: %w", err)
+		return fmt.Errorf("failed to write the %s log: %w", what, err)
 	}
 
 	return nil
