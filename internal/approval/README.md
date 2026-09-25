@@ -105,7 +105,7 @@ A change reaches a live run on the embedded engine from its next command and mod
 | `Answer` | `Approve`, `ApprovePrefix`, `ApproveTool` (an MCP tool, from now on), `Decline`, or `DeclineBecause(reason)`, which carries a reason such as the auto-reviewer's |
 | `Ask` | `func(ctx, Prompt) Answer`. Nil means no one can answer |
 
-"Don't ask again" is offered only when no rule matched. The prefix is the model's suggestion when it covers every simple command, else the whole command when it is one simple command, and never a bare shell, interpreter, `git`, `rm`, `sudo`, or `env` (Codex's list, in `prefix.go`). Choosing it appends `prefix_rule(pattern=[...], decision="allow")` to `~/.config/uagent/rules/default.rules` and applies it at once, also when the file cannot be written.
+"Don't ask again" is offered only when no rule matched. The prefix is the model's suggestion when it covers every simple command, else the whole command when it is one simple command, and never a bare shell, interpreter, `git`, `rm`, `sudo`, or `env` (Codex's list, in `prefix.go`). Choosing it appends `prefix_rule(pattern=[...], decision="allow")` to `~/.uah/rules/default.rules` and applies it at once, also when the file cannot be written.
 
 `DecideTyped(command)` decides a command the user typed in the TUI's shell mode when `user_shell_sandbox = true`: a `forbidden` rule refuses it and an `allow` rule runs it outside the sandbox, as for the agent; anything else runs in the sandbox without asking, since typing it was the approval. By default the user's commands skip the rules and the sandbox, as in Codex ([shell mode](../../docs/design/shell-mode.md)).
 

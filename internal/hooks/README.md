@@ -92,7 +92,7 @@ if printf '%s' "$input" | grep -Eq 'rm -rf /|git push (-f|--force)|git reset --h
 fi
 ```
 
-For fixed command prefixes, `[approvals] forbid` in the configuration does the same without a script, and it also covers a command inside a pipeline or a list; this repository's `.uagent/config.toml` uses it. A hook suits a check that needs code, such as one on the arguments of an MCP tool.
+For fixed command prefixes, `[approvals] forbid` in the configuration does the same without a script, and it also covers a command inside a pipeline or a list; this repository's `.uah/config.toml` uses it. A hook suits a check that needs code, such as one on the arguments of an MCP tool.
 
 To add an event: add it to `Events` in `hooks.go` and any payload fields to `Input`, then fire it where it happens with `Runner.Has` and `Runner.Run`. `internal/config` accepts `[[hooks.<Event>]]` for every name in `Events`.
 <!-- /memoria:section -->
