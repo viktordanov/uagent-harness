@@ -1,69 +1,60 @@
 == width 80 ==
 ●  <th>Case</>           <th>Before</>    <th>After</>     <th>Note</>
-  <d>━━━━━━━━━━━━━  ━━━━━━━━  ━━━━━━━━  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</>
-   cold render    1.2 ms    <b>0.9 ms</>    parse and draw everything once
-  <d>─────────────  ────────  ────────  ───────────────────────────────────</>
+   cold render    1.2 ms    <b>0.9 ms</>    parse and draw everything once░░░░
    warm           400 µs     2 µs     <c>cached</>
-  <d>─────────────  ────────  ────────  ───────────────────────────────────</>
-   表格 wide          😀      ok      emoji and CJK take two cells each
+   表格 wide          😀      ok      emoji and CJK take two cells each░
 == width 50 ==
 ●  <th>Case</>           <th>Before</>    <th>After</>     <th>Note</>
-  <d>━━━━━━━━━━━━━  ━━━━━━━━  ━━━━━━━━  ━━━━━━━━━━━━━</>
-   cold render    1.2 ms    <b>0.9 ms</>    parse and
-                                      draw
-                                      everything
-                                      once
-  <d>─────────────  ────────  ────────  ─────────────</>
+   cold render    1.2 ms    <b>0.9 ms</>    parse and░░░
+                                      draw░░░░░░░░
+                                      everything░░
+                                      once░░░░░░░░
    warm           400 µs     2 µs     <c>cached</>
-  <d>─────────────  ────────  ────────  ─────────────</>
-   表格 wide          😀      ok      emoji and
-                                      CJK take
-                                      two cells
-                                      each
+   表格 wide          😀      ok      emoji and░░░
+                                      CJK take░░░░
+                                      two cells░░░
+                                      each░░░░░░░░
 == width 34 ==
-● <th>Case</>    cold render
-  <th>Before</>  1.2 ms
-  <th>After</>   <b>0.9 ms</>
-  <th>Note</>    parse and draw
-          everything once
-  <d>────────────────────────────────</>
-  <th>Case</>    warm
-  <th>Before</>  400 µs
-  <th>After</>   2 µs
-  <th>Note</>    <c>cached</>
-  <d>────────────────────────────────</>
-  <th>Case</>    表格 wide
-  <th>Before</>  😀
-  <th>After</>   ok
-  <th>Note</>    emoji and CJK take two
-          cells each
+●  <th>Case</>    cold render░░░░░░░░░░░░
+   <th>Before</>  1.2 ms░░░░░░░░░░░░░░░░░
+   <th>After</>   <b>0.9 ms</>░░░░░░░░░░░░░░░░░
+   <th>Note</>    parse and draw░░░░░░░░░
+           everything once░░░░░░░░
+   <th>Case</>    warm
+   <th>Before</>  400 µs
+   <th>After</>   2 µs
+   <th>Note</>    <c>cached</>
+   <th>Case</>    表格 wide░░░░░░░░░░░░░░
+   <th>Before</>  😀░░░░░░░░░░░░░░░░░░░░░
+   <th>After</>   ok░░░░░░░░░░░░░░░░░░░░░
+   <th>Note</>    emoji and CJK take two░
+           cells each░░░░░░░░░░░░░
 == width 20 ==
-● <th>Case</>
-    cold render
-  <th>Before</>
-    1.2 ms
-  <th>After</>
-    <b>0.9 ms</>
-  <th>Note</>
-    parse and draw
-    everything once
-  <d>──────────────────</>
-  <th>Case</>
-    warm
-  <th>Before</>
-    400 µs
-  <th>After</>
-    2 µs
-  <th>Note</>
-    <c>cached</>
-  <d>──────────────────</>
-  <th>Case</>
-    表格 wide
-  <th>Before</>
-    😀
-  <th>After</>
-    ok
-  <th>Note</>
-    emoji and CJK
-    take two cells
-    each
+●  <th>Case</>░░░░░░░░░░░░░
+     cold render░░░░
+   <th>Before</>░░░░░░░░░░░
+     1.2 ms░░░░░░░░░
+   <th>After</>░░░░░░░░░░░░
+     <b>0.9 ms</>░░░░░░░░░
+   <th>Note</>░░░░░░░░░░░░░
+     parse and draw░
+     everything░░░░░
+     once░░░░░░░░░░░
+   <th>Case</>
+     warm
+   <th>Before</>
+     400 µs
+   <th>After</>
+     2 µs
+   <th>Note</>
+     <c>cached</>
+   <th>Case</>░░░░░░░░░░░░░
+     表格 wide░░░░░░
+   <th>Before</>░░░░░░░░░░░
+     😀░░░░░░░░░░░░░
+   <th>After</>░░░░░░░░░░░░
+     ok░░░░░░░░░░░░░
+   <th>Note</>░░░░░░░░░░░░░
+     emoji and CJK░░
+     take two cells░
+     each░░░░░░░░░░░

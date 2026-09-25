@@ -9,9 +9,10 @@ Ledger item 47: rich text as a core subsystem, designed for speed. A real Markdo
 5. [Tables](#tables)
 6. [Highlighting](#highlighting)
 7. [The look](#the-look)
-8. [Performance budget and gates](#performance-budget-and-gates)
-9. [As built](#as-built)
-10. [Open](#open)
+8. [Styles chosen 2026-09-25](#styles-chosen-2026-09-25)
+9. [Performance budget and gates](#performance-budget-and-gates)
+10. [As built](#as-built)
+11. [Open](#open)
 
 ## What uah did before
 
@@ -69,8 +70,8 @@ GFM tables render as Codex draws them, with the width budget from the terminal:
 - **Widths.** Each column's natural width is its widest cell (`ansi.StringWidth`, so wide characters and emoji count two cells). The budget is the width less one cell of padding on each side of a cell and two cells between columns. If the natural widths fit, they are used. Otherwise the widest columns shrink first, all to the same cap (a water-fill), down to a floor of 3 cells.
 - **Wrapping.** Cells wrap at word boundaries within their column (`ansi.Wrap`), breaking a word only when it is longer than the column; a row is as tall as its tallest cell. Inline styles work in cells.
 - **Alignment.** Left, center, and right from the delimiter row.
-- **Borders.** Codex's: no vertical rules; the header bold, a `━` rule under it and a `─` rule between body rows, both dim.
-- **Fallback.** When the columns do not fit at 3 cells each, or the shrink leaves a column narrower than its longest word and narrower than 10 cells, the grid would be unreadable: the rows render as records, `Header  value` per cell with the headers padded to one width, a dim rule between rows, and the header above an indented value when even that is too narrow. This is Codex's key/value mode with a simpler trigger; horizontal truncation was rejected because it hides data without saying so.
+- **Borders.** None: no vertical rules and, since the [styles chosen 2026-09-25](#styles-chosen-2026-09-25), no horizontal ones either. The header is in the accent and every other body row sits on the band. Codex draws a dim `━` rule under the header and a `─` rule between body rows, as uah did at first.
+- **Fallback.** When the columns do not fit at 3 cells each, or the shrink leaves a column narrower than its longest word and narrower than 10 cells, the grid would be unreadable: the rows render as records, `Header  value` per cell with the headers padded to one width, every other record on the band, and the header above an indented value when even that is too narrow. This is Codex's key/value mode with a simpler trigger; horizontal truncation was rejected because it hides data without saying so.
 
 ## Highlighting
 
@@ -82,9 +83,22 @@ GFM tables render as Codex draws them, with the width budget from the terminal:
 
 ## The look
 
-Everything the old renderer drew keeps its look: code on the band without fences, `code` in the code color, bold, italic, headings in bold without their `#`, `•` bullets and dim numbers with a hanging indent, quotes behind a dim `│ `, dim rules, and links as the text with the URL dim in parentheses. New: tables, nested lists and quotes as structure (a code block inside a list sits on the band at the list's indent), task lists (`[x]`, `[ ]`), strikethrough, autolinks and bare URLs as the URL, indented code on the band, images as their alt text and URL, and HTML shown as its source text.
+The first build kept the old renderer's look, listed here; the [styles chosen 2026-09-25](#styles-chosen-2026-09-25) replaced parts of it. Code on the band without fences, `code` in the code color, bold, italic, headings in bold without their `#`, `•` bullets and dim numbers with a hanging indent, quotes behind a dim `│ `, dim rules, and links as the text with the URL dim in parentheses. New: tables, nested lists and quotes as structure (a code block inside a list sits on the band at the list's indent), task lists (`[x]`, `[ ]`), strikethrough, autolinks and bare URLs as the URL, indented code on the band, images as their alt text and URL, and HTML shown as its source text.
 
-Two changes follow Codex: one blank line separates top-level blocks (the old renderer kept the source's blank lines, so a list directly after a paragraph had none), and several blank lines in the source collapse to one. Soft line breaks stay line breaks, as in Codex and before.
+Two changes followed Codex: one blank line separates top-level blocks (the old renderer kept the source's blank lines, so a list directly after a paragraph had none), and several blank lines in the source collapse to one. Soft line breaks stay line breaks, as in Codex and before.
+
+## Styles chosen 2026-09-25
+
+The owner compared five options for each part on a page of character-exact mocks (Amber theme, 80 columns) and picked these. Option A in each group was the look above.
+
+- **Code: option B, band with a language label.** Code stays on the band. The fence's language is dim at the right end of the block's first line, one cell from the edge, where selecting the code does not reach it. A line too long to leave a space before the label goes without it; indented code and a fence without a language have none, and an unknown language still shows its name. In a `diff` block (also `patch` and `udiff`), each line that starts with `+` or `-` sits on the edit tool's `DiffAdd` or `DiffDel` tint instead of the band, and chroma colors its text as before (`+` lines in the string color, `-` lines in the error color). The mock tints by the first character only, so `+++` and `---` file headers are tinted too.
+- **Tables: option D, zebra rows.** No rules. The header is in the accent (bold), and body rows 1, 3, 5… sit on the band across the table's width, with the cell padding and column gaps. A wrapped row stays on one color. The records fallback matches: the labels are in the accent, every other record sits on the band across the whole width, and each line has one cell of padding, as a table cell has. The dim rule between records is gone.
+- **Quotes: option C, “ ” marks.** A quote is indented two cells, its text dim and italic, with a dim `“ ` before its first line and ` ”` after its last. When the last line leaves no room (a code block or a full line), the `”` goes on a line of its own at the text's column. A nested quote gets its own marks inside. A GitHub alert (`> [!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]`, `[!CAUTION]`, in any case) is drawn with C's layout and no marks: a bold title in the alert's color (`! Note`, `! Tip`, …), then its text indented two cells in the normal color. The colors are the theme's: NOTE `Info`, TIP `Good`, IMPORTANT `Extra`, WARNING `Warn`, CAUTION `Bad`, which both themes already had. The mock shows `!` before a warning only; every kind uses it. Another word in brackets stays a plain quote.
+- **Headings and lists: option D.** H1 is in the accent, bold, and in capitals (the text only: code spans and URLs keep their case). H2 is in the accent, bold. The mock has no H3; H3 to H6 stay bold in the text color, so the two accent levels stand out. A nested bullet is a dim `◦` at every depth below the first. An ordered list's numbers are right-aligned to its widest number, so the text of `9.` and `10.` starts in one column.
+
+Two fixes came with it. `band` re-applied the band after any SGR with a `0` parameter, including the last component of a color such as the accent `255;196;0`, so the backtrack's `↵ edit from here` label lost its accent background; it now skips the parameters of `38`, `48`, and `58`. The diff tints use the same function as the band, with their own colors.
+
+The benchmarks did not change (same fixture and machine; before → after): one render 0.87 → 0.83 ms (7,350 → 7,450 allocations), the same text again 0.67 → 0.62 µs (1 allocation), one streaming update 29.8 → 27.8 µs, a new width 0.51 → 0.51 ms.
 
 ## Performance budget and gates
 
@@ -105,7 +119,7 @@ Gates:
 
 ## As built
 
-Package `internal/tui/render/markdown`: `markdown.go` (the `Renderer`, its kept documents, and the block split), `blocks.go` (paragraphs, headings, lists, quotes, code, HTML, and wrapping), `inline.go`, `table.go` (after Codex; see [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md)), and `highlight.go`. `render.Styles` builds one `Renderer` from the theme, and `markdownLines` calls it. The streaming lane's call site does not change.
+Package `internal/tui/render/markdown`: `markdown.go` (the `Renderer`, its kept documents, and the block split), `blocks.go` (paragraphs, headings, lists, HTML, and wrapping), `quote.go` (quotes and alerts), `code.go` (code blocks, their labels, and diff tints), `inline.go`, `table.go` (after Codex; see [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md)), and `highlight.go`. `render.Styles` builds one `Renderer` from the theme, and `markdownLines` calls it. The streaming lane's call site does not change.
 
 Numbers from `go test -run '^$' -bench Markdown -benchmem ./internal/tui/render`, same fixture, width 100, Apple M4 Max:
 
@@ -121,7 +135,7 @@ Two things the build added to the design:
 - **Styles that wrap.** A style that wraps onto the next line used to end at the line's first reset, such as the quote bar's, so the second line of a quote lost its dim. Wrapped lines now end their open styles and open them again on the next line (`carry`), in paragraphs, headings, and table cells.
 - **Runs.** Text in a row with the same styles is drawn as one run, so goldmark's split text nodes do not each get their own escape sequences.
 
-Tests: goldens for every construct at three widths (the table at four, down to the stacked records) in `internal/tui/render/markdown/testdata`, drawn with styles that emit their own SGR codes and show as `<b>…</>`, so the goldens show styling and the widths are those of real styles; incremental equals full for every prefix of each fixture at two widths, and for the long answer streamed in 1- to 20-byte deltas; each update parses no more than the text after the previous last block; the same text again allocates once; width changes; two texts that share their first blocks; each renderer's styles are its own; highlighting cached per block and an open fence's complete lines cached; lines fit the width.
+Tests: goldens for every construct at three widths (the table at four, down to the stacked records) in `internal/tui/render/markdown/testdata`, drawn with styles that emit their own SGR codes and show as `<b>…</>`, so the goldens show styling and the widths are those of real styles (the band shows as `░` padding, an added diff line's tint as `▒` and a removed one's as `▓`; alerts, diff blocks, and numbers 9 to 11 have fixtures of their own); each theme's accent headings and table header, band rows, diff tints, and alert colors; incremental equals full for every prefix of each fixture at two widths, and for the long answer streamed in 1- to 20-byte deltas; each update parses no more than the text after the previous last block; the same text again allocates once; width changes; two texts that share their first blocks; each renderer's styles are its own; highlighting cached per block and an open fence's complete lines cached; lines fit the width.
 
 ## Open
 

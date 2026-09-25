@@ -25,6 +25,13 @@ func TestBand_FillsTheWidthThroughTabsAndResets(t *testing.T) {
 	}
 }
 
+func TestBand_KeepsAColorWithAZeroComponent(t *testing.T) {
+	label := amber.selected.Render("  ↵ edit from here")
+	out := amber.band("text"+label, 40)
+	assert.Contains(t, out, label, "the accent's 0 blue is not a reset: the band does not follow it")
+	assert.Equal(t, 0, countUnbanded(out))
+}
+
 // countUnbanded counts resets not followed by the band.
 func countUnbanded(s string) int {
 	n := 0

@@ -1,0 +1,74 @@
+== width 80 ==
+● <note>! Note</>
+    A note with <c>code</> and <b>bold</>, long enough to wrap at a narrow width.
+
+  <tip>! Tip</>
+    Lower case works too.
+
+  <important>! Important</>
+    First paragraph.
+
+    <d>•</> a list in an alert
+
+  <warning>! Warning</>
+    <c>-count 20</> takes 38 s under <c>-race</>.
+
+  <caution>! Caution</>
+
+  <d>“ </><d><i>[!UNKNOWN]</></>
+    <d><i>Not an alert: the marker stays.</></><d> ”</>
+
+  <d>“ </><d><i>A plain quote.</></><d> ”</>
+== width 40 ==
+● <note>! Note</>
+    A note with <c>code</> and <b>bold</>, long
+    enough to wrap at a narrow width.
+
+  <tip>! Tip</>
+    Lower case works too.
+
+  <important>! Important</>
+    First paragraph.
+
+    <d>•</> a list in an alert
+
+  <warning>! Warning</>
+    <c>-count 20</> takes 38 s under <c>-race</>.
+
+  <caution>! Caution</>
+
+  <d>“ </><d><i>[!UNKNOWN]</></>
+    <d><i>Not an alert: the marker stays.</></><d> ”</>
+
+  <d>“ </><d><i>A plain quote.</></><d> ”</>
+== width 20 ==
+● <note>! Note</>
+    A note with <c>code</>
+    and <b>bold</>, long
+    enough to wrap
+    at a narrow
+    width.
+
+  <tip>! Tip</>
+    Lower case works
+    too.
+
+  <important>! Important</>
+    First paragraph.
+
+    <d>•</> a list in an
+      alert
+
+  <warning>! Warning</>
+    <c>-count 20</> takes
+    38 s under <c>-</>
+    <c>race</>.
+
+  <caution>! Caution</>
+
+  <d>“ </><d><i>[!UNKNOWN]</></>
+    <d><i>Not an alert:</>
+    <d><i>the marker</>
+    <d><i>stays.</></><d> ”</>
+
+  <d>“ </><d><i>A plain quote.</></><d> ”</>

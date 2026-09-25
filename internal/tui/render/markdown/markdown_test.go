@@ -24,8 +24,12 @@ func (t tag) Render(s ...string) string {
 }
 
 var (
-	tagged = []tag{{"b", "1"}, {"i", "3"}, {"s", "9"}, {"c", "36"}, {"d", "2"}, {"h", "4"}, {"th", "7"}, {"strong", "21"}}
-	shows  = func() *strings.Replacer {
+	tagged = []tag{
+		{"b", "1"}, {"i", "3"}, {"s", "9"}, {"c", "36"}, {"d", "2"}, {"h", "4"}, {"th", "7"}, {"strong", "21"},
+		{"h1", "53"}, {"h2", "51"},
+		{"note", "94"}, {"tip", "92"}, {"important", "95"}, {"warning", "93"}, {"caution", "91"},
+	}
+	shows = func() *strings.Replacer {
 		pairs := []string{"\x1b[m", "</>"}
 		for _, t := range tagged {
 			pairs = append(pairs, "\x1b["+t.code+"m", "<"+t.name+">")
@@ -40,19 +44,28 @@ func shown(line string) string {
 	return ansi.Strip(shows.Replace(line))
 }
 
-// testStyles draw with tags, and the band as ░ up to the width.
+// testStyles draw with tags, and the band as ░ up to the width: ▒ for an
+// added diff line and ▓ for a removed one.
 func testStyles() Styles {
 	return Styles{
 		Bold: tagged[0], Italic: tagged[1], Strike: tagged[2], Code: tagged[3], Dim: tagged[4],
-		Heading: tagged[5], TableHeader: tagged[6],
-		Band: func(line string, w int) string {
-			return ansi.Truncate(line, w, "") + strings.Repeat("░", max(w-ansi.StringWidth(line), 0))
+		H1: tagged[8], H2: tagged[9], Heading: tagged[5], TableHeader: tagged[6],
+		Band: padded("░"), Added: padded("▒"), Removed: padded("▓"),
+		Alerts: map[string]Style{
+			"NOTE": tagged[10], "TIP": tagged[11], "IMPORTANT": tagged[12], "WARNING": tagged[13], "CAUTION": tagged[14],
 		},
 	}
 }
 
+// padded draws a line padded to the width with fill.
+func padded(fill string) func(string, int) string {
+	return func(line string, w int) string {
+		return ansi.Truncate(line, w, "") + strings.Repeat(fill, max(w-ansi.StringWidth(line), 0))
+	}
+}
+
 // fixtures are the documents in testdata, by name.
-var fixtures = []string{"inline", "headings", "lists", "quotes", "code", "table", "html", "refs"}
+var fixtures = []string{"inline", "headings", "lists", "quotes", "alerts", "code", "diff", "table", "html", "refs"}
 
 func fixture(t testing.TB, name string) string {
 	t.Helper()
@@ -120,7 +133,7 @@ func TestHighlightsKnownLanguagesOnly(t *testing.T) {
 	assert.Contains(t, gofence[0], "\x1b[", "go is highlighted")
 	for _, src := range []string{"```\nfunc main() {}\n```", "```nosuchlanguage\nfunc main() {}\n```"} {
 		got := r.Render(src, 40, "", "")
-		assert.Equal(t, " <c>func main() {}</>", strings.TrimRight(shown(got[0]), "░"), src)
+		assert.True(t, strings.HasPrefix(shown(got[0]), " <c>func main() {}</>"), "%s: %q", src, shown(got[0]))
 	}
 }
 

@@ -7,7 +7,6 @@ import (
 	"image/color"
 	"math"
 	"regexp"
-	"slices"
 	"strings"
 
 	"charm.land/lipgloss/v2"
@@ -19,22 +18,25 @@ import (
 )
 
 // Theme is every color the TUI draws with. Text is left to the terminal,
-// and so is the background: only your messages, the composer, and code
-// blocks sit on Band, so the terminal's own background shows everywhere else.
+// and so is the background: only your messages, the composer, code blocks,
+// and every other table row sit on Band, so the terminal's own background
+// shows everywhere else.
 type Theme struct {
 	Accent, Dim, Bad, Warn color.Color
 	// Good marks what is ready or passed, such as an MCP server.
 	Good color.Color
 	// Info and Extra tell /context's categories apart.
 	Info, Extra color.Color
-	// Band is the background of your messages, the composer, and code.
+	// Band is the background of your messages, the composer, code, and
+	// table rows.
 	Band color.Color
 	// Breath runs from dim to bright: the working λ's frames.
 	Breath []color.Color
 	// Code colors code blocks: keywords, names, strings, numbers, comments.
 	Keyword, Name, String, Number, Comment color.Color
 	// DiffAdd and DiffDel tint added and removed diff lines across the
-	// whole line; DiffAddWord and DiffDelWord mark the changed words in them.
+	// whole line, in the edit tool's diffs and in diff code blocks;
+	// DiffAddWord and DiffDelWord mark the changed words in them.
 	DiffAdd, DiffDel, DiffAddWord, DiffDelWord color.Color
 }
 
@@ -89,8 +91,8 @@ type Styles struct {
 	tool, ok, codeSpan lipgloss.Style
 	quoteBar           string
 	// bandOn switches the band's background on; it is re-applied after every
-	// reset inside a band line.
-	bandOn string
+	// reset inside a band line. addOn and delOn are the diff tints'.
+	bandOn, addOn, delOn string
 	// dimOn switches the dim foreground on, for lines faded while going
 	// back to an earlier message.
 	dimOn     string
@@ -130,9 +132,8 @@ func NewStyles(t Theme) *Styles {
 		contextusage.ToolResults:  lipgloss.NewStyle().Foreground(t.Bad),
 	}
 	st.diffStyles = newDiffStyles(t)
-	r, g, b := rgb(t.Band)
-	st.bandOn = fmt.Sprintf("\x1b[48;2;%d;%d;%dm", r, g, b)
-	r, g, b = rgb(t.Dim)
+	st.bandOn, st.addOn, st.delOn = backgroundOn(t.Band), backgroundOn(t.DiffAdd), backgroundOn(t.DiffDel)
+	r, g, b := rgb(t.Dim)
 	st.dimOn = fmt.Sprintf("\x1b[38;2;%d;%d;%dm", r, g, b)
 	st.breath = make([]lipgloss.Style, 0, len(t.Breath))
 	for _, c := range t.Breath {
@@ -152,27 +153,55 @@ func NewStyles(t Theme) *Styles {
 		chroma.OperatorWord:        "bold " + hexOf(t.Keyword),
 		chroma.LiteralStringEscape: hexOf(t.Number),
 	})
-	st.markdown = st.newMarkdown()
+	st.markdown = st.newMarkdown(t)
 
 	return st
 }
 
 // band draws a line on the band background, padded to width w.
 func (st *Styles) band(line string, w int) string {
+	return onBackground(st.bandOn, line, w)
+}
+
+// onBackground draws a line on the background that on switches on, padded
+// to width w. Any SGR that resets the background would end it early, so
+// the background follows each one.
+func onBackground(on, line string, w int) string {
 	line = ansi.Truncate(untab(line), w, "")
 	pad := strings.Repeat(" ", max(w-ansi.StringWidth(line), 0))
-	// Any SGR that resets the background (0, 49, or no parameters) would
-	// end the band early, so the band follows each one.
 	line = sgr.ReplaceAllStringFunc(line, func(seq string) string {
-		params := strings.Split(seq[2:len(seq)-1], ";")
-		if slices.ContainsFunc(params, func(p string) bool { return p == "" || p == "0" || p == "49" }) {
-			return seq + st.bandOn
+		if resetsBackground(seq) {
+			return seq + on
 		}
 
 		return seq
 	})
 
-	return st.bandOn + line + pad + "\x1b[m"
+	return on + line + pad + "\x1b[m"
+}
+
+// resetsBackground reports whether an SGR ends the background: a reset (0
+// or no parameters) or 49. What follows 38, 48, or 58 is a color, so the 0
+// in 48;2;255;196;0 is not a reset.
+func resetsBackground(seq string) bool {
+	params := strings.Split(seq[2:len(seq)-1], ";")
+	for i := 0; i < len(params); i++ {
+		switch params[i] {
+		case "", "0", "49":
+			return true
+		case "38", "48", "58":
+			i += extendedColorLen(params[i+1:])
+		}
+	}
+
+	return false
+}
+
+// backgroundOn is the SGR that switches the background to c.
+func backgroundOn(c color.Color) string {
+	r, g, b := rgb(c)
+
+	return fmt.Sprintf("\x1b[48;2;%d;%d;%dm", r, g, b)
 }
 
 // sgr matches one SGR escape sequence.

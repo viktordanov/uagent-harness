@@ -35,12 +35,19 @@ func (r *Renderer) inlineNode(b *runs, src []byte, n ast.Node, styles []Style) {
 		if !n.IsRaw() {
 			v = unescape(v)
 		}
+		if b.upper {
+			v = bytes.ToUpper(v)
+		}
 		b.put(string(v), styles)
 		if n.SoftLineBreak() || n.HardLineBreak() {
 			b.put("\n", nil)
 		}
 	case *ast.String:
-		b.put(string(n.Value), styles)
+		v := n.Value
+		if b.upper {
+			v = bytes.ToUpper(v)
+		}
+		b.put(string(v), styles)
 	case *ast.CodeSpan:
 		var code runs
 		r.inlines(&code, src, n, nil)
@@ -94,11 +101,13 @@ func (r *Renderer) link(b *runs, src []byte, n ast.Node, styles []Style) {
 }
 
 // runs builds styled text. Text in a row with the same styles (the same
-// slice, as siblings share) is drawn as one run.
+// slice, as siblings share) is drawn as one run. With upper, text (not
+// code or URLs) is drawn in capitals.
 type runs struct {
 	b      strings.Builder
 	run    strings.Builder
 	styles []Style
+	upper  bool
 }
 
 // put adds s drawn with styles, the outermost first in the list.

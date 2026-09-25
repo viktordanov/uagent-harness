@@ -2,7 +2,6 @@ package markdown
 
 import (
 	"regexp"
-	"slices"
 	"strconv"
 	"strings"
 
@@ -11,17 +10,18 @@ import (
 	east "github.com/yuin/goldmark/extension/ast"
 )
 
-// frame is where a block is drawn: its width, and whether it sits in a
-// quote, whose text is dim.
+// frame is where a block is drawn: its width, whether it sits in a
+// quote, whose text is dim and italic, and how deep in lists it is.
 type frame struct {
 	w      int
 	quoted bool
+	depth  int
 }
 
 // base is the style a frame's text starts with.
 func (r *Renderer) base(f frame) []Style {
 	if f.quoted {
-		return []Style{r.st.Dim}
+		return []Style{r.st.Dim, r.st.Italic}
 	}
 
 	return nil
@@ -33,7 +33,7 @@ func (r *Renderer) block(src []byte, n ast.Node, f frame) []string {
 	case *ast.Paragraph, *ast.TextBlock:
 		return wrap(r.inline(src, n, r.base(f)), f.w)
 	case *ast.Heading:
-		return wrap(r.inline(src, n, append(r.base(f), r.st.Heading)), f.w)
+		return wrap(r.heading(src, n, f), f.w)
 	case *ast.ThematicBreak:
 		return []string{r.st.Dim.Render(strings.Repeat("─", min(f.w, 40)))}
 	case *ast.FencedCodeBlock:
@@ -41,12 +41,7 @@ func (r *Renderer) block(src []byte, n ast.Node, f frame) []string {
 	case *ast.CodeBlock:
 		return r.codeBlock("", lines(src, n), f.w)
 	case *ast.Blockquote:
-		body := r.children(src, n, frame{w: f.w - 2, quoted: true}, false)
-		for i, l := range body {
-			body[i] = r.quoteBar + l
-		}
-
-		return body
+		return r.quote(src, n, f)
 	case *ast.List:
 		return r.list(src, n, f)
 	case *ast.HTMLBlock:
@@ -81,25 +76,43 @@ func (r *Renderer) children(src []byte, n ast.Node, f frame, tight bool) []strin
 	return out
 }
 
-// list draws a list: a dim "•" or number before each item, and its lines
-// under the item's first with a hanging indent.
+// heading draws a heading: H1 in its style and in capitals, H2 in its
+// own, and the rest in Heading.
+func (r *Renderer) heading(src []byte, n *ast.Heading, f frame) string {
+	style := r.st.Heading
+	switch n.Level {
+	case 1:
+		style = r.st.H1
+	case 2:
+		style = r.st.H2
+	}
+	b := runs{upper: n.Level == 1}
+	r.inlines(&b, src, n, append(r.base(f), style))
+
+	return b.String()
+}
+
+// list draws a list: a dim "•" ("◦" when nested) or number before each
+// item, and its lines under the item's first with a hanging indent. The
+// numbers are right-aligned, so every item's text starts in one column.
 func (r *Renderer) list(src []byte, l *ast.List, f frame) []string {
+	width := 1
+	if l.IsOrdered() {
+		width = len(strconv.Itoa(l.Start+l.ChildCount()-1)) + 1
+	}
+	hang := strings.Repeat(" ", width+1)
+	inner := frame{w: f.w - len(hang), quoted: f.quoted, depth: f.depth + 1}
 	var out []string
 	i := 0
 	for item := l.FirstChild(); item != nil; item = item.NextSibling() {
-		marker := "•"
-		if l.IsOrdered() {
-			marker = strconv.Itoa(l.Start+i) + string(l.Marker)
-		}
-		hang := strings.Repeat(" ", ansi.StringWidth(marker)+1)
-		body := r.children(src, item, frame{w: f.w - len(hang), quoted: f.quoted}, l.IsTight)
+		body := r.children(src, item, inner, l.IsTight)
 		if len(body) == 0 {
 			body = []string{""}
 		}
 		if i > 0 && !l.IsTight {
 			out = append(out, "")
 		}
-		out = append(out, r.st.Dim.Render(marker)+" "+body[0])
+		out = append(out, r.marker(l, f.depth, i, width)+" "+body[0])
 		for _, b := range body[1:] {
 			if b != "" {
 				b = hang + b
@@ -112,23 +125,17 @@ func (r *Renderer) list(src []byte, l *ast.List, f frame) []string {
 	return out
 }
 
-// codeBlock draws code on the band, highlighted and not wrapped, as Codex
-// does. While a fence is still open its last line is usually incomplete:
-// the complete lines are highlighted as one piece, which stays cached until
-// the next newline, and the partial line on its own.
-func (r *Renderer) codeBlock(lang, code string, w int) []string {
-	var hl []string
-	if i := strings.LastIndexByte(code, '\n'); i >= 0 && i < len(code)-1 {
-		hl = append(slices.Clip(r.highlight(lang, code[:i])), r.highlight(lang, code[i+1:])...)
-	} else {
-		hl = r.highlight(lang, strings.TrimSuffix(code, "\n"))
-	}
-	out := make([]string, len(hl))
-	for i, l := range hl {
-		out[i] = r.st.Band(" "+l, w)
+// marker is item i's dim bullet or number, right-aligned to width cells.
+func (r *Renderer) marker(l *ast.List, depth, i, width int) string {
+	m := "•"
+	switch {
+	case l.IsOrdered():
+		m = strconv.Itoa(l.Start+i) + string(l.Marker)
+	case depth > 0:
+		m = "◦"
 	}
 
-	return out
+	return strings.Repeat(" ", width-ansi.StringWidth(m)) + r.st.Dim.Render(m)
 }
 
 // lines is the text of a block's source lines. goldmark ends a code

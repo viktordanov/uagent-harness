@@ -1,0 +1,36 @@
+== width 80 ==
+●  <c>@@ -210,3 +210,4 @@ func (m *Model) resume</>                              <d>diff</>
+   <c>-    run := m.store.MustLoad(id)</>▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
+   <c>+    m.waitIdle()</>▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+   <c>+    run, err := m.store.Load(id)</>▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+   <c>     m.run = run</>░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+
+   <c>func (m *Model) resume(id string) tea.Cmd {</>                               <d>go</>
+   <c>    return m.listen(run, 64)</>░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+   <c>}</>░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+
+   <c>short</>                                              <d>a-very-long-language-name</>
+== width 40 ==
+●  <c>@@ -210,3 +210,4 @@ func (m *Model) r</>
+   <c>-    run := m.store.MustLoad(id)</>▓▓▓▓▓
+   <c>+    m.waitIdle()</>▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
+   <c>+    run, err := m.store.Load(id)</>▒▒▒▒
+   <c>     m.run = run</>░░░░░░░░░░░░░░░░░░░░░
+
+   <c>func (m *Model) resume(id string) tea</>
+   <c>    return m.listen(run, 64)</>░░░░░░░░░
+   <c>}</>░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+
+   <c>short</>      <d>a-very-long-language-name</>
+== width 20 ==
+●  <c>@@ -210,3 +210,4 </>
+   <c>-    run := m.sto</>
+   <c>+    m.waitIdle()</>
+   <c>+    run, err := </>
+   <c>     m.run = run</>░
+
+   <c>func (m *Model) r</>
+   <c>    return m.list</>
+   <c>}</>░░░░░░░░░░░░░░░░
+
+   <c>short</>░░░░░░░░░░░░
