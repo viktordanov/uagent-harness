@@ -42,3 +42,20 @@ func TestPrintTranscript_Diff(t *testing.T) {
 		"         2 -x\n"+
 		"         2 +y\n")
 }
+
+// TestPrintTranscript_Rewind names the message the session went back to.
+func TestPrintTranscript_Rewind(t *testing.T) {
+	at := time.Date(2026, 9, 24, 12, 0, 0, 0, time.UTC)
+	run := session.LoadedRun{
+		Record: uaharness.RunRecord{Result: core.Result{Request: core.Request{RunID: "r1"}, Status: core.StatusOK, StartedAt: at}},
+		Events: []core.Event{
+			core.UserMessage{At: at, ID: "m1", Text: "fix the build"},
+			core.AssistantMessage{At: at, Text: "done", Final: true},
+			engine.Rewound{At: at, MessageID: "m1"},
+		},
+	}
+	var out bytes.Buffer
+	printTranscript(&out, session.Info{ID: "s1", Provider: "openai", Model: "gpt-5.5", Workspace: "/w"}, []session.LoadedRun{run})
+
+	assert.Contains(t, out.String(), "✓ done\n↺ went back to before \"fix the build\"; it and what followed left the agent's context\n")
+}

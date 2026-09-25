@@ -46,6 +46,18 @@ type ContextReporter interface {
 	ContextUsage(sessionID string) (contextusage.Usage, bool)
 }
 
+// Rewinder is an engine that can cut a session's context at an earlier
+// message, as Codex's backtrack (Capabilities.Rewind).
+type Rewinder interface {
+	// Rewind makes the session's next model request end just before the
+	// message messageID, and records the cut next to the session, which
+	// keeps every item. The session must be idle. held are the texts that
+	// went to the agent in the same batch before the message (a subagent's
+	// notification, a shell command's record, an earlier queued message):
+	// the cut drops them too, so they go again with the next message.
+	Rewind(ctx context.Context, sessionID, messageID string) (ev Rewound, held []string, err error)
+}
+
 // Options are run settings that core.Request does not carry.
 type Options struct {
 	// ServiceTier is "" or "priority" (needs Capabilities.ServiceTier).

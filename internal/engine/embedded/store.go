@@ -19,8 +19,9 @@ import (
 )
 
 // runStore is the session a run records to, and the log that copies its output.
+// The store leaves out what the session's rewinds cut (cutStore).
 type runStore struct {
-	store    *localfile.Store
+	store    sessionstore.Store
 	id       session.ID
 	restored sessionstore.ResumeState
 	log      *os.File
@@ -47,13 +48,17 @@ func (w *wiring) openStore(ctx context.Context, req core.Request, messages []cor
 			return runStore{}, fmt.Errorf("failed to open session %q: %w", id, err)
 		}
 	}
+	cut, err := withCuts(store, w.l.SessionsDir, string(id))
+	if err != nil {
+		return runStore{}, err
+	}
 	logFile, err := openDatetimeLog(w.l.LogsDir, time.Now())
 	if err != nil {
 		return runStore{}, err
 	}
 	w.closers = append(w.closers, logFile.Close)
 
-	return runStore{store: store, id: id, restored: restored, log: logFile}, nil
+	return runStore{store: cut, id: id, restored: restored, log: logFile}, nil
 }
 
 // openSession resumes the session, or creates it when it does not exist.

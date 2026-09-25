@@ -55,7 +55,12 @@ type compactor struct {
 
 	mu     sync.Mutex
 	record *compaction.Record
-	stale  bool // the record does not match the history; reported once
+	// older are the saved compactions before record, oldest first, and cuts
+	// the session's rewinds: a rewind can leave record stale (settleLocked).
+	older   []compaction.Record
+	cuts    compaction.Cuts
+	settled bool
+	stale   bool // the record does not match the history; reported once
 	// pending is the compaction asked for, "" when none: manual (/compact)
 	// or clear (/clear), which wins over manual. focus is what a /compact
 	// asked the summary to focus on.
@@ -161,6 +166,7 @@ func (c *compactor) startOrJoin(req llm.Request, opts llm.RequestOptions) *compa
 // a history that stays large after compacting does not compact on every
 // request. It holds c.mu.
 func (c *compactor) dueLocked(input []llm.Item) (compaction.Trigger, int64, bool) {
+	c.settleLocked(input)
 	covered := 0
 	view := input
 	if c.record != nil && !c.stale {
@@ -341,6 +347,7 @@ func (c *compactor) localSummary(effort llm.ReasoningEffort, cacheKey, focus str
 // the mismatch is reported once.
 func (c *compactor) apply(input []llm.Item) []llm.Item {
 	c.mu.Lock()
+	c.settleLocked(input)
 	rec := c.record
 	c.mu.Unlock()
 	if rec == nil {
@@ -368,21 +375,22 @@ func (c *compactor) apply(input []llm.Item) []llm.Item {
 // lastUsage is the context the session's last model response used (input
 // plus output tokens), so automatic compaction also works on a resumed run.
 func lastUsage(ctx context.Context, store sessionstore.Store, id session.ID) (int64, error) {
-	var used int64
-	after := sessionstore.BeforeFirst
-	for {
-		page, err := store.Items(ctx, id, after, 512)
-		if err != nil {
-			return 0, fmt.Errorf("failed to read the session: %w", err)
-		}
-		for _, item := range page.Items {
-			if r, ok := item.Data.(sessionstore.ModelResponse); ok {
-				used = r.Response.Usage.InputTokens + r.Response.Usage.OutputTokens
-			}
-		}
-		if !page.More {
-			return used, nil
-		}
-		after = page.NextAfter
+	items, err := allItems(ctx, store, id)
+	if err != nil {
+		return 0, err
 	}
+
+	return usageIn(items), nil
+}
+
+// usageIn is the context the last model response among the items used.
+func usageIn(items []sessionstore.Item) int64 {
+	var used int64
+	for _, item := range items {
+		if r, ok := item.Data.(sessionstore.ModelResponse); ok {
+			used = r.Response.Usage.InputTokens + r.Response.Usage.OutputTokens
+		}
+	}
+
+	return used
 }

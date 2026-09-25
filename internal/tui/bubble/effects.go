@@ -49,6 +49,8 @@ func (m Model) run(e state.Effect) tea.Cmd { //nolint:gocyclo // a dispatch swit
 		return withSession(func(s *session.Session) error { return s.Interrupt() })
 	case state.EffClear:
 		return withSession(func(s *session.Session) error { return s.Clear() })
+	case state.EffRewind:
+		return withSession(func(s *session.Session) error { return s.Rewind(e.ID) })
 	case state.EffCompact:
 		return withSession(func(s *session.Session) error { return s.CompactWith(e.Focus) })
 	case state.EffResolve:

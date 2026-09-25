@@ -17,7 +17,7 @@ A terminal coding agent that works like Codex, running on [unreal-agent](https:/
 brew install viktordanov/tap/uah
 ```
 
-- [Sessions](#resume-a-session) you can resume and search, and a headless [`uah run`](#headless-mode)
+- [Sessions](#resume-a-session) you can resume, search, and [take back to an earlier message](#go-back-to-an-earlier-message), and a headless [`uah run`](#headless-mode)
 - [Subagents](#subagents-and-agent-files) that run in parallel, defined in Markdown or TOML agent files
 - [AGENTS.md and skills](#agentsmd-and-skills), and [MCP servers](#mcp-setup) with OAuth
 - A [sandbox](#permission-modes) (Seatbelt, bubblewrap) with [approvals](#command-rules), permission modes, and an auto-reviewer
@@ -69,7 +69,7 @@ Keys worth knowing:
 | --- | --- |
 | enter | Send. While the agent works, the message queues and goes out when it finishes |
 | ctrl+enter | Send now: the working agent reads it before its next model request. On an empty prompt, it sends the queued messages now, in order |
-| esc esc | Interrupt; queued messages stay |
+| esc esc | Interrupt; queued messages stay. While the agent is idle, on an empty prompt: go back to an earlier message and edit it |
 | `/` | Commands, such as `/model`, `/effort`, `/compact`, `/context`, `/mcp`, `/agents`, `/status`, `/resume`, and `/new` |
 | `@` | Mention a workspace file (fuzzy search) |
 | ctrl+t | The detailed view: turns, tokens, and each tool's result |
@@ -89,6 +89,10 @@ uah --session 3f2a      # a session by ID or unique prefix
 ```
 
 When you quit the TUI, it prints the session's token usage and the command that continues it (`uah resume <id>`), as Codex does. In the TUI, ctrl+s opens the picker and ctrl+n starts a new session. The picker hides sessions from `uah run` and subagents, as Codex hides `codex exec` sessions.
+
+### Go back to an earlier message
+
+Press esc twice on an empty prompt while the agent is idle, or type `/rewind`: your latest message is selected. Esc or ↑ selects an earlier one and ↓ a later one; enter puts the message back in the prompt, with its images, to edit and send again. The message and everything after it leave the agent's context and the screen, as Codex's backtrack does, and a resumed session keeps the cut. The session file keeps the old branch, and `uah sessions show` prints it. Files the agent changed stay changed. It needs the embedded engine; see the [rewind design](docs/design/rewind.md).
 
 ### Headless mode
 
@@ -496,7 +500,7 @@ Pushing a `v1.2.3` tag builds the release archives for macOS and Linux (arm64 an
 CI runs the build, the race tests, the Markdown renderer's benchmarks once (so they keep running; its tests hold the bounds), and the linter on each push; the linter also fails on a function above 20 cyclomatic complexity, a backstop for the rule of about 15. Design records, the architecture rules, and the documentation procedure are in [docs](docs/README.md):
 
 <!-- memoria:import src="docs/README.md#summary" -->
-The configuration reference, design records for the harness, the TUI, state storage, sandboxing, compaction, MCP, subagents, pasted images, streaming, and Markdown rendering, plus the architecture rules and documentation procedure for uagent-harness.
+The configuration reference, design records for the harness, the TUI, state storage, sandboxing, compaction, MCP, subagents, pasted images, streaming, Markdown rendering, and going back to an earlier message, plus the architecture rules and documentation procedure for uagent-harness.
 <!-- /memoria:import -->
 
 `bench/tui` is a separate Go module with the benchmark behind choosing Bubble Tea v2. `go test -run '^$' -bench Markdown -benchmem ./internal/tui/render` measures the Markdown renderer.

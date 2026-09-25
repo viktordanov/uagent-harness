@@ -69,7 +69,9 @@ type Item struct {
 	Version int
 
 	// KindUser, KindAssistant, KindReasoning, KindNotice
-	Text  string
+	Text string
+	// Raw is a KindUser message as sent, with its image tags.
+	Raw   string
 	Input InputState
 	Final bool
 	Level string // KindNotice: "info", "warning", "error"

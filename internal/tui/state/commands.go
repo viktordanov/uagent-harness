@@ -29,6 +29,7 @@ func Commands() []Command {
 		{Name: "new", Help: "start a new session", run: func(*State, string) []Effect { return []Effect{EffOpenSession{}} }},
 		{Name: "stop", Help: "interrupt the live run; queued messages stay", WhileBusy: true, run: func(*State, string) []Effect { return []Effect{EffInterrupt{}} }},
 		{Name: "clear", Help: "start the agent fresh in this session; the session keeps its history (embedded engine)", WhileBusy: true, run: cmdClear},
+		{Name: "rewind", Help: "go back to an earlier message and edit it; what followed leaves the context (esc esc; embedded engine)", run: cmdRewind},
 		{Name: "compact", Args: "[focus]", Help: "summarize the context to free it; your messages stay as written, and words after it steer the summary (embedded engine)", WhileBusy: true, run: cmdCompact},
 		{Name: "context", Help: "what fills the context window: prompt, instructions, skills, tools, messages", WhileBusy: true, run: cmdContext},
 		{Name: "config", Help: "settings: auto-compact, compaction model, model, effort, fast mode, details, mouse; saved to the user file", WhileBusy: true, run: cmdConfig},
@@ -177,7 +178,7 @@ func cmdHelp(s *State, _ string) []Effect {
 		fmt.Fprintf(&b, "%-18s %s\n", name, c.Help)
 	}
 	b.WriteString("\nenter send (queues while the agent works) · ctrl+enter or alt+enter send now (on an empty prompt: the queued messages) · shift+enter or ctrl+j new line\n")
-	b.WriteString("esc esc interrupt · ↑ edit the last queued message · shift+tab permission mode · alt+, alt+. effort · ctrl+s sessions · ctrl+n new · ctrl+t details · ctrl+r reasoning · wheel, shift+↑↓, pgup/pgdn scroll (end: bottom) · ctrl+c ctrl+c quit")
+	b.WriteString("esc esc interrupt, or while idle on an empty prompt go back to an earlier message (esc/↑ earlier, ↓ later, enter edit) · ↑ edit the last queued message · shift+tab permission mode · alt+, alt+. effort · ctrl+s sessions · ctrl+n new · ctrl+t details · ctrl+r reasoning · wheel, shift+↑↓, pgup/pgdn scroll (end: bottom) · ctrl+c ctrl+c quit")
 	s.notice(session.LevelInfo, b.String())
 
 	return nil

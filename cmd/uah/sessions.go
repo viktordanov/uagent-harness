@@ -18,6 +18,7 @@ import (
 	"github.com/viktordanov/uagent-harness/internal/app"
 	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/home"
+	"github.com/viktordanov/uagent-harness/internal/images"
 	"github.com/viktordanov/uagent-harness/internal/patch"
 	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/internal/store"
@@ -167,12 +168,14 @@ func runViews(runs []session.LoadedRun) []runView {
 
 func printTranscript(w io.Writer, info session.Info, runs []session.LoadedRun) {
 	fmt.Fprintf(w, "session %s · %s/%s · %s\n", info.ID, info.Provider, modelLabel(info.Model), info.Workspace)
+	said := map[string]string{} // messages by ID, for a rewind
 	for _, r := range runs {
 		res := r.Record.Result
 		fmt.Fprintf(w, "\n── run %s · %s · %s\n", res.Request.RunID, res.Status, res.StartedAt.Local().Format("2006-01-02 15:04"))
 		for _, e := range r.Events {
 			switch m := e.(type) {
 			case core.UserMessage:
+				said[m.ID] = m.Text
 				fmt.Fprintf(w, "› %s\n", m.Text)
 			case core.ToolCalled:
 				label := m.Label
@@ -192,6 +195,8 @@ func printTranscript(w io.Writer, info session.Info, runs []session.LoadedRun) {
 				fmt.Fprintf(w, "error: %s\n", m.Message)
 			case engine.Compacted:
 				fmt.Fprintf(w, "⋯ context compacted (%s, %d-char summary)\n", m.Trigger, len(m.Summary))
+			case engine.Rewound:
+				fmt.Fprintf(w, "↺ went back to before %q; it and what followed left the agent's context\n", oneLine(images.Display(said[m.MessageID]), 60))
 			}
 		}
 	}

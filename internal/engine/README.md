@@ -24,7 +24,7 @@ The choice comes from `--engine`, `UAH_ENGINE`, or `engine` in the [configuratio
 
 `engine.Engine` has three methods: `Name`, `Capabilities`, and `Start(ctx, request, options, sink) (Run, error)`. The sink receives `RunStarted` first and `RunFinished` last, from one goroutine at a time. A `Run` takes messages and settings while it is live (`Send`, `SetEffort`, `SetModel`, `SetServiceTier`, `SetMode`, `Compact`, `Clear`), stops (`Interrupt`, `Kill`), and ends (`Wait`). A method the engine cannot serve returns `ErrUnsupported`, and the session then applies the change from the next run.
 
-`Capabilities` says what reaches a live run (`LiveInput`, `LiveEffort`, `LiveModel`, `ServiceTier`, `LiveMode`) and which features the engine runs at all (`Compaction`, `Rules`, `Approvals`, `ToolHooks`, `MCP`, `Subagents`, `ApplyPatch`, `CodexSkills`, `ContextUsage`, `Images`, `Reconnect`, `Stream`). The session, the TUI, and `uah doctor` read them; none of them checks the engine's name. [What each engine supports](#what-each-engine-supports) turns them into the capability table.
+`Capabilities` says what reaches a live run (`LiveInput`, `LiveEffort`, `LiveModel`, `ServiceTier`, `LiveMode`) and which features the engine runs at all (`Compaction`, `Rules`, `Approvals`, `ToolHooks`, `MCP`, `Subagents`, `ApplyPatch`, `CodexSkills`, `ContextUsage`, `Images`, `Reconnect`, `Stream`, `Rewind`). The session, the TUI, and `uah doctor` read them; none of them checks the engine's name. [What each engine supports](#what-each-engine-supports) turns them into the capability table.
 
 A model request is sent up to `core.Request.MaxAttempts` times, which the session fills from its settings (`request_max_attempts`, default `engine.DefaultMaxAttempts`, 10); both engines pass it to the runner's client, whose backoff waits 2 s, doubling to 30 s, between attempts (v0.1.1).
 
@@ -50,9 +50,10 @@ Optional interfaces are the seams the session probes with a type assertion:
 | `Forgetter` | The session calls `Forget` when it closes, so per-session state (the auto-review transcript, the last request for `/context`, a pending fork, a cache key) does not outlive it | embedded |
 | `io.Closer` | The session closes the engine with itself, stopping MCP servers and subagents | embedded |
 | `Subagents` | The agent tools: `Attach` returns the tools to offer a run, `ToolNames` every name it answers, `Call` runs one, `Interrupt` stops a parent's children. The engine knows no tool name, schema, or result; [internal/agents](../agents/README.md) implements it | `internal/agents` |
+| `Rewinder` | `Rewind` cuts a session's context before an earlier message, as Codex's backtrack (`Session.Rewind`), and returns `Rewound` and the texts that went to the agent with the message, which the session holds again | embedded |
 | `Forker` | `Fork` copies a parent's history into a new child session for `spawn_agent`'s `fork_context`; `SetCacheKey` gives a session another prompt cache key (every subagent uses its root session's) | embedded |
 
-The engine's own events join the run's stream: `CompactionStarted`, `Compacted`, `AutoReviewed`, `AgentUpdated`, `AgentActivity` (a child's tool events, for the parent's view), `PatchApplied` (the diff of an applied `apply_patch` call, `patch.go`), `Reconnecting` and `ReconnectEnded` (a model request's retries, below), and `TextDelta`, `ReasoningDelta`, and `StreamReset` (the answer as it arrives, below). The embedded engine's `Subagents()` returns its `Subagents`, so a session can follow one child's whole stream (`session.WatchAgent`).
+The engine's own events join the run's stream: `CompactionStarted`, `Compacted`, `AutoReviewed`, `AgentUpdated`, `AgentActivity` (a child's tool events, for the parent's view), `PatchApplied` (the diff of an applied `apply_patch` call, `patch.go`), `Rewound` (the session went back to before a message), `Reconnecting` and `ReconnectEnded` (a model request's retries, below), and `TextDelta`, `ReasoningDelta`, and `StreamReset` (the answer as it arrives, below). The embedded engine's `Subagents()` returns its `Subagents`, so a session can follow one child's whole stream (`session.WatchAgent`).
 <!-- /memoria:section -->
 
 <!-- memoria:section id="support" files="capabilities.go process/process.go embedded/engine.go" -->
@@ -80,6 +81,7 @@ Features that are on by default, such as live input or subagents, get no notice;
 | Codex's `apply_patch` and its diffs | `ApplyPatch` | On openai and openai-codex models | No |
 | Codex skills (`.agents/skills`, `~/.uah/skills`, `$CODEX_HOME/skills`) | `CodexSkills` | Yes | Only the runner's `.harness/skills` |
 | `/context` | `ContextUsage` | Yes | No |
+| Going back to an earlier message (esc esc while idle, `/rewind`) | `Rewind` | Yes: a cut record next to the session hides the cut items from the context builder | No (`session.ErrNoRewind`): the runner reads its session file itself |
 | A lost connection to the model | `Reconnect` | Retried; each retry is reported (`Reconnecting`) and shown in the TUI, and a run that loses every attempt says it gave up after N attempts | Retried the same way by the runner, but nothing shows the attempts, and a failed run shows the runner's error |
 | The answer as the model writes it | `Stream` | Streamed to the TUI and `uah run --stream` (`TextDelta`, `ReasoningDelta`) | The answer appears when the model finishes it |
 | Images pasted into the prompt | `Images` | Sent to the model with the message | The TUI shows the notice and keeps a pasted path as text; the model can still open an image file with ViewImage |
@@ -111,6 +113,7 @@ This audit (item 33 of the ledger) lists each behavior, the code that does it, a
 | Subagents | `internal/agents`, `embedded/agenttool.go` | Embedded only |
 | Compaction and `/clear` | `embedded/compact.go` and `internal/compaction`; the session keeps the pending request (`internal/session/compact.go`) | Embedded only |
 | `/context` | `embedded/context.go` (`ContextReporter`) | Embedded only |
+| Going back to an earlier message | `embedded/rewind.go` (`Rewinder`, `cutStore`), the cut log in `internal/compaction/rewind.go`, and `internal/session/rewind.go` | Embedded only |
 | `apply_patch` | `embedded/patchtool.go` and `internal/patch` | Embedded only |
 | Session settings, saved and restored | `internal/session/saved.go` and `sidecar.go` | Shared |
 | Model catalog | `internal/models`: the TUI's `/model` list (both), the subagents' model check, `apply_patch` per model, and the context window for compaction (embedded) | Shared where both use it |
@@ -140,7 +143,7 @@ The runner (v0.1.1) runs every Bash command as `$SHELL -c <command>` (`harness/o
 The rules see the same command string as on the embedded engine, so they are as strong there as here: they match the command's words, not what a script it runs does. Without rules, `$SHELL` is the sandboxing script, with no gate. That script cannot ask for more access. `process.NewSandboxed` keeps one harness per sandbox mode, built on first use, and each run uses its permission mode's (`Options.Mode`). `process.Capabilities(rules)` is the process engine's capabilities: only `Rules`, when the shells have a gate.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="embedded" files="embedded/engine.go embedded/wiring.go embedded/agent.go embedded/adapter.go embedded/client.go embedded/providers.go embedded/clients.go embedded/reconnect.go embedded/stream.go codexauth/codexauth.go embedded/store.go embedded/observer.go embedded/tools.go embedded/sandboxtool.go embedded/sandboxschema.go embedded/skills.go embedded/pretooluse.go embedded/autoreview.go embedded/compact.go embedded/context.go embedded/fork.go embedded/mode.go embedded/patchtool.go embedded/images.go" -->
+<!-- memoria:section id="embedded" files="embedded/engine.go embedded/wiring.go embedded/agent.go embedded/adapter.go embedded/client.go embedded/providers.go embedded/clients.go embedded/reconnect.go embedded/stream.go codexauth/codexauth.go embedded/store.go embedded/observer.go embedded/tools.go embedded/sandboxtool.go embedded/sandboxschema.go embedded/skills.go embedded/pretooluse.go embedded/autoreview.go embedded/compact.go embedded/context.go embedded/fork.go embedded/mode.go embedded/patchtool.go embedded/images.go embedded/rewind.go" -->
 ## The embedded engine
 
 The embedded engine is a uagent `harness.Backend`. uagent still owns the run: the guards, the session lock, the run record, and the output stream. The backend (`wiring.go`) reproduces unreal-agent-runner v0.1.1's `Run` (`cmd/internal/agentrunner/run.go`) in the same order:
@@ -191,6 +194,10 @@ A new attempt after text streamed, or a request that fails or is canceled after 
 
 `Fork` (`fork.go`) copies a parent's history into a new child session for `spawn_agent`'s `fork_context`: the items before the parent's turn that made the spawn call, through the runner store's append methods (its own `Store.Fork` drops the operation snapshots of inherited tool calls in v0.1.1), with unfinished operations recorded as canceled, and the parent's compactions until then. On the child's first run, `openStore` adds the run's messages and effort to the store before the coordinator restores it, because the coordinator asks the model at once for the copied inputs; the inbox then drops the messages as seen. [internal/agents](../agents/README.md#forking) describes the behavior.
 
+### Going back to an earlier message
+
+`Rewind` (`rewind.go`) reads the session's runner items, finds the message's inbox input by its ID, and cuts from it, or from the first of the inputs just before it, which reached the agent with it; their texts go back to the session to send again. It refuses a message that arrived while a tool call had no status, since the coordinator would run the call again. The cut is a `compaction.Rewind` in `sessions/<id>.rewind.jsonl`: the first and last runner item sequences, the message, and the context the last response before it reported. Every run then opens the store through `cutStore`, whose `Items` leaves the cut items out, so the coordinator restores the history without them; its `AppendTurn` chains a new turn to the file's latest turn, which the runner's store checks. `Fork` and the usage seed read the same filtered items. The compactor settles once per run which saved compaction applies: the newest that matches, skipping records made before a rewind that no longer match. The last request kept for `/context` is trimmed to before the message. See the [rewind design](../../docs/design/rewind.md).
+
 ### The event stream
 
 `lockedSink` wraps the run's sink so the engine can add its own events: one goroutine at a time, and none after `RunFinished`. Its `tap` sees every event first and feeds the auto-reviewer's transcript (`autoreview.go`), one per session ID so a subagent's reviews see only its own session: the user's messages and the latest tool calls, without their output.
@@ -240,7 +247,7 @@ A job that had already started before the run stopped fails with "interrupted" w
 The runner stays unchanged: uah reproduces its wiring instead of patching it, and the equivalence test below keeps the two in step.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="tests" files="capabilities_test.go process/process_test.go process/gate_test.go process/shellgate/gate_test.go embedded/embedded_test.go embedded/approval_test.go embedded/compact_test.go embedded/compact_settings_test.go embedded/context_test.go embedded/mcp_test.go embedded/mcpjobs_internal_test.go embedded/sandbox_test.go embedded/mode_test.go embedded/images_test.go embedded/clients_test.go embedded/reconnect_test.go embedded/stream_test.go embedded/stream_internal_test.go" -->
+<!-- memoria:section id="tests" files="capabilities_test.go process/process_test.go process/gate_test.go process/shellgate/gate_test.go embedded/embedded_test.go embedded/approval_test.go embedded/compact_test.go embedded/compact_settings_test.go embedded/context_test.go embedded/mcp_test.go embedded/mcpjobs_internal_test.go embedded/sandbox_test.go embedded/mode_test.go embedded/images_test.go embedded/clients_test.go embedded/reconnect_test.go embedded/stream_test.go embedded/stream_internal_test.go embedded/rewind_test.go embedded/rewind_internal_test.go" -->
 ## Tests
 
 The embedded tests, and the process tests with the real runner, run against `testing/fakellm`, a scripted Responses API, and need no tokens.
@@ -260,5 +267,6 @@ The embedded tests, and the process tests with the real runner, run against `tes
 | `clients_test.go` | Each provider's client sends the same request as the runner's own client, body and headers |
 | `reconnect_test.go` | A connection dropped before the answer and one cut halfway (`fakellm.Reply.Drop`, `Cut`) are retried after 2 and 4 s with a `Reconnecting` event each, and the run then finishes; with two attempts that both drop, the run fails and says it gave up. They wait for the real backoff (about 6 s), so `-short` skips them |
 | `stream_test.go`, `stream_internal_test.go` | With `fakellm.Reply.Deltas`, `Reasoning`, and `Hold`: the answer and reasoning arrive as deltas while the response is held, before the final message, which they match; no deltas without `Stream`, from a compaction summary, or from the auto-reviewer; a stream cut halfway is reset before the retry's text (skipped under `-short`), and an interrupt resets it too. The tee passes a stream read one byte at a time through unchanged and finds its deltas across reads, CRLF, and a line too long to parse |
+| `rewind_test.go`, `rewind_internal_test.go` | Going back: the next request carries only the history before the message and the edited one, `/context` shrinks, the session file keeps the old branch, and resume and `session.Load` keep the cut; past a compaction that covered the message (the one before applies, no mismatch), after a `/clear` (the clear stays), an unknown message, a notification that went with the message and goes again, and where the cut starts or why it is refused |
 | `images_test.go` | A message with pasted images: the model gets the text without tags and each image as a ViewImage result with its data URL, a missing image as an error text, and later requests carry the image again |
 <!-- /memoria:section -->

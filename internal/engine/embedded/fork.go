@@ -25,8 +25,8 @@ var _ engine.Forker = (*Engine)(nil)
 
 // Fork creates the session childID from the parent's history as it was
 // when the model made the call callID: every item before the turn that
-// made it, replayed through the runner's session store, and the
-// compactions that applied to it. The child's first run adds its messages
+// made it that no rewind cut, replayed through the runner's session store,
+// and the compactions that applied to it. The child's first run adds its messages
 // after them, so its first model request starts with the items of the
 // parent's request that made the call.
 //
@@ -39,7 +39,11 @@ func (e *Engine) Fork(ctx context.Context, parentID, childID, callID string) err
 	if err != nil {
 		return fmt.Errorf("failed to open the session store: %w", err)
 	}
-	items, err := allItems(ctx, store, session.ID(parentID))
+	parent, err := withCuts(store, dir, parentID)
+	if err != nil {
+		return err
+	}
+	items, err := allItems(ctx, parent, session.ID(parentID))
 	if err != nil {
 		return err
 	}
@@ -131,12 +135,14 @@ func forkPoint(items []sessionstore.Item, callID string) (cut int, at time.Time,
 // the child's run never starts the parent's work again.
 func replay(ctx context.Context, store sessionstore.Store, id session.ID, items []sessionstore.Item) error {
 	open := unfinished(items)
+	var last session.TurnID
 	for _, item := range items {
 		var err error
 		switch d := item.Data.(type) {
 		case inbox.Input:
 			err = store.AppendInput(ctx, id, d)
 		case session.Turn:
+			d.PreviousTurnID, last = last, d.ID // a rewind may have cut the turn before it
 			err = store.AppendTurn(ctx, id, d)
 		case sessionstore.ModelResponse:
 			err = store.AppendModelResponse(ctx, id, d)

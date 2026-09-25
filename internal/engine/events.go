@@ -33,6 +33,18 @@ type Compacted struct {
 func (e CompactionStarted) OccurredAt() time.Time { return e.At }
 func (e Compacted) OccurredAt() time.Time         { return e.At }
 
+// Rewound means the session went back to before the message MessageID
+// (Rewinder): that message and everything after it left the model's
+// context, and the session file keeps them. Tokens is the context in use
+// that the last response before the message reported (0: unknown).
+type Rewound struct {
+	At        time.Time
+	MessageID string
+	Tokens    int64
+}
+
+func (e Rewound) OccurredAt() time.Time { return e.At }
+
 // AutoReviewed reports the auto-reviewer's verdict on an action that needed
 // approval. Outcome is allow, deny, or ask_user (the user decides).
 type AutoReviewed struct {

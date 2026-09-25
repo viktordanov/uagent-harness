@@ -1,8 +1,8 @@
-<!-- memoria:section id="overview" files="design/harness.md design/tui.md design/implementation.md design/state.md design/sandbox-research.md design/sandbox.md design/subagents.md design/compaction.md design/mcp.md design/usage.md design/images.md configuration.md ledger.md documentation/architecture.md documentation/memoria.md design/shell-mode.md design/streaming.md design/markdown.md" -->
+<!-- memoria:section id="overview" files="design/harness.md design/tui.md design/implementation.md design/state.md design/sandbox-research.md design/sandbox.md design/subagents.md design/compaction.md design/mcp.md design/usage.md design/images.md configuration.md ledger.md documentation/architecture.md documentation/memoria.md design/shell-mode.md design/streaming.md design/markdown.md design/rewind.md" -->
 # Documentation
 
 <!-- memoria:export id="summary" -->
-The configuration reference, design records for the harness, the TUI, state storage, sandboxing, compaction, MCP, subagents, pasted images, streaming, and Markdown rendering, plus the architecture rules and documentation procedure for uagent-harness.
+The configuration reference, design records for the harness, the TUI, state storage, sandboxing, compaction, MCP, subagents, pasted images, streaming, Markdown rendering, and going back to an earlier message, plus the architecture rules and documentation procedure for uagent-harness.
 <!-- /memoria:export -->
 
 Design:
@@ -21,6 +21,7 @@ Design:
 12. [Shell mode](design/shell-mode.md): how Codex and Claude Code run a `!` command the user types, and how uah runs it and adds it to the conversation.
 13. [Streaming the answer](design/streaming.md): how Codex streams the answer, why the runner needs no change, and how the embedded engine tees each turn request's stream into the TUI.
 14. [Markdown rendering](design/markdown.md): how Codex draws and streams Markdown, the parser, incremental rendering by blocks, tables that fit the width, cached highlighting, and the benchmarks that gate it.
+15. [Going back to an earlier message](design/rewind.md): Codex's backtrack and Claude Code's rewind, and how uah cuts the context at an earlier message while the session file keeps the old branch.
 
 Reference:
 

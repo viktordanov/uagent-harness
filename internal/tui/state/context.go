@@ -80,6 +80,8 @@ func (s *State) onEngineEvent(ev core.Event) bool {
 		s.onAgentActivity(e)
 	case engine.PatchApplied:
 		s.onPatchApplied(e)
+	case engine.Rewound:
+		s.onRewound(e)
 	default:
 		return s.onStream(ev)
 	}
