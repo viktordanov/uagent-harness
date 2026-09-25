@@ -59,6 +59,55 @@ A plain click selects nothing. Clicks count as a double or triple click when the
 
 **Drawing.** The selection is a pass over the window's lines after the cache, as the backtrack fade is (`render/backtrack.go`): O(height) per frame, and no item's Markdown is drawn again. The selected cells lose their styles and sit on the theme's `Selection` background (a dark amber in `Amber`, a pale one in `AmberLight`) in the terminal's own text color; the styles in force after the selection are replayed, so the rest of the line keeps its look.
 
+**What a copy holds** (`render.SelectedText`, `render/copytext.go`). What is drawn, cut by cells, with a wide character that is half inside counted whole, minus the decoration:
+
+- the item's gutter: the λ or ! column of your message and a shell command and the indent under it, the answer's • column and its hanging indent, reasoning's `~`, a warning's or an error's mark;
+- the indent a block shares: each run of lines between blank lines loses the spaces all of its lines have after the gutter. A code block loses the band's padding and a diff block the padding on its tints, so they paste as code (a block indented as a whole comes out dedented); a table loses the zebra's padding, banded rows and plain ones alike; tool rows and the finish line lose their two-space indent;
+- a code block's first line: the fence's language, dim at its right end;
+- a quote: its `“` and `”` marks and the indent under the first, so it pastes as its wrapped text;
+- every line: its trailing spaces; the copy: blank lines at either end.
+
+What stays: list markers (`•`, `◦`, `1.`) and the indent of a nested item, an alert's title (`! Warning`) and the indent of its text, a heading as drawn (an H1 in capitals), the table's columns as spaced on screen, and the banner's box. The copy is what the user sees rather than the item's source Markdown, even for whole items, so the rule is predictable: a wrapped paragraph copies as its wrapped lines, as a terminal's own selection would.
+
+**The clipboard** (`clipboard_copy.rs`): the native clipboard through `arboard` (kept open on Linux, where X11 and some Wayland compositors need the writing process alive), with WSL's PowerShell as a fallback. In tmux it also forwards to the attached terminal, and over ssh without tmux it sends OSC 52 directly; locally, OSC 52 only when the native copy fails. Payloads over 100,000 bytes skip OSC 52. A terminal write is unacknowledged, so the notice says "Copy unconfirmed" when only OSC 52 went out.
+
+## What other terminal programs do
+
+Checked on 2026-09-25.
+
+- **Claude Code**, fullscreen rendering ([Fullscreen rendering](https://code.claude.com/docs/en/fullscreen), a research preview, and the default renderer for most who first used Claude Code on or after May 6, 2026). It captures the mouse: click and drag selects anywhere in the conversation, a double click a word ("matching iTerm2's word boundaries so a file path selects as one unit", a whole URL), a triple click the line, and the wheel scrolls. "Selected text copies to your clipboard automatically on mouse release"; Copy on select in `/config` turns that off, and then ctrl+shift+c (or cmd+c with the kitty protocol, or ctrl+c with a selection) copies. Locally it runs pbcopy, wl-copy, xclip, or xsel (also the PRIMARY selection), inside tmux it also fills the paste buffer, and over ssh it falls back to OSC 52; a toast names the path. Esc keeps the selection; most other keys clear it. `CLAUDE_CODE_DISABLE_MOUSE=1` gives the terminal its selection back, and `CLAUDE_CODE_DISABLE_MOUSE_CLICKS=1` keeps only the wheel.
+- **opencode** v1.18.32 (`anomalyco/opencode`, `packages/tui`). `[tui] mouse` captures the mouse, "default: true" (`src/config/index.tsx`). The renderer (opentui) selects; the selection copies on mouse up and then clears (`src/app.tsx`, `src/util/selection.ts`), with a "Copied to clipboard" toast; an experimental flag switches to ctrl+c and a right click. `src/clipboard.ts` writes OSC 52 (wrapped for tmux and screen) and then the native tool: osascript, wl-copy, xclip, xsel, or PowerShell.
+- **zellij** v0.45.1 (`zellij-utils/assets/config/default.kdl`). `mouse_mode` is on by default; `copy_on_select` (default true) copies and clears the selection on release. It copies with OSC 52 unless `copy_command` names a tool such as `pbcopy`, `wl-copy`, or `xclip -selection clipboard`; `copy_clipboard` picks the system clipboard or the primary selection.
+- **helix** 25.07.1 (`book/src/editor.md`). `editor.mouse` is on by default; a drag makes an editor selection, which copies only by yanking it (to the clipboard register with space y), and middle-click pastes.
+- **lazygit** v0.65.1 (`docs/Config.md`). `gui.mouseEvents` is on by default and captures the mouse for clicks and the wheel; it selects no text itself, and "it's a little harder to select text: e.g. requiring you to hold the option key when on macOS".
+
+The programs whose view is a transcript (Claude Code, opencode, zellij's panes) capture the mouse by default, select inside, and copy on release with both OSC 52 and a native tool. Codex keeps its opt-in view's copy on a key.
+
+## The design
+
+**Mouse on by default.** `[tui] mouse` defaults to true now, so the wheel scrolls everywhere (also over a multi-line prompt) and a drag selects inside the TUI. `mouse = false` is the escape hatch: the terminal selects as usual and turns the wheel into ↑ and ↓, as before. The terminal's own selection also stays one modifier away. A trusted project file can set it either way (an override that can unset, like `ignore_default_excludes`).
+
+**Gestures.**
+
+| Gesture | Does |
+| --- | --- |
+| press and drag | Select from the pressed cell to the cell under the mouse, both included, in either direction |
+| double click | Select the word under the mouse: a run of non-space, counted in cells |
+| triple click | Select the line; a fourth click starts over |
+| release | Copy what is selected, and show `copied 3 lines` in the footer for two seconds; the selection stays |
+| drag to the top row, or below the transcript | Scroll one line that way per move, and select to the edge |
+| wheel during a drag | Scroll, and move the selection's end to the text now under the mouse |
+| esc | Clear the selection, and nothing else |
+| a click, typing, sending, ctrl+t, ctrl+r | Clear the selection, and do what they do |
+
+A plain click selects nothing. Clicks count as a double or triple click when they land on the same cell within 500 ms. The composer, the panels, the picker, and the agent view take no selection; a press there clears it.
+
+**Anchoring** (`state/selection.go`). A position is a `TextPos`: an item's key, a line of the item as drawn, and a cell. Keys do not change while the transcript scrolls or grows, and new output goes below, so a selection stays on its text while an answer streams. A selection whose item leaves (a rewind, `/clear`) selects nothing. The reducer stays pure: the shell passes the pressed line's text with the press (for the word) and the press time (for the count), and the reducer returns `EffCopySelection`.
+
+**Mapping the mouse** (`render/selection.go`). Each frame records which transcript line every row of the window shows, one `TextPos` per row, and where the transcript starts on screen. `Cache.At` turns a screen cell into a position, and `Cache.Edge` tells a drag past the top or bottom. Dragging past the edge scrolls first, lays out the frame again, and then takes the edge row, so the head is always a line that was drawn.
+
+**Drawing.** The selection is a pass over the window's lines after the cache, as the backtrack fade is (`render/backtrack.go`): O(height) per frame, and no item's Markdown is drawn again. The selected cells lose their styles and sit on the theme's `Selection` background (a dark amber in `Amber`, a pale one in `AmberLight`) in the terminal's own text color; the styles in force after the selection are replayed, so the rest of the line keeps its look.
+
 **What a copy holds** (`render.SelectedText`). What is drawn, cut by cells, with a wide character that is half inside counted whole, minus the decoration:
 
 - your message and a shell command: the λ or ! column and the indent under it; the band's rows above and below are empty lines;

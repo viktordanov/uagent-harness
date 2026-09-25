@@ -5,9 +5,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/x/ansi"
-	"github.com/rivo/uniseg"
 
-	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/internal/tui/state"
 )
 
@@ -95,102 +93,6 @@ func (c *Cache) Edge(y int) int {
 		return -1
 	case y >= c.top+len(c.rows):
 		return 1
-	}
-
-	return 0
-}
-
-// SelectedText is the selected text as it is drawn at f's width, for the
-// clipboard, and its number of lines. Each line loses its trailing spaces
-// and its item's decoration: the mark and indent before your message, a
-// command, the agent's answer, reasoning, and warnings, and the band's
-// padding before a code line; blank lines at either end go.
-func SelectedText(s state.State, c *Cache, f Frame) (string, int) {
-	start, end, ok := s.SelectedRange()
-	if !ok {
-		return "", 0
-	}
-	var out []string
-	add := func(key string, gutter int, lines []string) {
-		for l, line := range lines {
-			if from, to, ok := s.SelectedCols(key, l); ok {
-				out = append(out, c.styles.copyLine(line, gutter, from, to))
-			}
-		}
-	}
-	if start.Key == state.BannerKey {
-		add(state.BannerKey, 0, c.styles.banner(s, f.Version, f.Width))
-	}
-	for i, it := range s.Items {
-		if it.Key == start.Key || len(out) > 0 {
-			add(it.Key, gutter(it), c.transcriptLines(s, i, f.Width))
-		}
-		if it.Key == end.Key {
-			break
-		}
-	}
-	for len(out) > 0 && out[0] == "" {
-		out = out[1:]
-	}
-	for len(out) > 0 && out[len(out)-1] == "" {
-		out = out[:len(out)-1]
-	}
-
-	return strings.Join(out, "\n"), len(out)
-}
-
-// copyLine is cells [from, to) of a drawn line as text: without its first
-// gutter cells, and on a code line (a background after the indent) the
-// band's padding and the language at its right end, and without trailing
-// spaces.
-func (st *Styles) copyLine(line string, gutter, from, to int) string {
-	if bg := strings.Index(line, "\x1b[48;"); gutter > 0 && bg > 0 {
-		gutter++ // a code line: its band starts after the indent, with a space
-		if i := strings.LastIndex(line, st.dimOn); i > bg && strings.TrimSpace(ansi.Strip(line[i:])) != "" &&
-			!strings.Contains(strings.TrimSpace(ansi.Strip(line[i:])), " ") {
-			to = min(to, ansi.StringWidth(ansi.Strip(line[:i]))) // the fence's language, dim
-		}
-	}
-	plain := ansi.Strip(line)
-	from, to = snap(plain, max(from, gutter), to)
-
-	return strings.TrimRight(ansi.Cut(plain, from, to), " ")
-}
-
-// snap widens cells [from, to) of text to whole characters, so a wide
-// character half inside counts, and ends it at the text's end.
-func snap(text string, from, to int) (int, int) {
-	start, end, at := from, 0, 0
-	g := uniseg.NewGraphemes(text)
-	for g.Next() {
-		next := at + g.Width()
-		if at <= from && from < next {
-			start = at
-		}
-		if at < to {
-			end = next
-		}
-		at = next
-	}
-
-	return start, min(end, at)
-}
-
-// gutter is how many cells before an item's text are decoration: the λ or
-// ! mark and the indent under it, the agent's •, reasoning's ~, and a
-// warning's or an error's mark.
-func gutter(it state.Item) int {
-	switch it.Kind {
-	case state.KindUser, state.KindShell, state.KindAssistant:
-		return 2
-	case state.KindReasoning:
-		return 4
-	case state.KindNotice:
-		if it.Level == session.LevelWarning || it.Level == session.LevelError {
-			return 4
-		}
-
-		return 2
 	}
 
 	return 0
