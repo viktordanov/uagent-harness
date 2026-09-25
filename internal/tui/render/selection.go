@@ -140,11 +140,16 @@ func SelectedText(s state.State, c *Cache, f Frame) (string, int) {
 }
 
 // copyLine is cells [from, to) of a drawn line as text: without its first
-// gutter cells, one more for the band's padding on a code line, and
-// without trailing spaces.
+// gutter cells, and on a code line (a background after the indent) the
+// band's padding and the language at its right end, and without trailing
+// spaces.
 func (st *Styles) copyLine(line string, gutter, from, to int) string {
-	if gutter > 0 && strings.Contains(line, st.bandOn) && !strings.HasPrefix(line, st.bandOn) {
+	if bg := strings.Index(line, "\x1b[48;"); gutter > 0 && bg > 0 {
 		gutter++ // a code line: its band starts after the indent, with a space
+		if i := strings.LastIndex(line, st.dimOn); i > bg && strings.TrimSpace(ansi.Strip(line[i:])) != "" &&
+			!strings.Contains(strings.TrimSpace(ansi.Strip(line[i:])), " ") {
+			to = min(to, ansi.StringWidth(ansi.Strip(line[:i]))) // the fence's language, dim
+		}
 	}
 	plain := ansi.Strip(line)
 	from, to = snap(plain, max(from, gutter), to)

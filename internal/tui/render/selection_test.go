@@ -26,7 +26,7 @@ func selectRun(t *testing.T) (s state.State, msg, answer string) {
 		core.UserMessage{At: t0, ID: "m1", Text: "show me 界面 main   "},
 		core.ToolCalled{At: t0, CallID: "c1", Name: "Bash", Label: "ls"},
 		core.ToolFinished{At: t0, CallID: "c1", Name: "Bash", OK: true, Detail: "exit 0"},
-		core.AssistantMessage{At: t0, Text: "Here it is:\n\n```go\nfunc main() {}\n```\n\nDone.", Final: true},
+		core.AssistantMessage{At: t0, Text: "Here it is:\n\n```go\nfunc main() {}\n```\n\n```diff\n+ added\n```\n\nDone.", Final: true},
 		core.RunFinished{At: t0, Result: core.Result{Request: core.Request{RunID: "r1"}, Status: core.StatusOK}},
 		session.Idle{At: t0},
 	)
@@ -99,8 +99,8 @@ func selectionMarks(out string, sel color.Color) string {
 }
 
 // TestSelectedText: copying takes the text as drawn, without the λ and •
-// columns, the band's padding before code, or trailing spaces, with wide
-// characters cut by their cells.
+// columns, the band's padding before code and the fence's language, or
+// trailing spaces, with wide characters cut by their cells.
 func TestSelectedText(t *testing.T) {
 	s, msg, answer := selectRun(t)
 	c := render.NewCache(render.Amber)
@@ -118,9 +118,12 @@ func TestSelectedText(t *testing.T) {
 	assert.Equal(t, "func main() {}", text, "a code line without the indent and the band's padding")
 	assert.Equal(t, 1, lines)
 
+	text, _ = copied(pos(answer, 5, 0), pos(answer, 5, 99))
+	assert.Equal(t, "+ added", text, "a diff line on its tint, without its label")
+
 	text, lines = copied(pos(msg, 2, 0), pos(answer, 99, 99))
-	assert.Equal(t, "show me 界面 main\n\n  RAN            ls\n\nHere it is:\n\nfunc main() {}\n\nDone.", text)
-	assert.Equal(t, 9, lines)
+	assert.Equal(t, "show me 界面 main\n\n  RAN            ls\n\nHere it is:\n\nfunc main() {}\n\n+ added\n\nDone.", text)
+	assert.Equal(t, 11, lines)
 
 	text, _ = render.SelectedText(s, c, f)
 	assert.Empty(t, text, "nothing selected")
