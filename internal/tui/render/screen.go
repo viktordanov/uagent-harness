@@ -93,12 +93,17 @@ func transcript(s state.State, c *Cache, w, height int, head []string) []string 
 	}
 	need := height + s.Scroll
 	var rev [][]string
-	count := 0
+	// below and selected place the message selected to go back to: the
+	// lines under it and its own.
+	count, below, selected := 0, -1, 0
 	i := len(s.Items) - 1
 	for ; i >= 0 && count < need; i-- {
 		lines := c.transcriptLines(s, i, w)
 		if len(lines) == 0 {
 			continue
+		}
+		if s.Backtrack != nil && s.Items[i].Key == s.Backtrack.Key {
+			below, selected = count, len(lines)
 		}
 		rev = append(rev, lines)
 		count += len(lines)
@@ -121,6 +126,9 @@ func transcript(s state.State, c *Cache, w, height int, head []string) []string 
 	}
 	for _, l := range window {
 		out = append(out, ansi.Truncate(l, w, ""))
+	}
+	if s.Backtrack != nil {
+		c.styles.fade(out[height-len(window):], start, len(all)-below-selected, selected)
 	}
 
 	return out
