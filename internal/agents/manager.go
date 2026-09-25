@@ -241,6 +241,9 @@ func (m *Manager) childOptions(p engine.AgentParent, c *child, role Role, rec re
 	opts := m.tmpl
 	opts.ID, opts.Resumed, opts.Source, opts.Parent = c.id, resumed, session.SourceSubagent, c.parent
 	opts.Ask, opts.Hooks = m.askFor(c), opts.Hooks.Clone()
+	// A child's text never streams: neither its parent nor its view shows
+	// it as it arrives.
+	opts.Stream = false
 	if rec.Fork { // the parent's request already carries its role's settings
 		role = Role{Name: role.Name, NicknameCandidates: role.NicknameCandidates}
 	}

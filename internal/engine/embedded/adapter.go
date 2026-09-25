@@ -7,6 +7,8 @@ import (
 	"sync"
 
 	"github.com/unreallabsai/unreal-agent/harness/llm"
+
+	"github.com/viktordanov/uagent/core"
 )
 
 // switcher is the llm.Adapter the coordinator calls. It applies the live
@@ -29,6 +31,9 @@ type switcher struct {
 	// images, when set, gives the model the images pasted into user
 	// messages (images.go).
 	images func(llm.Request) llm.Request
+	// stream, when set, receives the text of each request as it arrives
+	// (stream.go).
+	stream func(core.Event)
 }
 
 func newSwitcher(model string, priority bool, build func(bool) (Client, error)) (*switcher, error) {
@@ -56,7 +61,9 @@ func (s *switcher) Respond(ctx context.Context, req llm.Request, opts llm.Reques
 	if s.cacheKey != "" {
 		opts.CacheKey = s.cacheKey
 	}
+	ctx, done := s.streaming(ctx)
 	resp, err := client.Respond(ctx, req, opts)
+	done(err)
 	if err == nil && s.seen != nil {
 		s.seen(req, resp.Usage)
 	}

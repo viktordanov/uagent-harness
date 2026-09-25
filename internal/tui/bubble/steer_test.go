@@ -18,7 +18,7 @@ import (
 )
 
 // liveDeps opens sessions on the embedded engine, which takes messages
-// into a live run, with fakellm answering.
+// into a live run, with fakellm answering; they stream, as the TUI's do.
 func liveDeps(t *testing.T, llm *fakellm.Server) bubble.Deps {
 	t.Helper()
 	env := harnesstest.NewEnv(t)
@@ -34,7 +34,7 @@ func liveDeps(t *testing.T, llm *fakellm.Server) bubble.Deps {
 
 	return bubble.Deps{
 		Open: func(ctx context.Context, id string) (*session.Session, []session.LoadedRun, error) {
-			s, err := session.Open(ctx, eng, session.Options{ID: id, Settings: settings, Interactive: true})
+			s, err := session.Open(ctx, eng, session.Options{ID: id, Settings: settings, Interactive: true, Stream: true})
 
 			return s, nil, err
 		},

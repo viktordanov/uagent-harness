@@ -129,7 +129,7 @@ func (t watchTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		a.failed(n, resp.Status, false, resp.Header)
 	case resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices:
 		a.end(true)
-		resp.Body = &watchedBody{ReadCloser: resp.Body, a: a, n: n}
+		resp.Body = &watchedBody{ReadCloser: teed(req.Context(), resp.Body), a: a, n: n}
 	}
 
 	return resp, err //nolint:wrapcheck // a transport returns its base's errors unchanged

@@ -24,7 +24,7 @@ The choice comes from `--engine`, `UAH_ENGINE`, or `engine` in the [configuratio
 
 `engine.Engine` has three methods: `Name`, `Capabilities`, and `Start(ctx, request, options, sink) (Run, error)`. The sink receives `RunStarted` first and `RunFinished` last, from one goroutine at a time. A `Run` takes messages and settings while it is live (`Send`, `SetEffort`, `SetModel`, `SetServiceTier`, `SetMode`, `Compact`, `Clear`), stops (`Interrupt`, `Kill`), and ends (`Wait`). A method the engine cannot serve returns `ErrUnsupported`, and the session then applies the change from the next run.
 
-`Capabilities` says what reaches a live run (`LiveInput`, `LiveEffort`, `LiveModel`, `ServiceTier`, `LiveMode`) and which features the engine runs at all (`Compaction`, `Rules`, `Approvals`, `ToolHooks`, `MCP`, `Subagents`, `ApplyPatch`, `CodexSkills`, `ContextUsage`, `Images`, `Reconnect`). The session, the TUI, and `uah doctor` read them; none of them checks the engine's name. [What each engine supports](#what-each-engine-supports) turns them into the capability table.
+`Capabilities` says what reaches a live run (`LiveInput`, `LiveEffort`, `LiveModel`, `ServiceTier`, `LiveMode`) and which features the engine runs at all (`Compaction`, `Rules`, `Approvals`, `ToolHooks`, `MCP`, `Subagents`, `ApplyPatch`, `CodexSkills`, `ContextUsage`, `Images`, `Reconnect`, `Stream`). The session, the TUI, and `uah doctor` read them; none of them checks the engine's name. [What each engine supports](#what-each-engine-supports) turns them into the capability table.
 
 A model request is sent up to `core.Request.MaxAttempts` times, which the session fills from its settings (`request_max_attempts`, default `engine.DefaultMaxAttempts`, 10); both engines pass it to the runner's client, whose backoff waits 2 s, doubling to 30 s, between attempts (v0.1.1).
 
@@ -39,6 +39,7 @@ A model request is sent up to `core.Request.MaxAttempts` times, which the sessio
 | `Ask` | How the run asks the user to approve an action. Nil means no one can answer, as in `uah run` |
 | `Notify` | Adds an engine event to the session's stream, also after the run ended, such as a subagent's progress |
 | `Inject` | Gives the agent a message without a turn of its own (`Session.Inject`): a subagent's `<subagent_notification>` to its parent, through `AgentParent.Inject` |
+| `Stream` | Report the model's text as it arrives, for the run's own turn requests (`Capabilities.Stream`): the TUI and `uah run --stream` set it through `session.Options.Stream` |
 
 Optional interfaces are the seams the session probes with a type assertion:
 
@@ -51,7 +52,7 @@ Optional interfaces are the seams the session probes with a type assertion:
 | `Subagents` | The agent tools: `Attach` returns the tools to offer a run, `ToolNames` every name it answers, `Call` runs one, `Interrupt` stops a parent's children. The engine knows no tool name, schema, or result; [internal/agents](../agents/README.md) implements it | `internal/agents` |
 | `Forker` | `Fork` copies a parent's history into a new child session for `spawn_agent`'s `fork_context`; `SetCacheKey` gives a session another prompt cache key (every subagent uses its root session's) | embedded |
 
-The engine's own events join the run's stream: `CompactionStarted`, `Compacted`, `AutoReviewed`, `AgentUpdated`, `AgentActivity` (a child's tool events, for the parent's view), `PatchApplied` (the diff of an applied `apply_patch` call, `patch.go`), and `Reconnecting` and `ReconnectEnded` (a model request's retries, below). The embedded engine's `Subagents()` returns its `Subagents`, so a session can follow one child's whole stream (`session.WatchAgent`).
+The engine's own events join the run's stream: `CompactionStarted`, `Compacted`, `AutoReviewed`, `AgentUpdated`, `AgentActivity` (a child's tool events, for the parent's view), `PatchApplied` (the diff of an applied `apply_patch` call, `patch.go`), `Reconnecting` and `ReconnectEnded` (a model request's retries, below), and `TextDelta`, `ReasoningDelta`, and `StreamReset` (the answer as it arrives, below). The embedded engine's `Subagents()` returns its `Subagents`, so a session can follow one child's whole stream (`session.WatchAgent`).
 <!-- /memoria:section -->
 
 <!-- memoria:section id="support" files="capabilities.go process/process.go embedded/engine.go" -->
@@ -80,6 +81,7 @@ Features that are on by default, such as live input or subagents, get no notice;
 | Codex skills (`.agents/skills`, `~/.uah/skills`, `$CODEX_HOME/skills`) | `CodexSkills` | Yes | Only the runner's `.harness/skills` |
 | `/context` | `ContextUsage` | Yes | No |
 | A lost connection to the model | `Reconnect` | Retried; each retry is reported (`Reconnecting`) and shown in the TUI, and a run that loses every attempt says it gave up after N attempts | Retried the same way by the runner, but nothing shows the attempts, and a failed run shows the runner's error |
+| The answer as the model writes it | `Stream` | Streamed to the TUI and `uah run --stream` (`TextDelta`, `ReasoningDelta`) | The answer appears when the model finishes it |
 | Images pasted into the prompt | `Images` | Sent to the model with the message | The TUI shows the notice and keeps a pasted path as text; the model can still open an image file with ViewImage |
 | An interrupt | | A hard stop through the runner's inbox; the session file records the stopped tools | uagent interrupts the runner process |
 | `unreal-agent-runner` binary | | Not needed | Required |
@@ -138,7 +140,7 @@ The runner (v0.1.1) runs every Bash command as `$SHELL -c <command>` (`harness/o
 The rules see the same command string as on the embedded engine, so they are as strong there as here: they match the command's words, not what a script it runs does. Without rules, `$SHELL` is the sandboxing script, with no gate. That script cannot ask for more access. `process.NewSandboxed` keeps one harness per sandbox mode, built on first use, and each run uses its permission mode's (`Options.Mode`). `process.Capabilities(rules)` is the process engine's capabilities: only `Rules`, when the shells have a gate.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="embedded" files="embedded/engine.go embedded/wiring.go embedded/agent.go embedded/adapter.go embedded/client.go embedded/providers.go embedded/clients.go embedded/reconnect.go codexauth/codexauth.go embedded/store.go embedded/observer.go embedded/tools.go embedded/sandboxtool.go embedded/sandboxschema.go embedded/skills.go embedded/pretooluse.go embedded/autoreview.go embedded/compact.go embedded/context.go embedded/fork.go embedded/mode.go embedded/patchtool.go embedded/images.go" -->
+<!-- memoria:section id="embedded" files="embedded/engine.go embedded/wiring.go embedded/agent.go embedded/adapter.go embedded/client.go embedded/providers.go embedded/clients.go embedded/reconnect.go embedded/stream.go codexauth/codexauth.go embedded/store.go embedded/observer.go embedded/tools.go embedded/sandboxtool.go embedded/sandboxschema.go embedded/skills.go embedded/pretooluse.go embedded/autoreview.go embedded/compact.go embedded/context.go embedded/fork.go embedded/mode.go embedded/patchtool.go embedded/images.go" -->
 ## The embedded engine
 
 The embedded engine is a uagent `harness.Backend`. uagent still owns the run: the guards, the session lock, the run record, and the output stream. The backend (`wiring.go`) reproduces unreal-agent-runner v0.1.1's `Run` (`cmd/internal/agentrunner/run.go`) in the same order:
@@ -178,6 +180,12 @@ The runner's Responses client retries a failed attempt in its own loop: a lost c
 3. When the last attempt lost its connection, the request fails with "gave up after N attempts because the connection to the model was lost", and the run reports that error without the coordinator's wrapping.
 
 The delay is the runner's policy for the failed attempt (`primitives.RemoteRetryPolicy.Backoff`), not the jittered wait itself, which can be up to a fifth shorter. A 429 the client does not retry, such as a usage limit, shows a retry for as long as it takes the client to return.
+
+### Streaming
+
+The runner's client reads the SSE stream and drops its deltas, and nothing in the runner reports partial output (v0.1.1). With `Options.Stream`, the switcher gives each turn request a stream in its context (`stream.go`), and `watchTransport` tees each attempt's body into it: the runner reads the same bytes, and a line parser turns `response.output_text.delta` and `response.reasoning_summary_text.delta` into `engine.TextDelta` and `engine.ReasoningDelta` (`Final` from the message's `phase` in `response.output_item.added`). The tee only appends to a buffer; a pump goroutine emits the deltas, merged when they pile up, so a slow consumer never holds up the runner's read. Before the request returns, the stream sends what is left, so every delta precedes the runner's final `AssistantMessage` and `ReasoningSummary`, which stay authoritative.
+
+A new attempt after text streamed, or a request that fails or is canceled after it, sends `engine.StreamReset`: that text is void. `switcher.direct()` carries no stream, so compaction summaries and the auto-reviewer never stream, and a subagent's session never asks. The [streaming design](../../docs/design/streaming.md) has the research and the reasons.
 
 ### Forked sessions
 
@@ -232,7 +240,7 @@ A job that had already started before the run stopped fails with "interrupted" w
 The runner stays unchanged: uah reproduces its wiring instead of patching it, and the equivalence test below keeps the two in step.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="tests" files="capabilities_test.go process/process_test.go process/gate_test.go process/shellgate/gate_test.go embedded/embedded_test.go embedded/approval_test.go embedded/compact_test.go embedded/compact_settings_test.go embedded/context_test.go embedded/mcp_test.go embedded/mcpjobs_internal_test.go embedded/sandbox_test.go embedded/mode_test.go embedded/images_test.go embedded/clients_test.go embedded/reconnect_test.go" -->
+<!-- memoria:section id="tests" files="capabilities_test.go process/process_test.go process/gate_test.go process/shellgate/gate_test.go embedded/embedded_test.go embedded/approval_test.go embedded/compact_test.go embedded/compact_settings_test.go embedded/context_test.go embedded/mcp_test.go embedded/mcpjobs_internal_test.go embedded/sandbox_test.go embedded/mode_test.go embedded/images_test.go embedded/clients_test.go embedded/reconnect_test.go embedded/stream_test.go embedded/stream_internal_test.go" -->
 ## Tests
 
 The embedded tests, and the process tests with the real runner, run against `testing/fakellm`, a scripted Responses API, and need no tokens.
@@ -251,5 +259,6 @@ The embedded tests, and the process tests with the real runner, run against `tes
 | `mcp_test.go`, `mcpjobs_internal_test.go` | MCP tools, crashes, interrupts, approvals, and jobs that are not repeated |
 | `clients_test.go` | Each provider's client sends the same request as the runner's own client, body and headers |
 | `reconnect_test.go` | A connection dropped before the answer and one cut halfway (`fakellm.Reply.Drop`, `Cut`) are retried after 2 and 4 s with a `Reconnecting` event each, and the run then finishes; with two attempts that both drop, the run fails and says it gave up. They wait for the real backoff (about 6 s), so `-short` skips them |
+| `stream_test.go`, `stream_internal_test.go` | With `fakellm.Reply.Deltas`, `Reasoning`, and `Hold`: the answer and reasoning arrive as deltas while the response is held, before the final message, which they match; no deltas without `Stream`, from a compaction summary, or from the auto-reviewer; a stream cut halfway is reset before the retry's text (skipped under `-short`), and an interrupt resets it too. The tee passes a stream read one byte at a time through unchanged and finds its deltas across reads, CRLF, and a line too long to parse |
 | `images_test.go` | A message with pasted images: the model gets the text without tags and each image as a ViewImage result with its data URL, a missing image as an error text, and later requests carry the image again |
 <!-- /memoria:section -->

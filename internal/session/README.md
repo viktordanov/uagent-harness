@@ -115,7 +115,7 @@ The runner's session files and uagent's run records are the source of truth; the
 Listing and search go through the rebuildable SQLite index in [internal/store](../store/README.md), which falls back to `Sessions` when the index cannot be used.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="events" files="events.go approvals.go shell.go" -->
+<!-- memoria:section id="events" files="events.go approvals.go shell.go session.go runs.go" -->
 ## Events
 
 `Events()` carries the runner's events (from uagent's `core`), the engine's events, and these session events:
@@ -133,6 +133,8 @@ Listing and search go through the rebuildable SQLite index in [internal/store](.
 | `Idle` | The session has nothing to do |
 
 `uah run --stream` writes them as JSONL, and the TUI reduces them into its state.
+
+`Options.Stream` asks the engine for the model's text as it arrives (`engine.Options.Stream`): on an engine with `Capabilities.Stream`, `engine.TextDelta`, `ReasoningDelta`, and `StreamReset` join the stream before the runner's final message. The TUI and `uah run --stream` set it; plain `uah run` and subagents do not.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="tests" files="session_test.go steerqueued_test.go hooks_test.go process_test.go compact_test.go history_test.go sidecar_test.go saved_test.go shell_test.go" -->

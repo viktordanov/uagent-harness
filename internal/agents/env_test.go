@@ -32,6 +32,9 @@ type env struct {
 	mgr *agents.Manager
 	// hooks, when set, are the sessions' hooks.
 	hooks *hooks.Runner
+	// stream opens the parent as the TUI does, asking for its text as it
+	// arrives.
+	stream bool
 }
 
 // newEnv starts one fake model for the parent (the main script) and its
@@ -79,7 +82,7 @@ func (e *env) openID(t *testing.T, id string, interactive bool, configure ...fun
 	eng := embedded.New(cfg)
 	opts := session.Options{
 		ID: id, Resumed: id != "", Settings: e.settings(), Hooks: e.hooks,
-		SessionsDir: e.sessionsDir(), Source: session.SourceTUI, Interactive: interactive,
+		SessionsDir: e.sessionsDir(), Source: session.SourceTUI, Interactive: interactive, Stream: e.stream,
 	}
 	e.mgr.Bind(eng, opts)
 	s, err := session.Open(context.Background(), eng, opts)

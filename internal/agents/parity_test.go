@@ -14,20 +14,20 @@ import (
 
 // TestParity_ChildOptions pins that a child opens with the options the
 // root session opened with, differing only in its ID, its sidecar's source
-// and parent, approvals through the parent, and a hook runner of its own
-// with the same hooks. The settings are the parent run's.
+// and parent, approvals through the parent, a hook runner of its own with
+// the same hooks, and no streaming. The settings are the parent run's.
 func TestParity_ChildOptions(t *testing.T) {
 	runner, err := hooks.New([]hooks.Hook{{Event: hooks.Stop, Command: "true", Source: hooks.SourceUser}}, nil, "")
 	require.NoError(t, err)
 	e := newEnv(t, agents.Config{}, fakellm.Reply{Text: "done"})
-	e.hooks = runner
+	e.hooks, e.stream = runner, true
 	s, ev := e.open(t, true)
 	_, err = s.Submit("hello")
 	require.NoError(t, err)
 	ev.finished()
 
 	root := session.Options{
-		Settings: e.settings(), Hooks: runner, SessionsDir: e.sessionsDir(), Source: session.SourceTUI, Interactive: true,
+		Settings: e.settings(), Hooks: runner, SessionsDir: e.sessionsDir(), Source: session.SourceTUI, Interactive: true, Stream: true,
 	}
 	child := e.mgr.ChildOptions(s.ID())
 
@@ -37,6 +37,7 @@ func TestParity_ChildOptions(t *testing.T) {
 	assert.NotNil(t, child.Ask, "approvals go through the parent")
 	assert.NotSame(t, runner, child.Hooks, "a runner of its own, so its results stay its own")
 	assert.Equal(t, runner.Hooks(), child.Hooks.Hooks())
-	child.ID, child.Source, child.Parent, child.Ask, child.Hooks = root.ID, root.Source, root.Parent, root.Ask, root.Hooks
+	assert.False(t, child.Stream, "a child's text does not stream")
+	child.ID, child.Source, child.Parent, child.Ask, child.Hooks, child.Stream = root.ID, root.Source, root.Parent, root.Ask, root.Hooks, root.Stream
 	assert.Equal(t, root, child)
 }

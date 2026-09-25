@@ -81,7 +81,7 @@ func (s *State) onEngineEvent(ev core.Event) bool {
 	case engine.PatchApplied:
 		s.onPatchApplied(e)
 	default:
-		return false
+		return s.onStream(ev)
 	}
 
 	return true

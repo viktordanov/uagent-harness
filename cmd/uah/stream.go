@@ -175,6 +175,24 @@ func engineEventDTO(event core.Event) (any, bool) {
 			Interrupted bool   `json:"interrupted,omitempty"`
 			Warning     string `json:"warning,omitempty"`
 		}{header("compacted", e.At), string(e.Trigger), e.Summary, e.Err, e.Interrupted, e.Warning}, true
+	case engine.TextDelta:
+		return struct {
+			sessionHeader
+
+			ItemID string `json:"item_id"`
+			Text   string `json:"text"`
+			Final  bool   `json:"final,omitempty"`
+		}{header("text_delta", e.At), e.ItemID, e.Text, e.Final}, true
+	case engine.ReasoningDelta:
+		return struct {
+			sessionHeader
+
+			ItemID string `json:"item_id"`
+			Part   int    `json:"part"`
+			Text   string `json:"text"`
+		}{header("reasoning_delta", e.At), e.ItemID, e.Part, e.Text}, true
+	case engine.StreamReset:
+		return header("stream_reset", e.At), true
 	}
 
 	return nil, false
