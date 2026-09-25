@@ -1,7 +1,7 @@
 == width 80 ==
 ● <d>•</> first item
-    <d>•</> nested item that is long enough to wrap at a narrow width
-      <d>•</> third level
+    <d>◦</> nested item that is long enough to wrap at a narrow width
+      <d>◦</> third level
   <d>•</> second item
 
   <d>3.</> three
@@ -21,14 +21,18 @@
 
   <d>•</> item with code:
 
-     <c>x := 1</>░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+     <c>x := 1</>                                                                  <d>go</>
 
-    <d>│ </><d>and a quote</>
+    <d>“ </><d><i>and a quote</></><d> ”</>
+
+   <d>9.</> nine
+  <d>10.</> ten, whose text lines up with nine's
+  <d>11.</> eleven
 == width 40 ==
 ● <d>•</> first item
-    <d>•</> nested item that is long enough to
+    <d>◦</> nested item that is long enough to
       wrap at a narrow width
-      <d>•</> third level
+      <d>◦</> third level
   <d>•</> second item
 
   <d>3.</> three
@@ -48,17 +52,22 @@
 
   <d>•</> item with code:
 
-     <c>x := 1</>░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+     <c>x := 1</>                          <d>go</>
 
-    <d>│ </><d>and a quote</>
+    <d>“ </><d><i>and a quote</></><d> ”</>
+
+   <d>9.</> nine
+  <d>10.</> ten, whose text lines up with
+      nine's
+  <d>11.</> eleven
 == width 20 ==
 ● <d>•</> first item
-    <d>•</> nested item
+    <d>◦</> nested item
       that is long
       enough to wrap
       at a narrow
       width
-      <d>•</> third level
+      <d>◦</> third level
   <d>•</> second item
 
   <d>3.</> three
@@ -79,6 +88,12 @@
 
   <d>•</> item with code:
 
-     <c>x := 1</>░░░░░░░░░
+     <c>x := 1</>      <d>go</>
 
-    <d>│ </><d>and a quote</>
+    <d>“ </><d><i>and a quote</></><d> ”</>
+
+   <d>9.</> nine
+  <d>10.</> ten, whose
+      text lines up
+      with nine's
+  <d>11.</> eleven

@@ -1,34 +1,54 @@
 == width 80 ==
-● <d>│ </><d>A quote with </><d><b>bold</></><d> text, and a second sentence that is long enough to wrap.</>
-  <d>│ </>
-  <d>│ </><d>•</> <d>a list in a quote</>
-  <d>│ </><d>•</> <d>second</>
-  <d>│ </>
-  <d>│ </><d>│ </><d>a nested quote</>
-  <d>│ </>
-  <d>│ </> <c>echo hi</>░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+● <d>“ </><d><i>A quote with </></><d><i><b>bold</></></><d><i> text, and a second sentence that is long enough to wrap.</></>
+
+    <d>•</> <d><i>a list in a quote</></>
+    <d>•</> <d><i>second</></>
+
+    <d>“ </><d><i>a nested quote</></><d> ”</>
+
+     <c>echo hi</>                                                                 <d>sh</>
+    <d>”</>
+
+  <d>“ </><d><i>panic: send on closed channel</></>
+    <d><i>goroutine 41 [running]: bubble.(*Model).deliver(…) model.go:212</></><d> ”</>
 == width 40 ==
-● <d>│ </><d>A quote with </><d><b>bold</></><d> text, and a second</>
-  <d>│ </><d>sentence that is long enough to</>
-  <d>│ </><d>wrap.</>
-  <d>│ </>
-  <d>│ </><d>•</> <d>a list in a quote</>
-  <d>│ </><d>•</> <d>second</>
-  <d>│ </>
-  <d>│ </><d>│ </><d>a nested quote</>
-  <d>│ </>
-  <d>│ </> <c>echo hi</>░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+● <d>“ </><d><i>A quote with </></><d><i><b>bold</></></><d><i> text, and a second</>
+    <d><i>sentence that is long enough to</>
+    <d><i>wrap.</></>
+
+    <d>•</> <d><i>a list in a quote</></>
+    <d>•</> <d><i>second</></>
+
+    <d>“ </><d><i>a nested quote</></><d> ”</>
+
+     <c>echo hi</>                         <d>sh</>
+    <d>”</>
+
+  <d>“ </><d><i>panic: send on closed channel</></>
+    <d><i>goroutine 41 [running]:</>
+    <d><i>bubble.(*Model).deliver(…)</>
+    <d><i>model.go:212</></><d> ”</>
 == width 20 ==
-● <d>│ </><d>A quote with</>
-  <d>│ </><d></><d><b>bold</></><d> text, and a</>
-  <d>│ </><d>second sentence</>
-  <d>│ </><d>that is long</>
-  <d>│ </><d>enough to wrap.</>
-  <d>│ </>
-  <d>│ </><d>•</> <d>a list in a</>
-  <d>│ </>  <d>quote</>
-  <d>│ </><d>•</> <d>second</>
-  <d>│ </>
-  <d>│ </><d>│ </><d>a nested quote</>
-  <d>│ </>
-  <d>│ </> <c>echo hi</>░░░░░░░░
+● <d>“ </><d><i>A quote with</>
+    <d><i></></><d><i><b>bold</></></><d><i> text, and a</>
+    <d><i>second sentence</>
+    <d><i>that is long</>
+    <d><i>enough to wrap.</></>
+
+    <d>•</> <d><i>a list in a</>
+      <d><i>quote</></>
+    <d>•</> <d><i>second</></>
+
+    <d>“ </><d><i>a nested quote</></>
+      <d>”</>
+
+     <c>echo hi</>     <d>sh</>
+    <d>”</>
+
+  <d>“ </><d><i>panic: send on</>
+    <d><i>closed channel</></>
+    <d><i>goroutine 41</>
+    <d><i>[running]:</>
+    <d><i>bubble.(*Model).</>
+    <d><i>deliver(…)</>
+    <d><i>model.go:212</></><d> ”</>

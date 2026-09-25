@@ -1,43 +1,43 @@
 == width 80 ==
-● <h>Plan</>
+● <h1>PLAN</>
 
-  <h>Second level with </><h><c>code</></>
+  <h2>Second level with </><h2><c>code</></>
 
   <h>Third</>
 
   <h>Fourth</>
 
-  <h>Setext heading</>
+  <h1>SETEXT HEADING</>
 
-  <h>Another one</>
+  <h2>Another one</>
 
   Text after.
 == width 40 ==
-● <h>Plan</>
+● <h1>PLAN</>
 
-  <h>Second level with </><h><c>code</></>
+  <h2>Second level with </><h2><c>code</></>
 
   <h>Third</>
 
   <h>Fourth</>
 
-  <h>Setext heading</>
+  <h1>SETEXT HEADING</>
 
-  <h>Another one</>
+  <h2>Another one</>
 
   Text after.
 == width 20 ==
-● <h>Plan</>
+● <h1>PLAN</>
 
-  <h>Second level with</>
-  <h></><h><c>code</></>
+  <h2>Second level with</>
+  <h2></><h2><c>code</></>
 
   <h>Third</>
 
   <h>Fourth</>
 
-  <h>Setext heading</>
+  <h1>SETEXT HEADING</>
 
-  <h>Another one</>
+  <h2>Another one</>
 
   Text after.

@@ -30,11 +30,21 @@ type Styles struct {
 	Bold, Italic, Strike Style
 	// Code is `code`, and code blocks that are not highlighted.
 	Code Style
-	// Dim draws quotes, list markers, rules, link URLs, and table rules.
-	Dim                  Style
-	Heading, TableHeader Style
-	// Band draws one line of a code block on the band, padded to width w.
+	// Dim draws quotes, list markers, rules, link URLs, and code labels.
+	Dim Style
+	// H1 and H2 draw the first two heading levels (H1 in capitals), and
+	// Heading the others.
+	H1, H2, Heading Style
+	TableHeader     Style
+	// Band draws one line of a code block or a table row on the band,
+	// padded to width w.
 	Band func(line string, w int) string
+	// Added and Removed draw a diff block's + and - lines as Band does, on
+	// the edit tool's tints; nil draws them on the band.
+	Added, Removed func(line string, w int) string
+	// Alerts draw a GitHub alert's title by its kind (NOTE, TIP, IMPORTANT,
+	// WARNING, CAUTION); a missing kind is bold.
+	Alerts map[string]Style
 	// CodeStyle colors highlighted code; nil leaves all code in Code.
 	CodeStyle *chroma.Style
 }
@@ -45,10 +55,12 @@ const maxDocs = 16
 // Renderer draws Markdown with one set of Styles, keeping finished blocks
 // and highlighted code. It is safe for concurrent use.
 type Renderer struct {
-	mu       sync.Mutex
-	st       Styles
-	quoteBar string
-	parser   parser.Parser
+	mu sync.Mutex
+	st Styles
+	// open and close are a quote's dim marks, and closeAlone the closing
+	// one on a line of its own.
+	open, close, closeAlone string
+	parser                  parser.Parser
 	// docs are the documents drawn last, the most recent first.
 	docs []*doc
 	code codeCache
@@ -65,7 +77,14 @@ type stats struct {
 func New(st Styles) *Renderer {
 	md := goldmark.New(goldmark.WithExtensions(extension.GFM))
 
-	return &Renderer{st: st, quoteBar: st.Dim.Render("│ "), parser: md.Parser(), code: newCodeCache()}
+	if st.Added == nil {
+		st.Added = st.Band
+	}
+	if st.Removed == nil {
+		st.Removed = st.Band
+	}
+
+	return &Renderer{st: st, open: st.Dim.Render("“ "), close: st.Dim.Render(" ”"), closeAlone: st.Dim.Render("”"), parser: md.Parser(), code: newCodeCache()}
 }
 
 // doc is a document drawn at one width with one pair of prefixes: the

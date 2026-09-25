@@ -3,10 +3,11 @@ package markdown
 // Tables are laid out as Codex lays them out (codex-rs/tui/src/
 // markdown_render.rs, render_table_lines, and markdown_render/
 // table_key_value.rs, at rust-v0.156.1; Apache License 2.0, Copyright 2025
-// OpenAI): columns padded by one cell and two apart, no vertical rules, a
-// "━" rule under the header and "─" rules between rows, widths shrunk to
-// fit, and rows drawn as records when the grid would be unreadable. The
-// shrinking and the switch to records are simpler than Codex's.
+// OpenAI): columns padded by one cell and two apart, no vertical rules,
+// widths shrunk to fit, and rows drawn as records when the grid would be
+// unreadable. The shrinking and the switch to records are simpler than
+// Codex's. uah draws no rules: the header is in its own style and every
+// other row sits on the band (zebra rows).
 
 import (
 	"strings"
@@ -52,16 +53,27 @@ func (r *Renderer) table(src []byte, t *east.Table, f frame) []string {
 	if widths == nil {
 		return r.records(header, rows, f.w)
 	}
+	total := (len(widths) - 1) * columnGap
+	for _, w := range widths {
+		total += w + 2*cellPad
+	}
 	out := r.row(header, widths, t.Alignments)
-	out = append(out, r.rule("━", widths))
 	for i, row := range rows {
-		if i > 0 {
-			out = append(out, r.rule("─", widths))
-		}
-		out = append(out, r.row(row, widths, t.Alignments)...)
+		out = append(out, r.zebra(i, r.row(row, widths, t.Alignments), total)...)
 	}
 
 	return out
+}
+
+// zebra puts row i's lines on the band, w cells wide, when i is even.
+func (r *Renderer) zebra(i int, lines []string, w int) []string {
+	if i%2 == 0 {
+		for j, l := range lines {
+			lines[j] = r.st.Band(l, w)
+		}
+	}
+
+	return lines
 }
 
 // cells draws a row's cells, as many as the table has columns.
@@ -184,20 +196,10 @@ func aligned(s string, w int, a east.Alignment) string {
 	return s + strings.Repeat(" ", gap)
 }
 
-// rule is a dim rule under each column.
-func (r *Renderer) rule(ch string, widths []int) string {
-	parts := make([]string, len(widths))
-	for i, w := range widths {
-		parts[i] = strings.Repeat(ch, w+2*cellPad)
-	}
-
-	return r.st.Dim.Render(strings.Join(parts, strings.Repeat(" ", columnGap)))
-}
-
 // records draws each row as its cells under one another, each after its
-// header, with a dim rule between rows: Codex's key/value form for a table
-// too wide for the terminal. When even that is too narrow, each header
-// goes above its value.
+// header: Codex's key/value form for a table too wide for the terminal,
+// with every other record on the band as the grid's rows are. When even
+// that is too narrow, each header goes above its value.
 func (r *Renderer) records(header []string, rows [][]string, w int) []string {
 	if len(rows) == 0 {
 		return header
@@ -206,30 +208,49 @@ func (r *Renderer) records(header []string, rows [][]string, w int) []string {
 	for _, h := range header {
 		label = max(label, ansi.StringWidth(h))
 	}
-	side := label+columnGap+minValue <= w
+	// A cell of padding on each side, as in the grid.
+	inner := w - 2*cellPad
+	side := label+columnGap+minValue <= inner
 	var out []string
 	for i, row := range rows {
-		if i > 0 {
-			out = append(out, r.st.Dim.Render(strings.Repeat("─", w)))
-		}
+		var lines []string
 		for c, value := range row {
-			if !side {
-				out = append(out, header[c])
-				for _, l := range wrap(value, w-2) {
-					out = append(out, strings.TrimRight("  "+l, " "))
-				}
-
-				continue
-			}
-			indent := strings.Repeat(" ", label+columnGap)
-			for j, l := range wrap(value, w-label-columnGap) {
-				lead := indent
-				if j == 0 {
-					lead = header[c] + strings.Repeat(" ", label-ansi.StringWidth(header[c])+columnGap)
-				}
-				out = append(out, strings.TrimRight(lead+l, " "))
+			if side {
+				lines = append(lines, sideBySide(header[c], value, label, inner)...)
+			} else {
+				lines = append(lines, stacked(header[c], value, inner)...)
 			}
 		}
+		for j, l := range lines {
+			lines[j] = strings.TrimRight(strings.Repeat(" ", cellPad)+l, " ")
+		}
+		out = append(out, r.zebra(i, lines, w)...)
+	}
+
+	return out
+}
+
+// sideBySide is a record's cell as "Header  value", the header padded to
+// label cells and the value wrapped beside it.
+func sideBySide(header, value string, label, w int) []string {
+	indent := strings.Repeat(" ", label+columnGap)
+	var out []string
+	for j, l := range wrap(value, w-label-columnGap) {
+		lead := indent
+		if j == 0 {
+			lead = header + strings.Repeat(" ", label-ansi.StringWidth(header)+columnGap)
+		}
+		out = append(out, lead+l)
+	}
+
+	return out
+}
+
+// stacked is a record's cell as its header above its value, indented.
+func stacked(header, value string, w int) []string {
+	out := []string{header}
+	for _, l := range wrap(value, w-2) {
+		out = append(out, "  "+l)
 	}
 
 	return out

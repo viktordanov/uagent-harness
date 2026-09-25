@@ -8,3 +8,6 @@
 > ```sh
 > echo hi
 > ```
+
+> panic: send on closed channel
+> goroutine 41 [running]: bubble.(*Model).deliver(…) model.go:212

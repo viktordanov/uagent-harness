@@ -20,7 +20,7 @@ Design:
 11. [Pasting images](design/images.md): how Codex and Claude Code paste images, what the runner and uagent carry, and the design with its open decisions.
 12. [Shell mode](design/shell-mode.md): how Codex and Claude Code run a `!` command the user types, and how uah runs it and adds it to the conversation.
 13. [Streaming the answer](design/streaming.md): how Codex streams the answer, why the runner needs no change, and how the embedded engine tees each turn request's stream into the TUI.
-14. [Markdown rendering](design/markdown.md): how Codex draws and streams Markdown, the parser, incremental rendering by blocks, tables that fit the width, cached highlighting, and the benchmarks that gate it.
+14. [Markdown rendering](design/markdown.md): how Codex draws and streams Markdown, the parser, incremental rendering by blocks, tables that fit the width, cached highlighting, the look chosen for code, tables, quotes, and headings, and the benchmarks that gate it.
 15. [Going back to an earlier message](design/rewind.md): Codex's backtrack and Claude Code's rewind, and how uah cuts the context at an earlier message while the session file keeps the old branch.
 
 Reference:
