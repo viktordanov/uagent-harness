@@ -16,6 +16,7 @@ Asked for by the owner after v1.0.1.
 | 44 | The system prompt from a file on disk, with Codex's key (`model_instructions_file`), and `uah prompts init`/`show` covering it: the runner's default as `system.md`, and Codex's own prompt as an explicit alternative file, so using Codex's is a visible choice | lane sysprompt | done (`model_instructions_file` replaces the host prompt, after the runner's fixed preamble; `system-codex.md` is gpt-6-sol's template from Codex's models.json) |
 | 45 | Streaming: the assistant's answer (and reasoning summaries where shown) appears in the TUI as the model writes it, not all at once when it finishes; the runner stays unchanged | lane stream | pending |
 | 46 | Transcript editing, as Codex's backtrack: pick an earlier message of yours, edit it (or drop it), and continue from there; what came after leaves the model's context, and the old branch stays on disk | lane rewind | pending |
+| 47 | Rich text as a core subsystem, designed for speed: a real Markdown parser (GFM: tables, lists, code, quotes, links), tables that fit the width, cached syntax highlighting, and incremental rendering so a streaming answer re-renders only its last block; benchmarks gate it | lane markdown | pending |
 
 ## Pending (round 3)
 
