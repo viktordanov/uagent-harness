@@ -19,7 +19,7 @@ Checked against Codex rust-v0.156.1. Paths are under `codex-rs/tui/src/`.
 
 - **Two transcript modes** (`transcript_mode.rs`). By default the transcript goes to the terminal's scrollback and the TUI does not capture the mouse; only overlays that ask for it do (`OverlayInput::captures_mouse` in `tui.rs`: the transcript and usage overlays yes, pagers no). `[tui] fullscreen_transcript = true` ("Own the fullscreen transcript, including scrolling, selection, and search. Defaults to `false`", `config/src/types.rs`) makes the TUI own the alternate screen and capture the mouse (`Tui::set_owned_screen`, `configure_input(…, capture_mouse = true)`).
 - **Selection** (`text_selection.rs`, `transcript_view/selection.rs`, `transcript_view/input.rs`). One click places, two select a word (Unicode word bounds), three a logical line; clicks count when they land on the same cell within 400 ms, and a fourth starts over. A drag extends the selection. Positions are anchors in each history cell's source text (an entry and a byte offset), and a snapshot freezes the entries while history keeps advancing, so the selection stays on its text. The wheel scrolls 3 rows and "supersedes the last drag position".
-- **Copy** is not on release: ctrl+c, cmd+c (kitty's super), ctrl+shift+c, or a right click copy the selection (`is_copy_key`, `MouseButton::Right`). `/copy` and ctrl+o copy the last answer.
+- **Copy** is not on release: ctrl+c, cmd+c (kitty's super), ctrl+shift+c, enter (which also jumps back to the latest output), or a right click copy the selection (`is_copy_key`, `MouseButton::Right`, `transcript_view/input.rs`). `/copy` and ctrl+o copy the last answer.
 - **The clipboard** (`clipboard_copy.rs`): the native clipboard through `arboard` (kept open on Linux, where X11 and some Wayland compositors need the writing process alive), with WSL's PowerShell as a fallback. In tmux it also forwards to the attached terminal, and over ssh without tmux it sends OSC 52 directly; locally, OSC 52 only when the native copy fails. Payloads over 100,000 bytes skip OSC 52. A terminal write is unacknowledged, so the notice says "Copy unconfirmed" when only OSC 52 went out.
 
 ## What other terminal programs do
@@ -62,7 +62,7 @@ A plain click selects nothing. Clicks count as a double or triple click when the
 **What a copy holds** (`render.SelectedText`). What is drawn, cut by cells, with a wide character that is half inside counted whole, minus the decoration:
 
 - your message and a shell command: the λ or ! column and the indent under it; the band's rows above and below are empty lines;
-- the agent's answer: the • column and its hanging indent; a code line also loses the band's padding, so a code block pastes as code;
+- the agent's answer: the • column and its hanging indent; a code line (a background that starts after the indent: the band, a diff tint, a banded table row) also loses the padding before its text, and a code block's first line the fence's language at its right end, so a code block pastes as code;
 - reasoning: the `~` column; a warning or an error: its mark;
 - every line: its trailing spaces; the copy: blank lines at either end.
 
