@@ -51,7 +51,7 @@ A message is a sequence of top-level blocks: goldmark's document children. Once 
 
 `markdown.Renderer` (in `internal/tui/render/markdown`) keeps, per recently rendered document, the stable prefix of its source (the finished blocks) and their rendered lines:
 
-1. `Render(text, width, first, rest)` looks for a kept document with the same width and prefixes whose stable source is a prefix of `text` (a byte comparison; at most 16 are kept, least recently used first out).
+1. `Render(text, width, first, rest)` looks for a kept document with the same width and prefixes whose stable source is a prefix of `text` (a byte comparison; at most 16 are kept, least recently used first out). A kept document whose last text `text` does not continue is copied, not changed, so two messages that start alike do not overwrite each other's blocks.
 2. It parses only `text` after the stable prefix. Every top-level block but the last is finished: it renders once and joins the stable lines, and the stable prefix grows to the start of the last block's line.
 3. The last block renders every time. Stable lines and the last block's lines, with one blank line between blocks, are the result.
 4. The same text again returns the kept result.
@@ -101,12 +101,34 @@ Gates:
 - **Work bound (a test).** Streaming several documents in 1- to 20-byte deltas, each update parses at most the bytes of the document's last block (from the start of its line) plus the delta, and renders at most two blocks (the one that just finished and the last). The renderer counts both. This is exact and does not depend on the machine.
 - **Allocations (a test).** Rendering the same text again allocates once (`testing.AllocsPerRun`).
 - **Equality (a test).** Incremental and full rendering give the same lines for every prefix of several documents, at several widths.
-- **Benchmarks.** `go test -run '^$' -bench . ./internal/tui/render/markdown` reports cold, warm, and streaming numbers; CI runs them once (`-benchtime 1x`) so they keep compiling and running.
+- **Benchmarks.** `go test -run '^$' -bench Markdown -benchmem ./internal/tui/render` reports cold, warm, streaming, and resize numbers with the real theme; CI runs them once (`-benchtime 1x`) so they keep compiling and running.
 
 ## As built
 
-Filled in after the build.
+Package `internal/tui/render/markdown`: `markdown.go` (the `Renderer`, its kept documents, and the block split), `blocks.go` (paragraphs, headings, lists, quotes, code, HTML, and wrapping), `inline.go`, `table.go` (after Codex; see [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md)), and `highlight.go`. `render.Styles` builds one `Renderer` from the theme, and `markdownLines` calls it. The streaming lane's call site does not change.
+
+Numbers from `go test -run '^$' -bench Markdown -benchmem ./internal/tui/render`, same fixture, width 100, Apple M4 Max:
+
+| Case | Before | After |
+| --- | --- | --- |
+| One render from nothing | 2.39 ms, 15,061 allocations (no tables) | 0.87 ms, 7,351 allocations (with tables) |
+| The same text again | 2.39 ms | 0.66 µs, 1 allocation |
+| One streaming update, averaged over 543 | 1.16 ms, 6,980 allocations | 30.5 µs, 173 allocations |
+| A new width, code already highlighted | 2.39 ms | 0.52 ms |
+
+Two things the build added to the design:
+
+- **Styles that wrap.** A style that wraps onto the next line used to end at the line's first reset, such as the quote bar's, so the second line of a quote lost its dim. Wrapped lines now end their open styles and open them again on the next line (`carry`), in paragraphs, headings, and table cells.
+- **Runs.** Text in a row with the same styles is drawn as one run, so goldmark's split text nodes do not each get their own escape sequences.
+
+Tests: goldens for every construct at three widths (the table at four, down to the stacked records) in `internal/tui/render/markdown/testdata`, drawn with styles that emit their own SGR codes and show as `<b>…</>`, so the goldens show styling and the widths are those of real styles; incremental equals full for every prefix of each fixture at two widths, and for the long answer streamed in 1- to 20-byte deltas; each update parses no more than the text after the previous last block; the same text again allocates once; width changes; two texts that share their first blocks; each renderer's styles are its own; highlighting cached per block and an open fence's complete lines cached; lines fit the width.
 
 ## Open
 
-Filled in after the build.
+Defaults taken:
+
+- **Numbering.** An ordered list numbers from its first number up, as CommonMark and Codex do: `3.`, `4.`, `10.` draws `3.`, `4.`, `5.`.
+- **Block spacing.** One blank line between top-level blocks, as Codex; the old renderer kept the source's blank lines. The golden screens did not change; the `markdownLines` test gained four blank lines.
+- **A fence without a language** is no longer guessed at, as in Codex. It was highlighted when chroma's analysers recognised it.
+- **No half-line holdback.** Codex renders only complete lines while streaming; uah draws whatever text the streaming lane passes. If a half-typed `**bold` flickering to bold is a problem, the streaming lane can pass the text up to the last newline, and the renderer needs no change.
+- **Task lists** show `[x]` and `[ ]` after the bullet, dim, rather than check-mark glyphs whose width varies across terminals.

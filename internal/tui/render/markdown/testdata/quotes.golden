@@ -1,0 +1,34 @@
+== width 80 ==
+● <d>│ </><d>A quote with </><d><b>bold</></><d> text, and a second sentence that is long enough to wrap.</>
+  <d>│ </>
+  <d>│ </><d>•</> <d>a list in a quote</>
+  <d>│ </><d>•</> <d>second</>
+  <d>│ </>
+  <d>│ </><d>│ </><d>a nested quote</>
+  <d>│ </>
+  <d>│ </> <c>echo hi</>░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+== width 40 ==
+● <d>│ </><d>A quote with </><d><b>bold</></><d> text, and a second</>
+  <d>│ </><d>sentence that is long enough to</>
+  <d>│ </><d>wrap.</>
+  <d>│ </>
+  <d>│ </><d>•</> <d>a list in a quote</>
+  <d>│ </><d>•</> <d>second</>
+  <d>│ </>
+  <d>│ </><d>│ </><d>a nested quote</>
+  <d>│ </>
+  <d>│ </> <c>echo hi</>░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+== width 20 ==
+● <d>│ </><d>A quote with</>
+  <d>│ </><d></><d><b>bold</></><d> text, and a</>
+  <d>│ </><d>second sentence</>
+  <d>│ </><d>that is long</>
+  <d>│ </><d>enough to wrap.</>
+  <d>│ </>
+  <d>│ </><d>•</> <d>a list in a</>
+  <d>│ </>  <d>quote</>
+  <d>│ </><d>•</> <d>second</>
+  <d>│ </>
+  <d>│ </><d>│ </><d>a nested quote</>
+  <d>│ </>
+  <d>│ </> <c>echo hi</>░░░░░░░░
