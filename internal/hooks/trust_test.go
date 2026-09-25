@@ -19,13 +19,13 @@ import (
 // script's content, so editing the script needs trust again.
 func TestTrust_Scripts(t *testing.T) {
 	ws := t.TempDir()
-	require.NoError(t, os.MkdirAll(filepath.Join(ws, ".uagent", "hooks"), 0o700))
-	script := filepath.Join(ws, ".uagent", "hooks", "stop.sh")
+	require.NoError(t, os.MkdirAll(filepath.Join(ws, ".uah", "hooks"), 0o700))
+	script := filepath.Join(ws, ".uah", "hooks", "stop.sh")
 	require.NoError(t, os.WriteFile(script, []byte("#!/bin/sh\nexit 2\n"), 0o700))
 
 	commands := map[string]string{
-		"relative":         ".uagent/hooks/stop.sh --flag",
-		"project variable": `"$UAH_PROJECT_DIR"/.uagent/hooks/stop.sh`,
+		"relative":         ".uah/hooks/stop.sh --flag",
+		"project variable": `"$UAH_PROJECT_DIR"/.uah/hooks/stop.sh`,
 		"absolute":         script + " && echo done",
 	}
 	for name, command := range commands {
@@ -41,7 +41,7 @@ func TestTrust_Scripts(t *testing.T) {
 			reloaded, err := hooks.LoadTrust(path)
 			require.NoError(t, err)
 			assert.True(t, reloaded.Trusted(ws, command))
-			assert.False(t, reloaded.Trusted(t.TempDir(), ".uagent/hooks/stop.sh --flag"), "another workspace's script is not trusted")
+			assert.False(t, reloaded.Trusted(t.TempDir(), ".uah/hooks/stop.sh --flag"), "another workspace's script is not trusted")
 
 			require.NoError(t, os.WriteFile(script, []byte("#!/bin/sh\nexit 0\n"), 0o700))
 			t.Cleanup(func() { _ = os.WriteFile(script, []byte("#!/bin/sh\nexit 2\n"), 0o700) })

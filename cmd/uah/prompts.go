@@ -13,6 +13,7 @@ import (
 
 	"github.com/viktordanov/uagent-harness/internal/compaction"
 	"github.com/viktordanov/uagent-harness/internal/config"
+	"github.com/viktordanov/uagent-harness/internal/home"
 	"github.com/viktordanov/uagent-harness/internal/review"
 )
 
@@ -49,7 +50,7 @@ func promptsCommand() *cli.Command {
 			{
 				Name: "init", Usage: "write compact.md and review.md into <config dir>/prompts and print the keys that use them",
 				Flags: []cli.Flag{
-					&cli.StringFlag{Name: flagConfig, Usage: usageConfig + "; the prompts go into its folder", Value: config.UserFile(), Sources: cli.EnvVars("UAGENT_CONFIG"), TakesFile: true},
+					&cli.StringFlag{Name: flagConfig, Usage: usageConfig + "; the prompts go into its folder", Value: config.UserFile(), Sources: cli.EnvVars(home.EnvConfig), TakesFile: true},
 					&cli.BoolFlag{Name: "force", Usage: "overwrite prompt files that exist"},
 				},
 				OnUsageError: onUsageError, Action: promptsInit,

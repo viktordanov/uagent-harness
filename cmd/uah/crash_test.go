@@ -33,8 +33,8 @@ func TestCrashRecovery(t *testing.T) {
 	)
 	env := []string{
 		"OPENAI_API_KEY=test-key",
-		"UAGENT_STATE_DIR=" + e.StateDir,
-		"XDG_CONFIG_HOME=" + filepath.Join(e.StateDir, "..", "config"),
+		"UAH_STATE_DIR=" + e.StateDir,
+		"UAH_HOME=" + filepath.Join(e.StateDir, "..", "home"),
 		"UAH_ENGINE=", "UNREAL_HARNESS_LLM_PROVIDER=", "UNREAL_HARNESS_LLM_MODEL=",
 	}
 	// No sandbox: under bwrap's PID namespace, $$ would not be the host's PID.

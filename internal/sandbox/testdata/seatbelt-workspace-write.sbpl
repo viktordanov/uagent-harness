@@ -121,10 +121,10 @@
 ; allow read-only file operations
 (allow file-read*)
 (allow file-write*
-(require-all (subpath (param "WRITABLE_ROOT_0")) (require-not (literal (param "WRITABLE_ROOT_0_EXCLUDED_0"))) (require-not (subpath (param "WRITABLE_ROOT_0_EXCLUDED_0"))) (require-not (literal (param "WRITABLE_ROOT_0_EXCLUDED_1"))) (require-not (subpath (param "WRITABLE_ROOT_0_EXCLUDED_1"))) (require-not (literal (param "WRITABLE_ROOT_0_EXCLUDED_2"))) (require-not (subpath (param "WRITABLE_ROOT_0_EXCLUDED_2"))) (require-not (literal (param "WRITABLE_ROOT_0_EXCLUDED_3"))) (require-not (subpath (param "WRITABLE_ROOT_0_EXCLUDED_3"))) )
-(require-all (subpath (param "WRITABLE_ROOT_1")) (require-not (literal (param "WRITABLE_ROOT_1_EXCLUDED_0"))) (require-not (subpath (param "WRITABLE_ROOT_1_EXCLUDED_0"))) (require-not (literal (param "WRITABLE_ROOT_1_EXCLUDED_1"))) (require-not (subpath (param "WRITABLE_ROOT_1_EXCLUDED_1"))) (require-not (literal (param "WRITABLE_ROOT_1_EXCLUDED_2"))) (require-not (subpath (param "WRITABLE_ROOT_1_EXCLUDED_2"))) (require-not (literal (param "WRITABLE_ROOT_1_EXCLUDED_3"))) (require-not (subpath (param "WRITABLE_ROOT_1_EXCLUDED_3"))) )
-(require-all (subpath (param "WRITABLE_ROOT_2")) (require-not (literal (param "WRITABLE_ROOT_2_EXCLUDED_0"))) (require-not (subpath (param "WRITABLE_ROOT_2_EXCLUDED_0"))) (require-not (literal (param "WRITABLE_ROOT_2_EXCLUDED_1"))) (require-not (subpath (param "WRITABLE_ROOT_2_EXCLUDED_1"))) (require-not (literal (param "WRITABLE_ROOT_2_EXCLUDED_2"))) (require-not (subpath (param "WRITABLE_ROOT_2_EXCLUDED_2"))) (require-not (literal (param "WRITABLE_ROOT_2_EXCLUDED_3"))) (require-not (subpath (param "WRITABLE_ROOT_2_EXCLUDED_3"))) )
-(require-all (subpath (param "WRITABLE_ROOT_3")) (require-not (literal (param "WRITABLE_ROOT_3_EXCLUDED_0"))) (require-not (subpath (param "WRITABLE_ROOT_3_EXCLUDED_0"))) (require-not (literal (param "WRITABLE_ROOT_3_EXCLUDED_1"))) (require-not (subpath (param "WRITABLE_ROOT_3_EXCLUDED_1"))) (require-not (literal (param "WRITABLE_ROOT_3_EXCLUDED_2"))) (require-not (subpath (param "WRITABLE_ROOT_3_EXCLUDED_2"))) (require-not (literal (param "WRITABLE_ROOT_3_EXCLUDED_3"))) (require-not (subpath (param "WRITABLE_ROOT_3_EXCLUDED_3"))) )
+(require-all (subpath (param "WRITABLE_ROOT_0")) (require-not (literal (param "WRITABLE_ROOT_0_EXCLUDED_0"))) (require-not (subpath (param "WRITABLE_ROOT_0_EXCLUDED_0"))) (require-not (literal (param "WRITABLE_ROOT_0_EXCLUDED_1"))) (require-not (subpath (param "WRITABLE_ROOT_0_EXCLUDED_1"))) (require-not (literal (param "WRITABLE_ROOT_0_EXCLUDED_2"))) (require-not (subpath (param "WRITABLE_ROOT_0_EXCLUDED_2"))) (require-not (literal (param "WRITABLE_ROOT_0_EXCLUDED_3"))) (require-not (subpath (param "WRITABLE_ROOT_0_EXCLUDED_3"))) (require-not (literal (param "WRITABLE_ROOT_0_EXCLUDED_4"))) (require-not (subpath (param "WRITABLE_ROOT_0_EXCLUDED_4"))) )
+(require-all (subpath (param "WRITABLE_ROOT_1")) (require-not (literal (param "WRITABLE_ROOT_1_EXCLUDED_0"))) (require-not (subpath (param "WRITABLE_ROOT_1_EXCLUDED_0"))) (require-not (literal (param "WRITABLE_ROOT_1_EXCLUDED_1"))) (require-not (subpath (param "WRITABLE_ROOT_1_EXCLUDED_1"))) (require-not (literal (param "WRITABLE_ROOT_1_EXCLUDED_2"))) (require-not (subpath (param "WRITABLE_ROOT_1_EXCLUDED_2"))) (require-not (literal (param "WRITABLE_ROOT_1_EXCLUDED_3"))) (require-not (subpath (param "WRITABLE_ROOT_1_EXCLUDED_3"))) (require-not (literal (param "WRITABLE_ROOT_1_EXCLUDED_4"))) (require-not (subpath (param "WRITABLE_ROOT_1_EXCLUDED_4"))) )
+(require-all (subpath (param "WRITABLE_ROOT_2")) (require-not (literal (param "WRITABLE_ROOT_2_EXCLUDED_0"))) (require-not (subpath (param "WRITABLE_ROOT_2_EXCLUDED_0"))) (require-not (literal (param "WRITABLE_ROOT_2_EXCLUDED_1"))) (require-not (subpath (param "WRITABLE_ROOT_2_EXCLUDED_1"))) (require-not (literal (param "WRITABLE_ROOT_2_EXCLUDED_2"))) (require-not (subpath (param "WRITABLE_ROOT_2_EXCLUDED_2"))) (require-not (literal (param "WRITABLE_ROOT_2_EXCLUDED_3"))) (require-not (subpath (param "WRITABLE_ROOT_2_EXCLUDED_3"))) (require-not (literal (param "WRITABLE_ROOT_2_EXCLUDED_4"))) (require-not (subpath (param "WRITABLE_ROOT_2_EXCLUDED_4"))) )
+(require-all (subpath (param "WRITABLE_ROOT_3")) (require-not (literal (param "WRITABLE_ROOT_3_EXCLUDED_0"))) (require-not (subpath (param "WRITABLE_ROOT_3_EXCLUDED_0"))) (require-not (literal (param "WRITABLE_ROOT_3_EXCLUDED_1"))) (require-not (subpath (param "WRITABLE_ROOT_3_EXCLUDED_1"))) (require-not (literal (param "WRITABLE_ROOT_3_EXCLUDED_2"))) (require-not (subpath (param "WRITABLE_ROOT_3_EXCLUDED_2"))) (require-not (literal (param "WRITABLE_ROOT_3_EXCLUDED_3"))) (require-not (subpath (param "WRITABLE_ROOT_3_EXCLUDED_3"))) (require-not (literal (param "WRITABLE_ROOT_3_EXCLUDED_4"))) (require-not (subpath (param "WRITABLE_ROOT_3_EXCLUDED_4"))) )
 )
 (deny file-write-unlink (require-all (literal (param "WRITABLE_ROOT_0")) (vnode-type DIRECTORY)))
 (deny file-write-unlink (require-all (literal (param "WRITABLE_ROOT_1")) (vnode-type DIRECTORY)))
@@ -148,21 +148,25 @@
 ; parameters:
 ; -DWRITABLE_ROOT_0=/work/project
 ; -DWRITABLE_ROOT_0_EXCLUDED_0=/work/project/.git
-; -DWRITABLE_ROOT_0_EXCLUDED_1=/work/project/.uagent
-; -DWRITABLE_ROOT_0_EXCLUDED_2=/work/project/.agents
-; -DWRITABLE_ROOT_0_EXCLUDED_3=/work/project/.codex
+; -DWRITABLE_ROOT_0_EXCLUDED_1=/work/project/.uah
+; -DWRITABLE_ROOT_0_EXCLUDED_2=/work/project/.uagent
+; -DWRITABLE_ROOT_0_EXCLUDED_3=/work/project/.agents
+; -DWRITABLE_ROOT_0_EXCLUDED_4=/work/project/.codex
 ; -DWRITABLE_ROOT_1=/work/cache
 ; -DWRITABLE_ROOT_1_EXCLUDED_0=/work/cache/.git
-; -DWRITABLE_ROOT_1_EXCLUDED_1=/work/cache/.uagent
-; -DWRITABLE_ROOT_1_EXCLUDED_2=/work/cache/.agents
-; -DWRITABLE_ROOT_1_EXCLUDED_3=/work/cache/.codex
+; -DWRITABLE_ROOT_1_EXCLUDED_1=/work/cache/.uah
+; -DWRITABLE_ROOT_1_EXCLUDED_2=/work/cache/.uagent
+; -DWRITABLE_ROOT_1_EXCLUDED_3=/work/cache/.agents
+; -DWRITABLE_ROOT_1_EXCLUDED_4=/work/cache/.codex
 ; -DWRITABLE_ROOT_2=/tmp
 ; -DWRITABLE_ROOT_2_EXCLUDED_0=/tmp/.git
-; -DWRITABLE_ROOT_2_EXCLUDED_1=/tmp/.uagent
-; -DWRITABLE_ROOT_2_EXCLUDED_2=/tmp/.agents
-; -DWRITABLE_ROOT_2_EXCLUDED_3=/tmp/.codex
+; -DWRITABLE_ROOT_2_EXCLUDED_1=/tmp/.uah
+; -DWRITABLE_ROOT_2_EXCLUDED_2=/tmp/.uagent
+; -DWRITABLE_ROOT_2_EXCLUDED_3=/tmp/.agents
+; -DWRITABLE_ROOT_2_EXCLUDED_4=/tmp/.codex
 ; -DWRITABLE_ROOT_3=/fixed/tmpdir
 ; -DWRITABLE_ROOT_3_EXCLUDED_0=/fixed/tmpdir/.git
-; -DWRITABLE_ROOT_3_EXCLUDED_1=/fixed/tmpdir/.uagent
-; -DWRITABLE_ROOT_3_EXCLUDED_2=/fixed/tmpdir/.agents
-; -DWRITABLE_ROOT_3_EXCLUDED_3=/fixed/tmpdir/.codex
+; -DWRITABLE_ROOT_3_EXCLUDED_1=/fixed/tmpdir/.uah
+; -DWRITABLE_ROOT_3_EXCLUDED_2=/fixed/tmpdir/.uagent
+; -DWRITABLE_ROOT_3_EXCLUDED_3=/fixed/tmpdir/.agents
+; -DWRITABLE_ROOT_3_EXCLUDED_4=/fixed/tmpdir/.codex

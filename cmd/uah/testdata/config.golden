@@ -1,6 +1,7 @@
+home:         $ROOT/home
 workspace:    $ROOT/ws (flag)
-user file:    $ROOT/config/uagent/config.toml (read)
-project file: $ROOT/ws/.uagent/config.toml (read)
+user file:    $ROOT/home/config.toml (read)
+project file: $ROOT/ws/.uah/config.toml (read)
 
 KEY                                               VALUE                         SOURCE
 provider                                          openai-codex                  default

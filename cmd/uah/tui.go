@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/urfave/cli/v3"
@@ -52,6 +53,12 @@ func openTUI(ctx context.Context, cmd *cli.Command, launch tuiLaunch) error {
 	if err != nil {
 		return err
 	}
+	var once sync.Once
+	startupNotes := func() (notes []string) {
+		once.Do(func() { notes, _ = ctx.Value(startupKey{}).([]string) })
+
+		return notes
+	}
 
 	deps := bubble.Deps{
 		SessionID:   st.Options.ID,
@@ -72,6 +79,7 @@ func openTUI(ctx context.Context, cmd *cli.Command, launch tuiLaunch) error {
 				return nil, nil, err
 			}
 			setup.Options.Source, setup.Options.Interactive = session.SourceTUI, true
+			setup.Options.Notices = append(setup.Options.Notices, startupNotes()...) // the first session shows them
 			s, err := session.Open(context.WithoutCancel(ctx), setup.Engine, setup.Options)
 			if err != nil {
 				return nil, nil, err

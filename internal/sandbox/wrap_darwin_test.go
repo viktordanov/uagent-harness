@@ -92,7 +92,7 @@ func TestWrapSeatbelt(t *testing.T) {
 		{".git mkdir when absent", sandbox.WorkspaceWrite, true, `mkdir "$WS/.git"`, false},
 		{".git file when absent", sandbox.WorkspaceWrite, true, `echo "gitdir: /x" > "$WS/.git"`, false},
 		{".codex mkdir", sandbox.WorkspaceWrite, true, `mkdir "$WS/.codex"`, false},
-		{".uagent mkdir", sandbox.WorkspaceWrite, true, `mkdir "$WS/.uagent"`, false},
+		{".uah mkdir", sandbox.WorkspaceWrite, true, `mkdir "$WS/.uah"`, false},
 		{"workspace unlink", sandbox.WorkspaceWrite, false, `rmdir "$WS/src" && mv "$WS" "$WS.moved"`, false},
 		{"read-only workspace write", sandbox.ReadOnly, false, `echo x > "$WS/src/a"`, false},
 		{"read-only tmpdir write", sandbox.ReadOnly, false, `echo x > "$TMPDIR/uah-sandbox-$$"`, false},

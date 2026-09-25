@@ -190,7 +190,7 @@ func cmdSandbox(s *State, _ string) []Effect {
 		text = "sandbox read-only: commands can read files but write nothing, without network"
 	case "workspace-write":
 		text = "sandbox workspace-write: commands can read any file, write the workspace and temporary directories " +
-			"(.git, .uagent, .agents, and .codex stay read-only), without network"
+			"(.git, .uah, .agents, and .codex stay read-only), without network"
 	case "danger-full-access", "":
 		text = "no sandbox: commands can do anything your user can"
 	default:

@@ -20,9 +20,9 @@ import (
 func configDeps(t *testing.T, d *withUserFile) {
 	t.Helper()
 	dir := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", dir)
+	t.Setenv("UAH_HOME", dir)
 	in := app.Inputs{
-		ConfigPath: filepath.Join(dir, "uagent", "config.toml"), StateDir: t.TempDir(), Workspace: t.TempDir(),
+		ConfigPath: filepath.Join(dir, "config.toml"), StateDir: t.TempDir(), Workspace: t.TempDir(),
 		Timeout: 30 * time.Minute, MaxDisk: "5G",
 	}
 	d.path = in.ConfigPath

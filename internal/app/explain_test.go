@@ -39,7 +39,7 @@ func TestExplainSources(t *testing.T) {
 	trusted := func(user, project config.Config) config.Layers {
 		user.Projects = map[string]config.Project{"/ws": {Trusted: true}}
 
-		return config.Layers{User: user, Project: project, UserFile: "/cfg/config.toml", ProjectFile: "/ws/.uagent/config.toml", Trusted: true}
+		return config.Layers{User: user, Project: project, UserFile: "/cfg/config.toml", ProjectFile: "/ws/.uah/config.toml", Trusted: true}
 	}
 	resumed := session.Info{Provider: "openai", Model: "gpt-resumed", Effort: "low", Workspace: "/resumed"}
 
@@ -191,13 +191,13 @@ func TestExplainFiles(t *testing.T) {
 
 	rep, _ := explain(t, in, app.Origins{})
 	assert.Equal(t, app.File{Path: "/cfg/config.toml", State: "not found"}, rep.UserFile)
-	assert.Equal(t, app.File{Path: "/ws/.uagent/config.toml", State: "not trusted"}, rep.ProjectFile)
+	assert.Equal(t, app.File{Path: "/ws/.uah/config.toml", State: "not trusted"}, rep.ProjectFile)
 
 	rep, _ = explain(t, in, app.Origins{Layers: config.Layers{UserFile: "/cfg/config.toml", Trusted: true}})
 	assert.Equal(t, "read", rep.UserFile.State)
 	assert.Equal(t, "not found", rep.ProjectFile.State)
 
-	rep, _ = explain(t, in, app.Origins{Layers: config.Layers{Trusted: true, ProjectFile: "/ws/.uagent/config.toml"}})
+	rep, _ = explain(t, in, app.Origins{Layers: config.Layers{Trusted: true, ProjectFile: "/ws/.uah/config.toml"}})
 	assert.Equal(t, "read", rep.ProjectFile.State)
 }
 

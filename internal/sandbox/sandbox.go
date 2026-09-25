@@ -46,8 +46,9 @@ var ErrUnavailable = errors.New("no sandbox is available on this system")
 
 // ProtectedNames stay read-only inside every writable root: a sandboxed
 // command could otherwise plant code that runs later outside the sandbox,
-// such as a git hook.
-var ProtectedNames = []string{".git", ".uagent", ".agents", ".codex"}
+// such as a git hook. .uagent, the project directory uah read before .uah,
+// stays protected until the user moves it.
+var ProtectedNames = []string{".git", ".uah", ".uagent", ".agents", ".codex"}
 
 // Policy is what a sandboxed command may do.
 type Policy struct {

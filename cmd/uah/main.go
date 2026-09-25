@@ -6,14 +6,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"runtime/debug"
+	"slices"
 	"syscall"
 
 	"github.com/urfave/cli/v3"
 
 	"github.com/viktordanov/uagent-harness/internal/engine/process/shellgate"
+	"github.com/viktordanov/uagent-harness/internal/home"
+	"github.com/viktordanov/uagent-harness/internal/home/migrate"
 )
 
 const (
@@ -32,6 +36,7 @@ func main() {
 		os.Exit(shellgate.Main(os.Args[2:], os.Stderr))
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	ctx = context.WithValue(ctx, startupKey{}, startup(ctx, os.Stderr, os.Args))
 	err := newApp().Run(ctx, os.Args)
 	stop()
 	os.Exit(exitCode(err))
@@ -60,6 +65,31 @@ func newApp() *cli.Command {
 		},
 		Commands: []*cli.Command{runCommand(), resumeCommand(), sessionsCommand(), hooksCommand(), configCommand(), doctorCommand(), modelsCommand(), usageCommand(), mcpCommand(), promptsCommand()},
 	})
+}
+
+// startupKey carries startup's lines to the TUI, whose screen hides stderr.
+type startupKey struct{}
+
+// startup warns about variables uah no longer reads and, once, copies the
+// old folders into ~/.uah, before any command reads or creates a file. It
+// prints each line to w and returns them. Shell completion migrates quietly.
+func startup(ctx context.Context, w io.Writer, args []string) []string {
+	lines := home.Warnings(os.Getenv)
+	migrated, err := migrate.Auto(ctx, os.Getenv)
+	switch {
+	case err != nil:
+		lines = append(lines, "could not move your config and sessions to ~/.uah (the old folders are untouched): "+err.Error())
+	case migrated:
+		lines = append(lines, migrate.Done)
+	}
+	if slices.Contains(args, completeFlag) {
+		return nil
+	}
+	for _, line := range lines {
+		fmt.Fprintf(w, "uah: %s\n", line)
+	}
+
+	return lines
 }
 
 // exitCode maps the app error to a process exit code and prints it once.

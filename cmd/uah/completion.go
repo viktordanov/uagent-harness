@@ -11,10 +11,9 @@ import (
 
 	"github.com/urfave/cli/v3"
 
-	"github.com/viktordanov/uagent/harness"
-
 	"github.com/viktordanov/uagent-harness/internal/app"
 	"github.com/viktordanov/uagent-harness/internal/approval"
+	"github.com/viktordanov/uagent-harness/internal/home"
 	"github.com/viktordanov/uagent-harness/internal/models"
 	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/internal/store"
@@ -111,7 +110,7 @@ func completionFlag(cmd *cli.Command, name, env, fallback string) string {
 
 // completionStateDir is the state directory, absolute ("" when it cannot be).
 func completionStateDir(cmd *cli.Command) string {
-	abs, err := filepath.Abs(completionFlag(cmd, "state-dir", "UAGENT_STATE_DIR", harness.DefaultStateDir()))
+	abs, err := filepath.Abs(completionFlag(cmd, "state-dir", home.EnvStateDir, home.Dir()))
 	if err != nil {
 		return ""
 	}

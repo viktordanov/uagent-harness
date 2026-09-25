@@ -169,7 +169,7 @@ writable_roots = ["build"]
 	assert.Equal(t, []string{"git status", "go test"}, cfg.Approvals.Allow, "the project file adds approvals")
 	assert.Equal(t, []string{"git push --force"}, cfg.Approvals.Forbid)
 	assert.Equal(t, []string{"~/.cache/go-build", "build"}, cfg.SandboxWorkspaceWrite.WritableRoots, "the project file adds writable roots")
-	assert.Equal(t, filepath.Join(ws, ".uagent", "rules"), config.ProjectRulesDir(ws))
+	assert.Equal(t, filepath.Join(ws, ".uah", "rules"), config.ProjectRulesDir(ws))
 }
 
 func TestLoadLayers(t *testing.T) {
@@ -218,7 +218,7 @@ default_subagent_reasoning_effort = "low"
 	assert.Equal(t, 2, *a.MaxDepth)
 	assert.Equal(t, "gpt-small", a.DefaultSubagentModel)
 	assert.Equal(t, "low", a.DefaultSubagentReasoningEffort)
-	assert.Equal(t, filepath.Join(ws, ".uagent", "agents"), config.ProjectAgentsDir(ws))
+	assert.Equal(t, filepath.Join(ws, ".uah", "agents"), config.ProjectAgentsDir(ws))
 
 	write(t, user, "[agents]\nmax_threads = 2\n")
 	cfg, _, err = config.Load(user, ws)

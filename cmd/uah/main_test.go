@@ -28,6 +28,16 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 	uahBin = filepath.Join(dir, "uah")
+	// Every uah the tests start has its own home, so none reads, or copies
+	// into, the real ~/.uah; the tests that need another home set one.
+	if err := os.Setenv("UAH_HOME", filepath.Join(dir, "home")); err != nil {
+		panic(err)
+	}
+	for _, name := range []string{"UAH_CONFIG", "UAH_STATE_DIR", "UAGENT_CONFIG", "UAGENT_STATE_DIR"} {
+		if err := os.Unsetenv(name); err != nil {
+			panic(err)
+		}
+	}
 	if msg, err := exec.Command("go", "build", "-o", uahBin, ".").CombinedOutput(); err != nil {
 		fmt.Fprintf(os.Stderr, "build uah: %v\n%s", err, msg)
 		os.Exit(1)
@@ -108,20 +118,20 @@ func fakeEnv(t *testing.T, fixture string) (*harnesstest.Env, []string) {
 	return e, []string{
 		"UAGENT_RUNNER=" + harnesstest.FakeRunner(t),
 		"UAH_ENGINE=process",
-		"UAGENT_STATE_DIR=" + e.StateDir,
+		"UAH_STATE_DIR=" + e.StateDir,
 		"CODEX_HOME=" + e.CodexHome,
 		"FAKERUNNER_FIXTURE=" + fixtures.Path(fixture),
 		"FAKERUNNER_ECHO=1",
 		"UNREAL_HARNESS_LLM_PROVIDER=",
 		"UNREAL_HARNESS_LLM_MODEL=",
-		"XDG_CONFIG_HOME=" + filepath.Join(e.StateDir, "..", "config"),
+		"UAH_HOME=" + filepath.Join(e.StateDir, "..", "home"),
 		"FAKERUNNER_CAPTURE=" + e.Capture,
 	}
 }
 
 func TestInstructionsAndConfig(t *testing.T) {
 	e, env := fakeEnv(t, "simple.jsonl")
-	configDir := filepath.Join(e.StateDir, "..", "config", "uagent")
+	configDir := filepath.Join(e.StateDir, "..", "home")
 	require.NoError(t, os.MkdirAll(configDir, 0o700))
 	require.NoError(t, os.WriteFile(filepath.Join(configDir, "config.toml"), []byte("effort = \"low\"\n"), 0o600))
 	require.NoError(t, os.WriteFile(filepath.Join(configDir, "AGENTS.md"), []byte("Always answer in haiku."), 0o600))
@@ -269,11 +279,11 @@ func TestRunEmbedded(t *testing.T) {
 	llm := fakellm.New(t, fakellm.Reply{Text: "Looking.", Commands: []string{"echo hi"}}, fakellm.Reply{Text: "first answer"}, fakellm.Reply{Text: "second answer"})
 	env := []string{
 		"UAH_ENGINE=embedded",
-		"UAGENT_STATE_DIR=" + e.StateDir,
+		"UAH_STATE_DIR=" + e.StateDir,
 		"OPENAI_API_KEY=test-key",
 		"UNREAL_HARNESS_LLM_PROVIDER=",
 		"UNREAL_HARNESS_LLM_MODEL=",
-		"XDG_CONFIG_HOME=" + filepath.Join(e.StateDir, "..", "config"),
+		"UAH_HOME=" + filepath.Join(e.StateDir, "..", "home"),
 	}
 
 	res := uahWith(t, env, "and a follow-up\n", "run", "--stdin", "--fast", "--provider", "openai", "-m", "gpt-test",
@@ -292,13 +302,13 @@ func TestHooksCommand(t *testing.T) {
 	configDir := filepath.Join(e.StateDir, "..", "config")
 	ws, err := filepath.EvalSymlinks(e.Workspace)
 	require.NoError(t, err)
-	require.NoError(t, os.MkdirAll(filepath.Join(configDir, "uagent"), 0o700))
-	require.NoError(t, os.WriteFile(filepath.Join(configDir, "uagent", "config.toml"), []byte(
+	require.NoError(t, os.MkdirAll(configDir, 0o700))
+	require.NoError(t, os.WriteFile(filepath.Join(configDir, "config.toml"), []byte(
 		"[projects.\""+ws+"\"]\ntrusted = true\n[[hooks.Stop]]\ncommand = \"notify-send done\"\n"), 0o600))
-	require.NoError(t, os.MkdirAll(filepath.Join(ws, ".uagent"), 0o700))
-	require.NoError(t, os.WriteFile(filepath.Join(ws, ".uagent", "config.toml"), []byte(
+	require.NoError(t, os.MkdirAll(filepath.Join(ws, ".uah"), 0o700))
+	require.NoError(t, os.WriteFile(filepath.Join(ws, ".uah", "config.toml"), []byte(
 		"[[hooks.PreToolUse]]\nmatcher = \"Bash\"\ncommand = \"./check.sh\"\n"), 0o600))
-	env := []string{"XDG_CONFIG_HOME=" + configDir}
+	env := []string{"UAH_HOME=" + configDir}
 
 	res := uahWith(t, env, "", "hooks", "-C", ws)
 	require.Equal(t, 0, res.code, res.stderr)
@@ -318,11 +328,11 @@ func TestRunEmbeddedCompaction(t *testing.T) {
 	e := harnesstest.NewEnv(t)
 	llm := fakellm.New(t, fakellm.Reply{Commands: []string{"echo hi"}, InputTokens: 250_000}, fakellm.Reply{Text: "THE SUMMARY"}, fakellm.Reply{Text: "answer"})
 	configHome := filepath.Join(e.StateDir, "..", "config")
-	require.NoError(t, os.MkdirAll(filepath.Join(configHome, "uagent"), 0o700))
-	require.NoError(t, os.WriteFile(filepath.Join(configHome, "uagent", "config.toml"), []byte("auto_compact_percent = 90\n"), 0o600))
+	require.NoError(t, os.MkdirAll(configHome, 0o700))
+	require.NoError(t, os.WriteFile(filepath.Join(configHome, "config.toml"), []byte("auto_compact_percent = 90\n"), 0o600))
 	env := []string{
-		"UAH_ENGINE=embedded", "UAGENT_STATE_DIR=" + e.StateDir, "OPENAI_API_KEY=test-key",
-		"UNREAL_HARNESS_LLM_PROVIDER=", "UNREAL_HARNESS_LLM_MODEL=", "XDG_CONFIG_HOME=" + configHome,
+		"UAH_ENGINE=embedded", "UAH_STATE_DIR=" + e.StateDir, "OPENAI_API_KEY=test-key",
+		"UNREAL_HARNESS_LLM_PROVIDER=", "UNREAL_HARNESS_LLM_MODEL=", "UAH_HOME=" + configHome,
 	}
 
 	res := uahWith(t, env, "", "run", "--stream", "--provider", "openai", "-m", "gpt-test", "--base-url", llm.URL, "-C", e.Workspace, "go")
