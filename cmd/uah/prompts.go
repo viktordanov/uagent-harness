@@ -14,6 +14,7 @@ import (
 	"github.com/viktordanov/uagent-harness/internal/compaction"
 	"github.com/viktordanov/uagent-harness/internal/config"
 	"github.com/viktordanov/uagent-harness/internal/home"
+	"github.com/viktordanov/uagent-harness/internal/instructions"
 	"github.com/viktordanov/uagent-harness/internal/review"
 )
 
@@ -27,16 +28,25 @@ const (
 // builtinPrompt is a prompt uah ships and the key that replaces it with a
 // file.
 type builtinPrompt struct {
-	name  string // review or compact, also the file's base name
+	name  string // also the file's base name
 	text  func() string
 	table string // the key's table, "" for the top level
 	key   string
+	// alternative, when set, is a prompt uah does not use by default: its
+	// key line is printed commented out, after the previous prompt's,
+	// under this comment.
+	alternative string
 }
 
 // builtinPrompts are in the order their keys can be written: top-level
 // keys before any table.
 var builtinPrompts = []builtinPrompt{
 	{name: "compact", text: func() string { return compaction.Prompt + "\n" }, key: "experimental_compact_prompt_file"},
+	{name: "system", text: func() string { return instructions.RunnerHostPrompt }, key: "model_instructions_file"},
+	{
+		name: "system-codex", text: func() string { return instructions.CodexPrompt }, key: "model_instructions_file",
+		alternative: "Or Codex's own prompt (gpt-6-astra's; it names Codex's tools, see docs/configuration.md):",
+	},
 	{name: "review", text: review.DefaultPolicy, table: "review", key: "policy_file"},
 }
 
@@ -48,14 +58,14 @@ func promptsCommand() *cli.Command {
 		Usage: "write the built-in prompts into the config folder to customize them, or print one",
 		Commands: []*cli.Command{
 			{
-				Name: "init", Usage: "write compact.md and review.md into <config dir>/prompts and print the keys that use them",
+				Name: "init", Usage: "write compact.md, system.md, system-codex.md, and review.md into <config dir>/prompts and print the keys that use them",
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: flagConfig, Usage: usageConfig + "; the prompts go into its folder", Value: config.UserFile(), Sources: cli.EnvVars(home.EnvConfig), TakesFile: true},
 					&cli.BoolFlag{Name: "force", Usage: "overwrite prompt files that exist"},
 				},
 				OnUsageError: onUsageError, Action: promptsInit,
 			},
-			{Name: subShow, Usage: "print a built-in prompt", ArgsUsage: "compact|review", OnUsageError: onUsageError, Action: promptsShow},
+			{Name: subShow, Usage: "print a built-in prompt", ArgsUsage: strings.Join(promptNames(), "|"), OnUsageError: onUsageError, Action: promptsShow},
 		},
 	}
 }
@@ -80,7 +90,7 @@ func promptsShow(_ context.Context, cmd *cli.Command) error {
 		}
 	}
 
-	return cli.Exit("expected one of: compact, review", exitUsage)
+	return cli.Exit("expected one of: "+strings.Join(promptNames(), ", "), exitUsage)
 }
 
 func promptsInit(_ context.Context, cmd *cli.Command) error {
@@ -109,10 +119,14 @@ func promptsInit(_ context.Context, cmd *cli.Command) error {
 		}
 		fmt.Printf("Wrote %s\n", path)
 		line := fmt.Sprintf("%s = %q", p.key, homePath(path))
-		if p.table != "" {
-			line = "[" + p.table + "]\n" + line
+		switch {
+		case p.alternative != "":
+			lines[len(lines)-1] += "\n# " + p.alternative + "\n# " + line
+		case p.table != "":
+			lines = append(lines, "["+p.table+"]\n"+line)
+		default:
+			lines = append(lines, line)
 		}
-		lines = append(lines, line)
 	}
 	fmt.Printf("\nTo use them, add to %s:\n\n%s\n", configFile, strings.Join(lines, "\n\n"))
 

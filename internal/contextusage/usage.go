@@ -14,6 +14,7 @@ import (
 	"github.com/unreallabsai/unreal-agent/harness/llm"
 
 	"github.com/viktordanov/uagent-harness/internal/compaction"
+	"github.com/viktordanov/uagent-harness/internal/instructions"
 )
 
 // Category names, in the order /context lists them.
@@ -62,10 +63,12 @@ type Usage struct {
 func (u Usage) Free() int64 { return max(u.Window-u.Used-u.Buffer, 0) }
 
 // Markers the runner's context builder and uah's host prompt put in the
-// system message.
+// system message. The whole header marks the instructions, so a base
+// prompt from model_instructions_file with its own "# Project
+// instructions" heading stays the system prompt.
 const (
 	skillsMarker       = "The following skills provide specialized instructions"
-	instructionsMarker = "\n# Project instructions\n"
+	instructionsMarker = "\n" + instructions.ProjectHeader
 )
 
 var skillTag = regexp.MustCompile(`(?s)<skill><name>(.*?)</name>.*?</skill>`)

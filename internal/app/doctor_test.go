@@ -45,7 +45,7 @@ func TestDoctor_Healthy(t *testing.T) {
 		}
 		assert.Equal(t, app.CheckOK, c.Status, "%s: %s", c.Name, c.Detail)
 	}
-	assert.Equal(t, []string{"config", "home", "runner", "engine", "workspace", "credentials", "models", "usage", "sandbox", "instructions", "hooks", "mcp", "state"}, names)
+	assert.Equal(t, []string{"config", "home", "runner", "engine", "workspace", "credentials", "models", "usage", "sandbox", "system prompt", "instructions", "hooks", "mcp", "state"}, names)
 	assert.True(t, app.Healthy(checks))
 	assert.Contains(t, find(t, checks, "credentials").Detail, "openai-codex credentials found")
 }

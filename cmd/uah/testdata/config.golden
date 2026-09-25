@@ -29,6 +29,7 @@ compact_effort                                    medium                        
 compact_prompt                                    Codex's                       default
 experimental_compact_prompt_file                  ""                            default
 compact_user_message_max_tokens                   20000                         default
+model_instructions_file                           the runner's host prompt      default
 instructions.max_bytes                            32768                         default
 project_doc_max_bytes                             32768                         default
 project_doc_fallback_filenames                    []                            default

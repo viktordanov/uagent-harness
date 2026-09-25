@@ -131,6 +131,19 @@ func checkSandbox(ctx context.Context, p sandbox.Policy) Check {
 	return ok("sandbox", string(p.Mode)+": a test command ran in the sandbox")
 }
 
+// checkSystemPrompt reads model_instructions_file as a session would.
+func checkSystemPrompt(cfg config.Config) Check {
+	if cfg.ModelInstructionsFile == "" {
+		return ok("system prompt", "the runner's host prompt")
+	}
+	text, err := readModelInstructions(cfg)
+	if err != nil {
+		return fail("system prompt", err.Error(), "fix model_instructions_file or the file it names")
+	}
+
+	return ok("system prompt", fmt.Sprintf("%s (%d bytes)", cfg.ModelInstructionsFile, len(text)))
+}
+
 // checkInstructions finds the instruction files a session would load.
 func checkInstructions(r Resolved, cfg config.Config, workspace string) Check {
 	if !r.Instructions {

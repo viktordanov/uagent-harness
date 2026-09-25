@@ -1,7 +1,8 @@
 // Package instructions finds instruction files (AGENTS.md, as Codex does) and
 // builds the host prompt for the runner. The runner reads no
 // instruction files itself, and setting its system prompt replaces its own
-// host prompt, so the runner's default text is kept in front.
+// host prompt, so the base instructions (the runner's default text, or a
+// model_instructions_file) are kept in front.
 package instructions
 
 import (
@@ -182,13 +183,26 @@ func Assemble(files []File, maxBytes int) (text string, used []File, truncated b
 	return b.String(), used, truncated, nil
 }
 
-// HostPrompt builds the runner's system prompt: its default host prompt
-// followed by the instructions. With no instructions it returns "", which
-// leaves the runner's own prompt untouched.
-func HostPrompt(instructions string) string {
-	if strings.TrimSpace(instructions) == "" {
-		return ""
+// ProjectHeader starts the instructions part of the system prompt, after
+// the base instructions.
+const ProjectHeader = "# Project instructions\n\nFollow these instructions from the project and the user. Later files are more specific and take precedence.\n"
+
+// HostPrompt builds the runner's system prompt: the base instructions
+// (model_instructions_file's text, or RunnerHostPrompt when base is "")
+// followed by the instructions. With neither it returns "", which leaves the
+// runner's own prompt untouched.
+func HostPrompt(base, instructions string) string {
+	hasInstructions := strings.TrimSpace(instructions) != ""
+	if base == "" {
+		if !hasInstructions {
+			return ""
+		}
+		base = RunnerHostPrompt
+	}
+	base = strings.TrimRight(base, "\n") + "\n"
+	if !hasInstructions {
+		return base
 	}
 
-	return RunnerHostPrompt + "\n# Project instructions\n\nFollow these instructions from the project and the user. Later files are more specific and take precedence.\n\n" + instructions
+	return base + "\n" + ProjectHeader + "\n" + instructions
 }

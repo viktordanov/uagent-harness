@@ -74,6 +74,11 @@ type Config struct {
 	CompactEffort               string `toml:"compact_effort"`
 	CompactUserMessageMaxTokens int    `toml:"compact_user_message_max_tokens"`
 
+	// ModelInstructionsFile is a file whose text replaces the base
+	// instructions, the runner's host prompt, as Codex's key does. A
+	// relative path is relative to the file that sets it (Load resolves it).
+	ModelInstructionsFile string `toml:"model_instructions_file"`
+
 	Instructions Instructions `toml:"instructions"`
 	// Codex's AGENTS.md keys: fallback file names after AGENTS.md (none by
 	// default), project root markers (nil: .git; empty: no walking up), and
@@ -365,7 +370,11 @@ func decode(path string, into *Config) (bool, error) {
 		return false, fmt.Errorf("failed to read %s: %w", path, err)
 	}
 
-	return true, decodeBytes(path, data, into)
+	if err := decodeBytes(path, data, into); err != nil {
+		return true, err
+	}
+
+	return true, resolvePaths(into, filepath.Dir(path))
 }
 
 func tagHooks(byEvent map[string][]Hook, source hooks.Source) {
