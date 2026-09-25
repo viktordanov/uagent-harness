@@ -27,7 +27,8 @@ func TestProtected(t *testing.T) {
 	root := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(root, ".git"), []byte("gitdir: ../main/.git/worktrees/x\n"), 0o600))
 	got := sandbox.Protected(root)
-	assert.Contains(t, got, filepath.Join(root, ".uagent"))
+	assert.Contains(t, got, filepath.Join(root, ".uah"))
+	assert.Contains(t, got, filepath.Join(root, ".uagent"), "the old project directory until it is moved")
 	assert.Contains(t, got, filepath.Join(filepath.Dir(root), "main", ".git", "worktrees", "x"))
 }
 

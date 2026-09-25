@@ -17,6 +17,7 @@ import (
 	"github.com/viktordanov/uagent-harness/internal/config"
 	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/engine/embedded"
+	"github.com/viktordanov/uagent-harness/internal/home"
 	"github.com/viktordanov/uagent-harness/internal/hooks"
 	"github.com/viktordanov/uagent-harness/internal/mcp"
 	"github.com/viktordanov/uagent-harness/internal/sandbox"
@@ -236,7 +237,7 @@ func mcpCheck(st mcp.ServerStatus, c mcp.ServerConfig) Check {
 // checkState makes sure the state directory is writable and the session
 // index opens.
 func checkState(ctx context.Context, stateDir string) Check {
-	fix := "use a writable --state-dir (or UAGENT_STATE_DIR)"
+	fix := "use a writable --state-dir (or " + home.EnvStateDir + ")"
 	if err := os.MkdirAll(stateDir, 0o700); err != nil {
 		return fail("state", err.Error(), fix)
 	}

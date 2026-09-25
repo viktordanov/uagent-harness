@@ -45,7 +45,7 @@ func TestDoctor_Healthy(t *testing.T) {
 		}
 		assert.Equal(t, app.CheckOK, c.Status, "%s: %s", c.Name, c.Detail)
 	}
-	assert.Equal(t, []string{"config", "runner", "engine", "workspace", "credentials", "models", "usage", "sandbox", "instructions", "hooks", "mcp", "state"}, names)
+	assert.Equal(t, []string{"config", "home", "runner", "engine", "workspace", "credentials", "models", "usage", "sandbox", "instructions", "hooks", "mcp", "state"}, names)
 	assert.True(t, app.Healthy(checks))
 	assert.Contains(t, find(t, checks, "credentials").Detail, "openai-codex credentials found")
 }
@@ -71,7 +71,7 @@ func TestDoctor_Problems(t *testing.T) {
 		},
 		"an untrusted project config": {
 			prepare: func(t *testing.T, e *harnesstest.Env, _ *app.Inputs, _ *app.DoctorOptions) {
-				writeFile(t, filepath.Join(e.Workspace, ".uagent", "config.toml"), "effort = \"low\"\n")
+				writeFile(t, filepath.Join(e.Workspace, ".uah", "config.toml"), "effort = \"low\"\n")
 			},
 			check: "project config", status: app.CheckWarn, detail: "not trusted",
 		},
@@ -145,7 +145,7 @@ func TestDoctor_Problems(t *testing.T) {
 func TestDoctor_Hooks(t *testing.T) {
 	e, in := setupEnv(t)
 	writeConfig(t, &in, "[projects.\""+e.Workspace+"\"]\ntrusted = true\n\n[[hooks.Stop]]\ncommand = \"true\"\n")
-	writeFile(t, filepath.Join(e.Workspace, ".uagent", "config.toml"),
+	writeFile(t, filepath.Join(e.Workspace, ".uah", "config.toml"),
 		"[[hooks.Stop]]\ncommand = \"./check.sh\"\n\n[[hooks.Stop]]\ncommand = \"echo new\"\n")
 	writeFile(t, filepath.Join(e.Workspace, "check.sh"), "exit 0\n")
 	trustFile := filepath.Join(t.TempDir(), "trust.json")

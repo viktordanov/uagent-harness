@@ -65,6 +65,9 @@ func Setup(ctx context.Context, in Inputs, logOutput io.Writer) (Result, error) 
 	if err != nil {
 		return Result{}, usage(err)
 	}
+	if notice := config.ProjectMoveNotice(in.Workspace); notice != "" {
+		opts.Notices = append(opts.Notices, notice)
+	}
 	r, err := Resolve(in, resumed, cfg)
 	if err != nil {
 		return Result{}, err

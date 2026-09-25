@@ -15,7 +15,7 @@ import (
 // skillRoots are the directories holding <name>/SKILL.md skills, most
 // specific first: Codex's .agents/skills from the workspace up to the
 // project root, the runner's own .harness/skills, then the user's
-// ~/.config/uagent/skills and Codex's $CODEX_HOME/skills.
+// ~/.uah/skills and Codex's $CODEX_HOME/skills.
 func skillRoots(workspace string, getenv func(string) string) []string {
 	var roots []string
 	if dirs, err := instructions.ProjectDirs(workspace, nil); err == nil {

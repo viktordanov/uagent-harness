@@ -13,12 +13,11 @@ import (
 
 	"github.com/urfave/cli/v3"
 
-	"github.com/viktordanov/uagent/harness"
-
 	"github.com/viktordanov/uagent-harness/internal/app"
 	"github.com/viktordanov/uagent-harness/internal/approval"
 	"github.com/viktordanov/uagent-harness/internal/config"
 	"github.com/viktordanov/uagent-harness/internal/engine"
+	"github.com/viktordanov/uagent-harness/internal/home"
 	"github.com/viktordanov/uagent-harness/internal/sandbox"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
@@ -47,7 +46,7 @@ func sessionFlags() []cli.Flag {
 		&cli.DurationFlag{Name: "timeout", Aliases: []string{"t"}, Value: 30 * time.Minute, Usage: "wall-clock limit per run (0 disables)"},
 		&cli.StringFlag{
 			Name: "state-dir", Usage: "sessions, logs, and run records; must be outside the workspace",
-			Value: harness.DefaultStateDir(), Sources: cli.EnvVars("UAGENT_STATE_DIR"), TakesFile: true,
+			Value: home.Dir(), Sources: cli.EnvVars(home.EnvStateDir), TakesFile: true,
 		},
 		&cli.StringFlag{
 			Name: "engine", Usage: "embedded (the runner's packages in process: live steering, effort, model, and /fast) or process (spawn unreal-agent-runner)",
@@ -92,7 +91,7 @@ func sessionFlags() []cli.Flag {
 		&cli.BoolFlag{Name: "allow-dotenv", Usage: "run even if the workspace .env sets risky variables"},
 		&cli.StringFlag{
 			Name: flagConfig, Usage: "user configuration file", Value: config.UserFile(),
-			Sources: cli.EnvVars("UAGENT_CONFIG"), TakesFile: true,
+			Sources: cli.EnvVars(home.EnvConfig), TakesFile: true,
 		},
 		&cli.BoolFlag{Name: "no-instructions", Usage: "do not load AGENTS.md or CLAUDE.md files"},
 		&cli.StringFlag{Name: "log-level", Usage: "diagnostic log level: debug, info, warn, error", Value: "warn", Validator: oneOfMap("log-level", app.LogLevels)},
@@ -182,7 +181,7 @@ func oneOfMap[V any](flag string, allowed map[string]V) func(string) error {
 	}
 }
 
-func defaultStateDir() string { return harness.DefaultStateDir() }
+func defaultStateDir() string { return home.Dir() }
 
 func sandboxModes() []string {
 	out := make([]string, 0, len(sandbox.Modes))

@@ -2,15 +2,20 @@ package embedded_test
 
 import (
 	"bytes"
+	"context"
 	"image"
 	"image/png"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/viktordanov/uagent-harness/internal/home/migrate"
 	"github.com/viktordanov/uagent-harness/internal/images"
+	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/testing/fakellm"
 )
 
@@ -51,4 +56,47 @@ func TestEmbedded_SendsPastedImages(t *testing.T) {
 
 	assert.Equal(t, []string{url}, reqs[1].ToolImages, "the image stays in the conversation")
 	assert.Equal(t, "and now?", reqs[1].UserTexts[len(reqs[1].UserTexts)-1])
+}
+
+// TestEmbedded_ResumesAMigratedSession: a session with a pasted image, copied
+// into a new home by the migration, resumes there after the old state
+// directory is gone. The image travels by reference, so the resumed session
+// still sends it, and the TUI's history loads from the new home.
+func TestEmbedded_ResumesAMigratedSession(t *testing.T) {
+	e := newEnv(t, fakellm.Reply{Text: "a square"}, fakellm.Reply{Text: "still a square"})
+	var buf bytes.Buffer
+	require.NoError(t, png.Encode(&buf, image.NewNRGBA(image.Rect(0, 0, 12, 8))))
+	img, err := images.Store{Dir: images.DirIn(e.StateDir)}.Put(buf.Bytes())
+	require.NoError(t, err)
+	img.Label = images.Label(1)
+	url, err := images.Store{Dir: images.DirIn(e.StateDir)}.DataURL(img.Ref)
+	require.NoError(t, err)
+	s, ev := e.open(t, e.embedded(), "")
+	_, err = s.Submit(images.Join("what is [Image #1]?", []images.Image{img}))
+	require.NoError(t, err)
+	ev.finished()
+	ev.idle()
+	id := s.ID()
+	require.NoError(t, s.Close())
+
+	newHome := filepath.Join(t.TempDir(), ".uah")
+	migrated, err := migrate.Run(context.Background(), migrate.Paths{Home: newHome, State: e.StateDir})
+	require.NoError(t, err)
+	require.True(t, migrated)
+	require.NoError(t, os.RemoveAll(e.StateDir))
+	e.StateDir = newHome
+
+	history, err := session.Load(newHome, id)
+	require.NoError(t, err)
+	require.Len(t, history, 1)
+	resumed, ev := e.open(t, e.embedded(), id)
+	_, err = resumed.Submit("and now?")
+	require.NoError(t, err)
+	ev.finished()
+	ev.idle()
+
+	reqs := e.llm.Requests()
+	require.Len(t, reqs, 2)
+	assert.Equal(t, []string{url}, reqs[1].ToolImages, "the image resolves in the new home")
+	assert.Equal(t, "what is [Image #1]?", reqs[1].UserTexts[0])
 }

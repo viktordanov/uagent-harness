@@ -11,6 +11,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/viktordanov/uagent-harness/internal/home"
 	"github.com/viktordanov/uagent-harness/internal/hooks"
 	"github.com/viktordanov/uagent-harness/internal/mcp"
 )
@@ -124,7 +125,7 @@ func AgentsDir() string { return filepath.Join(Dir(), "agents") }
 
 // ProjectAgentsDir holds a trusted workspace's agent role files.
 func ProjectAgentsDir(workspace string) string {
-	return filepath.Join(workspace, ".uagent", "agents")
+	return filepath.Join(ProjectDir(workspace), "agents")
 }
 
 // Instructions configure instruction files.
@@ -220,7 +221,7 @@ type TUI struct {
 
 // Project is per-workspace configuration from the user file.
 type Project struct {
-	// Trusted allows <workspace>/.uagent/config.toml to apply.
+	// Trusted allows <workspace>/.uah/config.toml to apply.
 	Trusted bool `toml:"trusted"`
 }
 
@@ -259,18 +260,8 @@ func (c Config) TimeoutValue() (d time.Duration, ok bool, err error) {
 	return d, true, nil
 }
 
-// Dir is $XDG_CONFIG_HOME/uagent or ~/.config/uagent.
-func Dir() string {
-	if dir := os.Getenv("XDG_CONFIG_HOME"); dir != "" {
-		return filepath.Join(dir, "uagent")
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return filepath.Join(".", ".uagent-config")
-	}
-
-	return filepath.Join(home, ".config", "uagent")
-}
+// Dir holds the user's files: uah's home, ~/.uah or $UAH_HOME.
+func Dir() string { return home.Dir() }
 
 // UserFile is the user configuration file in Dir.
 func UserFile() string { return filepath.Join(Dir(), "config.toml") }
@@ -280,12 +271,15 @@ func RulesDir() string { return filepath.Join(Dir(), "rules") }
 
 // ProjectRulesDir holds a trusted workspace's command rules files.
 func ProjectRulesDir(workspace string) string {
-	return filepath.Join(workspace, ".uagent", "rules")
+	return filepath.Join(ProjectDir(workspace), "rules")
 }
+
+// ProjectDir holds a workspace's project files: <workspace>/.uah.
+func ProjectDir(workspace string) string { return filepath.Join(workspace, home.Name) }
 
 // ProjectFile is a workspace's project configuration file.
 func ProjectFile(workspace string) string {
-	return filepath.Join(workspace, ".uagent", "config.toml")
+	return filepath.Join(ProjectDir(workspace), "config.toml")
 }
 
 // Load reads the user file at userPath and, when the user file trusts the

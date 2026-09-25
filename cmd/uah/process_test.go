@@ -16,7 +16,7 @@ import (
 // writeUserConfig writes the user's config.toml for a test's environment.
 func writeUserConfig(t *testing.T, e *harnesstest.Env, text string) {
 	t.Helper()
-	dir := filepath.Join(e.StateDir, "..", "config", "uagent")
+	dir := filepath.Join(e.StateDir, "..", "home")
 	require.NoError(t, os.MkdirAll(dir, 0o700))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "config.toml"), []byte(text), 0o600))
 }
@@ -48,9 +48,9 @@ func TestRunProcess_ForbidRule(t *testing.T) {
 	writeUserConfig(t, e, "[approvals]\nforbid = [\"rm\"]\n")
 	env := []string{
 		"UAH_ENGINE=process", "UAGENT_RUNNER=" + harnesstest.RealRunner(t),
-		"UAGENT_STATE_DIR=" + e.StateDir, "OPENAI_API_KEY=test-key",
+		"UAH_STATE_DIR=" + e.StateDir, "OPENAI_API_KEY=test-key",
 		"UNREAL_HARNESS_LLM_PROVIDER=", "UNREAL_HARNESS_LLM_MODEL=",
-		"XDG_CONFIG_HOME=" + filepath.Join(e.StateDir, "..", "config"),
+		"UAH_HOME=" + filepath.Join(e.StateDir, "..", "home"),
 	}
 
 	res := uahWith(t, env, "", "run", "--provider", "openai", "-m", "gpt-test", "--base-url", llm.URL, "-C", e.Workspace, "tidy up")

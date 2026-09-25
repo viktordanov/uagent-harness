@@ -20,7 +20,7 @@ func configEnv(t *testing.T) (root, ws, user string, env []string) {
 	t.Helper()
 	root = t.TempDir()
 	ws = filepath.Join(root, "ws")
-	user = filepath.Join(root, "config", "uagent", "config.toml")
+	user = filepath.Join(root, "home", "config.toml")
 	writeFile(t, user, `model = "gpt-6-luna"
 effort = "low"
 fast = true
@@ -37,7 +37,7 @@ command = "notify"
 [projects."`+ws+`"]
 trusted = true
 `)
-	writeFile(t, filepath.Join(ws, ".uagent", "config.toml"), `effort = "medium"
+	writeFile(t, filepath.Join(ws, ".uah", "config.toml"), `effort = "medium"
 auto_compact_percent = 80
 
 [approvals]
@@ -48,8 +48,8 @@ url = "https://docs.example.com/mcp"
 `)
 
 	return root, ws, user, []string{
-		"XDG_CONFIG_HOME=" + filepath.Join(root, "config"),
-		"UAGENT_CONFIG=" + user, "UNREAL_HARNESS_LLM_PROVIDER=", "UNREAL_HARNESS_LLM_MODEL=",
+		"UAH_HOME=" + filepath.Join(root, "home"),
+		"UAH_CONFIG=" + user, "UNREAL_HARNESS_LLM_PROVIDER=", "UNREAL_HARNESS_LLM_MODEL=",
 		"UAH_ENGINE=", "UAH_ASK=", "UAH_SANDBOX=read-only",
 	}
 }

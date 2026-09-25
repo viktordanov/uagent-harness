@@ -54,7 +54,7 @@ func sandboxNote(p sandbox.Policy) string {
 		return "Commands run in a read-only sandbox: they can read files but write nothing, with " + network + "."
 	case sandbox.WorkspaceWrite:
 		return "Commands run in a sandbox: they can read any file, write only the workspace and temporary directories " +
-			"(.git, .uagent, .agents, and .codex stay read-only), and have " + network + "."
+			"(.git, .uah, .agents, and .codex stay read-only), and have " + network + "."
 	case sandbox.FullAccess:
 	}
 

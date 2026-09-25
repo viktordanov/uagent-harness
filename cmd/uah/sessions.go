@@ -17,6 +17,7 @@ import (
 
 	"github.com/viktordanov/uagent-harness/internal/app"
 	"github.com/viktordanov/uagent-harness/internal/engine"
+	"github.com/viktordanov/uagent-harness/internal/home"
 	"github.com/viktordanov/uagent-harness/internal/patch"
 	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/internal/store"
@@ -26,7 +27,7 @@ import (
 func sessionsCommand() *cli.Command {
 	stateDir := &cli.StringFlag{
 		Name: "state-dir", Usage: "sessions, logs, and run records",
-		Value: defaultStateDir(), Sources: cli.EnvVars("UAGENT_STATE_DIR"), TakesFile: true,
+		Value: defaultStateDir(), Sources: cli.EnvVars(home.EnvStateDir), TakesFile: true,
 	}
 	jsonFlag := &cli.BoolFlag{Name: flagJSON, Usage: "print JSON"}
 	all := &cli.BoolFlag{Name: flagAll, Usage: "list sessions from every directory"}

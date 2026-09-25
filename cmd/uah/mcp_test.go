@@ -20,10 +20,10 @@ import (
 func mcpEnv(t *testing.T) (user string, env []string) {
 	t.Helper()
 	root := t.TempDir()
-	user = filepath.Join(root, "config", "uagent", "config.toml")
+	user = filepath.Join(root, "home", "config.toml")
 	writeFile(t, user, "# keep me\nmodel = \"gpt-6-luna\"\nmcp_oauth_credentials_store = \"file\"\n")
 
-	return user, []string{"XDG_CONFIG_HOME=" + filepath.Join(root, "config"), "UAGENT_CONFIG=" + user}
+	return user, []string{"UAH_HOME=" + filepath.Join(root, "home"), "UAH_CONFIG=" + user}
 }
 
 // TestMCPCommands adds, lists, gets, and removes servers in the user file,

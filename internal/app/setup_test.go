@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/viktordanov/uagent-harness/internal/app"
+	"github.com/viktordanov/uagent-harness/internal/config"
 	"github.com/viktordanov/uagent-harness/testing/harnesstest"
 )
 
@@ -22,11 +23,11 @@ func setupEnv(t *testing.T) (*harnesstest.Env, app.Inputs) {
 	t.Helper()
 	e := harnesstest.NewEnv(t)
 	configDir := filepath.Join(e.StateDir, "..", "config")
-	t.Setenv("XDG_CONFIG_HOME", configDir)
+	t.Setenv("UAH_HOME", configDir)
 	t.Setenv("CODEX_HOME", e.CodexHome)
 
 	return e, app.Inputs{
-		ConfigPath: filepath.Join(configDir, "uagent", "config.toml"),
+		ConfigPath: filepath.Join(configDir, "config.toml"),
 		StateDir:   e.StateDir,
 		Workspace:  e.Workspace,
 		LogLevel:   "warn",
@@ -107,7 +108,7 @@ func TestSetup_Rules(t *testing.T) {
 	userRules := filepath.Join(filepath.Dir(in.ConfigPath), "rules")
 	require.NoError(t, os.MkdirAll(userRules, 0o700))
 	require.NoError(t, os.WriteFile(filepath.Join(userRules, "default.rules"), []byte(`prefix_rule(pattern=["git", "pull"])`), 0o600))
-	projectRules := filepath.Join(e.Workspace, ".uagent", "rules")
+	projectRules := filepath.Join(e.Workspace, ".uah", "rules")
 	require.NoError(t, os.MkdirAll(projectRules, 0o700))
 	require.NoError(t, os.WriteFile(filepath.Join(projectRules, "broken.rules"), []byte(`prefix_rule(`), 0o600))
 
@@ -141,4 +142,20 @@ func TestSetupChecksTheCompactPromptFile(t *testing.T) {
 	require.NoError(t, os.WriteFile(prompt, []byte("Summarize for a handoff.\n"), 0o600))
 	_, err = app.Setup(context.Background(), in, io.Discard)
 	require.NoError(t, err)
+}
+
+// TestSetup_OldProjectDirectory: a workspace that still has .uagent gets a
+// notice with the command that moves it; uah moves nothing.
+func TestSetup_OldProjectDirectory(t *testing.T) {
+	e, in := setupEnv(t)
+	writeConfig(t, &in, "[projects.\""+e.Workspace+"\"]\ntrusted = true\n")
+	writeFile(t, filepath.Join(e.Workspace, ".uagent", "config.toml"), "effort = \"low\"\n")
+
+	res, err := app.Setup(context.Background(), in, io.Discard)
+
+	require.NoError(t, err)
+	assert.Contains(t, res.Options.Notices, config.ProjectMoveNotice(e.Workspace))
+	assert.NotEqual(t, "low", res.Options.Settings.Effort, "a trusted workspace's .uagent is not read")
+	assert.DirExists(t, filepath.Join(e.Workspace, ".uagent"))
+	assert.NoDirExists(t, filepath.Join(e.Workspace, ".uah"))
 }

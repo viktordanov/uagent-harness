@@ -114,8 +114,8 @@ func TestLinuxWorkspaceWrite(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "[core]\n", string(data))
 
-	require.NoError(t, os.Mkdir(filepath.Join(r.ws, ".uagent"), 0o700))
-	code, out = sh(t, p, "mkdir .uagent/rules")
+	require.NoError(t, os.Mkdir(filepath.Join(r.ws, ".uah"), 0o700))
+	code, out = sh(t, p, "mkdir .uah/rules")
 	assert.NotEqual(t, 0, code)
 	assert.True(t, sandbox.Denied(code, out), out)
 

@@ -13,6 +13,7 @@ import (
 
 	"github.com/viktordanov/uagent-harness/internal/compaction"
 	"github.com/viktordanov/uagent-harness/internal/config"
+	"github.com/viktordanov/uagent-harness/internal/home"
 	"github.com/viktordanov/uagent-harness/internal/models"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
@@ -58,6 +59,8 @@ type File struct {
 
 // Report is the effective configuration for a workspace.
 type Report struct {
+	// Home is uah's home, set by Inspect.
+	Home      string `json:"home,omitempty"`
 	Workspace string `json:"workspace"`
 	// WorkspaceSource is the workspace's source: a flag, the resumed
 	// session, or the default (the current directory).
@@ -101,8 +104,10 @@ func Inspect(ctx context.Context, in Inputs) (Report, error) {
 	if o.Layers, err = config.LoadLayers(in.ConfigPath, workspaceIn(in, o)); err != nil {
 		return Report{}, usage(err)
 	}
+	rep, err := Explain(in, o)
+	rep.Home = home.Dir()
 
-	return Explain(in, o)
+	return rep, err
 }
 
 // Explain reports the effective configuration, as Resolve decides it, with

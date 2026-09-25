@@ -26,7 +26,7 @@ func TestDoctor(t *testing.T) {
 	assert.NotContains(t, res.stdout, "✗")
 
 	t.Run("broken", func(t *testing.T) {
-		config := filepath.Join(e.StateDir, "..", "config", "uagent", "config.toml")
+		config := filepath.Join(e.StateDir, "..", "home", "config.toml")
 		require.NoError(t, os.MkdirAll(filepath.Dir(config), 0o700))
 		require.NoError(t, os.WriteFile(config, []byte("model = \n"), 0o600))
 		broken := append(env, "UAGENT_RUNNER=/nonexistent/unreal-agent-runner")

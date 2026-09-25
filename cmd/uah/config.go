@@ -46,9 +46,10 @@ func configAction(ctx context.Context, cmd *cli.Command) error {
 	return printReport(os.Stdout, rep)
 }
 
-// printReport writes the workspace and the files, then one line per key:
+// printReport writes the home, the workspace, and the files, then one line per key:
 // key, value, and source.
 func printReport(w io.Writer, rep app.Report) error {
+	fmt.Fprintf(w, "home:         %s\n", rep.Home)
 	fmt.Fprintf(w, "workspace:    %s (%s)\n", rep.Workspace, rep.WorkspaceSource)
 	fmt.Fprintf(w, "user file:    %s (%s)\n", rep.UserFile.Path, rep.UserFile.State)
 	fmt.Fprintf(w, "project file: %s (%s)\n\n", rep.ProjectFile.Path, rep.ProjectFile.State)

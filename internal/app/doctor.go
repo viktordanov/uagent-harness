@@ -96,6 +96,7 @@ func Doctor(ctx context.Context, in Inputs, opts DoctorOptions) []Check {
 	}
 
 	cfg, checks := checkConfig(in)
+	checks = append(checks, checkHome(opts.Getenv)...)
 	r, err := Resolve(in, session.Info{}, cfg)
 	if err != nil {
 		checks = append(checks, fail("settings", err.Error(), "fix the flag or the configuration value it names"))
@@ -138,6 +139,10 @@ func checkConfig(in Inputs) (config.Config, []Check) {
 		detail = "read " + strings.Join(loaded, ", ")
 	}
 	checks := []Check{ok("config", detail)}
+	if move := config.ProjectMove(in.Workspace); move != "" {
+		checks = append(checks, warn("project config", filepath.Join(in.Workspace, ".uagent")+" is no longer read; project files live in .uah",
+			"run `"+move+"` in "+in.Workspace))
+	}
 	project := config.ProjectFile(in.Workspace)
 	if _, err := os.Stat(project); err == nil && !cfg.Projects[in.Workspace].Trusted {
 		checks = append(checks, warn("project config", project+" is ignored: the workspace is not trusted",
