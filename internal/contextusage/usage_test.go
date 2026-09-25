@@ -9,6 +9,7 @@ import (
 
 	"github.com/viktordanov/uagent-harness/internal/compaction"
 	"github.com/viktordanov/uagent-harness/internal/contextusage"
+	"github.com/viktordanov/uagent-harness/internal/instructions"
 )
 
 func msg(role llm.Role, text string) llm.Item {
@@ -18,7 +19,8 @@ func msg(role llm.Role, text string) llm.Item {
 func TestAnalyze(t *testing.T) {
 	system := "You run on Unreal Agent Harness.\n\nThe following skills provide specialized instructions for specific tasks.\n" +
 		"<available_skills><skill><name>release</name><description>Cut a release</description><location>/s/release/SKILL.md</location></skill></available_skills>\n\n" +
-		"You are an AI agent.\n# Project instructions\n\nFollow these instructions.\n\n## /repo/AGENTS.md\n\nUse tabs.\n## A heading inside the file\nMore.\n\n## /repo/svc/AGENTS.md\n\nService rules.\n"
+		instructions.HostPrompt("You are an AI agent.\n# Project instructions\nA base prompt's own heading.",
+			"## /repo/AGENTS.md\n\nUse tabs.\n## A heading inside the file\nMore.\n\n## /repo/svc/AGENTS.md\n\nService rules.\n")
 	req := llm.Request{
 		Model: llm.Model{ID: "gpt-test"},
 		Input: []llm.Item{
@@ -41,7 +43,7 @@ func TestAnalyze(t *testing.T) {
 	}
 	require.Contains(t, names, contextusage.Instructions)
 	files := names[contextusage.Instructions].Items
-	require.Len(t, files, 2, "a heading inside a file does not split it")
+	require.Len(t, files, 2, "a heading inside a file does not split it, nor one in the base prompt start the files")
 	assert.ElementsMatch(t, []string{"/repo/AGENTS.md", "/repo/svc/AGENTS.md"}, []string{files[0].Name, files[1].Name})
 	assert.Equal(t, "release", names[contextusage.Skills].Items[0].Name)
 	assert.Equal(t, "mcp__docs__search", names[contextusage.MCPTools].Items[0].Name)

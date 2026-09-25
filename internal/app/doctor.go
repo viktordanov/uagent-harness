@@ -119,7 +119,7 @@ func Doctor(ctx context.Context, in Inputs, opts DoctorOptions) []Check {
 	if c, ok := checkUsage(ctx, opts.Usage, opts.Now()); ok {
 		checks = append(checks, c)
 	}
-	checks = append(checks, checkSandbox(ctx, r.Sandbox), checkInstructions(r, cfg, in.Workspace))
+	checks = append(checks, checkSandbox(ctx, r.Sandbox), checkSystemPrompt(cfg), checkInstructions(r, cfg, in.Workspace))
 	checks = append(checks, checkHooks(cfg, in.Workspace, opts.HookTrustFile)...)
 	checks = append(checks, checkMCP(ctx, cfg, caps, in.Workspace, opts.Stderr)...)
 

@@ -19,6 +19,7 @@ Adapted in uah:
 | `internal/review/review.go` | The auto-review (guardian) prompt, `codex-rs/prompts/templates/guardian` |
 | `internal/compaction/compaction.go` | The compaction prompt and summary prefix, `codex-rs/prompts/templates/compact` |
 | `internal/agents/prompt.go` | The multi-agent tool descriptions and schemas, `codex-rs/core/src/tools/handlers/multi_agents_spec.rs` |
+| `internal/instructions/codex_prompt.md`, `codex.go` | Codex's base instructions for gpt-6-astra, verbatim (`model_messages.instructions_template` in `codex-rs/models-manager/models.json`) |
 | `internal/models/bundled.json` | The bundled model catalog, `codex-rs/models-manager/models.json` (a subset of its fields) |
 
 Many other parts follow Codex's behavior (configuration keys, rules, approvals, MCP, subagents); those are uah's own code written against Codex's documented behavior and source, and the design records in [docs/design](docs/design) cite the Codex files they follow.

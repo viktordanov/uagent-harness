@@ -248,11 +248,11 @@ uah compacts automatically at 90% of the context window. `/compact` compacts now
 ### Custom prompts
 
 ```sh
-uah prompts init           # writes ~/.uah/prompts/review.md and compact.md
-uah prompts show review    # prints a built-in prompt
+uah prompts init           # writes compact.md, system.md, system-codex.md, and review.md to ~/.uah/prompts
+uah prompts show system    # prints a built-in prompt: compact, system, system-codex, or review
 ```
 
-`uah prompts init` starts from the built-in auto-review policy and compaction prompt, and prints the lines to add to your user file: `[review] policy_file` and `experimental_compact_prompt_file`. Edit the files; each new session reads them. It overwrites existing files only with `--force`.
+`uah prompts init` starts from the built-in compaction prompt, the runner's host prompt (`system.md`), and the auto-review policy. It prints the lines to add to your user file: `experimental_compact_prompt_file`, `model_instructions_file`, and `[review] policy_file`. It also writes Codex's own system prompt as `system-codex.md` and prints its `model_instructions_file` line commented out, so Codex's prompt is used only when you choose it. Codex's prompt names Codex's tools, which differ from uah's ([the differences](docs/configuration.md#codexs-prompt)). AGENTS.md files still follow the system prompt. Edit the files; each new session reads them. It overwrites existing files only with `--force`.
 
 ### Hook setup
 
@@ -300,7 +300,7 @@ Earlier versions used `~/.config/uagent`, `~/.local/state/unreal-agent`, and a p
 | Sandbox | `permission_mode`, `sandbox_mode`; `[sandbox_workspace_write]` `network_access`, `writable_roots`; `[shell_environment_policy]` `inherit`, `ignore_default_excludes`, `exclude`, `include_only`, `set` |
 | Approvals | `approval_policy`, `approvals_reviewer`; `[approvals]` `allow`, `forbid`; `[review]` `model`, `effort`, `timeout`, `policy_file` |
 | Compaction | `auto_compact_percent`, `model_auto_compact_token_limit`, `model_context_window`, `compact_model`, `compact_effort`, `compact_prompt`, `experimental_compact_prompt_file`, `compact_user_message_max_tokens` |
-| Instructions and skills | `project_doc_fallback_filenames`, `project_root_markers`, `project_doc_max_bytes`; `[instructions]` `enabled`, `max_bytes` |
+| Instructions and skills | `model_instructions_file`, `project_doc_fallback_filenames`, `project_root_markers`, `project_doc_max_bytes`; `[instructions]` `enabled`, `max_bytes` |
 | Hooks | `[[hooks.<Event>]]` `matcher`, `command`, `timeout` |
 | MCP servers | `[mcp_servers.<name>]` `command`, `args`, `env`, `env_vars`, `cwd`, `url`, `bearer_token_env_var`, `http_headers`, `env_http_headers`, `enabled`, `required`, `startup_timeout_sec`, `tool_timeout_sec`, `enabled_tools`, `disabled_tools`, `supports_parallel_tool_calls`, `default_tools_approval_mode`, `tools.<tool>.approval_mode`, `auth`, `scopes`, `oauth_resource`, `[oauth]`; `mcp_oauth_credentials_store`, `mcp_oauth_callback_port`, `mcp_oauth_callback_url` |
 | Subagents | `[agents]` `enabled`, `max_concurrent_threads_per_session`, `max_depth`, `default_subagent_model`, `default_subagent_reasoning_effort` |
@@ -373,7 +373,7 @@ Read more: [patches](internal/patch/README.md), and how patches are approved in 
 ### Instructions and skills
 
 <!-- memoria:import src="internal/instructions/README.md#summary" -->
-uah finds instruction files the way Codex does: the user's AGENTS.md, then one file per directory from the project root down to the workspace (AGENTS.override.md, else AGENTS.md, else a configured fallback such as CLAUDE.md). They are joined, capped at 32 KiB, and placed after the runner's default host prompt; skills come from Codex's skill folders.
+uah finds instruction files the way Codex does: the user's AGENTS.md, then one file per directory from the project root down to the workspace (AGENTS.override.md, else AGENTS.md, else a configured fallback such as CLAUDE.md). They are joined, capped at 32 KiB, and placed after the base instructions (the runner's default host prompt, or the file that Codex's `model_instructions_file` key names), and skills come from Codex's skill folders.
 <!-- /memoria:import -->
 
 `--no-instructions` turns this off. Read more: [instructions](internal/instructions/README.md).

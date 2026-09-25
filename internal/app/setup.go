@@ -78,11 +78,17 @@ func Setup(ctx context.Context, in Inputs, logOutput io.Writer) (Result, error) 
 	if err := readReviewPolicy(&r); err != nil {
 		return Result{}, err
 	}
+	base, err := readModelInstructions(cfg)
+	if err != nil {
+		return Result{}, err
+	}
+	var text string
 	if r.Instructions {
-		if opts.Instructions, r.Settings.SystemPrompt, err = loadInstructions(in.Workspace, cfg); err != nil {
+		if opts.Instructions, text, err = loadInstructions(in.Workspace, cfg); err != nil {
 			return Result{}, err
 		}
 	}
+	r.Settings.SystemPrompt = instructions.HostPrompt(base, text)
 	opts.Settings = r.Settings
 	catalog := NewModels(stateDir, r.Settings, os.Getenv)
 	catalog.Catalog(ctx, catalog.Provider(), models.Offline) // the cache only, no network
@@ -258,8 +264,19 @@ func FindSession(ctx context.Context, stateDir, ref string) (session.Info, error
 	return session.Info{}, usage(fmt.Errorf("%q matches %d sessions; use more of the ID", ref, len(matches)))
 }
 
+// readModelInstructions reads model_instructions_file, the base
+// instructions in place of the runner's host prompt, or returns "" when it
+// is not set. As in Codex, a missing or empty file is an error.
+func readModelInstructions(cfg config.Config) (string, error) {
+	if cfg.ModelInstructionsFile == "" {
+		return "", nil
+	}
+
+	return readPrompt("model_instructions_file", cfg.ModelInstructionsFile)
+}
+
 // loadInstructions discovers and assembles instruction files, returning the
-// event to report and the host prompt ("" when there are none).
+// event to report and the assembled files ("" when there are none).
 func loadInstructions(workspace string, cfg config.Config) (*session.InstructionsLoaded, string, error) {
 	fallbacks, markers, maxBytes := cfg.InstructionOptions()
 	codexHome := os.Getenv("CODEX_HOME")
@@ -288,5 +305,5 @@ func loadInstructions(workspace string, cfg config.Config) (*session.Instruction
 		paths = append(paths, f.Path)
 	}
 
-	return &session.InstructionsLoaded{Files: paths, Bytes: len(text), Truncated: truncated}, instructions.HostPrompt(text), nil
+	return &session.InstructionsLoaded{Files: paths, Bytes: len(text), Truncated: truncated}, text, nil
 }

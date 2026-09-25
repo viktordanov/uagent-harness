@@ -138,8 +138,22 @@ func TestAssemble(t *testing.T) {
 }
 
 func TestHostPrompt(t *testing.T) {
-	assert.Empty(t, instructions.HostPrompt(" \n"), "no instructions leave the runner's prompt untouched")
-	prompt := instructions.HostPrompt("## AGENTS.md\n\nuse tabs\n")
-	assert.True(t, strings.HasPrefix(prompt, instructions.RunnerHostPrompt), "the runner's default text comes first")
-	assert.Contains(t, prompt, "use tabs")
+	assert.Empty(t, instructions.HostPrompt("", " \n"), "no instructions leave the runner's prompt untouched")
+	prompt := instructions.HostPrompt("", "## AGENTS.md\n\nuse tabs\n")
+	assert.Equal(t, instructions.RunnerHostPrompt+"\n"+instructions.ProjectHeader+"\n## AGENTS.md\n\nuse tabs\n", prompt,
+		"the runner's default text comes first")
+
+	assert.Equal(t, "Be brief.\n", instructions.HostPrompt("Be brief.", ""), "a base prompt alone replaces the runner's")
+	prompt = instructions.HostPrompt("Be brief.", "## AGENTS.md\n\nuse tabs\n")
+	assert.Equal(t, "Be brief.\n\n"+instructions.ProjectHeader+"\n## AGENTS.md\n\nuse tabs\n", prompt, "instructions follow a base prompt")
+	assert.Equal(t, instructions.RunnerHostPrompt, instructions.HostPrompt(strings.TrimSpace(instructions.RunnerHostPrompt), ""),
+		"system.md, trimmed as Codex reads it, gives back the runner's text")
+}
+
+// TestCodexPrompt pins the embedded copy of Codex's prompt: its opening
+// line and its size at rust-v0.156.1.
+func TestCodexPrompt(t *testing.T) {
+	assert.True(t, strings.HasPrefix(instructions.CodexPrompt, "You are Codex, an agent based on GPT-6."))
+	assert.Len(t, instructions.CodexPrompt, 21269)
+	assert.NotContains(t, instructions.CodexPrompt, "\n"+instructions.ProjectHeader, "/context can tell it from the instructions")
 }

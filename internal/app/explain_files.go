@@ -37,6 +37,7 @@ func fileSettings(workspace string, l config.Layers, r Resolved, cfg config.Conf
 	}
 	out = append(out, compactionSettings(l, r, cfg)...)
 	out = append(out, []Setting{
+		overridden(l, "model_instructions_file", first(cfg.ModelInstructionsFile, "the runner's host prompt"), func(c config.Config) any { return c.ModelInstructionsFile }),
 		overridden(l, "instructions.max_bytes", orDefault(cfg.Instructions.MaxBytes, instructions.DefaultMaxBytes), func(c config.Config) any { return c.Instructions.MaxBytes }),
 		one("project_doc_max_bytes", maxBytes, pick(
 			overrides(l, func(c config.Config) any { return c.ProjectDocMaxBytes }),

@@ -163,6 +163,20 @@ func TestExplainSources(t *testing.T) {
 			vals: map[string]string{"request_max_attempts": "20"},
 		},
 		{
+			name: "model_instructions_file from the project file",
+			in:   func(in *app.Inputs) { in.Workspace = "/ws" },
+			o: app.Origins{Layers: trusted(
+				config.Config{ModelInstructionsFile: "/cfg/system.md"}, config.Config{ModelInstructionsFile: "/ws/.uah/system.md"},
+			)},
+			want: map[string]string{"model_instructions_file": "project file"},
+			vals: map[string]string{"model_instructions_file": "/ws/.uah/system.md"},
+		},
+		{
+			name: "no model_instructions_file keeps the runner's host prompt",
+			want: map[string]string{"model_instructions_file": "default"},
+			vals: map[string]string{"model_instructions_file": "the runner's host prompt"},
+		},
+		{
 			name: "project_doc_max_bytes falls back to [instructions] max_bytes",
 			o:    app.Origins{Layers: config.Layers{User: config.Config{Instructions: config.Instructions{MaxBytes: 100}}}},
 			want: map[string]string{"project_doc_max_bytes": "user file", "instructions.max_bytes": "user file"},

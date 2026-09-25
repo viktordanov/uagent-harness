@@ -1,10 +1,10 @@
-<!-- memoria:section id="overview" files="instructions.go" -->
+<!-- memoria:section id="overview" files="instructions.go codex.go" -->
 # Instructions
 
-The instructions package finds instruction files the way Codex does (AGENTS.md, checked against `codex-rs/core/src/agents_md.rs`) and builds the runner's system prompt from them. unreal-agent-runner reads no instruction files itself, and a system prompt replaces its default one, so uah keeps the runner's default text in front.
+The instructions package finds instruction files the way Codex does (AGENTS.md, checked against `codex-rs/core/src/agents_md.rs`) and builds the runner's system prompt from them. unreal-agent-runner reads no instruction files itself, and a system prompt replaces its default one, so uah keeps base instructions in front: the runner's default text, or the text of `model_instructions_file`. The package also holds a copy of Codex's own prompt, which `uah prompts init` writes as `system-codex.md`.
 
 <!-- memoria:export id="summary" -->
-uah finds instruction files the way Codex does: the user's AGENTS.md, then one file per directory from the project root down to the workspace (AGENTS.override.md, else AGENTS.md, else a configured fallback such as CLAUDE.md). They are joined, capped at 32 KiB, and placed after the runner's default host prompt; skills come from Codex's skill folders.
+uah finds instruction files the way Codex does: the user's AGENTS.md, then one file per directory from the project root down to the workspace (AGENTS.override.md, else AGENTS.md, else a configured fallback such as CLAUDE.md). They are joined, capped at 32 KiB, and placed after the base instructions (the runner's default host prompt, or the file that Codex's `model_instructions_file` key names), and skills come from Codex's skill folders.
 <!-- /memoria:export -->
 
 The keys are in the [configuration reference](../../docs/configuration.md#instructions-and-skills).
@@ -27,14 +27,16 @@ The keys are in the [configuration reference](../../docs/configuration.md#instru
 Later files are more specific. Empty files are skipped. `ProjectDirs` is exported because skill discovery walks the same directories.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="prompt" files="instructions.go" -->
+<!-- memoria:section id="prompt" files="instructions.go codex.go codex_prompt.md" -->
 ## The system prompt
 
 1. `Assemble` joins the files in order, each under a `## <path>` header, and skips blank files. It stops before the file that would pass `project_doc_max_bytes` (32 KiB by default); a first file larger than the cap is cut.
-2. `HostPrompt` puts `RunnerHostPrompt`, unreal-agent-runner v0.1.1's default text, first, then a short "Project instructions" preamble, then the files. With no instructions it returns "", which leaves the runner's own prompt untouched.
-3. `internal/app/setup.go` (`loadInstructions`) sets the result as the session's `SystemPrompt`, which both engines send with every run. It reports the files as `InstructionsLoaded`, shown by `/status` and `uah doctor`, and the embedded engine lists them in `/context`.
+2. `HostPrompt(base, instructions)` puts the base instructions first, then `ProjectHeader` (a short "Project instructions" preamble), then the files. The base is the text of `model_instructions_file`, or `RunnerHostPrompt` (unreal-agent-runner v0.1.1's default text) when that key is not set. With neither a base nor instructions, it returns "", which leaves the runner's own prompt untouched. With a base and no instructions, it returns the base alone.
+3. `internal/app/setup.go` reads `model_instructions_file` (`readModelInstructions`: trimmed, and a missing or empty file is an error, as in Codex) and the files (`loadInstructions`). It sets the result as the session's `SystemPrompt`, which both engines send with every run. It reports the files as `InstructionsLoaded`, shown by `/status` and `uah doctor`. The embedded engine lists them in `/context`, which finds them by the whole `ProjectHeader`, so a heading in the base does not split it.
 
-`--no-instructions` or `[instructions] enabled = false` turns discovery off. Subagents get the parent's host prompt.
+The runner's context builder always puts its own preamble and the skill list before this prompt. `--no-instructions` or `[instructions] enabled = false` turns discovery off, but a `model_instructions_file` still applies. Subagents get the parent's system prompt, and a role's instructions follow it.
+
+`CodexPrompt` (`codex.go`, `codex_prompt.md`) is Codex's base instructions for gpt-6-astra at rust-v0.156.1, word for word. uah never uses it by default. `uah prompts init` writes it as `system-codex.md`, and `model_instructions_file` can name that file. The [configuration reference](../../docs/configuration.md#codexs-prompt) explains why uah copies this prompt and lists the tools it names that uah does not have.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="skills" files="instructions.go" -->
@@ -53,5 +55,5 @@ A name found in a more specific folder wins. The process engine offers only the 
 <!-- memoria:section id="tests" files="instructions_test.go" -->
 ## Tests
 
-`instructions_test.go` pins discovery (override, fallback, root markers, the user file), assembly with the size cap, and the host prompt. `internal/engine/embedded/skills_test.go` pins the skill folders.
+`instructions_test.go` pins discovery (override, fallback, root markers, the user file), assembly with the size cap, the host prompt with and without a base, and the embedded Codex prompt. `internal/app/systemprompt_test.go` pins `model_instructions_file` from Setup to the model request, a subagent's request, and `/context`. `internal/engine/embedded/skills_test.go` pins the skill folders.
 <!-- /memoria:section -->

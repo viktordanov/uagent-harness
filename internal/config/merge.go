@@ -82,6 +82,7 @@ func mergeEnv(env *ShellEnvironmentPolicy, over ShellEnvironmentPolicy) {
 }
 
 func mergeInstructions(base *Config, over Config) {
+	set(&base.ModelInstructionsFile, over.ModelInstructionsFile)
 	if over.Instructions.Enabled != nil {
 		base.Instructions.Enabled = over.Instructions.Enabled
 	}

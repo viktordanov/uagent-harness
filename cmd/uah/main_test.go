@@ -163,6 +163,18 @@ func TestInstructionsAndConfig(t *testing.T) {
 		assert.NotContains(t, string(stdin), "system_prompt")
 	})
 
+	t.Run("model_instructions_file replaces the host prompt on the process engine", func(t *testing.T) {
+		require.NoError(t, os.WriteFile(filepath.Join(configDir, "config.toml"), []byte("model_instructions_file = \"system.md\"\n"), 0o600))
+		require.NoError(t, os.WriteFile(filepath.Join(configDir, "system.md"), []byte("BASE-PROMPT\n"), 0o600))
+
+		res := uahWith(t, env, "", "run", "-q", "--no-instructions", "-C", e.Workspace, "hi")
+
+		require.Equal(t, 0, res.code, res.stderr)
+		stdin, err := os.ReadFile(filepath.Join(e.Capture, "stdin.json"))
+		require.NoError(t, err)
+		assert.Contains(t, string(stdin), `"system_prompt":"BASE-PROMPT\n"`)
+	})
+
 	t.Run("a config typo is a usage error", func(t *testing.T) {
 		require.NoError(t, os.WriteFile(filepath.Join(configDir, "config.toml"), []byte("efort = \"low\"\n"), 0o600))
 
