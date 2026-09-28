@@ -254,7 +254,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.gen != m.gen {
 			return m, next(msg.gen, msg.batches) // drain a closed session's last events
 		}
-		cmds := []tea.Cmd{m.afterChange(), next(m.gen, msg.batches)}
+		cmds := []tea.Cmd{next(m.gen, msg.batches)}
 		for _, e := range msg.events {
 			var effects []state.Effect
 			m.st, effects = state.Reduce(m.st, e)
@@ -262,6 +262,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmds = append(cmds, m.run(eff))
 			}
 		}
+		// After the events: a batch that starts a run starts the clock.
+		cmds = append(cmds, m.afterChange())
 
 		return m, tea.Batch(cmds...)
 	case sessionClosedMsg:
