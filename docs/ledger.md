@@ -322,6 +322,7 @@ Done: items 13–27. `/context`, shell completion, module READMEs and a root REA
 
 Ideas that come up while working go here, not into the items.
 
+- Flaky test: `TestTUI_CtrlEnterSendsTheQueue` timed out once in CI (1eaf812, 2026-09-29) waiting for the first model request; it passes 30 times alone and 6 times with the package on 2 CPUs locally. Look again if it recurs.
 - Stop reading `~/.codex/AGENTS.md` and `~/.codex/skills` by default; `uah import codex` copies them into `~/.uah` once, visibly, and an opt-in `codex_home = true` keeps live sharing. Repository `AGENTS.md` and `.agents/skills` stay (owner, 2026-09-25).
 - Subagents: stopping a child while the parent is idle; Codex's v2 tools, `items`, and `fork_context`; Codex's completion notification into the parent's history (see docs/design/subagents.md, Validation).
 - Auto-review: Codex sends only the transcript delta per review and lets the reviewer run read-only commands; uah sends the whole trimmed context each time. The openai API-key provider reviews with the session model (Codex uses gpt-5.6-luna).
