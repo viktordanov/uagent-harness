@@ -105,20 +105,27 @@ func (d *driver) typeText(s string) {
 
 func (d *driver) key(code rune, mod tea.KeyMod) { d.send(tea.KeyPressMsg{Code: code, Mod: mod}) }
 
-// waitIdle waits until no run is live: the status line is gone.
+// waitIdle waits until the session is idle: no run, and no message on its
+// way. It reads the state, since the screen shows no "esc to interrupt"
+// while the session finishes a run.
 func (d *driver) waitIdle() {
 	d.t.Helper()
-	d.until("idle", func() bool { return !strings.Contains(d.view(), "esc to interrupt") })
+	d.until("idle", func() bool { return !d.m.(bubble.Model).Busy() })
 }
 
-// until processes messages until check passes.
+// until processes messages until check passes. It also checks every 10
+// ms, since a check may wait on something outside the model, such as the
+// fake model's requests, while no message comes.
 func (d *driver) until(what string, check func() bool) {
 	d.t.Helper()
 	deadline := time.After(10 * time.Second)
+	poll := time.NewTicker(10 * time.Millisecond)
+	defer poll.Stop()
 	for !check() {
 		select {
 		case msg := <-d.msgs:
 			d.send(msg)
+		case <-poll.C:
 		case <-deadline:
 			d.t.Fatalf("timed out waiting for %s; screen:\n%s", what, d.view())
 		}
@@ -230,7 +237,7 @@ func TestTUI_QueueInterruptAndEdit(t *testing.T) {
 	d.waitFor("press esc again to interrupt")
 	d.key(tea.KeyEscape, 0)
 	d.waitFor("■ interrupted")
-	d.until("idle", func() bool { return !strings.Contains(d.view(), "esc to interrupt") })
+	d.waitIdle()
 	assert.Contains(t, d.view(), "↳ queued: then update the README", "an interrupt keeps the queue")
 	assert.Contains(t, d.view(), "stop ", "the unfinished tool is shown as stopped")
 
