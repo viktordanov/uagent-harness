@@ -18,7 +18,7 @@ import (
 func TestConfigCommandLayers(t *testing.T) {
 	root, ws, _, env := configEnv(t)
 	layer := filepath.Join(root, "home", "config.d", "10-host.toml")
-	writeFile(t, layer, "model = \"gpt-6-sol\"\n[approvals]\nallow = [\"host\"]\n")
+	writeFile(t, layer, "model = \"gpt-6-sol\"\n[approvals]\nallow = [\"host\"]\n[tui]\ntitle = false\n")
 	extra := filepath.Join(root, "extra.toml")
 	writeFile(t, extra, "[[hooks.Stop]]\ncommand = \"extra\"\n")
 	env = append(env, "UAH_EXTRA_CONFIG="+extra)
@@ -32,6 +32,7 @@ func TestConfigCommandLayers(t *testing.T) {
 		} `json:"layers"`
 		Settings []struct {
 			Key     string   `json:"key"`
+			Value   any      `json:"value"`
 			Sources []string `json:"sources"`
 		} `json:"settings"`
 	}
@@ -39,12 +40,15 @@ func TestConfigCommandLayers(t *testing.T) {
 	require.Len(t, rep.Layers, 2)
 	assert.Equal(t, []string{layer, extra}, []string{rep.Layers[0].Path, rep.Layers[1].Path})
 	byKey := map[string][]string{}
+	values := map[string]any{}
 	for _, s := range rep.Settings {
-		byKey[s.Key] = s.Sources
+		byKey[s.Key], values[s.Key] = s.Sources, s.Value
 	}
 	assert.Equal(t, []string{"config.d/10-host.toml"}, byKey["model"])
 	assert.Equal(t, []string{"user file", "config.d/10-host.toml", "project file"}, byKey["approvals.allow"])
 	assert.Equal(t, []string{"user file", "UAH_EXTRA_CONFIG"}, byKey["hooks.Stop"])
+	assert.Equal(t, []string{"config.d/10-host.toml"}, byKey["tui.title"])
+	assert.Equal(t, false, values["tui.title"])
 
 	res = uahWith(t, env, "", "config", "-C", ws)
 	require.Equal(t, 0, res.code, res.stderr)
