@@ -66,7 +66,7 @@ A child is a `session.Session` on the parent's engine. The engine is wrapped so 
 
 A status encodes as Codex's `AgentStatus`: a string (`pending_init`, `running`, `interrupted`, `shutdown`, `not_found`) or `{"completed": message}` and `{"errored": message}`. Every status but `pending_init` and `running` is final. Unlike in Codex, `interrupted` is final, because only the parent's `send_input` starts such a child again.
 
-Interrupting the parent's run calls `Interrupt`, which stops the live runs of the parent's children and their descendants. They stay open as `interrupted`. An interrupt that comes while a `spawn_agent` call is still running ends that call instead: the call fails, and the child it started is closed (`shutdown`), because the parent never received the child's ID. The child already shows as `running` in that time.
+Interrupting the parent's run calls `Interrupt`, which stops the live runs of the parent's children and their descendants. They stay open as `interrupted`. An interrupt that comes while a `spawn_agent` call is still running ends that call instead: the call fails, and the child it started is closed (`shutdown`), because the parent never received the child's ID. The child already shows as `running` in that time. An interrupt that comes while a message is on its way to an idle child, from `send_input` or the agent view, stops the run that message starts once the send returns (`settle`), since the child's session had no run to stop yet.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="tools" files="tools.go prompt.go ops.go status.go" -->

@@ -61,6 +61,7 @@ func (m *Manager) interruptTree(c *child) {
 	stop := m.subtree(c)
 	for _, x := range stop {
 		x.cancelAsks()
+		x.stopSent = x.sending > 0 // settle stops the run a send is starting
 	}
 	m.mu.Unlock()
 	for _, x := range stop {

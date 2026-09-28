@@ -39,6 +39,10 @@ type child struct {
 	// early the ones it queued before their submit returned, so an Idle from
 	// before a message does not end the child's work.
 	gen, sending int
+	// stopSent is an interrupt that came while a message was being sent:
+	// the session had no run to stop yet, so settle stops the run the
+	// message starts once the last send returns.
+	stopSent bool
 	// notified is the gen the parent was last told about (completionNote).
 	notified int
 	// waiters counts the parent's wait_agent calls pending on this child;
@@ -130,14 +134,17 @@ func (m *Manager) submit(c *child, message string, now bool) (string, error) {
 	if now {
 		submit = s.SteerNow
 	}
+	if m.beforeSubmit != nil {
+		m.beforeSubmit(message)
+	}
 	in, err := submit(message)
 	m.mu.Lock()
-	c.sending--
 	if err == nil && !c.early[in.ID] {
 		c.pending[in.ID] = true
 	}
 	delete(c.early, in.ID)
 	m.mu.Unlock()
+	m.settle(c)
 	if err != nil {
 		return "", fmt.Errorf("failed to send the agent the message: %w", err)
 	}
@@ -154,8 +161,8 @@ func (m *Manager) steerQueued(c *child) error {
 	s := c.s
 	m.mu.Unlock()
 	n, err := s.SteerQueued()
+	m.settle(c)
 	m.mu.Lock()
-	c.sending--
 	resumed := n > 0 && c.status.Final()
 	if resumed {
 		c.gen++
@@ -171,6 +178,23 @@ func (m *Manager) steerQueued(c *child) error {
 	}
 
 	return nil
+}
+
+// settle ends one send. When it was the last and an interrupt came during
+// the sends, it stops the run they started: the session was idle when the
+// interrupt came, and interrupting an idle session does nothing.
+func (m *Manager) settle(c *child) {
+	m.mu.Lock()
+	c.sending--
+	stop := c.sending == 0 && c.stopSent && !c.closed
+	if c.sending == 0 {
+		c.stopSent = false
+	}
+	s := c.s
+	m.mu.Unlock()
+	if stop {
+		go func() { _ = s.Interrupt() }() // never wait on a child's loop from the caller's
+	}
 }
 
 // watch follows a child's events until its session closes.

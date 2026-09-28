@@ -61,6 +61,8 @@ type Manager struct {
 	outboxes map[string]*outbox
 	// changed is closed and replaced whenever a child's status changes.
 	changed chan struct{}
+	// beforeSubmit, set by tests, runs before a message goes to a child.
+	beforeSubmit func(message string)
 }
 
 // New returns a manager; Bind gives it the engine children run on.

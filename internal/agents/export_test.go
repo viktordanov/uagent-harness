@@ -8,6 +8,9 @@ import (
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
 
+// BeforeSubmit runs f before each message goes to a child's session.
+func (m *Manager) BeforeSubmit(f func(message string)) { m.beforeSubmit = f }
+
 // Wait is wait_agent without its 10-second minimum, for tests.
 func (m *Manager) Wait(ctx context.Context, parentID string, ids []string, timeout time.Duration) (map[string]Status, bool, error) {
 	return m.wait(ctx, parentID, ids, timeout)

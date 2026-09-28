@@ -51,6 +51,46 @@ func TestAgents_InterruptStopsChildren(t *testing.T) {
 	assert.Equal(t, engine.AgentInterrupted, statuses[running.ID].State, "an interrupted child is final for wait_agent")
 }
 
+// TestAgents_InterruptDuringSendInput interrupts the parent's children
+// while send_input hands an idle child its message: the child's session has
+// no run to stop yet, and the run the message starts is stopped as soon
+// as the send returns.
+func TestAgents_InterruptDuringSendInput(t *testing.T) {
+	hold := make(chan struct{})
+	t.Cleanup(func() { close(hold) }) // before the server closes
+	e := newEnv(t, agents.Config{},
+		fakellm.Reply{Calls: []fakellm.Call{call("spawn_agent", `{"message":"CHILD-S first task"}`)}},
+		callWith("wait_agent", `{"targets":["ID"]}`),
+		callWith("send_input", `{"target":"ID","message":"second task"}`),
+		fakellm.Reply{Text: "sent"},
+	)
+	e.llm.Route("CHILD-S", fakellm.Reply{Text: "first answer"}, fakellm.Reply{Gate: hold, Text: "never"})
+	sending, release := make(chan struct{}), make(chan struct{})
+	e.mgr.BeforeSubmit(func(message string) {
+		if message == "second task" {
+			close(sending)
+			<-release
+		}
+	})
+	s, ev := e.open(t, false)
+
+	_, err := s.Submit("delegate twice")
+	require.NoError(t, err)
+	select {
+	case <-sending:
+	case <-time.After(waitTimeout):
+		t.Fatal("send_input never sent")
+	}
+	e.mgr.Interrupt(s.ID()) // what the engine does when the parent's run is interrupted
+	close(release)
+
+	stopped := ev.agentState(engine.AgentInterrupted)
+	statuses, timedOut, err := e.mgr.Wait(t.Context(), s.ID(), []string{stopped.ID}, waitTimeout)
+	require.NoError(t, err)
+	assert.False(t, timedOut)
+	assert.Equal(t, engine.AgentInterrupted, statuses[stopped.ID].State)
+}
+
 // TestAgents_ChildApprovalOutlivesTheParentsRun keeps a child's approval
 // open when the parent's run ends, and answers it while the parent is idle.
 func TestAgents_ChildApprovalOutlivesTheParentsRun(t *testing.T) {
