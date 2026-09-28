@@ -1,7 +1,5 @@
 # Subscription usage: research and plan
 
-Update 2026-09-29: the process engine was removed (ledger 51).
-
 Status: built, 2026-09-24. Ledger item 35 was the spike; item 39 built the recommended design with the default of each open decision (see [As built](#as-built)). Codex facts are from openai/codex at `rust-v0.156.1` (paths under `codex-rs/`, written `C/`). Runner facts are from unreal-agent v0.1.1 (written `R/`). uah paths are relative to the repository root.
 
 **Answer.** Yes, uah can show the ChatGPT subscription's usage as Codex does. The same credentials give it through two channels:

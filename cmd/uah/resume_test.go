@@ -4,7 +4,6 @@ import (
 	"context"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
@@ -19,39 +18,9 @@ import (
 	"github.com/viktordanov/uagent-harness/testing/harnesstest"
 )
 
-// writeUserConfig writes the user's config.toml for a test's environment.
-func writeUserConfig(t *testing.T, e *harnesstest.Env, text string) {
-	t.Helper()
-	dir := filepath.Join(e.StateDir, "..", "home")
-	require.NoError(t, os.MkdirAll(dir, 0o700))
-	require.NoError(t, os.WriteFile(filepath.Join(dir, "config.toml"), []byte(text), 0o600))
-}
-
-// TestRemovedEngine: the process engine's settings from before uah 1.2
-// still run, on the embedded engine, with one warning; --engine is hidden.
-func TestRemovedEngine(t *testing.T) {
-	const removed = "the process engine was removed in uah 1.2; uah always uses the embedded engine"
-	e, env := fakeEnv(t)
-	writeUserConfig(t, e, "engine = \"process\"\n")
-
-	res := uahWith(t, append(env, "UAH_ENGINE=process"), "", "run", "-C", e.Workspace, "hi")
-	require.Equal(t, 0, res.code, res.stderr)
-	assert.Equal(t, "done\n", res.stdout)
-	assert.Equal(t, 1, strings.Count(res.stderr, removed), res.stderr)
-	assert.Contains(t, res.stderr, "embedded")
-
-	res = uahWith(t, env, "", "run", "--engine", "process", "-C", e.Workspace, "hi")
-	require.Equal(t, 0, res.code, res.stderr)
-	assert.Equal(t, 1, strings.Count(res.stderr, removed), res.stderr)
-
-	help := uah(t, "--help")
-	assert.NotContains(t, help.stdout, "--engine")
-	assert.NotContains(t, help.stdout, "--runner")
-}
-
-// TestRunResumesAProcessSession: a session the process engine started
-// before uah 1.2, run by the real runner, resumes with `uah run --session`
-// on the embedded engine, which replays its history.
+// TestRunResumesAProcessSession: a session the real runner started, as
+// the process engine of earlier versions left them, resumes with
+// `uah run --session` on the embedded engine, which replays its history.
 func TestRunResumesAProcessSession(t *testing.T) {
 	if testing.Short() {
 		t.Skip("builds unreal-agent-runner")
@@ -82,7 +51,7 @@ func TestRunResumesAProcessSession(t *testing.T) {
 	}
 	require.NoError(t, s.Close())
 	env := []string{
-		"UAH_ENGINE=", "UAH_STATE_DIR=" + e.StateDir, "UNREAL_HARNESS_LLM_PROVIDER=", "UNREAL_HARNESS_LLM_MODEL=",
+		"UAH_STATE_DIR=" + e.StateDir, "UNREAL_HARNESS_LLM_PROVIDER=", "UNREAL_HARNESS_LLM_MODEL=",
 		"UAH_HOME=" + filepath.Join(e.StateDir, "..", "home"),
 	}
 

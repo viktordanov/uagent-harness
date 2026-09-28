@@ -1,7 +1,5 @@
 # Sandboxing and approvals: plan
 
-Update 2026-09-29: the process engine was removed (ledger 51).
-
 Status: decided 2026-09-24; phases 1 and 2 built (see [As built](#as-built-phase-1)). The research and the options are in [sandbox-research.md](sandbox-research.md); Codex facts are from openai/codex at rust-v0.156.1.
 
 The rule for every choice below: do what Codex does, unless uah's runner forces a difference.

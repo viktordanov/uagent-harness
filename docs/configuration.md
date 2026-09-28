@@ -4,7 +4,7 @@ uah reads its configuration from TOML files and combines it with flags, the envi
 
 1. [Files](#files)
 2. [Precedence](#precedence)
-3. [Keys](#keys): [model and engine](#model-and-engine), [sandbox and approvals](#sandbox-and-approvals), [review](#review), [compaction](#compaction), [instructions and skills](#instructions-and-skills), [hooks](#hooks), [MCP servers](#mcp-servers), [TUI](#tui), [projects](#projects)
+3. [Keys](#keys): [model](#model), [sandbox and approvals](#sandbox-and-approvals), [review](#review), [compaction](#compaction), [instructions and skills](#instructions-and-skills), [hooks](#hooks), [MCP servers](#mcp-servers), [TUI](#tui), [projects](#projects)
 4. [Environment variables](#environment-variables)
 5. [uah config](#uah-config)
 6. [Examples](#examples)
@@ -66,7 +66,7 @@ A project file merges into the user file key by key, in one of four ways. The ke
 
 Every key may be set in the user file and in a trusted project file, except `[projects]`, which is user-file only.
 
-### Model and engine
+### Model
 
 | Key | Type | Default | Flag, env | Merge | Meaning |
 | --- | --- | --- | --- | --- | --- |
@@ -76,7 +76,6 @@ Every key may be set in the user file and in a trusted project file, except `[pr
 | `timeout` | duration | `30m` | `-t`, `--timeout` | override | The wall-clock limit per run, as Go durations (`90s`, `1h`); `0s` disables it |
 | `request_max_attempts` | integer | 10 | `--max-attempts`, `UNREAL_HARNESS_LLM_MAX_ATTEMPTS` | override | How many times a model request is sent before the run fails. A lost connection, a timeout, a 429, or most 5xx statuses are retried after 2 s, then 4, 8, and 16 s, and then every 30 s (less up to a fifth of jitter, or the server's `Retry-After` up to 30 s): 10 attempts wait about 3 minutes in all. The runner's own default is 5 |
 | `max_disk` | size | `5G` | `--max-disk` | override | Stop a run when tool output exceeds this size (`500M`, `5G`, bytes without a suffix); `0` disables it |
-| `engine` | string | none | `--engine`, `UAH_ENGINE` (both hidden) | none | Deprecated. uah 1.2 removed the process engine and always uses the embedded one. Any value is accepted, so an older file still loads, and only adds one warning when a session opens and in `uah doctor`'s `engine` check. A later version may drop the key ([the engine](../README.md#the-engine)) |
 | `fast` | bool | false | `--fast` | OR | Priority processing (`service_tier = "priority"`); needs the openai or openai-codex provider, and any other provider refuses it before the session starts |
 
 ### Sandbox and approvals
@@ -349,7 +348,6 @@ developer_instructions = "Review the diff you are given. List only real bugs, ea
 | `UNREAL_HARNESS_LLM_MODEL` | `--model` | `model` | The model |
 | `UNREAL_HARNESS_LLM_BASE_URL` | `--base-url` | none | The LLM base URL |
 | `UNREAL_HARNESS_LLM_MAX_ATTEMPTS` | `--max-attempts` | `request_max_attempts` | The attempts per model request. uah passes the resolved value to the runner's client, so the variable does not reach the runner directly |
-| `UAH_ENGINE` | `--engine` (hidden) | `engine` | Deprecated: any value only warns that the process engine was removed |
 | `UAH_SANDBOX` | `--sandbox` | `sandbox_mode` | The sandbox mode, and the permission mode of that sandbox |
 | `UAH_ASK` | `--ask` | `approval_policy` | The approval policy |
 | `UAH_HOME` | none | none | uah's home, `~/.uah` by default |

@@ -131,12 +131,6 @@ func TestResolve(t *testing.T) {
 			want: func(r *app.Resolved) {},
 		},
 		{
-			name: "the removed engine setting changes nothing",
-			in:   func(in *app.Inputs) { in.Engine = "process" },
-			cfg:  config.Config{Engine: "process"},
-			want: func(r *app.Resolved) {},
-		},
-		{
 			name: "max disk from the config file",
 			cfg:  config.Config{MaxDisk: "500M"},
 			want: func(r *app.Resolved) { r.MaxDisk = 500 << 20 },

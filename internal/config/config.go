@@ -26,10 +26,6 @@ type Config struct {
 	// RequestMaxAttempts is how many times a model request is sent before
 	// the run fails (0: uah's default, engine.DefaultMaxAttempts).
 	RequestMaxAttempts int `toml:"request_max_attempts"`
-	// Engine is deprecated: uah 1.2 removed the process engine and always
-	// uses the embedded one. The key is still accepted, so an older file
-	// loads, and any value only adds a warning (app.EngineNotice).
-	Engine string `toml:"engine"`
 	// Fast asks for priority processing.
 	Fast bool `toml:"fast"`
 	// SandboxMode is read-only, workspace-write (the default), or

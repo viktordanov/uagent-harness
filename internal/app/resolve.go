@@ -46,10 +46,7 @@ type Inputs struct {
 	Model     string
 	Effort    string
 	Workspace string
-	// Engine is the removed --engine flag or UAH_ENGINE, still accepted
-	// so an old script runs; a value only adds a warning (EngineNotice).
-	Engine  string
-	BaseURL string
+	BaseURL   string
 
 	Timeout    time.Duration
 	TimeoutSet bool

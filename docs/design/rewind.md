@@ -1,7 +1,5 @@
 # Going back to an earlier message
 
-Update 2026-09-29: the process engine was removed (ledger 51).
-
 Ledger item 46: pick an earlier message of yours, edit it (or drop it), and continue from there. What came after it leaves the model's context, and the old branch stays on disk. Codex calls it backtrack; Claude Code calls it rewind.
 
 1. [What Codex does](#what-codex-does)

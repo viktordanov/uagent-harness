@@ -24,22 +24,18 @@ func TestDoctor(t *testing.T) {
 		assert.Contains(t, "\n"+res.stdout, "\n"+line, "stdout:\n%s", res.stdout)
 	}
 	assert.NotContains(t, res.stdout, "✗")
-	assert.NotContains(t, res.stdout, "engine:", "no engine check without an engine setting")
 
 	t.Run("broken", func(t *testing.T) {
 		config := filepath.Join(e.StateDir, "..", "home", "config.toml")
 		require.NoError(t, os.MkdirAll(filepath.Dir(config), 0o700))
 		require.NoError(t, os.WriteFile(config, []byte("model = \n"), 0o600))
-		broken := append(env, "UAH_ENGINE=process")
 
-		res := uahWith(t, broken, "", "doctor", "-C", e.Workspace)
+		res := uahWith(t, env, "", "doctor", "-C", e.Workspace)
 		assert.Equal(t, 1, res.code)
 		assert.Regexp(t, `(?m)^✗ config: .*config\.toml`, res.stdout)
-		assert.Regexp(t, `(?m)^! engine: the process engine was removed in uah 1\.2; uah always uses the embedded engine$`, res.stdout)
-		assert.Regexp(t, `(?m)^    fix: drop --engine or UAH_ENGINE$`, res.stdout)
 		assert.Empty(t, res.stderr, "the checks say it all")
 
-		res = uahWith(t, broken, "", "doctor", "--json", "-C", e.Workspace)
+		res = uahWith(t, env, "", "doctor", "--json", "-C", e.Workspace)
 		assert.Equal(t, 1, res.code)
 		var out struct {
 			OK     bool `json:"ok"`

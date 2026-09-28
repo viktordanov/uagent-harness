@@ -1,7 +1,5 @@
 # Sandboxing and approvals: research and options
 
-Update 2026-09-29: the process engine was removed (ledger 51).
-
 Status: research, 2026-09-24. Nothing here is decided yet. The document ends with a recommendation and the [decisions for the owner](#8-decisions-for-the-owner).
 
 Evidence comes from these sources:

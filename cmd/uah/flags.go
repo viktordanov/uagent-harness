@@ -47,9 +47,6 @@ func sessionFlags() []cli.Flag {
 			Name: "state-dir", Usage: "sessions, logs, and run records; must be outside the workspace",
 			Value: home.Dir(), Sources: cli.EnvVars(home.EnvStateDir), TakesFile: true,
 		},
-		// Removed in uah 1.2 with the process engine; still accepted, so an
-		// old script runs, and any value only adds a warning.
-		&cli.StringFlag{Name: "engine", Hidden: true, Sources: cli.EnvVars(app.EnvEngine)},
 		&cli.BoolFlag{Name: "fast", Usage: "priority processing (service_tier priority; openai and openai-codex)"},
 		&cli.StringFlag{
 			Name: "sandbox", Usage: "where commands may write: read-only, workspace-write, or danger-full-access (no sandbox)",
@@ -125,7 +122,6 @@ func inputs(cmd *cli.Command) app.Inputs {
 		Model:          cmd.String("model"),
 		Effort:         cmd.String("effort"),
 		Workspace:      cmd.String(flagWorkspace),
-		Engine:         cmd.String("engine"),
 		BaseURL:        cmd.String("base-url"),
 		Timeout:        cmd.Duration("timeout"),
 		TimeoutSet:     cmd.IsSet("timeout"),

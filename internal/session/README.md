@@ -34,7 +34,7 @@ The loop tracks where the session is in a run:
 
 `Close` interrupts a live run, waits for it to end, closes the event stream, and then closes the engine when it is an `io.Closer` (MCP servers and subagents stop with the session).
 
-`Open` shows `Options.Notices` after `SessionOpened`, such as the warning for a removed `engine` setting, and reads `Engine.Priority` once for `Session.Priority`, which the TUI's `/fast` reads. The session never checks the engine's name.
+`Open` shows `Options.Notices` after `SessionOpened`, such as configuration warnings, and reads `Engine.Priority` once for `Session.Priority`, which the TUI's `/fast` reads. The session never checks the engine's name.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="messages" files="dispatch.go runs.go inject.go history.go shell.go" -->

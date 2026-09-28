@@ -7,7 +7,7 @@ The configuration reference, design records for the harness, the TUI, state stor
 
 Design:
 
-1. [Harness design](design/harness.md): what the runner provides, what the harness adds, the two engines (the process engine was removed in uah 1.2), and the accepted scope.
+1. [Harness design](design/harness.md): what the runner provides, what the harness adds, the two engines, and the accepted scope.
 2. [TUI design](design/tui.md): the framework choice, architecture, screens, keys, and commands.
 3. [Implementation spec](design/implementation.md): the packages and files in both repositories, types, milestones, tests, and what was built differently.
 4. [State storage](design/state.md): what is stored where, and the plan for a rebuildable SQLite index.

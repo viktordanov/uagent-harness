@@ -18,7 +18,6 @@ func merge(base, over Config) Config {
 	set(&base.Effort, over.Effort)
 	set(&base.Timeout, over.Timeout)
 	set(&base.MaxDisk, over.MaxDisk)
-	set(&base.Engine, over.Engine)
 	base.Fast = base.Fast || over.Fast
 	base.TUI.Details = base.TUI.Details || over.TUI.Details
 	if over.TUI.Mouse != nil {

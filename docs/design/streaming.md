@@ -1,7 +1,5 @@
 # Streaming the answer
 
-Update 2026-09-29: the process engine was removed (ledger 51).
-
 Ledger item 45: the agent's answer, and its reasoning summaries when the TUI shows them, appear as the model writes them, not all at once when the response ends. The runner stays unchanged.
 
 Status: built, 2026-09-25, on the embedded engine.

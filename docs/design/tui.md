@@ -1,7 +1,5 @@
 # TUI design
 
-Update 2026-09-29: the process engine was removed (ledger 51).
-
 Status: accepted, 2026-09-24 (proposed 2026-09-23). It depends on the library work in [harness.md](harness.md); [implementation.md](implementation.md) places every file. Framework numbers come from [bench/tui](../../bench/tui/README.md).
 
 1. [Goal](#goal)

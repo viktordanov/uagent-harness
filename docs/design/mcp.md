@@ -1,7 +1,5 @@
 # MCP: plan
 
-Update 2026-09-29: the process engine was removed (ledger 51).
-
 Status: decided and built 2026-09-24 (ledger item 5); validated and hardened, with OAuth, `uah mcp`, and the `/mcp` panel, the same day. Codex facts are from openai/codex at rust-v0.156.1 (`codex-rs/`); runner facts are from unreal-agent v0.1.1 (`RN/`); SDK facts are from `github.com/modelcontextprotocol/go-sdk` v1.8.0.
 
 The rule, as for the sandbox: do what Codex does, unless the runner forces a difference.

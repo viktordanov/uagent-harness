@@ -4,10 +4,10 @@
 An engine starts runs of unreal-agent-runner for a session. uah has one: the `embedded` engine runs the runner's own packages inside uah, so messages and settings reach a live run.
 
 <!-- memoria:export id="summary" -->
-The embedded engine runs unreal-agent-runner's packages inside uah, so messages, model, effort, fast mode, and the permission mode reach a live run. It keeps uagent's guards, session lock, and run records, applies the command rules, and writes the runner's session files, so a session the removed process engine started resumes on it.
+The embedded engine runs unreal-agent-runner's packages inside uah, so messages, model, effort, fast mode, and the permission mode reach a live run. It keeps uagent's guards, session lock, and run records, applies the command rules, and writes the runner's own session files.
 <!-- /memoria:export -->
 
-`internal/app/setup.go` builds the engine. uah 1.2 removed the `process` engine, which spawned the runner binary through uagent and ran without most features; `--engine`, `UAH_ENGINE`, and the `engine` key are still accepted and only add a warning (see the [configuration](../../docs/configuration.md#model-and-engine)). The [harness design](../../docs/design/harness.md#two-engines) records why there were two.
+`internal/app/setup.go` builds the engine for every session. The [harness design](../../docs/design/harness.md) records how it came about.
 
 1. [The interface](#the-interface)
 2. [What varies by provider and model](#what-varies-by-provider-and-model)
@@ -71,7 +71,7 @@ A run keeps uagent's guards (timeout, disk limit, session lock) and writes run r
 <!-- memoria:section id="behaviors" files="embedded/tools.go embedded/mode.go embedded/skills.go embedded/pretooluse.go" -->
 ## Where each behavior lives
 
-This audit (item 33 of the ledger, updated when item 51 removed the process engine) lists each behavior and the code that does it.
+This audit (items 33 and 51 of the ledger) lists each behavior and the code that does it.
 
 | Behavior | Where |
 | --- | --- |
@@ -112,7 +112,7 @@ The embedded engine is a uagent `harness.Backend`. uagent still owns the run: th
 
 Every opened resource adds a closer; a failed start closes them in reverse, and after a successful start the coordinator's goroutine closes them when it returns.
 
-The session store is the runner's own, under `<state>/sessions`, and uagent writes the run records, as they were when the removed process engine spawned the runner. So a session that engine started resumes here: the coordinator restores the runner's history from its session file (`TestEmbedded_ResumesAProcessSession`, and `TestRunResumesAProcessSession` through `uah run --session`).
+The session store is the runner's own, under `<state>/sessions`, and uagent writes the run records, as when the runner binary runs. So a session the runner binary started resumes here too: the coordinator restores the runner's history from its session file (`TestEmbedded_ResumesAProcessSession`, and `TestRunResumesAProcessSession` through `uah run --session`).
 
 ### A live run
 
@@ -223,7 +223,7 @@ The tests run against `testing/fakellm`, a scripted Responses API, and need no t
 | --- | --- |
 | `TestEmbedded_MatchesTheRunner` | The real `unreal-agent-runner` (built from go.mod's version) and the embedded engine get the same script and must produce the same events and session items. `go test -short` skips it |
 | `TestEmbedded_SteersALiveRun`, `TestEmbedded_ChangesSettingsLive`, `TestEmbedded_InterruptThenContinue` | Live input, live settings, and interrupts |
-| `TestEmbedded_ResumesAProcessSession` | A session the real runner started, as the process engine left them, resumes on the embedded engine with its history. `go test -short` skips it |
+| `TestEmbedded_ResumesAProcessSession` | A session the real runner started resumes on the embedded engine with its history. `go test -short` skips it |
 | `approval_test.go`, `sandbox_test.go` | Escalation, rules, "don't ask again", headless denial, PermissionRequest hooks, auto-review, and the sandbox |
 | `mode_test.go` | Permission modes: a live switch to read only makes the next write fail in the sandbox and the next request describe it; Auto mode lets the reviewer allow or decline without asking, also once its breaker opens |
 | `compact_test.go`, `compact_settings_test.go`, `clear_test.go`, `context_test.go` | Manual and automatic compaction, the configured summary model, prompt, focus, token limit, and kept-message cap, the stop when compacting cannot get under the limit, `/clear` in the same session, resume after both, the PreCompact hook, and `/context` |

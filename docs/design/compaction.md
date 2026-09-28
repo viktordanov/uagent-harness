@@ -1,7 +1,5 @@
 # Compaction and the context meter: plan
 
-Update 2026-09-29: the process engine was removed (ledger 51).
-
 Status: accepted, 2026-09-24 (ledger item 4); configurable and looked at again in ledger item 24. Embedded engine only.
 
 1. [How Codex compacts](#how-codex-compacts)

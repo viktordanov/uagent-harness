@@ -22,7 +22,6 @@ import (
 const (
 	EnvProvider = "UNREAL_HARNESS_LLM_PROVIDER"
 	EnvModel    = "UNREAL_HARNESS_LLM_MODEL"
-	EnvEngine   = "UAH_ENGINE"
 	EnvSandbox  = "UAH_SANDBOX"
 	EnvAsk      = "UAH_ASK"
 	// EnvMaxAttempts is the runner's variable for the attempt limit.

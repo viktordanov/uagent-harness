@@ -124,7 +124,6 @@ func modelEnv(t *testing.T, llm *fakellm.Server) (*harnesstest.Env, []string) {
 	e := harnesstest.NewEnv(t)
 
 	return e, []string{
-		"UAH_ENGINE=",
 		"UAH_STATE_DIR=" + e.StateDir,
 		"CODEX_HOME=" + e.CodexHome,
 		"UNREAL_HARNESS_LLM_PROVIDER=",

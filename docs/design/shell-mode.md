@@ -1,7 +1,5 @@
 # Shell mode (`!`)
 
-Update 2026-09-29: the process engine was removed (ledger 51).
-
 Ledger item 38: type `!` at the start of an empty composer, and enter runs the line as a command in the workspace instead of sending it to the agent. The command and its output join the conversation, so the agent sees them on its next turn.
 
 1. [What Claude Code does](#what-claude-code-does)

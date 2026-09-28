@@ -1,7 +1,5 @@
 # Harness design: from wrapper to general-purpose harness
 
-Update 2026-09-29: the process engine was removed (ledger 51).
-
 Status: accepted with a reduced scope, 2026-09-24 (proposed 2026-09-23). Evidence comes from five studies: the unreal-agent v0.1.1 source, the terminal host's harness wrappers, Codex CLI 0.156.1, Claude Code 2.1.280, and a Go TUI framework benchmark ([bench/tui](../../bench/tui/README.md)).
 Runner references use `RN/` for `github.com/unreallabsai/unreal-agent@v0.1.1`.
 The code is split between uagent (events, the process engine, run records) and this repository (sessions, the embedded engine, instructions, hooks, the TUI); [implementation.md](implementation.md) places every file.

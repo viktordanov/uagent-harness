@@ -35,7 +35,7 @@ func TestCrashRecovery(t *testing.T) {
 		"OPENAI_API_KEY=test-key",
 		"UAH_STATE_DIR=" + e.StateDir,
 		"UAH_HOME=" + filepath.Join(e.StateDir, "..", "home"),
-		"UAH_ENGINE=", "UNREAL_HARNESS_LLM_PROVIDER=", "UNREAL_HARNESS_LLM_MODEL=",
+		"UNREAL_HARNESS_LLM_PROVIDER=", "UNREAL_HARNESS_LLM_MODEL=",
 	}
 	// No sandbox: under bwrap's PID namespace, $$ would not be the host's PID.
 	args := []string{"run", "-q", "--provider", "openai", "--model", "gpt-test", "--base-url", llm.URL, "-C", e.Workspace, "--sandbox", "danger-full-access"}

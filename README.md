@@ -307,7 +307,7 @@ Earlier versions used `~/.config/uagent`, `~/.local/state/unreal-agent`, and a p
 
 | Group | Keys |
 | --- | --- |
-| Model | `provider`, `model`, `effort`, `fast`, `timeout`, `max_disk`, `request_max_attempts`; `engine` is deprecated and only warns |
+| Model | `provider`, `model`, `effort`, `fast`, `timeout`, `max_disk`, `request_max_attempts` |
 | Sandbox | `permission_mode`, `sandbox_mode`; `[sandbox_workspace_write]` `network_access`, `writable_roots`; `[shell_environment_policy]` `inherit`, `ignore_default_excludes`, `exclude`, `include_only`, `set` |
 | Approvals | `approval_policy`, `approvals_reviewer`; `[approvals]` `allow`, `forbid`; `[review]` `model`, `effort`, `timeout`, `policy_file` |
 | Compaction | `auto_compact_percent`, `model_auto_compact_token_limit`, `model_context_window`, `compact_model`, `compact_effort`, `compact_prompt`, `experimental_compact_prompt_file`, `compact_user_message_max_tokens` |
@@ -360,14 +360,14 @@ The TUI is a pure reducer from session events and user intents to state and effe
 Read more: [sessions](internal/session/README.md), [the session index](internal/store/README.md), and [the TUI](internal/tui/README.md) with its look. Diagnostics go to `~/.uah/logs/uah-tui.log`.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="engines" files="internal/app/resolve.go internal/app/setup.go internal/app/removedengine.go" -->
+<!-- memoria:section id="engines" files="internal/app/resolve.go internal/app/setup.go" -->
 ### The engine
 
 <!-- memoria:import src="internal/engine/README.md#summary" -->
-The embedded engine runs unreal-agent-runner's packages inside uah, so messages, model, effort, fast mode, and the permission mode reach a live run. It keeps uagent's guards, session lock, and run records, applies the command rules, and writes the runner's session files, so a session the removed process engine started resumes on it.
+The embedded engine runs unreal-agent-runner's packages inside uah, so messages, model, effort, fast mode, and the permission mode reach a live run. It keeps uagent's guards, session lock, and run records, applies the command rules, and writes the runner's own session files.
 <!-- /memoria:import -->
 
-uah 1.2 removed the process engine, which spawned `unreal-agent-runner` and ran without live input, approvals, compaction, MCP servers, subagents, and more. `--engine`, `UAH_ENGINE`, and `engine` in a configuration file are still accepted, whatever their value: the session says once that the process engine was removed and runs on the embedded engine, and `uah doctor` shows the same warning in its `engine` check. `--runner` and `UAGENT_RUNNER` are gone, since nothing spawns the runner. A session the process engine started resumes as any other. What still varies is the provider and the model, such as `/fast` on openai and openai-codex only; the [engine README](internal/engine/README.md#what-varies-by-provider-and-model) lists it, and where each behavior lives.
+`internal/app/setup.go` builds it for every session; there is no engine to choose. What still varies is the provider and the model, such as `/fast` on openai and openai-codex only; the [engine README](internal/engine/README.md#what-varies-by-provider-and-model) lists it, and where each behavior lives.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="patch" files="cmd/uah/sessions.go" -->

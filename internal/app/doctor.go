@@ -106,9 +106,6 @@ func Doctor(ctx context.Context, in Inputs, opts DoctorOptions) []Check {
 		cfg = config.Config{}
 	}
 	r.Sandbox = absPolicy(r.Sandbox, in.Workspace)
-	if c, ok := checkEngine(in, cfg); ok {
-		checks = append(checks, c)
-	}
 	checks = append(checks, checkCredentials(r, stateDir, opts.Getenv)...)
 	if opts.Models == nil {
 		opts.Models = NewModels(stateDir, r.Settings, opts.Getenv)

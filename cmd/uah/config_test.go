@@ -50,7 +50,7 @@ url = "https://docs.example.com/mcp"
 	return root, ws, user, []string{
 		"UAH_HOME=" + filepath.Join(root, "home"),
 		"UAH_CONFIG=" + user, "UNREAL_HARNESS_LLM_PROVIDER=", "UNREAL_HARNESS_LLM_MODEL=",
-		"UAH_ENGINE=", "UAH_ASK=", "UAH_SANDBOX=read-only",
+		"UAH_ASK=", "UAH_SANDBOX=read-only",
 	}
 }
 
