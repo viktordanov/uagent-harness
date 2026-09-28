@@ -1,4 +1,4 @@
-// Package session is the long-lived object the TUI and `uah run` talk to. A
+// Package session is the long-lived object the TUI and `uah exec` talk to. A
 // session owns its settings, a queue of messages, and at most one live run,
 // and it merges run events and its own events into one ordered stream.
 package session
@@ -69,7 +69,7 @@ type Options struct {
 	// Shell runs the commands the user types (RunShell); nil: none.
 	Shell *usershell.Runner
 	// Stream asks the engine for the model's text as it arrives
-	// (engine.TextDelta), for a TUI or `uah run --stream`.
+	// (engine.TextDelta), for a TUI or `uah exec --json`.
 	Stream bool
 	// FirstPrompt is a resumed session's first message, from its runs, for
 	// a sidecar from before uah kept it.

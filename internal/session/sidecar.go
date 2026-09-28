@@ -14,7 +14,8 @@ import (
 )
 
 // Where a session was started. Codex hides scripted sessions from its resume
-// picker by default; uah does the same with SourceRun and with subagents.
+// picker by default; uah does the same with SourceRun (`uah exec`, and its
+// alias `uah run`; the value stays "run") and with subagents.
 const (
 	SourceTUI      = "tui"
 	SourceRun      = "run"
@@ -118,7 +119,7 @@ func writeSidecar(sessionsDir, id string, sc Sidecar) error {
 	return errors.Join(werr, f.Close())
 }
 
-// Interactive drops sessions started by `uah run`, as Codex's picker drops
+// Interactive drops sessions started by `uah exec`, as Codex's picker drops
 // `codex exec` sessions, and subagents. Sessions with no sidecar (older
 // ones, or uagent's) stay.
 func Interactive(infos []Info) []Info {

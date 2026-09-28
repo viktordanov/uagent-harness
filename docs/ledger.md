@@ -10,7 +10,7 @@ Asked for by the owner: uah as a terminal host backend, inside the mechanisms th
 
 | # | Item | Lane | Status |
 | --- | --- | --- | --- |
-| 52 | `--session-id <uuid>` starts a new session with that ID, as Claude Code's flag; an existing ID is a usage error | lane sessions | done (on the TUI and `uah run`; a canonical UUID in any case; an ID with a session file or a sidecar exists; with `--session`, `--last`, or `uah resume` it is a usage error; the TUI's `/new` gets a fresh ID) |
+| 52 | `--session-id <uuid>` starts a new session with that ID, as Claude Code's flag; an existing ID is a usage error | lane sessions | done (on the TUI and `uah exec`; a canonical UUID in any case; an ID with a session file or a sidecar exists; with `--session`, `--last`, or `uah resume` it is a usage error; the TUI's `/new` gets a fresh ID) |
 | 53 | Configuration layers: `~/.uah/config.d/*.toml` and `UAH_EXTRA_CONFIG`, merged after the user file by the project file's rules; their hooks run as written | — | todo |
 | 54 | Subagents fire subagent hooks only: SessionStart, SessionEnd, UserPromptSubmit, and Stop for root sessions; a new `SubagentStart`; `agent_id` and `parent_session_id` in hooks that fire inside a subagent | — | todo |
 | 55 | Session lookup: `workspace`, `first_prompt`, and `last_activity` in the sidecar; `uah sessions --workspace` and `--since` | lane sessions | done (`last_activity` is the session file's last item's `RecordedAt`; `first_prompt` is the first run's first message without injected messages, with image placeholders; `--workspace`, which `-C` already was, now also filters with `--all` and `--search`; `--json` prints `[]` for none) |

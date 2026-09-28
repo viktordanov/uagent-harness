@@ -9,7 +9,7 @@ import (
 	"github.com/viktordanov/uagent-harness/testing/fakellm"
 )
 
-// TestSessionIDFlag starts `uah run` with --session-id, finds the session
+// TestSessionIDFlag starts `uah exec` with --session-id, finds the session
 // by that ID, and refuses the ID a second time and on `uah resume`.
 func TestSessionIDFlag(t *testing.T) {
 	e, env := fakeEnv(t, fakellm.Reply{Text: "hello"})

@@ -1,7 +1,7 @@
 <!-- memoria:section id="overview" files="session.go loop.go events.go" -->
 # Sessions
 
-A session is the long-lived object the TUI and `uah run` talk to. It owns the settings, a queue of messages, at most one live run, pending approvals, and the hooks, and it merges run events and its own events into one ordered stream.
+A session is the long-lived object the TUI and `uah exec` talk to. It owns the settings, a queue of messages, at most one live run, pending approvals, and the hooks, and it merges run events and its own events into one ordered stream.
 
 <!-- memoria:export id="summary" -->
 A session owns its settings, a message queue, at most one live run, pending approvals, and its hooks on one goroutine, and merges run events and its own events into one ordered stream. Messages queue while the agent works, a steer reaches the running agent when the engine allows it, and an interrupt keeps the queue.
@@ -82,7 +82,7 @@ The session gives each run an `approval.Ask` (`askFunc`), which the engine calls
 1. `Options.Ask`, when set. A subagent asks through its parent's session this way.
 2. PermissionRequest hooks, when configured. The prompt reaches them as a tool call: `tool_name` is `Bash` with the command, or the `mcp__` name with its arguments. "allow" approves and "deny" (or exit 2) declines. A hook that decides neither passes the prompt on.
 3. The user, when the session is interactive (the TUI). The ask hands the prompt to the loop, which emits `ApprovalRequested` and waits for `Resolve` with the same ID.
-4. Otherwise nil or a decline: no one can answer in `uah run`.
+4. Otherwise nil or a decline: no one can answer in `uah exec`.
 
 The agent waits while an approval is open. An interrupt, the end of the run, or `Close` declines every pending approval of the run (`ApprovalResolved` with `decline`), so a waiting run can always stop. `engine.Options.AskAnytime` asks outside a run: a subagent's approval shows in its parent's session even while the parent is idle, and stays open until it is answered, its context ends, or the session closes. The rules and the auto-reviewer run before this ask; see [the permission pipeline](../approval/README.md).
 <!-- /memoria:section -->
@@ -104,7 +104,7 @@ The session runs the hooks of its events; `internal/hooks` runs the commands. A 
 PreToolUse and PreCompact hooks run in the engine, on the coordinator's goroutine. Each hook run is reported as `HookRan`. The hook contract and trust are in [internal/hooks](../hooks/README.md).
 <!-- /memoria:section -->
 
-<!-- memoria:section id="files" files="sidecar.go history.go agentwatch.go patches.go" -->
+<!-- memoria:section id="files" files="sidecar.go lookup.go remove.go history.go agentwatch.go patches.go" -->
 ## Files and history
 
 The runner's session files and uagent's run records are the source of truth; the [state storage record](../../docs/design/state.md) lists every file and why the index is only a cache.
@@ -122,7 +122,7 @@ The runner's session files and uagent's run records are the source of truth; the
 - **Removing.** `PlanRemoval` lists what deleting a session removes, touching nothing: its run records in `runs/`, its tool output in `sessions/operations/<id>/`, its files in `sessions/` (`.session.jsonl`, `.uah.json`, `.compaction.jsonl`, `.rewind.jsonl`, `.agent.json`, and `.lock` last), and the same for every subagent under it, found by the `parent` in their sidecars. `Removal.Lock` takes each existing session lock as a run does and refuses one a run holds (`harness.ErrSessionBusy`) unless forced; `Remove` deletes the paths. `uah sessions rm` then drops the index rows (`store.Forget`).
 - **Subagent IDs.** `NewSubagentID` is `subagent-<uuid>`; `ShortID` prints `subagent-` and 8 characters of the UUID (8 characters for other sessions), a prefix that resumes the session. Older subagents have plain UUIDs; the sidecar's `parent` identifies them.
 - **Watching a subagent.** `WatchAgent(ref)` follows one of the session's subagents, by ID or nickname, through the engine's `Subagents()` when it implements `AgentWatcher`: its earlier runs, its events so far, the ones that follow, a way to message it, and a way to send its queue now. The TUI's agent view uses it; [internal/agents](../agents/README.md#watching-an-agent) implements it.
-- **History.** `Sessions` folds run records into one `Info` per session, reading only summaries and the first request. `Load` reads every run of a session in start order with its events, which is how the TUI rebuilds a resumed transcript; each compaction saved in the compaction log is added to the run it happened in, in time order, so reloaded transcripts, `uah sessions show`, and `uah run --stream` show it. Each saved rewind follows the run before it as `engine.Rewound`, so a reloaded transcript ends where the session went back to. Likewise each applied `apply_patch` call's diff, read from its completed job in the run's events file (`patches.go`), follows the call as `engine.PatchApplied`. `InDir` matches a session's workspace the way Codex does: absolute, cleaned, and with symlinks resolved.
+- **History.** `Sessions` folds run records into one `Info` per session, reading only summaries and the first request. `Load` reads every run of a session in start order with its events, which is how the TUI rebuilds a resumed transcript; each compaction saved in the compaction log is added to the run it happened in, in time order, so reloaded transcripts, `uah sessions show`, and `uah exec --json` show it. Each saved rewind follows the run before it as `engine.Rewound`, so a reloaded transcript ends where the session went back to. Likewise each applied `apply_patch` call's diff, read from its completed job in the run's events file (`patches.go`), follows the call as `engine.PatchApplied`. `InDir` matches a session's workspace the way Codex does: absolute, cleaned, and with symlinks resolved.
 
 Listing and search go through the rebuildable SQLite index in [internal/store](../store/README.md), which falls back to `Sessions` when the index cannot be used.
 <!-- /memoria:section -->
@@ -144,9 +144,9 @@ Listing and search go through the rebuildable SQLite index in [internal/store](.
 | `ShellStarted`, `ShellOutput`, `ShellFinished` | A command the user typed (`RunShell`): its start, its output as it arrives, and its result with the record the agent gets |
 | `Idle` | The session has nothing to do |
 
-`uah run --stream` writes them as JSONL, and the TUI reduces them into its state.
+`uah exec --json` writes them as JSONL, and the TUI reduces them into its state.
 
-`Options.Stream` asks the engine for the model's text as it arrives (`engine.Options.Stream`): `engine.TextDelta`, `ReasoningDelta`, and `StreamReset` join the stream before the runner's final message. The TUI and `uah run --stream` set it; plain `uah run` and subagents do not.
+`Options.Stream` asks the engine for the model's text as it arrives (`engine.Options.Stream`): `engine.TextDelta`, `ReasoningDelta`, and `StreamReset` join the stream before the runner's final message. The TUI and `uah exec --json` set it; plain `uah exec` and subagents do not.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="tests" files="session_test.go steerqueued_test.go hooks_test.go runner_test.go compact_test.go history_test.go sidecar_test.go saved_test.go shell_test.go rewind_test.go" -->
