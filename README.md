@@ -17,7 +17,7 @@ A terminal coding agent that works like Codex, running on [unreal-agent](https:/
 brew install viktordanov/tap/uah
 ```
 
-- [Sessions](#resume-a-session) you can resume, search, and [take back to an earlier message](#go-back-to-an-earlier-message), and a headless [`uah run`](#headless-mode)
+- [Sessions](#resume-a-session) you can resume, search, and [take back to an earlier message](#go-back-to-an-earlier-message), and a headless [`uah exec`](#headless-mode)
 - [Subagents](#subagents-and-agent-files) that run in parallel, defined in Markdown or TOML agent files
 - [AGENTS.md and skills](#agentsmd-and-skills), and [MCP servers](#mcp-setup) with OAuth
 - A [sandbox](#permission-modes) (Seatbelt, bubblewrap) with [approvals](#command-rules), permission modes, and an auto-reviewer
@@ -89,7 +89,7 @@ uah resume --last       # this directory's most recent session
 uah --session 3f2a      # a session by ID or unique prefix
 ```
 
-When you quit the TUI, it prints the session's token usage and the command that continues it (`uah resume <id>`), as Codex does. In the TUI, ctrl+s opens the picker and ctrl+n starts a new session. The picker hides sessions from `uah run` and subagents, as Codex hides `codex exec` sessions.
+When you quit the TUI, it prints the session's token usage and the command that continues it (`uah resume <id>`), as Codex does. In the TUI, ctrl+s opens the picker and ctrl+n starts a new session. The picker hides sessions from `uah exec` and subagents, as Codex hides `codex exec` sessions.
 
 ### Go back to an earlier message
 
@@ -99,20 +99,26 @@ Press esc twice on an empty prompt while the agent is idle, or type `/rewind`: y
 
 Drag over the transcript to select text; double click selects a word and triple click a line. Letting go copies the selection to the clipboard, and the footer says how many lines. Dragging to the top row scrolls, and the wheel keeps scrolling during a drag. Esc or a click clears the selection. The copy leaves out the `λ` and `•` columns and the padding around code, so a code block pastes as code. uah copies with OSC 52, which also works over ssh, and with `pbcopy`, `wl-copy`, or `xclip`. To use the terminal's own selection, hold Option (iTerm2, Terminal) or Shift (most others), or set `[tui] mouse = false`. See the [selection design](docs/design/selection.md).
 
+The terminal's title shows the session's state and its workspace: `uah · api` when idle, `uah · working · api` while the agent works, and `uah · approve? · api` while an approval waits, which helps to find a pane among many. While the agent works, uah also sends OSC 9;4 progress, which a terminal that supports it shows as a busy mark; others ignore it. `[tui] title = false` turns both off.
+
 ### Headless mode
 
-`uah run` prints progress on stderr and each answer on stdout, and exits when the agent is idle.
+`uah exec` prints progress on stderr and each answer on stdout, and exits when the agent is idle. It is named as `codex exec`; `uah run` is the same command.
 
 ```sh
-uah run "Fix the failing test in pkg/foo"
-uah run --last "Now update the changelog"       # continue this directory's latest session
-printf 'first\nsecond\n' | uah run --stdin       # each line is a message; lines queue while the agent works
-uah run --stream "..."                           # JSONL events for scripts, with the answer as it arrives
+uah exec "Fix the failing test in pkg/foo"
+uah exec --last "Now update the changelog"       # continue this directory's latest session
+git diff | uah exec -                             # all of stdin is one message
+printf 'first\nsecond\n' | uah exec --stdin       # each line is a message; lines queue while the agent works
+uah exec --json "..."                             # JSONL events for scripts, with the answer as it arrives (also --stream)
+uah exec --ephemeral -o answer.md "..."           # keep no session; write the final answer to a file
 ```
 
-The TUI shows the answer as the model writes it, and `--stream` adds `text_delta`, `reasoning_delta`, and `stream_reset` events before the final `assistant_message`. Plain `uah run` prints each answer once, when it is complete. See the [streaming design](docs/design/streaming.md).
+`--ephemeral` keeps nothing: the session runs in a temporary directory that uah removes at exit, so `sessions/`, `runs/`, and the index do not change and `uah sessions` does not list it. It starts a new session, so it cannot be used with `--last` or `--session`. `-o` (`--output-last-message`) writes the last run's answer to the file at exit; with no answer, it writes an empty file and warns on stderr, as Codex does.
 
-It exits 0 when the run succeeds, 1 when it fails, 3 at the disk limit, 124 on a timeout, and 130 on an interrupt. Nobody can answer an approval headless, so commands that need one are declined with a reason. `uah run --help` lists the flags.
+The TUI shows the answer as the model writes it, and `--json` adds `text_delta`, `reasoning_delta`, and `stream_reset` events before the final `assistant_message`. Plain `uah exec` prints each answer once, when it is complete. See the [streaming design](docs/design/streaming.md).
+
+It exits 0 when the run succeeds, 1 when it fails, 2 on a usage error, 3 at the disk limit, 124 on a timeout, and 130 on an interrupt. Nobody can answer an approval headless, so commands that need one are declined with a reason. `uah exec --help` lists the flags.
 
 ### Search old sessions
 
@@ -308,14 +314,14 @@ Earlier versions used `~/.config/uagent`, `~/.local/state/unreal-agent`, and a p
 | Group | Keys |
 | --- | --- |
 | Model | `provider`, `model`, `effort`, `fast`, `timeout`, `max_disk`, `request_max_attempts` |
-| Sandbox | `permission_mode`, `sandbox_mode`; `[sandbox_workspace_write]` `network_access`, `writable_roots`; `[shell_environment_policy]` `inherit`, `ignore_default_excludes`, `exclude`, `include_only`, `set` |
+| Sandbox | `permission_mode`, `sandbox_mode`, `user_shell_sandbox`; `[sandbox_workspace_write]` `network_access`, `writable_roots`; `[shell_environment_policy]` `inherit`, `ignore_default_excludes`, `exclude`, `include_only`, `set` |
 | Approvals | `approval_policy`, `approvals_reviewer`; `[approvals]` `allow`, `forbid`; `[review]` `model`, `effort`, `timeout`, `policy_file` |
 | Compaction | `auto_compact_percent`, `model_auto_compact_token_limit`, `model_context_window`, `compact_model`, `compact_effort`, `compact_prompt`, `experimental_compact_prompt_file`, `compact_user_message_max_tokens` |
 | Instructions and skills | `model_instructions_file`, `project_doc_fallback_filenames`, `project_root_markers`, `project_doc_max_bytes`; `[instructions]` `enabled`, `max_bytes` |
 | Hooks | `[[hooks.<Event>]]` `matcher`, `command`, `timeout` |
 | MCP servers | `[mcp_servers.<name>]` `command`, `args`, `env`, `env_vars`, `cwd`, `url`, `bearer_token_env_var`, `http_headers`, `env_http_headers`, `enabled`, `required`, `startup_timeout_sec`, `tool_timeout_sec`, `enabled_tools`, `disabled_tools`, `supports_parallel_tool_calls`, `default_tools_approval_mode`, `tools.<tool>.approval_mode`, `auth`, `scopes`, `oauth_resource`, `[oauth]`; `mcp_oauth_credentials_store`, `mcp_oauth_callback_port`, `mcp_oauth_callback_url` |
 | Subagents | `[agents]` `enabled`, `max_concurrent_threads_per_session`, `max_depth`, `default_subagent_model`, `default_subagent_reasoning_effort` |
-| TUI | `[tui]` `details`, `mouse` |
+| TUI | `[tui]` `details`, `mouse`, `title` |
 | Projects | `[projects."<path>"]` `trusted` |
 
 A short user file:
@@ -447,7 +453,7 @@ A subagent is the same as the main agent in every way except its session, which 
 - A role is a Markdown file with front matter, as Claude Code's, or a Codex TOML role file; it can limit the subagent's tools and approve commands and MCP tools in advance, within the permission mode.
 - A subagent never starts subagents: the depth limit is 1.
 - `fork_context` starts it from a copy of the parent's history, so its first model request starts with the parent's, for the provider's prompt cache.
-- A failed subagent reports why, such as the provider's message, to the parent's `wait_agent`, the TUI, and `uah run`.
+- A failed subagent reports why, such as the provider's message, to the parent's `wait_agent`, the TUI, and `uah exec`.
 - `/agents <name>` shows its live transcript in the TUI.
 
 Read more: [subagents](internal/agents/README.md), and the [design and validation](docs/design/subagents.md).
