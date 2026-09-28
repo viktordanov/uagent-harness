@@ -223,7 +223,8 @@ func (st *Styles) statusLine(s state.State, w int) string {
 		verb, wait := reconnectText(*s.Live.Reconnect, s.Now)
 
 		return ansi.Truncate(st.breathing(s.Now.UnixMilli())+" "+st.bold.Render(verb)+st.dim.Render(" ("+wait+" • esc to interrupt)"), w, "…")
-	case s.Live != nil && !s.Live.TurnSince.IsZero():
+	// Streamed text can arrive before the runner's turn event: it is writing.
+	case s.Live != nil && (!s.Live.TurnSince.IsZero() || s.Writing()):
 		verb := "Thinking"
 		if s.Writing() {
 			verb = "Writing"

@@ -31,4 +31,7 @@ func TestStreamedAnswer(t *testing.T) {
 
 	thinking := apply(live(), engine.ReasoningDelta{At: t0, ItemID: "rs", Text: "Considering"}, state.Tick{Now: t0})
 	assert.Contains(t, screen(thinking, ""), "Thinking", "reasoning is not writing the answer")
+
+	early := apply(base(), core.RunStarted{At: t0, RunID: "r1"}, engine.TextDelta{At: t0, ItemID: "msg", Text: "The fix", Final: true}, state.Tick{Now: t0})
+	assert.Contains(t, screen(early, ""), "Writing", "text that streams before the runner's turn event")
 }
