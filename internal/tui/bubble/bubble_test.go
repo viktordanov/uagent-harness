@@ -132,6 +132,19 @@ func (d *driver) until(what string, check func() bool) {
 	}
 }
 
+// pump processes messages for a while, such as the clock's ticks.
+func (d *driver) pump(dur time.Duration) {
+	end := time.After(dur)
+	for {
+		select {
+		case msg := <-d.msgs:
+			d.send(msg)
+		case <-end:
+			return
+		}
+	}
+}
+
 func (d *driver) waitFor(text string) {
 	d.t.Helper()
 	d.until(fmt.Sprintf("%q", text), func() bool { return strings.Contains(d.view(), text) })

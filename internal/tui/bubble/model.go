@@ -247,9 +247,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.MouseClickMsg, tea.MouseMotionMsg, tea.MouseReleaseMsg:
 		return m.onMouse(msg)
 	case tea.KeyPressMsg:
-		return m.onKey(msg)
+		return m.now().onKey(msg)
 	case tea.PasteMsg:
-		return m.onPaste(msg)
+		return m.now().onPaste(msg)
 	case eventsMsg:
 		if msg.gen != m.gen {
 			return m, next(msg.gen, msg.batches) // drain a closed session's last events
@@ -277,7 +277,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case withdrawnMsg:
 		return m.dispatch(state.DraftRestored{Text: msg.text})
 	case tickMsg:
-		m.st, _ = state.Reduce(m.st, state.Tick{Now: time.Time(msg)})
+		m = m.now()
 		m.ticking = false
 
 		return m, m.afterChange()
@@ -355,6 +355,15 @@ func (m Model) dispatch(intent any) (tea.Model, tea.Cmd) {
 	}
 
 	return m, tea.Batch(cmds...)
+}
+
+// now sets the state's clock to deps.Now. The clock ticks only while
+// something moves on screen, so a key sets it first: a first esc after the
+// session sat idle is timed from the key, not from the last tick.
+func (m Model) now() Model {
+	m.st, _ = state.Reduce(m.st, state.Tick{Now: m.deps.Now()})
+
+	return m
 }
 
 // afterChange keeps the clock ticking while anything moves on screen.

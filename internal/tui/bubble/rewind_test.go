@@ -3,7 +3,9 @@ package bubble_test
 import (
 	"context"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
@@ -98,4 +100,46 @@ func TestTUI_AnyOtherKeyCancelsGoingBack(t *testing.T) {
 	d.until("the selection to end", func() bool { return !strings.Contains(d.view(), "▶") })
 	assert.Contains(t, d.view(), "answer one")
 	assert.Contains(t, d.view(), "λ x")
+}
+
+// TestTUI_EscEscAfterIdling: esc esc selects your message after the
+// session sat idle longer than the two seconds a first esc waits, while
+// the clock did not tick: a key sets the clock first.
+func TestTUI_EscEscAfterIdling(t *testing.T) {
+	deps, _ := rewindDeps(t, fakellm.Reply{Text: "answer one"})
+	clock := &testClock{at: time.Now()}
+	deps.Now = clock.now
+	d := start(t, deps)
+	d.typeText("first")
+	d.key(tea.KeyEnter, 0)
+	d.waitFor("answer one")
+	d.waitIdle()
+
+	clock.add(time.Minute)
+	d.key(tea.KeyEscape, 0)
+	d.waitFor("esc again to edit a previous message")
+	clock.add(500 * time.Millisecond)
+	d.pump(300 * time.Millisecond) // the tick the hint starts
+	assert.Contains(t, d.view(), "esc again to edit a previous message", "still primed half a second later")
+	d.key(tea.KeyEscape, 0)
+	d.waitFor("▶ first")
+}
+
+// testClock is a clock a test moves.
+type testClock struct {
+	mu sync.Mutex
+	at time.Time
+}
+
+func (c *testClock) now() time.Time {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	return c.at
+}
+
+func (c *testClock) add(d time.Duration) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.at = c.at.Add(d)
 }
