@@ -361,11 +361,15 @@ Each part is documented next to its code. These are the summaries, with links to
 A session owns its settings, a message queue, at most one live run, pending approvals, and its hooks on one goroutine, and merges run events and its own events into one ordered stream. Messages queue while the agent works, a steer reaches the running agent when the engine allows it, and an interrupt keeps the queue.
 <!-- /memoria:import -->
 
+<!-- memoria:import src="internal/sessionfile/README.md#summary" -->
+The runner's session file, `sessions/<id>.session.jsonl`, is a versioned JSON-lines format: a version-2 header, then items numbered by `Sequence`, the stable cursor for paging. uah documents the format and reads it by the documented rules, and a test fails when the runner's output stops following them.
+<!-- /memoria:import -->
+
 <!-- memoria:import src="internal/tui/README.md#summary" -->
 The TUI is a pure reducer from session events and user intents to state and effects, a pure renderer from state to screen lines, and a thin Bubble Tea v2 shell that turns keys into intents and runs the effects against the session. Keys never change meaning: enter queues while the agent works, ctrl+enter sends now, esc esc interrupts, and ctrl+v pastes an image.
 <!-- /memoria:import -->
 
-Read more: [sessions](internal/session/README.md), [the session index](internal/store/README.md), and [the TUI](internal/tui/README.md) with its look. Diagnostics go to `~/.uah/logs/uah-tui.log`.
+Read more: [sessions](internal/session/README.md), [the session index](internal/store/README.md), [the session file](internal/sessionfile/README.md), and [the TUI](internal/tui/README.md) with its look. Diagnostics go to `~/.uah/logs/uah-tui.log`.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="engines" files="internal/app/resolve.go internal/app/setup.go" -->

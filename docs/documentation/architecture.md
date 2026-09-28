@@ -5,6 +5,7 @@ uah is a pure core with well-organized infrastructure around it, not layered DDD
 | Package | Role |
 | --- | --- |
 | `internal/session` | The long-lived session: one goroutine owns settings, the queue, the live run, hooks, and one ordered event stream. |
+| `internal/sessionfile` | The runner's session file as a documented, versioned format, read by those rules with no runner code: the header, items by `Sequence`, paging, and the last item. |
 | `internal/engine` | How runs execute: `embedded` runs the runner's packages in process as a uagent `harness.Backend`. |
 | `internal/instructions` | AGENTS.md discovery and the host prompt, following Codex. |
 | `internal/config` | TOML configuration: the user file and trusted project files. |
