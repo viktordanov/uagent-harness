@@ -27,9 +27,13 @@ func TestSetup_SubagentHooks(t *testing.T) {
 	e, in := setupEnv(t)
 	t.Setenv("OPENAI_API_KEY", "test-key")
 	log := filepath.Join(e.StateDir, "hooks.jsonl")
+	// The root's and the child's hooks run at once: a lock directory keeps
+	// each payload on its own line.
+	lock := filepath.Join(e.StateDir, "hooks.lock")
+	record := "until mkdir " + lock + " 2>/dev/null; do sleep 0.01; done; cat >> " + log + "; echo >> " + log + "; rmdir " + lock
 	var cfg strings.Builder
 	for _, event := range hooks.Events {
-		cfg.WriteString("[[hooks." + string(event) + "]]\ncommand = \"cat >> " + log + " && echo >> " + log + "\"\n")
+		cfg.WriteString("[[hooks." + string(event) + "]]\ncommand = \"" + record + "\"\n")
 	}
 	require.NoError(t, os.MkdirAll(filepath.Dir(in.ConfigPath), 0o700))
 	require.NoError(t, os.WriteFile(in.ConfigPath, []byte(cfg.String()), 0o600))
