@@ -114,3 +114,26 @@ func utc(infos []session.Info) []session.Info {
 
 	return out
 }
+
+// TestForget drops a session's rows, runs and full text, for
+// `uah sessions rm`, and keeps the others.
+func TestForget(t *testing.T) {
+	env := harnesstest.NewEnv(t)
+	const gone, kept = "3f2a1b2c-0000-4000-8000-000000000002", "3f2a1b2c-0000-4000-8000-000000000003"
+	runs(t, env, gone, "flaky parser")
+	runs(t, env, kept, "flaky lexer")
+	ix, err := store.Open(context.Background(), env.StateDir)
+	require.NoError(t, err)
+	defer ix.Close()
+
+	require.NoError(t, ix.Forget(context.Background(), []string{gone}))
+
+	infos, err := ix.Sessions(context.Background())
+	require.NoError(t, err)
+	require.Len(t, infos, 1)
+	assert.Equal(t, kept, infos[0].ID)
+	found, err := ix.Search(context.Background(), "flaky")
+	require.NoError(t, err)
+	require.Len(t, found, 1, "no full text left of the forgotten session")
+	assert.Equal(t, kept, found[0].ID)
+}

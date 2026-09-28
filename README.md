@@ -129,7 +129,10 @@ uah sessions                           # this directory's sessions, newest first
 uah sessions --search "flaky parser"   # sessions whose prompts or answers contain the words
 uah sessions show 3f2a                 # the transcript (--json)
 uah sessions --json -C ~/src/app --since 2026-09-29T08:00:00Z   # a directory's sessions active since then
+uah sessions rm 3f2a                   # delete a session with its runs and subagents (--dry-run, --json)
 ```
+
+`uah sessions rm` removes the session's files, its tool output, its run records, its rows in the index, and the same for each subagent it started. It refuses while a run holds the session's lock; `--force` removes the session anyway.
 
 Each session's sidecar, `~/.uah/sessions/<id>.uah.json`, also has its `workspace`, its `first_prompt` (200 characters), its `last_activity`, and its `last_sequence`, so a program can find a session and see that it changed from that file alone. `last_sequence` is the `Sequence` of the last item in the [session file](internal/sessionfile/README.md) when the last turn ended.
 

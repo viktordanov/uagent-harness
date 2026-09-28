@@ -131,6 +131,40 @@ func List(ctx context.Context, stateDir string) ([]session.Info, error) {
 	return ix.Sessions(ctx)
 }
 
+// Forget deletes the index rows of the sessions, after their run records
+// were removed (`uah sessions rm`); Reconcile would drop them on the next
+// open too.
+func (ix *Index) Forget(ctx context.Context, ids []string) error {
+	tx, err := ix.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to update the index: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	for _, id := range ids {
+		for _, q := range []string{`DELETE FROM runs WHERE session_id = ?`, `DELETE FROM messages WHERE session_id = ?`} {
+			if _, err := tx.ExecContext(ctx, q, id); err != nil {
+				return fmt.Errorf("failed to update the index: %w", err)
+			}
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to update the index: %w", err)
+	}
+
+	return nil
+}
+
+// ForgetIn is Forget for a state directory.
+func ForgetIn(ctx context.Context, stateDir string, ids []string) error {
+	ix, err := Open(ctx, stateDir)
+	if err != nil {
+		return err
+	}
+	defer ix.Close()
+
+	return ix.Forget(ctx, ids)
+}
+
 // SearchIn is Search for a state directory.
 func SearchIn(ctx context.Context, stateDir, query string) ([]session.Info, error) {
 	ix, err := Open(ctx, stateDir)

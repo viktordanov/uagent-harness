@@ -46,7 +46,7 @@ func sessionsCommand() *cli.Command {
 		Flags:        []cli.Flag{stateDir, jsonFlag, all, workspace, search, since},
 		OnUsageError: onUsageError,
 		Action:       listSessions,
-		Commands: []*cli.Command{{
+		Commands: []*cli.Command{sessionsRmCommand(stateDir), {
 			Name:         subShow,
 			Usage:        "print a session's transcript",
 			ArgsUsage:    "<id or unique prefix>",
