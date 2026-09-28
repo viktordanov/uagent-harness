@@ -6,7 +6,7 @@ Stop time (first round): 07:50 local. Later rounds have none.
 
 ## Pending (round 5)
 
-Asked for by the owner: uah as a terminal host backend, inside the mechanisms the terminal host keeps for every harness. Designed, not being built; see [the terminal host integration design](design/hosting.md).
+Asked for by the owner: uah as a terminal host backend, inside the mechanisms the terminal host keeps for every harness. Designed and built; see [the terminal host integration design](design/hosting.md).
 
 | # | Item | Lane | Status |
 | --- | --- | --- | --- |

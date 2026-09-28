@@ -1,6 +1,6 @@
 # Integration with the terminal host: design
 
-Status: designed, 2026-09-29. Not built. The items are in the [ledger](../ledger.md#pending-round-5), round 5.
+Status: designed and built, 2026-09-29. The items are in the [ledger](../ledger.md#pending-round-5), round 5.
 
 The terminal host runs coding-agent sessions in tmux-backed terminals that a browser controls. Claude Code, Codex, and OpenCode are interchangeable backends. This record lists what uah adds so that the terminal host can run uah as one more backend, and what uah does not add.
 
