@@ -138,7 +138,7 @@ func (s *State) configLoaded(e ConfigLoaded) {
 	key := s.Config.saved
 	s.Config.saved = ""
 	if v, ok := e.Values[key]; ok && v.Source != SourceUser && v.Source != sourceDefault && v.Source != sourceSession {
-		s.notice(session.LevelWarning, fmt.Sprintf("%s still comes from the %s, which wins over the user file", key, v.Source))
+		s.notice(session.LevelWarning, fmt.Sprintf("%s still comes from %s, which wins over the user file", key, v.Source))
 	}
 }
 

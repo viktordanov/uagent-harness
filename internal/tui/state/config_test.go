@@ -174,10 +174,10 @@ func TestConfig_WarnsWhenAnotherSourceWins(t *testing.T) {
 	s := openConfig(t, opened(), "Auto-compact")
 	s, _ = apply(s, state.ConfigChange{Delta: 1}, state.ConfigSaved{Key: "auto_compact_percent", Value: 95})
 	values := configValues()
-	values["auto_compact_percent"] = state.ConfigValue{Value: "80", Source: "project file"}
+	values["auto_compact_percent"] = state.ConfigValue{Value: "80", Source: "config.d/x.toml"}
 	s, _ = apply(s, state.ConfigLoaded{Path: "/cfg.toml", Values: values})
 	assert.Equal(t, session.LevelWarning, s.Items[len(s.Items)-1].Level)
-	assert.Contains(t, s.Items[len(s.Items)-1].Text, "auto_compact_percent still comes from the project file")
+	assert.Contains(t, s.Items[len(s.Items)-1].Text, "auto_compact_percent still comes from config.d/x.toml, which wins over the user file")
 	assert.Contains(t, s.Items[len(s.Items)-2].Text, "applies to sessions opened from now on")
 
 	s, _ = apply(s, state.ConfigSaved{Key: "fast", Value: true, Err: assert.AnError})

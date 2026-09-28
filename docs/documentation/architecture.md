@@ -25,7 +25,7 @@ uah is a pure core with well-organized infrastructure around it, not layered DDD
 | `internal/tui/bubble` | The Bubble Tea shell: keys to intents, effects to commands, and frames. |
 | `internal/app` | Session setup: `Resolve` picks settings from flags, the resumed session, the configuration, and defaults with no I/O; `Explain` reports each effective value and its source the same way; `Setup` loads files and builds the engine; `Doctor` runs the same steps as checks for `uah doctor`. |
 | `cmd/uah` | The CLI: flags, `exec` (also `run`), `resume`, `sessions`, `hooks`, `config`, `doctor`, `mcp`, and the TUI launcher. |
-| `testing` | `harnesstest` (fake and real runners, `RunnerEngine` that spawns either for tests, isolated state), `fakellm` (a scripted Responses API), `mcpserver` (a stdio MCP server), and `oauthserver` (an MCP server behind a small OAuth authorization server). |
+| `testing` | `harnesstest` (fake and real runners, `RunnerEngine` that spawns either for tests, isolated state, `IsolatedMain` for a package's `TestMain`), `fakellm` (a scripted Responses API), `mcpserver` (a stdio MCP server), and `oauthserver` (an MCP server behind a small OAuth authorization server). |
 
 ## Rules
 
@@ -35,6 +35,7 @@ uah is a pure core with well-organized infrastructure around it, not layered DDD
 - Files are the source of truth for state: the runner's session files, uagent's run records, and uah's sidecars (see `docs/design/state.md`).
 - Wrap errors with `fmt.Errorf("failed to <action>: %w", err)`, and log with `slog` to stderr or the TUI log file.
 - Test through real code paths: the fake runner, the real runner built from go.mod, and `fakellm`, instead of mocks.
+- No test reads the user's `~/.uah`. A package whose tests can reach uah's home (`internal/home`, directly or through `internal/config` and `internal/app`) runs them through `harnesstest.IsolatedMain`, which sets `UAH_HOME` to a temporary directory and clears `UAH_CONFIG`, `UAH_STATE_DIR`, and `UAH_EXTRA_CONFIG`; `cmd/uah`'s `TestMain` does the same for the binary it builds.
 
 ## Size and complexity
 
