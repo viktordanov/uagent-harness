@@ -22,6 +22,7 @@ Adapted in uah:
 | `internal/instructions/codex_prompt.md`, `codex.go` | Codex's base instructions for gpt-6-sol, verbatim (`model_messages.instructions_template` in `codex-rs/models-manager/models.json`) |
 | `internal/tui/render/markdown/table.go` | Table layout: padding, gaps, rules, fitting columns to the width, and the key/value records (`codex-rs/tui/src/markdown_render.rs`, `markdown_render/table_key_value.rs`) |
 | `internal/models/bundled.json` | The bundled model catalog, `codex-rs/models-manager/models.json` (a subset of its fields) |
+| `internal/engine/codexauth/refresh.go` | The ChatGPT token refresh: the request, the client ID and endpoint, and how a refusal is classified (`codex-rs/login/src/auth/manager.rs`, `login/src/oauth/client.rs`, `login/src/oauth/error.rs`) |
 
 Many other parts follow Codex's behavior (configuration keys, rules, approvals, MCP, subagents); those are uah's own code written against Codex's documented behavior and source, and the design records in [docs/design](docs/design) cite the Codex files they follow.
 

@@ -6,6 +6,7 @@ package process
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync"
 
 	"github.com/viktordanov/uagent/core"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/viktordanov/uagent-harness/internal/approval"
 	"github.com/viktordanov/uagent-harness/internal/engine"
+	"github.com/viktordanov/uagent-harness/internal/engine/codexauth"
 	"github.com/viktordanov/uagent-harness/internal/sandbox"
 )
 
@@ -25,6 +27,10 @@ type Engine struct {
 	// varies.
 	caps engine.Capabilities
 
+	// getenv is the harnesses' environment, where the runner finds the
+	// Codex login.
+	getenv func(string) string
+
 	mu sync.Mutex
 	h  *harness.Harness
 	// byMode are the harnesses built for the modes runs asked for.
@@ -33,7 +39,7 @@ type Engine struct {
 
 // New returns an engine whose runs all use cfg.
 func New(cfg harness.Config) *Engine {
-	return &Engine{h: harness.New(cfg)}
+	return &Engine{h: harness.New(cfg), getenv: cfg.Getenv}
 }
 
 // NewSandboxed returns an engine whose runs use build's configuration for
@@ -48,7 +54,7 @@ func NewSandboxed(mode sandbox.Mode, rules bool, build func(sandbox.Mode) (harne
 	}
 	h := harness.New(cfg)
 
-	return &Engine{build: build, h: h, byMode: map[sandbox.Mode]*harness.Harness{mode: h}, caps: Capabilities(rules)}, nil
+	return &Engine{build: build, h: h, getenv: cfg.Getenv, byMode: map[sandbox.Mode]*harness.Harness{mode: h}, caps: Capabilities(rules)}, nil
 }
 
 func (e *Engine) Name() string { return "process" }
@@ -64,6 +70,16 @@ func (e *Engine) Start(ctx context.Context, req core.Request, opts engine.Option
 	h, err := e.harness(opts)
 	if err != nil {
 		return nil, err
+	}
+	// The runner reads the Codex auth file once, when it starts, and never
+	// refreshes it, so the file is refreshed first; this also keeps
+	// uagent's preflight from blocking a token that can be refreshed.
+	getenv := e.getenv
+	if getenv == nil {
+		getenv = os.Getenv
+	}
+	if err := codexauth.BeforeRun(ctx, req.Provider, getenv); err != nil {
+		return nil, fmt.Errorf("failed to start run: %w", err)
 	}
 	run, err := h.Start(ctx, req, sink)
 	if err != nil {

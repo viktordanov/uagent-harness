@@ -41,7 +41,9 @@ func checkRunner(engine, explicit string) Check {
 
 // checkCredentials runs uagent's preflight for the provider (credentials,
 // token expiry, and the workspace checks every run makes) and, for the
-// embedded engine, builds the provider's client as a run would.
+// embedded engine, builds the provider's client as a run would. A Codex
+// login uah can refresh is not reported as expired, since each run
+// refreshes it first (codexauth.BeforeRun).
 func checkCredentials(r Resolved, stateDir string, getenv func(string) string) []Check {
 	s := r.Settings
 	h := harness.New(harness.Config{StateDir: stateDir, Getenv: getenv, Logger: slog.New(slog.DiscardHandler)})
@@ -57,13 +59,17 @@ func checkCredentials(r Resolved, stateDir string, getenv func(string) string) [
 			other = append(other, f)
 		}
 	}
+	login, refreshable := codexLogin(s.Provider, getenv, time.Now())
+	if refreshable {
+		auth = withoutExpiry(auth)
+	}
 	name := "credentials"
 	checks := []Check{workspaceCheck(other, s.Workspace, s.AllowDotenv)}
 	switch {
 	case len(auth) > 0 && auth[0].Severity == core.SeverityWarning:
-		return append(checks, warn(name, auth[0].Message, "run `codex login`"))
+		return append(checks, warn(name, withLogin(auth[0].Message, login), "run `codex login`"))
 	case len(auth) > 0:
-		return append(checks, fail(name, auth[0].Message, credentialFix(s.Provider)))
+		return append(checks, fail(name, withLogin(auth[0].Message, login), credentialFix(s.Provider)))
 	}
 	if r.Engine == EngineEmbedded {
 		if err := embedded.CheckCredentials(s.Provider, getenv); err != nil {
@@ -73,8 +79,19 @@ func checkCredentials(r Resolved, stateDir string, getenv func(string) string) [
 	if s.Provider == "ollama" {
 		return append(checks, ok(name, "ollama needs none"))
 	}
+	if login != "" {
+		return append(checks, ok(name, s.Provider+" credentials found: "+login))
+	}
 
 	return append(checks, ok(name, s.Provider+" credentials found and not expired"))
+}
+
+func withLogin(message, login string) string {
+	if login == "" {
+		return message
+	}
+
+	return message + " (" + login + ")"
 }
 
 func credentialFix(provider string) string {

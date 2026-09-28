@@ -53,15 +53,18 @@ func remoteHTTPClient() *http.Client {
 
 // codexHTTPClient is openaicodex.NewClient's HTTP client with the watching
 // transport: a clone of the default transport that never forwards
-// subscription credentials through redirects.
-func codexHTTPClient() (*http.Client, error) {
+// subscription credentials through redirects. Under the watching transport,
+// the login's sets the credentials on each attempt and renews them after a
+// 401 (codexauth.Login.Transport), where the runner's client sends the token
+// it read once.
+func codexHTTPClient(login *codexauth.Login) (*http.Client, error) {
 	transport, ok := http.DefaultTransport.(*http.Transport)
 	if !ok {
 		return nil, errors.New("the default HTTP transport is not an *http.Transport")
 	}
 
 	return &http.Client{
-		Transport:     watchTransport{base: transport.Clone()},
+		Transport:     watchTransport{base: login.Transport(transport.Clone())},
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 	}, nil
 }
@@ -142,9 +145,9 @@ func ollamaClient(c ClientConfig) (Client, error) {
 }
 
 // codexClient is the openai-codex client: ChatGPT subscription credentials
-// from the environment or Codex's auth file.
+// from the environment or Codex's auth file, which it refreshes.
 func codexClient(c ClientConfig) (Client, error) {
-	config, err := openaicodex.EnvironmentConfig(c.Getenv)
+	login, err := codexauth.Open(c.Getenv)
 	if err != nil {
 		return nil, err //nolint:wrapcheck // the provider wraps it
 	}
@@ -155,22 +158,19 @@ func codexClient(c ClientConfig) (Client, error) {
 	if c.MaxAttempts <= 0 {
 		return nil, errors.New("max attempts must be positive")
 	}
-	creds, err := codexauth.Load(config)
-	if err != nil {
+	if _, err := login.Check(); err != nil {
 		return nil, err //nolint:wrapcheck // the provider wraps it
 	}
-	hc, err := codexHTTPClient()
+	hc, err := codexHTTPClient(login)
 	if err != nil {
 		return nil, err
 	}
 	ra, err := newClient(hc, c, responsesapi.Config{
 		Endpoint: baseURL + "/responses",
 		Headers: map[string][]string{
-			"Authorization":      {"Bearer " + creds.AccessToken},
-			"ChatGPT-Account-ID": {creds.AccountID},
-			headerContentType:    {contentJSON},
-			"originator":         {"unreal-agent"},
-			"User-Agent":         {"unreal-agent"},
+			headerContentType: {contentJSON},
+			"originator":      {"unreal-agent"},
+			"User-Agent":      {"unreal-agent"},
 		},
 		CacheKeyPlacement: responsesapi.CacheKeyPlacement{UsePromptCacheKeyField: true, Header: "session-id"},
 	})
@@ -178,7 +178,7 @@ func codexClient(c ClientConfig) (Client, error) {
 		return nil, err
 	}
 
-	return codexAdapter{ra}, nil
+	return codexAdapter{remoteAdapter: ra, fromFile: login.FromFile()}, nil
 }
 
 // codexBaseURL accepts the ChatGPT backend or a loopback endpoint, as the
@@ -199,8 +199,14 @@ func codexBaseURL(value string) (string, error) {
 	return "", errors.New("codex base URL must be " + openaicodex.BaseURL + " or an explicit loopback IP endpoint")
 }
 
-// codexAdapter checks and explains as openaicodex.Client.Respond does.
-type codexAdapter struct{ remoteAdapter }
+// codexAdapter checks and explains as openaicodex.Client.Respond does. A
+// 401 from a login uah refreshes, or a refresh the token endpoint refused,
+// says to sign in again (codexauth.ErrLoginExpired).
+type codexAdapter struct {
+	remoteAdapter
+
+	fromFile bool
+}
 
 func (a codexAdapter) Respond(ctx context.Context, req llm.Request, opts llm.RequestOptions) (llm.Response, error) {
 	if err := ctx.Err(); err != nil {
@@ -210,7 +216,14 @@ func (a codexAdapter) Respond(ctx context.Context, req llm.Request, opts llm.Req
 		return llm.Response{}, errors.New("codex does not support max_output_tokens")
 	}
 	resp, err := a.Adapter.Respond(ctx, req, opts)
+	if errors.Is(err, codexauth.ErrLoginExpired) {
+		return llm.Response{}, codexauth.ErrLoginExpired
+	}
 	if apiErr, ok := errors.AsType[*responsesapi.APIError](err); ok && apiErr.StatusCode == http.StatusUnauthorized {
+		if a.fromFile {
+			return llm.Response{}, fmt.Errorf("%w (%w)", codexauth.ErrLoginExpired, err)
+		}
+
 		return llm.Response{}, fmt.Errorf("codex credentials rejected; renew them externally and recreate the client: %w", err)
 	}
 

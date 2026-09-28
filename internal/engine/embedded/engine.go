@@ -20,6 +20,7 @@ import (
 	"github.com/viktordanov/uagent-harness/internal/approval"
 	"github.com/viktordanov/uagent-harness/internal/compaction"
 	"github.com/viktordanov/uagent-harness/internal/engine"
+	"github.com/viktordanov/uagent-harness/internal/engine/codexauth"
 	"github.com/viktordanov/uagent-harness/internal/hooks"
 	"github.com/viktordanov/uagent-harness/internal/mcp"
 	"github.com/viktordanov/uagent-harness/internal/models"
@@ -178,6 +179,10 @@ type (
 )
 
 func (e *Engine) Start(ctx context.Context, req core.Request, opts engine.Options, sink core.Sink) (engine.Run, error) {
+	// Before uagent's preflight, which blocks an expired token.
+	if err := codexauth.BeforeRun(ctx, req.Provider, e.cfg.Getenv); err != nil {
+		return nil, fmt.Errorf("failed to start run: %w", err)
+	}
 	ls := &lockedSink{sink: sink, tap: e.transcript(req.SessionID).observe}
 	r, err := e.h.Start(context.WithValue(ctx, startKey{}, startValue{opts: opts, emit: ls.emit}), req, ls.emit)
 	if err != nil {

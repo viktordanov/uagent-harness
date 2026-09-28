@@ -25,7 +25,7 @@ The facts about Codex were checked against Codex `rust-v0.156.1`, and the facts 
 | --- | --- |
 | One request at a time | A read holds a one-slot semaphore; a caller that waited gets the snapshot of the read that finished meanwhile, even with max age 0. Waiting ends with the context |
 | Cache | The last snapshot stays in memory. The TUI's read after a run uses `CacheFor` (60 s); `uah usage`, `/status`, `uah doctor`, and the limit notice use 0, which always reads |
-| Credentials | Loaded on each read with `openaicodex.EnvironmentConfig` and `codexauth.Load`, as the engine does, because Codex refreshes its login file |
+| Credentials | Read on each read with `codexauth.Login.Creds`, as the engine reads them, because Codex and uah refresh the login file. After a 401, the reader renews the login once (`Login.Renew`) and reads again; a login that cannot be refreshed is `ErrUnauthorized` |
 | Errors | The last snapshot comes back with the error, so `/status` can show it as stale |
 
 Only `internal/app` builds a reader: `app.NewUsage` for the settings' provider and base URL, once per session in `app.Setup` (`Result.Usage`), next to the model catalog. `cmd/uah` passes it to the TUI in `bubble.Deps.Usage`, and `app.Doctor` and `app.ReadUsage` build their own. The TUI's state and renderer use the types and the formatting in this package, never `Fetch`.

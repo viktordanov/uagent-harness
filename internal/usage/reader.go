@@ -8,8 +8,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/unreallabsai/unreal-agent/harness/llm/clients/openaicodex"
-
 	"github.com/viktordanov/uagent-harness/internal/engine/codexauth"
 )
 
@@ -64,8 +62,8 @@ func (u unsupported) Usage(context.Context, time.Duration) (Snapshot, error) {
 }
 
 // CodexReader reads openai-codex usage with Fetch: one request at a time,
-// the last snapshot kept in memory. It loads the credentials on each read,
-// because Codex refreshes its login file.
+// the last snapshot kept in memory. It reads the credentials on each read,
+// because Codex and uah refresh the login file (codexauth.Login.Creds).
 type CodexReader struct {
 	opts ReaderOptions
 	// sem holds the one read in flight; a caller waiting on it gets that
@@ -109,14 +107,27 @@ func (r *CodexReader) Usage(ctx context.Context, maxAge time.Duration) (Snapshot
 }
 
 func (r *CodexReader) fetch(ctx context.Context) (Snapshot, error) {
-	config, err := openaicodex.EnvironmentConfig(r.opts.Getenv)
+	login, err := codexauth.Open(r.opts.Getenv)
 	if err != nil {
 		return Snapshot{}, fmt.Errorf("failed to find the Codex credentials: %w", err)
 	}
-	creds, err := codexauth.Load(config)
+	creds, err := login.Creds(ctx)
 	if err != nil {
 		return Snapshot{}, fmt.Errorf("failed to read the Codex credentials: %w", err)
 	}
+	opts := Options{BaseURL: r.opts.BaseURL, Client: r.opts.Client, Now: r.opts.Now}
+	s, err := Fetch(ctx, creds, opts)
+	if !errors.Is(err, ErrUnauthorized) || !login.FromFile() {
+		return s, err
+	}
+	// As the engine does: renew the rejected login once and ask again.
+	creds, err = login.Renew(ctx, creds)
+	switch {
+	case errors.Is(err, codexauth.ErrLoginExpired):
+		return Snapshot{}, ErrUnauthorized
+	case err != nil:
+		return Snapshot{}, fmt.Errorf("failed to read the Codex credentials: %w", err)
+	}
 
-	return Fetch(ctx, creds, Options{BaseURL: r.opts.BaseURL, Client: r.opts.Client, Now: r.opts.Now})
+	return Fetch(ctx, creds, opts)
 }

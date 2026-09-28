@@ -1,18 +1,18 @@
-// Package codexauth loads the ChatGPT subscription credentials the
-// openai-codex provider sends: the access token and the account ID.
+// Package codexauth serves the ChatGPT subscription credentials the
+// openai-codex provider sends: the access token and the account ID, from the
+// environment or from Codex's auth file, which it refreshes as Codex does
+// (login.go, refresh.go, and docs/design/codex-auth.md).
 //
-// Adapted from unreal-agent-runner v0.1.1, harness/llm/clients/openaicodex/credentials.go
-// (MIT License, Copyright (c) 2026 Unreal Labs). The package keeps these helpers
-// private, and the priority client and the model catalog need the same credentials.
+// Load and its checks are adapted from unreal-agent-runner v0.1.1,
+// harness/llm/clients/openaicodex/credentials.go (MIT License, Copyright (c)
+// 2026 Unreal Labs). The package keeps these helpers private, and the
+// priority client and the model catalog need the same credentials.
 package codexauth
 
 import (
 	"encoding/base64"
 	"encoding/json/v2"
 	"errors"
-	"fmt"
-	"io"
-	"os"
 	"strings"
 	"time"
 
@@ -26,79 +26,58 @@ type Creds struct {
 }
 
 // Load reads the credentials the config selects (the environment's token or
-// the Codex auth file) and checks them as the runner's client does. Errors
-// never include a secret.
+// the Codex auth file) and checks them as the runner's client does. It never
+// refreshes: an expired token is an error. Errors never include a secret.
 func Load(config openaicodex.Config) (Creds, error) {
 	token, accountID := strings.TrimSpace(config.AccessToken), strings.TrimSpace(config.AccountID)
 	if config.AuthFile != "" {
 		if token != "" || accountID != "" {
 			return Creds{}, errors.New("codex AuthFile cannot be combined with AccessToken or AccountID")
 		}
-		var err error
-		token, accountID, err = readCodexAuthFile(config.AuthFile)
+		auth, _, err := readAuthFile(config.AuthFile)
 		if err != nil {
 			return Creds{}, err
 		}
+		token, accountID = auth.token, auth.accountID
 	}
-	if token == "" {
-		return Creds{}, errors.New("codex access token must be set; use OPENAI_CODEX_ACCESS_TOKEN or a ChatGPT-authenticated Codex auth file")
-	}
-	if strings.HasPrefix(token, "sk-") || !HeaderValue(token) {
-		return Creds{}, errors.New("codex requires a subscription access token, not an API key or invalid header value")
-	}
-	claimAccount, expires, err := codexTokenClaims(token)
+	creds, expires, err := check(token, accountID)
 	if err != nil {
 		return Creds{}, err
 	}
-	if expires != 0 && time.Now().Unix() >= expires {
+	if expired(expires, time.Now()) {
 		return Creds{}, errors.New("codex access token has expired; renew credentials externally")
+	}
+
+	return creds, nil
+}
+
+// check checks a token and account as the runner's client does, except the
+// expiry, which it returns (0 when the token has none).
+func check(token, accountID string) (Creds, int64, error) {
+	if token == "" {
+		return Creds{}, 0, errors.New("codex access token must be set; use OPENAI_CODEX_ACCESS_TOKEN or a ChatGPT-authenticated Codex auth file")
+	}
+	if strings.HasPrefix(token, "sk-") || !HeaderValue(token) {
+		return Creds{}, 0, errors.New("codex requires a subscription access token, not an API key or invalid header value")
+	}
+	claimAccount, expires, err := codexTokenClaims(token)
+	if err != nil {
+		return Creds{}, 0, err
 	}
 	if accountID == "" {
 		accountID = claimAccount
 	} else if claimAccount != "" && accountID != claimAccount {
-		return Creds{}, errors.New("codex account ID does not match the access token")
+		return Creds{}, 0, errors.New("codex account ID does not match the access token")
 	}
 	if accountID == "" || !HeaderValue(accountID) {
-		return Creds{}, errors.New("codex account ID must be set in OPENAI_CODEX_ACCOUNT_ID, the auth file, or the access token")
+		return Creds{}, 0, errors.New("codex account ID must be set in OPENAI_CODEX_ACCOUNT_ID, the auth file, or the access token")
 	}
 
-	return Creds{AccessToken: token, AccountID: accountID}, nil
+	return Creds{AccessToken: token, AccountID: accountID}, expires, nil
 }
 
-func readCodexAuthFile(path string) (token, accountID string, err error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to open the Codex auth file: %w", err)
-	}
-	defer file.Close()
-	info, err := file.Stat()
-	if err != nil {
-		return "", "", fmt.Errorf("failed to inspect the Codex auth file: %w", err)
-	}
-	if !info.Mode().IsRegular() || info.Mode().Perm()&0o077 != 0 {
-		return "", "", errors.New("codex auth file must be a regular file with private permissions (chmod 600)")
-	}
-	const limit = 1 << 20
-	data, err := io.ReadAll(io.LimitReader(file, limit+1))
-	if err != nil {
-		return "", "", fmt.Errorf("failed to read the Codex auth file: %w", err)
-	}
-	var auth struct {
-		Mode   string `json:"auth_mode"`
-		Tokens struct {
-			AccessToken string `json:"access_token"`
-			AccountID   string `json:"account_id"`
-		} `json:"tokens"`
-	}
-	if len(data) > limit || json.Unmarshal(data, &auth) != nil {
-		return "", "", errors.New("invalid Codex auth file; expected a JSON object with tokens.access_token and tokens.account_id")
-	}
-	if auth.Mode != "" && auth.Mode != "chatgpt" {
-		return "", "", errors.New("codex auth file is not a ChatGPT subscription login")
-	}
-
-	return strings.TrimSpace(auth.Tokens.AccessToken), strings.TrimSpace(auth.Tokens.AccountID), nil
-}
+// expired reports whether a token with this expiry (0: none) has expired.
+func expired(expires int64, now time.Time) bool { return expires != 0 && now.Unix() >= expires }
 
 // codexTokenClaims reads unverified routing and expiry hints; the server
 // authenticates the token.

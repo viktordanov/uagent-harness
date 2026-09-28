@@ -93,6 +93,8 @@ type Request struct {
 	Input []json.RawMessage
 	// CacheKey is the prompt cache key.
 	CacheKey string
+	// Authorization is the request's Authorization header.
+	Authorization string
 }
 
 // Server serves the script. When the script runs out, it answers "done".
@@ -175,6 +177,7 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	req := parseRequest(body)
+	req.Authorization = r.Header.Get("Authorization")
 	s.mu.Lock()
 	s.requests = append(s.requests, req)
 	n := len(s.requests)

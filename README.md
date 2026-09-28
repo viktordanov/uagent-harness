@@ -47,7 +47,7 @@ The [ledger](docs/ledger.md) lists what's next.
 
    Or grab an archive from the [releases](https://github.com/viktordanov/uagent-harness/releases).
 
-2. Sign in with `codex login`; uah uses your ChatGPT account. For another provider, pass `--provider` (openai, openrouter, fireworks, or ollama) and set its API key variable.
+2. Sign in with `codex login`; uah uses your ChatGPT account and refreshes the login as Codex does. For another provider, pass `--provider` (openai, openrouter, fireworks, or ollama) and set its API key variable.
 3. Run `uah doctor`. It checks the login, sandbox, config, and MCP servers, and says how to fix anything that fails.
 4. Start in a repository:
 
@@ -505,7 +505,7 @@ Pushing a `v1.2.3` tag builds the release archives for macOS and Linux (arm64 an
 CI runs the build, the race tests, the Markdown renderer's benchmarks once (so they keep running; its tests hold the bounds), and the linter on each push; the linter also fails on a function above 20 cyclomatic complexity, a backstop for the rule of about 15. Design records, the architecture rules, and the documentation procedure are in [docs](docs/README.md):
 
 <!-- memoria:import src="docs/README.md#summary" -->
-The configuration reference, design records for the harness, the TUI, state storage, sandboxing, compaction, MCP, subagents, pasted images, streaming, Markdown rendering, going back to an earlier message, and selecting text with the mouse, plus the architecture rules and documentation procedure for uagent-harness.
+The configuration reference, design records for the harness, the TUI, state storage, sandboxing, compaction, MCP, subagents, pasted images, streaming, Markdown rendering, going back to an earlier message, selecting text with the mouse, and keeping the ChatGPT login fresh, plus the architecture rules and documentation procedure for uagent-harness.
 <!-- /memoria:import -->
 
 `bench/tui` is a separate Go module with the benchmark behind choosing Bubble Tea v2. `go test -run '^$' -bench Markdown -benchmem ./internal/tui/render` measures the Markdown renderer.

@@ -25,6 +25,7 @@ The first time uah starts without `~/.uah` and without `UAH_HOME`, it copies the
 | `~/.uah/mcp-credentials.json` | MCP OAuth logins from `uah mcp login`, readable only by you (0600) | Written by uah when `mcp_oauth_credentials_store` is `file`, or `auto` without a usable OS keyring; do not edit |
 | `~/.uah/AGENTS.md`, `$CODEX_HOME/AGENTS.md` | User instructions; see [Instructions and skills](../README.md#instructions-and-skills) | Unless `--no-instructions` or `[instructions] enabled = false` |
 | `~/.uah/skills`, `$CODEX_HOME/skills`, `.agents/skills` | Skills; see [Instructions and skills](../README.md#instructions-and-skills) | Embedded engine |
+| `$CODEX_HOME/auth.json` (`~/.codex/auth.json`, or `OPENAI_CODEX_AUTH_FILE`) | The ChatGPT login from `codex login`. uah refreshes its token as Codex does and writes it back (0600), with a lock file beside it, `.auth.json.uah-lock`; see [the design](design/codex-auth.md) | openai-codex, unless `OPENAI_CODEX_ACCESS_TOKEN` is set, which uah never refreshes |
 
 uah no longer reads a workspace's `.uagent` directory. When a workspace has `.uagent` and no `.uah`, uah and `uah doctor` show the command that moves it: `git mv .uagent .uah` in a repository, else `mv .uagent .uah`. uah never moves the files itself.
 

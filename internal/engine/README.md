@@ -14,9 +14,10 @@ The choice comes from `--engine`, `UAH_ENGINE`, or `engine` in the [configuratio
 3. [Where each behavior lives](#where-each-behavior-lives)
 4. [The process engine](#the-process-engine)
 5. [The embedded engine](#the-embedded-engine)
-6. [Remote jobs](#remote-jobs)
-7. [Extending an engine](#extending-an-engine)
-8. [Tests](#tests)
+6. [The ChatGPT login](#the-chatgpt-login)
+7. [Remote jobs](#remote-jobs)
+8. [Extending an engine](#extending-an-engine)
+9. [Tests](#tests)
 <!-- /memoria:section -->
 
 <!-- memoria:section id="interface" files="engine.go capabilities.go events.go subagents.go patch.go" -->
@@ -141,6 +142,8 @@ The runner (v0.1.1) runs every Bash command as `$SHELL -c <command>` (`harness/o
 3. For `-c <command>`, the gate calls `approval.Approver.Decide` with no one to ask, as a headless embedded run does: a `forbidden` rule, or a `prompt` rule, prints the reason (`not run: a rule forbids this command: …`) on standard error and exits 1, so the model reads it as the command's output; an `allow` rule execs the shell without a sandbox; any other command execs the sandboxed shell. A shell a command starts itself (not `-c`) runs in the sandbox.
 
 The rules see the same command string as on the embedded engine, so they are as strong there as here: they match the command's words, not what a script it runs does. Without rules, `$SHELL` is the sandboxing script, with no gate. That script cannot ask for more access. `process.NewSandboxed` keeps one harness per sandbox mode, built on first use, and each run uses its permission mode's (`Options.Mode`). `process.Capabilities(rules)` is the process engine's capabilities: only `Rules`, when the shells have a gate.
+
+The runner reads the Codex auth file once, when it builds its client, and never refreshes it (v0.1.1). So `Start` refreshes the file first when the token expires within an hour (`codexauth.BeforeRun`), and the runner, which inherits uah's environment, reads the refreshed file. A run that outlives its token fails with the runner's "credentials rejected" error.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="embedded" files="embedded/engine.go embedded/wiring.go embedded/agent.go embedded/adapter.go embedded/client.go embedded/providers.go embedded/clients.go embedded/reconnect.go embedded/stream.go codexauth/codexauth.go embedded/store.go embedded/observer.go embedded/tools.go embedded/sandboxtool.go embedded/sandboxschema.go embedded/skills.go embedded/pretooluse.go embedded/autoreview.go embedded/compact.go embedded/context.go embedded/fork.go embedded/mode.go embedded/patchtool.go embedded/images.go embedded/rewind.go" -->
@@ -148,7 +151,7 @@ The rules see the same command string as on the embedded engine, so they are as 
 
 The embedded engine is a uagent `harness.Backend`. uagent still owns the run: the guards, the session lock, the run record, and the output stream. The backend (`wiring.go`) reproduces unreal-agent-runner v0.1.1's `Run` (`cmd/internal/agentrunner/run.go`) in the same order:
 
-1. The provider client and the model (`client.go`, `providers.go`, a copy of the runner's provider table). `clients.go` builds each provider's Responses client as the runner's does, but over an HTTP client uah makes, so the engine can watch its retries (below). The ChatGPT credentials for openai-codex come from `codexauth`, which the model catalog (`internal/models`) shares.
+1. The provider client and the model (`client.go`, `providers.go`, a copy of the runner's provider table). `clients.go` builds each provider's Responses client as the runner's does, but over an HTTP client uah makes, so the engine can watch its retries (below). The ChatGPT credentials for openai-codex come from `codexauth`, which the model catalog (`internal/models`) and the usage reader share: the codex client's transport sets them on each request and refreshes them ([below](#the-chatgpt-login)).
 2. The session store and the per-invocation log (`store.go`).
 3. The tool registry (`tools.go`, below).
 4. The operation manager with the remote job handlers.
@@ -219,6 +222,18 @@ A tool's static definition is what the model is offered, so a change in a layer 
 The observer (`observer.go`) writes each session item as the runner prints it. When an item completes an `apply_patch` job, it also emits `PatchApplied` with the diff from the job's handle; `session.Load` reads the same item from a run's events file, so a live and a reloaded transcript show the same diff.
 <!-- /memoria:section -->
 
+<!-- memoria:section id="auth" files="codexauth/codexauth.go codexauth/login.go codexauth/refresh.go codexauth/file.go codexauth/transport.go embedded/clients.go embedded/engine.go process/process.go" -->
+## The ChatGPT login
+
+`codexauth` serves the openai-codex credentials: `OPENAI_CODEX_ACCESS_TOKEN`, which uah never refreshes, or Codex's auth file (`OPENAI_CODEX_AUTH_FILE`, else `$CODEX_HOME/auth.json`), which it refreshes as Codex rust-v0.156.1 does. The [design record](../../docs/design/codex-auth.md) cites Codex's source for each rule.
+
+1. **Each request reads the file** (`Login.Creds`), parsing it again only when it changed, so a refresh Codex wrote is used at once. A token that expires within 5 minutes is refreshed first; if that fails, a token that still works is sent.
+2. **A 401 renews once** (`Login.Transport`, `Login.Renew`): the file's token when another writer already replaced the rejected one, else a refresh, and the request is sent again. The embedded engine's codex client, the model list, and the usage reader use it; the token is no longer a fixed header of the client.
+3. **Before a run**, both engines call `codexauth.BeforeRun`, which refreshes a token that expires within an hour, so uagent's preflight never blocks a token that can be refreshed.
+4. **The refresh** is Codex's request to `https://auth.openai.com/oauth/token` (`refresh.go`). One refresh runs at a time per file in the process, and a lock file beside the auth file (`.auth.json.uah-lock`) orders uah processes; the file is read again under the lock before the request and before the write, so a refresh Codex wrote meanwhile wins. The write keeps every other field and Codex's layout, through a private temporary file renamed over the file.
+5. **A refused refresh** (`invalid_grant`, a reused, expired, or revoked refresh token) is `codexauth.ErrLoginExpired`, "Your ChatGPT login expired; run `codex login`", and the model request answers 401, which the runner's client does not retry. No error contains a token.
+<!-- /memoria:section -->
+
 <!-- memoria:section id="jobs" files="embedded/mcptool.go embedded/mcpjobs.go embedded/agenttool.go embedded/agentjobs.go embedded/patchjobs.go" -->
 ## Remote jobs
 
@@ -247,7 +262,7 @@ A job that had already started before the run stopped fails with "interrupted" w
 The runner stays unchanged: uah reproduces its wiring instead of patching it, and the equivalence test below keeps the two in step.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="tests" files="capabilities_test.go process/process_test.go process/gate_test.go process/shellgate/gate_test.go embedded/embedded_test.go embedded/approval_test.go embedded/compact_test.go embedded/compact_settings_test.go embedded/context_test.go embedded/mcp_test.go embedded/mcpjobs_internal_test.go embedded/sandbox_test.go embedded/mode_test.go embedded/images_test.go embedded/clients_test.go embedded/reconnect_test.go embedded/stream_test.go embedded/stream_internal_test.go embedded/rewind_test.go embedded/rewind_internal_test.go" -->
+<!-- memoria:section id="tests" files="capabilities_test.go process/process_test.go process/gate_test.go process/shellgate/gate_test.go embedded/embedded_test.go embedded/approval_test.go embedded/compact_test.go embedded/compact_settings_test.go embedded/context_test.go embedded/mcp_test.go embedded/mcpjobs_internal_test.go embedded/sandbox_test.go embedded/mode_test.go embedded/images_test.go embedded/clients_test.go embedded/reconnect_test.go embedded/stream_test.go embedded/stream_internal_test.go embedded/rewind_test.go embedded/rewind_internal_test.go embedded/codexlogin_test.go codexauth/codexauth_test.go codexauth/login_test.go codexauth/file_internal_test.go" -->
 ## Tests
 
 The embedded tests, and the process tests with the real runner, run against `testing/fakellm`, a scripted Responses API, and need no tokens.
@@ -268,5 +283,7 @@ The embedded tests, and the process tests with the real runner, run against `tes
 | `reconnect_test.go` | A connection dropped before the answer and one cut halfway (`fakellm.Reply.Drop`, `Cut`) are retried after 2 and 4 s with a `Reconnecting` event each, and the run then finishes; with two attempts that both drop, the run fails and says it gave up. They wait for the real backoff (about 6 s), so `-short` skips them |
 | `stream_test.go`, `stream_internal_test.go` | With `fakellm.Reply.Deltas`, `Reasoning`, and `Hold`: the answer and reasoning arrive as deltas while the response is held, before the final message, which they match; no deltas without `Stream`, from a compaction summary, or from the auto-reviewer; a stream cut halfway is reset before the retry's text (skipped under `-short`), and an interrupt resets it too. The tee passes a stream read one byte at a time through unchanged and finds its deltas across reads, CRLF, and a line too long to parse |
 | `rewind_test.go`, `rewind_internal_test.go` | Going back: the next request carries only the history before the message and the edited one, `/context` shrinks, the session file keeps the old branch, and resume and `session.Load` keep the cut; past a compaction that covered the message (the one before applies, no mismatch), after a `/clear` (the clear stays), an unknown message, a notification that went with the message and goes again, and where the cut starts or why it is refused |
+| `codexlogin_test.go` | The ChatGPT login against a fake token endpoint: a 401 from `fakellm` renews the token and the request is sent again; an expired token is refreshed before the run on both engines (the process one with the real runner, skipped under `-short`); a refused refresh says to run `codex login` and is not retried |
+| `codexauth/login_test.go`, `codexauth/file_internal_test.go`, `codexauth/codexauth_test.go` | Refreshing before expiry with Codex's request, the file written back in Codex's layout with unknown fields, mode 0600, and a rename; a 401 retried once; sixteen concurrent renewals making one request; a token Codex wrote before or during the refresh used instead; refusals, their message, and no second attempt; the environment's token never refreshed; `BeforeRun`; the lock file; and loading and checking the credentials |
 | `images_test.go` | A message with pasted images: the model gets the text without tags and each image as a ViewImage result with its data URL, a missing image as an error text, and later requests carry the image again |
 <!-- /memoria:section -->

@@ -3,10 +3,9 @@ package models
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
-
-	"github.com/unreallabsai/unreal-agent/harness/llm/clients/openaicodex"
 
 	"github.com/viktordanov/uagent-harness/internal/engine/codexauth"
 )
@@ -17,7 +16,8 @@ const codexOriginator = "unreal-agent"
 
 // newCodexSource lists the ChatGPT backend's models for the Codex login, as
 // Codex does for ChatGPT auth: GET {base}/models?client_version=…, with the
-// headers the engine sends to {base}/responses.
+// headers the engine sends to {base}/responses. The login's transport sets
+// the credentials on each request and refreshes them as the engine does.
 func newCodexSource(base string, getenv func(string) string) (Source, error) {
 	base, err := codexBaseURL(base)
 	if err != nil {
@@ -26,24 +26,24 @@ func newCodexSource(base string, getenv func(string) string) (Source, error) {
 	if getenv == nil {
 		getenv = os.Getenv
 	}
-	config, err := openaicodex.EnvironmentConfig(getenv)
+	login, err := codexauth.Open(getenv)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find the Codex credentials: %w", err)
 	}
-	creds, err := codexauth.Load(config)
+	creds, err := login.Check()
 	if err != nil {
 		return nil, fmt.Errorf("failed to read the Codex credentials: %w", err)
 	}
+	client := noRedirects()
+	client.Transport = login.Transport(http.DefaultTransport)
 
 	return httpSource{
-		client:   noRedirects(),
+		client:   client,
 		url:      base + "/models?" + url.Values{"client_version": {CodexClientVersion}}.Encode(),
 		identity: identity(ProviderCodex, base, creds.AccountID),
-		key:      creds.AccessToken,
 		headers: map[string]string{
-			"ChatGPT-Account-ID": creds.AccountID,
-			"originator":         codexOriginator,
-			"User-Agent":         codexOriginator,
+			"originator": codexOriginator,
+			"User-Agent": codexOriginator,
 		},
 		parse: parseCodex,
 	}, nil
