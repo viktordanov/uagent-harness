@@ -220,10 +220,17 @@ type TUI struct {
 	// wheel scrolls the transcript and a drag selects and copies its text.
 	// Off, the terminal selects text and turns the wheel into ↑ and ↓.
 	Mouse *bool `toml:"mouse"`
+	// Title shows the session's state in the terminal's title, with OSC
+	// 9;4 progress while the agent works (on when unset, TitleOn).
+	Title *bool `toml:"title"`
 }
 
 // MouseOn reports whether the TUI reports the mouse: on unless set false.
 func (t TUI) MouseOn() bool { return t.Mouse == nil || *t.Mouse }
+
+// TitleOn reports whether the TUI sets the terminal's title and progress:
+// on unless set false.
+func (t TUI) TitleOn() bool { return t.Title == nil || *t.Title }
 
 // Project is per-workspace configuration from the user file.
 type Project struct {

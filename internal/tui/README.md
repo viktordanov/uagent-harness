@@ -198,7 +198,7 @@ The split follows the rest of the TUI:
 - An approval waiting in the session shows the session's screen until it is answered.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="look" files="render/theme.go render/compact.go render/screen.go render/markdown.go render/markdown/markdown.go render/markdown/blocks.go render/markdown/inline.go render/markdown/table.go render/markdown/highlight.go render/markdown/code.go render/markdown/quote.go bubble/model.go render/diff.go render/words.go state/context.go render/backtrack.go render/selection.go render/copytext.go" -->
+<!-- memoria:section id="look" files="render/theme.go render/compact.go render/screen.go render/markdown.go render/markdown/markdown.go render/markdown/blocks.go render/markdown/inline.go render/markdown/table.go render/markdown/highlight.go render/markdown/code.go render/markdown/quote.go bubble/model.go render/diff.go render/words.go state/context.go render/backtrack.go render/selection.go render/copytext.go state/title.go" -->
 ## The look
 
 The compact view is shaped like Codex's, in amber. The choices came from the style swatchbook and are listed in the [ledger](../../docs/ledger.md) (item 19).
@@ -224,6 +224,7 @@ The compact view is shaped like Codex's, in amber. The choices came from the sty
 | Footer | Model and effort, fast, the permission mode (`read only mode`, `workspace mode`, `auto mode`, or `full access mode`), directory, the plan's tightest window (`weekly 78% left`, hidden without usage), context left, hints. The detailed view's header shows the mode too | `footerLine`, `modeText` |
 | `/context` | One dot per percent of the window in its category's color, `·` for free space, `○` for the auto-compaction buffer | `contextLines` |
 | `/config` | A title in the accent, a row per setting with the selected one in the accent band, and the keys dim at the bottom | `configLines` |
+| Terminal title | `uah · <workspace name>` when idle, `uah · working · <workspace name>` while the session is busy, `uah · approve? · <workspace name>` while an approval waits, and `uah` before a session opens; OSC 9;4 indeterminate progress while busy, also while an approval waits, cleared when idle. Bubble Tea clears the title and the progress when the program ends. `[tui] title = false` (`Deps.Title`) sets neither | `State.WindowTitle` and `State.Working` in `state/title.go`, used by `Model.View` |
 
 Markdown goes through `render/markdown`: goldmark parses it with the GFM extensions, and its own renderer walks the tree. Each `Styles` owns one `markdown.Renderer`, which keeps the finished top-level blocks of the messages it drew and the highlighted code, so a message that grows (a streaming answer) re-renders only its last block, and a width change renders once more at the new width. The [Markdown design](../../docs/design/markdown.md) has the reasons and the numbers.
 

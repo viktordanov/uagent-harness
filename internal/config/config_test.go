@@ -250,3 +250,24 @@ func TestMouse(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, cfg.TUI.MouseOn(), "the project file wins")
 }
+
+// TestTitle: the TUI sets the terminal's title unless a file sets title =
+// false, and a trusted project file can turn it on again.
+func TestTitle(t *testing.T) {
+	root := t.TempDir()
+	ws := filepath.Join(root, "ws")
+	user := filepath.Join(root, "config.toml")
+	cfg, _, err := config.Load(user, ws)
+	require.NoError(t, err)
+	assert.True(t, cfg.TUI.TitleOn(), "on by default")
+
+	write(t, user, "[tui]\ntitle = false\n[projects.\""+ws+"\"]\ntrusted = true\n")
+	cfg, _, err = config.Load(user, ws)
+	require.NoError(t, err)
+	assert.False(t, cfg.TUI.TitleOn())
+
+	write(t, config.ProjectFile(ws), "[tui]\ntitle = true\n")
+	cfg, _, err = config.Load(user, ws)
+	require.NoError(t, err)
+	assert.True(t, cfg.TUI.TitleOn(), "the project file wins")
+}

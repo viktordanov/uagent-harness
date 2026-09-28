@@ -23,6 +23,9 @@ func merge(base, over Config) Config {
 	if over.TUI.Mouse != nil {
 		base.TUI.Mouse = over.TUI.Mouse
 	}
+	if over.TUI.Title != nil {
+		base.TUI.Title = over.TUI.Title
+	}
 	if over.AutoCompactPercent != nil {
 		base.AutoCompactPercent = over.AutoCompactPercent
 	}

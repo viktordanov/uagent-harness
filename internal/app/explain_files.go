@@ -56,6 +56,7 @@ func fileSettings(workspace string, l config.Layers, r Resolved, cfg config.Conf
 		added(l, "shell_environment_policy.set", setMap(env.Set), func(c config.Config) any { return c.ShellEnvironmentPolicy.Set }),
 		added(l, "tui.details", cfg.TUI.Details, func(c config.Config) any { return c.TUI.Details }),
 		overridden(l, "tui.mouse", cfg.TUI.MouseOn(), func(c config.Config) any { return c.TUI.Mouse }),
+		overridden(l, "tui.title", cfg.TUI.TitleOn(), func(c config.Config) any { return c.TUI.Title }),
 	}...)
 	out = append(out, hookSettings(l, cfg)...)
 	out = append(out, mcpSettings(l, cfg)...)

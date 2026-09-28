@@ -59,6 +59,10 @@ type Deps struct {
 	// transcript text; off, the terminal selects text and its wheel sends
 	// ↑ and ↓.
 	Mouse bool
+	// Title shows idle, working, or waiting for an approval in the
+	// terminal's title, with OSC 9;4 progress while the agent works; off,
+	// uah leaves the title and progress alone.
+	Title bool
 	// CopyText writes text to the system clipboard with its own tool, next
 	// to OSC 52 (optional; internal/images/clipboard.WriteText).
 	CopyText func(ctx context.Context, text string) error
@@ -129,7 +133,7 @@ func New(ctx context.Context, deps Deps) Model {
 	}
 
 	st := state.New(deps.Now())
-	st.Details, st.Mouse, st.Windows = deps.Details, deps.Mouse, deps.Windows
+	st.Details, st.Mouse, st.Title, st.Windows = deps.Details, deps.Mouse, deps.Title, deps.Windows
 
 	return Model{
 		ctx: ctx, deps: deps, st: st,
@@ -386,7 +390,11 @@ func (m Model) View() tea.View {
 	if m.st.Mouse {
 		v.MouseMode = tea.MouseModeCellMotion
 	}
-	v.WindowTitle = "uah"
+	// Bubble Tea clears both when the program ends.
+	v.WindowTitle = m.st.WindowTitle()
+	if m.st.Working() {
+		v.ProgressBar = tea.NewProgressBar(tea.ProgressBarIndeterminate, 0)
+	}
 	if c := m.composer.Cursor(); c != nil && composerRow >= 0 {
 		c.Y += composerRow
 		v.Cursor = c

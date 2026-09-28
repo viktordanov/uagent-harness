@@ -68,6 +68,7 @@ func openTUI(ctx context.Context, cmd *cli.Command, launch tuiLaunch) error {
 		AllSessions: launch.all,
 		Details:     st.Config.TUI.Details,
 		Mouse:       st.Config.TUI.MouseOn(),
+		Title:       st.Config.TUI.TitleOn(),
 		Version:     buildVersion(),
 		Config:      tuiConfig(cmd),
 		SaveConfig:  tuiSaveConfig(ctx, cmd),
