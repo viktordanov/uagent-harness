@@ -2,8 +2,10 @@ package agents_test
 
 import (
 	"encoding/json"
+	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -32,6 +34,12 @@ func TestAgents_InterruptStopsChildren(t *testing.T) {
 	_, err := s.Submit("start one")
 	require.NoError(t, err)
 	running := ev.agentState(engine.AgentRunning)
+	// The child is running before spawn_agent returns; an interrupt in
+	// between ends the spawn and closes the child. Interrupt once the
+	// parent's model has the spawn's result.
+	require.Eventually(t, func() bool {
+		return slices.ContainsFunc(e.llm.Requests(), func(r fakellm.Request) bool { return slices.Contains(ids(r), running.ID) })
+	}, waitTimeout, 10*time.Millisecond)
 	require.NoError(t, s.Interrupt())
 	assert.Equal(t, core.StatusInterrupted, ev.finished().Status)
 	stopped := ev.agentState(engine.AgentInterrupted)
