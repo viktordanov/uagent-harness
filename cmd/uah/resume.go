@@ -38,6 +38,9 @@ func resumeCommand() *cli.Command {
 }
 
 func resumeAction(ctx context.Context, cmd *cli.Command) error {
+	if cmd.String(flagSessionID) != "" {
+		return cli.Exit("uah resume continues a session; --session-id starts a new one", exitUsage)
+	}
 	args := cmd.Args().Slice()
 	launch := tuiLaunch{all: cmd.Bool(flagAll)}
 	switch {

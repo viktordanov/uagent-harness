@@ -42,6 +42,7 @@ func sessionFlags() []cli.Flag {
 			DefaultText: "the current directory, or the resumed session's", TakesFile: true,
 		},
 		&cli.StringFlag{Name: "session", Aliases: []string{"s"}, Usage: "resume a session by ID or unique ID prefix"},
+		&cli.StringFlag{Name: flagSessionID, Usage: "start a new session with this ID, a UUID; an ID that exists is an error"},
 		&cli.DurationFlag{Name: "timeout", Aliases: []string{"t"}, Value: 30 * time.Minute, Usage: "wall-clock limit per run (0 disables)"},
 		&cli.StringFlag{
 			Name: "state-dir", Usage: "sessions, logs, and run records; must be outside the workspace",
@@ -89,11 +90,20 @@ func sessionFlags() []cli.Flag {
 	}
 }
 
+// flagSessionID is --session-id, the ID of a new session.
+const flagSessionID = "session-id"
+
 // setupFor sets up a session for ref ("" starts a new one) from the flags,
 // mapping usage errors to exitUsage.
 func setupFor(ctx context.Context, cmd *cli.Command, logOutput io.Writer, ref string) (app.Result, error) {
 	in := inputs(cmd)
 	in.SessionRef = ref
+
+	return setupWith(ctx, in, logOutput)
+}
+
+// setupWith is setupFor with the inputs already collected.
+func setupWith(ctx context.Context, in app.Inputs, logOutput io.Writer) (app.Result, error) {
 	st, err := app.Setup(ctx, in, logOutput)
 	if err != nil {
 		return app.Result{}, exitError(err)
@@ -117,6 +127,7 @@ func inputs(cmd *cli.Command) app.Inputs {
 		ConfigPath:     cmd.String(flagConfig),
 		StateDir:       cmd.String("state-dir"),
 		SessionRef:     cmd.String("session"),
+		NewSessionID:   cmd.String(flagSessionID),
 		LogLevel:       cmd.String("log-level"),
 		Provider:       cmd.String("provider"),
 		Model:          cmd.String("model"),

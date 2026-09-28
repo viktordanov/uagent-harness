@@ -89,6 +89,8 @@ uah resume --last       # this directory's most recent session
 uah --session 3f2a      # a session by ID or unique prefix
 ```
 
+To choose a new session's ID, as Claude Code's `--session-id` does, run `uah --session-id <uuid>` or `uah exec --session-id <uuid>`. The ID must be a UUID that no session has; `--session-id` never resumes. `/new` in the TUI still gets a fresh ID.
+
 When you quit the TUI, it prints the session's token usage and the command that continues it (`uah resume <id>`), as Codex does. In the TUI, ctrl+s opens the picker and ctrl+n starts a new session. The picker hides sessions from `uah exec` and subagents, as Codex hides `codex exec` sessions.
 
 ### Go back to an earlier message

@@ -57,6 +57,11 @@ func Setup(ctx context.Context, in Inputs, logOutput io.Writer) (Result, error) 
 		}
 		resumed, opts.ID, opts.Resumed = info, info.ID, true
 	}
+	if in.NewSessionID != "" {
+		if opts.ID, err = newSessionID(stateDir, in); err != nil {
+			return Result{}, err
+		}
+	}
 	// Resolve then takes the absolute workspace as if it were the flag.
 	if in.Workspace, err = filepath.Abs(workspaceFor(in, resumed)); err != nil {
 		return Result{}, fmt.Errorf("failed to resolve workspace: %w", err)

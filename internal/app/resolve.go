@@ -40,7 +40,9 @@ type Inputs struct {
 	ConfigPath string
 	StateDir   string
 	SessionRef string // a session to resume, by ID or unique prefix
-	LogLevel   string
+	// NewSessionID is --session-id: the ID of a new session (a UUID).
+	NewSessionID string
+	LogLevel     string
 
 	Provider  string
 	Model     string

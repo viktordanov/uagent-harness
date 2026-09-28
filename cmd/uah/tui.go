@@ -59,9 +59,14 @@ func openTUI(ctx context.Context, cmd *cli.Command, launch tuiLaunch) error {
 
 		return notes
 	}
+	first := "" // a session to resume first; --session-id names a new one
+	if st.Options.Resumed {
+		first = st.Options.ID
+	}
+	newID := &takeOnce{value: cmd.String(flagSessionID)}
 
 	deps := bubble.Deps{
-		SessionID:   st.Options.ID,
+		SessionID:   first,
 		Prompt:      launch.prompt,
 		Cwd:         cwd,
 		Picker:      launch.picker,
@@ -76,7 +81,12 @@ func openTUI(ctx context.Context, cmd *cli.Command, launch tuiLaunch) error {
 		Clipboard:   clipboard.System(),
 		CopyText:    clipboard.SystemWriter().WriteText,
 		Open: func(ctx context.Context, id string) (*session.Session, []session.LoadedRun, error) {
-			setup, err := setupFor(ctx, cmd, logFile, id)
+			in := inputs(cmd)
+			in.SessionRef, in.NewSessionID = id, ""
+			if id == "" {
+				in.NewSessionID = newID.take() // the first new session only; /new gets a fresh ID
+			}
+			setup, err := setupWith(ctx, in, logFile)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -154,4 +164,19 @@ func isTerminal(f *os.File) bool {
 	info, err := f.Stat()
 
 	return err == nil && info.Mode()&os.ModeCharDevice != 0
+}
+
+// takeOnce hands out its value once, then "".
+type takeOnce struct {
+	mu    sync.Mutex
+	value string
+}
+
+func (t *takeOnce) take() string {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	v := t.value
+	t.value = ""
+
+	return v
 }
