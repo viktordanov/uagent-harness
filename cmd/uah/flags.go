@@ -21,7 +21,7 @@ import (
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
 
-// sessionFlags are shared by the TUI and `uah run`.
+// sessionFlags are shared by the TUI and `uah exec`.
 func sessionFlags() []cli.Flag {
 	return []cli.Flag{
 		&cli.StringFlag{

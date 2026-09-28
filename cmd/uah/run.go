@@ -12,6 +12,7 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
+	"github.com/viktordanov/uagent-harness/internal/app"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
 
@@ -21,24 +22,29 @@ const (
 	exitInterrupt = 130
 )
 
-// runCommand is `uah run`: a headless session that prints progress and answers.
+// runCommand is `uah exec`, also `uah run`: a headless session that prints
+// progress and answers, named as `codex exec`.
 func runCommand() *cli.Command {
 	flags := append(sessionFlags(),
 		&cli.BoolFlag{Name: "stdin", Usage: "after the prompt, read more messages from stdin, one per line; they queue while the agent works"},
-		&cli.BoolFlag{Name: "stream", Usage: "write JSONL events (runs and session) to stdout instead of answers"},
+		&cli.BoolFlag{Name: "stream", Aliases: []string{"json"}, Usage: "write JSONL events (runs and session) to stdout instead of answers"},
 		&cli.BoolFlag{Name: "quiet", Aliases: []string{"q"}, Usage: "no progress on stderr"},
 		&cli.BoolFlag{Name: "verbose", Usage: "also show reasoning summaries"},
 		&cli.BoolFlag{Name: "last", Usage: "continue this directory's most recent session"},
 		&cli.BoolFlag{Name: flagAll, Usage: "with --last: the most recent session in any directory"},
+		&cli.BoolFlag{Name: flagEphemeral, Usage: "keep no session: nothing in sessions/, runs/, or the index"},
+		&cli.StringFlag{Name: flagLastMessage, Aliases: []string{"o"}, Usage: "write the final answer to this file", TakesFile: true},
 	)
 
 	return &cli.Command{
-		Name:      "run",
+		Name:      "exec",
+		Aliases:   []string{"run"},
 		Usage:     "run a headless session",
-		ArgsUsage: "[prompt]",
+		ArgsUsage: "[prompt | -]",
 		Description: "Sends the prompt, prints progress on stderr and each answer on stdout, and exits when\n" +
-			"the session is idle. With --stdin, each further line of stdin is another message:\n" +
-			"it starts a run when the agent is idle and queues while it works.\n" +
+			"the session is idle. A prompt of - reads all of stdin as one message. With --stdin,\n" +
+			"each further line of stdin is another message: it starts a run when the agent is idle\n" +
+			"and queues while it works.\n" +
 			"Resume a session with --session <id or prefix>, or --last for this directory's most recent.",
 		Flags:        flags,
 		OnUsageError: onUsageError,
@@ -47,22 +53,22 @@ func runCommand() *cli.Command {
 }
 
 func runAction(ctx context.Context, cmd *cli.Command) error {
-	prompt := strings.TrimSpace(strings.Join(cmd.Args().Slice(), " "))
-	followStdin := cmd.Bool("stdin")
-	if prompt == "" && !followStdin {
-		return cli.Exit("no prompt: pass one as an argument, or use --stdin", exitUsage)
-	}
-	ref := cmd.String("session")
-	if cmd.Bool("last") {
-		info, err := latestSession(ctx, cmd, false)
-		if err != nil {
-			return err
-		}
-		ref = info.ID
-	}
-	st, err := setupFor(ctx, cmd, os.Stderr, ref)
+	prompt, err := execPrompt(cmd, os.Stdin)
 	if err != nil {
 		return err
+	}
+	followStdin := cmd.Bool("stdin")
+	if prompt == "" && !followStdin {
+		return cli.Exit("no prompt: pass one as an argument, - to read stdin, or use --stdin", exitUsage)
+	}
+	in, cleanup, err := execInputs(ctx, cmd)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+	st, err := app.Setup(ctx, in, os.Stderr)
+	if err != nil {
+		return exitError(err)
 	}
 	st.Options.Source = session.SourceRun
 	// Only --stream prints the answer as it arrives; otherwise it prints once.
@@ -89,8 +95,9 @@ func runAction(ctx context.Context, cmd *cli.Command) error {
 			return fmt.Errorf("failed to send the prompt: %w", err)
 		}
 	}
+	err = drive(ctx, s, lines, prompt != "", &out)
 
-	return drive(ctx, s, lines, prompt != "", &out)
+	return writeLastMessage(cmd.String(flagLastMessage), out.last, os.Stderr, err)
 }
 
 // drive feeds stdin lines into the session and prints its events until the

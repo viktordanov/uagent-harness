@@ -63,6 +63,10 @@ type Inputs struct {
 
 	AllowDotenv    bool
 	NoInstructions bool
+
+	// RunStateDir, when set, takes the session's files and run records in
+	// place of StateDir: `uah exec --ephemeral` passes a temporary directory.
+	RunStateDir string
 }
 
 // Resolved is what Resolve decides.

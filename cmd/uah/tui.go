@@ -38,7 +38,7 @@ type tuiLaunch struct {
 
 func openTUI(ctx context.Context, cmd *cli.Command, launch tuiLaunch) error {
 	if !isTerminal(os.Stdin) || !isTerminal(os.Stdout) {
-		return cli.Exit("the TUI needs a terminal; for scripts and pipes use uah run", exitUsage)
+		return cli.Exit("the TUI needs a terminal; for scripts and pipes use uah exec", exitUsage)
 	}
 	st, err := setupFor(ctx, cmd, os.Stderr, launch.sessionRef) // validates flags before the screen takes over
 	if err != nil {

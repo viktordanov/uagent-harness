@@ -1,6 +1,7 @@
 package app
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"io"
@@ -91,7 +92,9 @@ func Setup(ctx context.Context, in Inputs, logOutput io.Writer) (Result, error) 
 	opts.Settings = r.Settings
 	catalog := NewModels(stateDir, r.Settings, os.Getenv)
 	catalog.Catalog(ctx, catalog.Provider(), models.Offline) // the cache only, no network
-	opts.SessionsDir = filepath.Join(stateDir, "sessions")
+	// The session's own files go to runDir; the model cache stays shared.
+	runDir := cmp.Or(in.RunStateDir, stateDir)
+	opts.SessionsDir = filepath.Join(runDir, "sessions")
 	if opts.Hooks, err = loadHooks(cfg, in.Workspace); err != nil {
 		return Result{}, err
 	}
@@ -106,9 +109,9 @@ func Setup(ctx context.Context, in Inputs, logOutput io.Writer) (Result, error) 
 		return Result{}, err
 	}
 	subagents := newAgents(r, cfg, in.Workspace, &opts, catalog)
-	eng := newEngine(r, stateDir, logger, parts{servers: servers, approver: approver, subagents: subagents, models: catalog}, &opts)
+	eng := newEngine(r, runDir, logger, parts{servers: servers, approver: approver, subagents: subagents, models: catalog}, &opts)
 	subagents.Bind(eng, opts) // children open exactly as this session does
-	opts.Shell = userShell(r, cfg, stateDir, approver)
+	opts.Shell = userShell(r, cfg, runDir, approver)
 
 	return Result{StateDir: stateDir, Engine: eng, Options: opts, Config: cfg, Models: catalog, Usage: NewUsage(r.Settings, os.Getenv)}, nil
 }

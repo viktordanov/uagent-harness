@@ -59,7 +59,7 @@ func resumeAction(ctx context.Context, cmd *cli.Command) error {
 // latestSession is the most recent session in the current directory, or in
 // any directory with --all.
 //
-// interactiveOnly skips sessions started by `uah run`, as `codex resume` skips
+// interactiveOnly skips sessions started by `uah exec`, as `codex resume` skips
 // `codex exec` sessions.
 func latestSession(ctx context.Context, cmd *cli.Command, interactiveOnly bool) (session.Info, error) {
 	stateDir, err := filepath.Abs(cmd.String("state-dir"))

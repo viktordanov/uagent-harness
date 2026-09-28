@@ -88,7 +88,7 @@ func TestVersion(t *testing.T) {
 func TestHelpListsCommands(t *testing.T) {
 	res := uah(t, "--help")
 	require.Equal(t, 0, res.code)
-	for _, command := range []string{"run", "resume", "sessions", "hooks", "config", "doctor"} {
+	for _, command := range []string{"exec, run", "resume", "sessions", "hooks", "config", "doctor"} {
 		assert.Regexp(t, `(?m)^\s+`+command+`\b`, res.stdout)
 	}
 	assert.NotContains(t, res.stdout, "--runner", "nothing spawns the runner")
@@ -106,7 +106,7 @@ func TestUnknownFlag(t *testing.T) {
 func TestTUINeedsATerminal(t *testing.T) {
 	res := uah(t)
 	assert.Equal(t, 2, res.code)
-	assert.Contains(t, res.stderr, "use uah run")
+	assert.Contains(t, res.stderr, "use uah exec")
 }
 
 // fakeEnv points uah at a fake model that answers with replies, then

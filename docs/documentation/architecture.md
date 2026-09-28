@@ -23,7 +23,7 @@ uah is a pure core with well-organized infrastructure around it, not layered DDD
 | `internal/tui/render` | Pure drawing of state to lines, with a per-item cache. |
 | `internal/tui/bubble` | The Bubble Tea shell: keys to intents, effects to commands, and frames. |
 | `internal/app` | Session setup: `Resolve` picks settings from flags, the resumed session, the configuration, and defaults with no I/O; `Explain` reports each effective value and its source the same way; `Setup` loads files and builds the engine; `Doctor` runs the same steps as checks for `uah doctor`. |
-| `cmd/uah` | The CLI: flags, `run`, `resume`, `sessions`, `hooks`, `config`, `doctor`, `mcp`, and the TUI launcher. |
+| `cmd/uah` | The CLI: flags, `exec` (also `run`), `resume`, `sessions`, `hooks`, `config`, `doctor`, `mcp`, and the TUI launcher. |
 | `testing` | `harnesstest` (fake and real runners, `RunnerEngine` that spawns either for tests, isolated state), `fakellm` (a scripted Responses API), `mcpserver` (a stdio MCP server), and `oauthserver` (an MCP server behind a small OAuth authorization server). |
 
 ## Rules
