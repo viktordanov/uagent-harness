@@ -23,7 +23,8 @@ func configCommand() *cli.Command {
 		Name:  flagConfig,
 		Usage: "show the effective configuration for a workspace and each value's source",
 		Description: "Takes the same flags as a session and shows what a session started with them would use:\n" +
-			"each key's value and its source (flag, env, session, project file, user file, or default).\n" +
+			"each key's value and its source (flag, env, session, project file, UAH_EXTRA_CONFIG,\n" +
+			"config.d/<file>, user file, or default).\n" +
 			"Keys whose files add up list every file that set them. The reference is docs/configuration.md.",
 		Flags:        append(sessionFlags(), &cli.BoolFlag{Name: flagJSON, Usage: "print JSON"}),
 		OnUsageError: onUsageError,
@@ -46,12 +47,16 @@ func configAction(ctx context.Context, cmd *cli.Command) error {
 	return printReport(os.Stdout, rep)
 }
 
-// printReport writes the home, the workspace, and the files, then one line per key:
+// printReport writes the home, the workspace, and the files (the layers
+// after the user file), then one line per key:
 // key, value, and source.
 func printReport(w io.Writer, rep app.Report) error {
 	fmt.Fprintf(w, "home:         %s\n", rep.Home)
 	fmt.Fprintf(w, "workspace:    %s (%s)\n", rep.Workspace, rep.WorkspaceSource)
 	fmt.Fprintf(w, "user file:    %s (%s)\n", rep.UserFile.Path, rep.UserFile.State)
+	for _, f := range rep.Layers {
+		fmt.Fprintf(w, "layer:        %s (%s)\n", f.Path, f.State)
+	}
 	fmt.Fprintf(w, "project file: %s (%s)\n\n", rep.ProjectFile.Path, rep.ProjectFile.State)
 	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(tw, "KEY\tVALUE\tSOURCE")

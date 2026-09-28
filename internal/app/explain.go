@@ -31,7 +31,9 @@ const (
 // Source is where an effective setting came from.
 type Source string
 
-// Sources, from the strongest to the weakest.
+// Sources, from the strongest to the weakest. A configuration layer's
+// source, between the project file and the user file, is its name:
+// UAH_EXTRA_CONFIG, or config.d/<file>.
 const (
 	FromFlag    Source = "flag"
 	FromEnv     Source = "env"
@@ -56,6 +58,9 @@ type File struct {
 	State string `json:"state"`
 }
 
+// fileRead is the state of a file that was read.
+const fileRead = "read"
+
 // Report is the effective configuration for a workspace.
 type Report struct {
 	// Home is uah's home, set by Inspect.
@@ -63,10 +68,12 @@ type Report struct {
 	Workspace string `json:"workspace"`
 	// WorkspaceSource is the workspace's source: a flag, the resumed
 	// session, or the default (the current directory).
-	WorkspaceSource Source    `json:"workspace_source"`
-	UserFile        File      `json:"user_file"`
-	ProjectFile     File      `json:"project_file"`
-	Settings        []Setting `json:"settings"`
+	WorkspaceSource Source `json:"workspace_source"`
+	UserFile        File   `json:"user_file"`
+	// Layers are the configuration layers read, in merge order.
+	Layers      []File    `json:"layers"`
+	ProjectFile File      `json:"project_file"`
+	Settings    []Setting `json:"settings"`
 }
 
 // Origins are what Explain weighs besides the inputs.
@@ -119,9 +126,13 @@ func Explain(in Inputs, o Origins) (Report, error) {
 	if err != nil {
 		return Report{}, err
 	}
-	rep := Report{Workspace: in.Workspace, WorkspaceSource: wsSource, UserFile: File{Path: in.ConfigPath, State: "read"}, ProjectFile: File{Path: config.ProjectFile(in.Workspace), State: "read"}}
+	rep := Report{Workspace: in.Workspace, WorkspaceSource: wsSource, UserFile: File{Path: in.ConfigPath, State: fileRead}, ProjectFile: File{Path: config.ProjectFile(in.Workspace), State: fileRead}}
 	if o.Layers.UserFile == "" {
 		rep.UserFile.State = "not found"
+	}
+	rep.Layers = []File{}
+	for _, x := range o.Layers.Extra {
+		rep.Layers = append(rep.Layers, File{Path: x.Path, State: fileRead})
 	}
 	switch {
 	case !o.Layers.Trusted:
@@ -297,25 +308,41 @@ func orSources(flag Source, files []Source) []Source {
 	return []Source{FromDefault}
 }
 
-// overrides is the file whose value wins for a key the project file
-// overrides: the project file when it sets it, else the user file when it
-// does, else "".
+// overrides is the file whose value wins for a key a later file overrides:
+// the last of the user file, the layers, and the project file that sets
+// it, else "".
 func overrides(l config.Layers, get func(config.Config) any) Source {
-	return pick(setIn(l.Project, get, FromProject), setIn(l.User, get, FromUser))
+	files := fileSources(l, get)
+	if len(files) == 0 {
+		return ""
+	}
+
+	return files[len(files)-1]
 }
 
-// adds is every file that sets a key whose files add up, the user file
-// first, or the default when neither does.
+// adds is every file that sets a key whose files add up, in merge order, or
+// the default when none does.
 func adds(l config.Layers, get func(config.Config) any) []Source {
+	if out := fileSources(l, get); len(out) > 0 {
+		return out
+	}
+
+	return []Source{FromDefault}
+}
+
+// fileSources are the files that set get's value, in merge order.
+func fileSources(l config.Layers, get func(config.Config) any) []Source {
 	var out []Source
-	for _, s := range []Source{setIn(l.User, get, FromUser), setIn(l.Project, get, FromProject)} {
-		if s != "" {
+	add := func(c config.Config, src Source) {
+		if s := setIn(c, get, src); s != "" {
 			out = append(out, s)
 		}
 	}
-	if len(out) == 0 {
-		return []Source{FromDefault}
+	add(l.User, FromUser)
+	for _, x := range l.Extra {
+		add(x.Config, Source(x.Name))
 	}
+	add(l.Project, FromProject)
 
 	return out
 }

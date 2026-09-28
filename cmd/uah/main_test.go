@@ -31,7 +31,7 @@ func TestMain(m *testing.M) {
 	if err := os.Setenv("UAH_HOME", filepath.Join(dir, "home")); err != nil {
 		panic(err)
 	}
-	for _, name := range []string{"UAH_CONFIG", "UAH_STATE_DIR", "UAGENT_CONFIG", "UAGENT_STATE_DIR"} {
+	for _, name := range []string{"UAH_CONFIG", "UAH_STATE_DIR", "UAH_EXTRA_CONFIG", "UAGENT_CONFIG", "UAGENT_STATE_DIR"} {
 		if err := os.Unsetenv(name); err != nil {
 			panic(err)
 		}

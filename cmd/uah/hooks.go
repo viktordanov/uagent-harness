@@ -25,8 +25,9 @@ func hooksCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "hooks",
 		Usage: "list the hooks that apply to a workspace",
-		Description: "Hooks come from [[hooks.<Event>]] entries in the user configuration and, for trusted\n" +
-			"workspaces, in <workspace>/.uah/config.toml. Project hooks run only after `uah hooks trust`\n" +
+		Description: "Hooks come from [[hooks.<Event>]] entries in the user configuration, the layers in\n" +
+			"~/.uah/config.d and UAH_EXTRA_CONFIG, and, for trusted workspaces, <workspace>/.uah/config.toml.\n" +
+			"User and layer hooks run as written. Project hooks run only after `uah hooks trust`\n" +
 			"records their exact commands, and the content of a local script a command runs;\n" +
 			"a changed command or script needs trust again.",
 		Flags:        flags,

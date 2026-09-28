@@ -17,6 +17,9 @@ const (
 	EnvConfig = "UAH_CONFIG"
 	// EnvStateDir overrides where sessions and run records live (--state-dir).
 	EnvStateDir = "UAH_STATE_DIR"
+	// EnvExtraConfig names one more configuration layer, merged after the
+	// layers in config.d.
+	EnvExtraConfig = "UAH_EXTRA_CONFIG"
 )
 
 // Name is the home directory's name in the user's home directory, and the

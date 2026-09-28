@@ -7,8 +7,8 @@ import (
 	"github.com/viktordanov/uagent-harness/internal/mcp"
 )
 
-// merge returns base with every value set in over (a project file)
-// replacing it. Hooks, writable roots, approval lists, and environment
+// merge returns base with every value set in over (a layer or a project
+// file) replacing it. Hooks, writable roots, approval lists, and environment
 // patterns add up; an MCP server replaces the one of the same name whole;
 // booleans that turn something on stay on. It changes neither argument's
 // maps or slices.
@@ -47,6 +47,7 @@ func merge(base, over Config) Config {
 	if over.MCPOAuthCallbackPort != 0 {
 		base.MCPOAuthCallbackPort = over.MCPOAuthCallbackPort
 	}
+	base.Projects = mergeMap(base.Projects, over.Projects, func(_, b Project) Project { return b })
 
 	return base
 }

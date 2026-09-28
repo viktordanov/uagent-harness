@@ -1,12 +1,10 @@
-// Package config reads uah's configuration: a user file and, for workspaces
-// the user trusts, a project file. Unknown keys are errors, so typos surface.
+// Package config reads uah's configuration: a user file, the layers in
+// config.d and UAH_EXTRA_CONFIG, and, for workspaces the user trusts, a
+// project file. Unknown keys are errors, so typos surface.
 package config
 
 import (
-	"errors"
 	"fmt"
-	"io/fs"
-	"os"
 	"path/filepath"
 	"slices"
 	"time"
@@ -293,103 +291,4 @@ func ProjectDir(workspace string) string { return filepath.Join(workspace, home.
 // ProjectFile is a workspace's project configuration file.
 func ProjectFile(workspace string) string {
 	return filepath.Join(ProjectDir(workspace), "config.toml")
-}
-
-// Load reads the user file at userPath and, when the user file trusts the
-// workspace, its project file, which overrides the user file. It returns the
-// files it read. Missing files are not errors.
-func Load(userPath, workspace string) (Config, []string, error) {
-	l, err := LoadLayers(userPath, workspace)
-	if err != nil {
-		return Config{}, nil, err
-	}
-
-	return l.Merged(), l.Files(), nil
-}
-
-// Layers are the configuration files for a workspace as read, before they
-// are merged.
-type Layers struct {
-	User    Config
-	Project Config
-	// UserFile and ProjectFile are the paths read ("" when not read).
-	UserFile    string
-	ProjectFile string
-	// Trusted reports whether the user file trusts the workspace.
-	Trusted bool
-}
-
-// Merged is the user file with the project file over it.
-func (l Layers) Merged() Config { return merge(l.User, l.Project) }
-
-// Files are the files read, the user file first.
-func (l Layers) Files() []string {
-	var files []string
-	for _, f := range []string{l.UserFile, l.ProjectFile} {
-		if f != "" {
-			files = append(files, f)
-		}
-	}
-
-	return files
-}
-
-// LoadLayers reads the user file at userPath and, when it trusts the
-// workspace, the workspace's project file. Missing files are not errors.
-func LoadLayers(userPath, workspace string) (Layers, error) {
-	var l Layers
-	found, err := decode(userPath, &l.User)
-	if err != nil {
-		return Layers{}, err
-	}
-	if found {
-		l.UserFile = userPath
-	}
-	tagHooks(l.User.Hooks, hooks.SourceUser)
-	abs, err := filepath.Abs(workspace)
-	if err != nil {
-		return Layers{}, fmt.Errorf("failed to resolve workspace: %w", err)
-	}
-	if l.Trusted = l.User.Projects[abs].Trusted; !l.Trusted {
-		return l, nil
-	}
-	path := ProjectFile(abs)
-	if found, err = decode(path, &l.Project); err != nil {
-		return Layers{}, err
-	}
-	if !found {
-		return l, nil
-	}
-	if len(l.Project.Projects) > 0 {
-		return Layers{}, fmt.Errorf("%s: [projects] belongs in the user file only", path)
-	}
-	tagHooks(l.Project.Hooks, hooks.SourceProject)
-	l.ProjectFile = path
-
-	return l, nil
-}
-
-func decode(path string, into *Config) (bool, error) {
-	data, err := os.ReadFile(path)
-	if errors.Is(err, fs.ErrNotExist) {
-		return false, nil
-	}
-	if err != nil {
-		return false, fmt.Errorf("failed to read %s: %w", path, err)
-	}
-
-	if err := decodeBytes(path, data, into); err != nil {
-		return true, err
-	}
-
-	return true, resolvePaths(into, filepath.Dir(path))
-}
-
-func tagHooks(byEvent map[string][]Hook, source hooks.Source) {
-	for event, list := range byEvent {
-		for i := range list {
-			list[i].Source = source
-		}
-		byEvent[event] = list
-	}
 }

@@ -24,10 +24,11 @@ func fileSettings(workspace string, l config.Layers, r Resolved, cfg config.Conf
 	if env.IgnoreDefaultExcludes != nil {
 		excludes = *env.IgnoreDefaultExcludes
 	}
-	trusted := FromDefault
-	if _, ok := l.User.Projects[workspace]; ok {
-		trusted = FromUser
-	}
+	trusted := pick(overrides(l, func(c config.Config) any {
+		_, ok := c.Projects[workspace]
+
+		return ok
+	}), FromDefault)
 	out := []Setting{
 		overridden(l, "approvals_reviewer", r.ApprovalsReviewer, func(c config.Config) any { return c.ApprovalsReviewer }),
 		overridden(l, "review.model", r.Review.Model, func(c config.Config) any { return c.Review.Model }),
@@ -82,8 +83,8 @@ func hookSettings(l config.Layers, cfg config.Config) []Setting {
 	return out
 }
 
-// mcpSettings describe each MCP server by name; a project server replaces
-// the user's of the same name.
+// mcpSettings describe each MCP server by name; a server in a later file
+// replaces one of the same name.
 func mcpSettings(l config.Layers, cfg config.Config) []Setting {
 	out := make([]Setting, 0, len(cfg.MCPServers))
 	for _, name := range slices.Sorted(maps.Keys(cfg.MCPServers)) {
@@ -110,7 +111,7 @@ func describeServer(s mcp.ServerConfig) string {
 	return text
 }
 
-// overridden is a key the project file overrides.
+// overridden is a key a later file overrides.
 func overridden(l config.Layers, key string, value any, get func(config.Config) any) Setting {
 	return one(key, value, pick(overrides(l, get), FromDefault))
 }

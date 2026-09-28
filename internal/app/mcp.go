@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"path/filepath"
+	"slices"
 
 	"github.com/viktordanov/uagent-harness/internal/config"
 	"github.com/viktordanov/uagent-harness/internal/mcp"
@@ -54,9 +55,9 @@ func mcpManager(cfg config.Config, workspace string, logger *slog.Logger, userFi
 }
 
 // MCPServerFile is the configuration file that configures the MCP server:
-// the trusted project file when it has the server, else the user file, as
-// Codex saves a tool's approval where its server is configured. It fails
-// when neither file has the server.
+// the last of the user file, the layers, and the trusted project file that
+// has it, as Codex saves a tool's approval where its server is configured.
+// It fails when no file has the server.
 func MCPServerFile(userFile, workspace, server string) (string, error) {
 	l, err := config.LoadLayers(userFile, workspace)
 	if err != nil {
@@ -64,6 +65,11 @@ func MCPServerFile(userFile, workspace, server string) (string, error) {
 	}
 	if _, ok := l.Project.MCPServers[server]; ok && l.ProjectFile != "" {
 		return l.ProjectFile, nil
+	}
+	for _, x := range slices.Backward(l.Extra) {
+		if _, ok := x.Config.MCPServers[server]; ok {
+			return x.Path, nil
+		}
 	}
 	if _, ok := l.User.MCPServers[server]; ok {
 		return userFile, nil

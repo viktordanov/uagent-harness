@@ -100,7 +100,7 @@ func TestLoad(t *testing.T) {
 
 		_, _, err := config.Load(user, ws)
 
-		require.ErrorContains(t, err, "user file only")
+		require.ErrorContains(t, err, "belongs in the user file")
 	})
 }
 

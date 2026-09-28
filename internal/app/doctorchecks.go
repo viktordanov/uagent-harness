@@ -193,9 +193,29 @@ func checkHooks(cfg config.Config, workspace, trustFile string) []Check {
 				"review it, then run `uah hooks trust -C "+workspace+"`"))
 		}
 	}
-	summary := ok("hooks", fmt.Sprintf("%d configured: %d user, %d project (%d trusted)", len(list), len(list)-project, project, project-len(untrusted)))
+	summary := ok("hooks", fmt.Sprintf("%d configured: %s (%d trusted)", len(list), hookCounts(list), project-len(untrusted)))
 
 	return append([]Check{summary}, untrusted...)
+}
+
+// hookCounts counts the hooks by file: the user file, each layer that has
+// hooks, and the project file, as in "2 user, 1 config.d/a.toml, 0 project".
+func hookCounts(list []hooks.Hook) string {
+	counts := map[hooks.Source]int{}
+	order := []hooks.Source{hooks.SourceUser}
+	for _, h := range list {
+		if counts[h.Source] == 0 && h.Source != hooks.SourceUser && h.Source != hooks.SourceProject {
+			order = append(order, h.Source)
+		}
+		counts[h.Source]++
+	}
+	order = append(order, hooks.SourceProject)
+	parts := make([]string, 0, len(order))
+	for _, src := range order {
+		parts = append(parts, fmt.Sprintf("%d %s", counts[src], src))
+	}
+
+	return strings.Join(parts, ", ")
 }
 
 // checkMCP starts the configured MCP servers, each within its startup
