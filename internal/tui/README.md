@@ -48,7 +48,7 @@ A key press:
 A session event:
 
 1. `onOpened` starts a goroutine that groups `session.Events()` into 16 ms batches, so a burst costs one update and one frame.
-2. Each batch arrives as one `eventsMsg`. `Update` reduces every event in order and runs the effects they return (a finished run reads the plan's usage), then waits for the next batch; exactly one wait is pending at a time, which keeps order.
+2. Each batch arrives as one `eventsMsg`. `Update` reduces every event in order and runs the effects they return (a finished run reads the plan's usage), starts the tick if the batch left something moving, then waits for the next batch; exactly one wait is pending at a time, which keeps order.
 3. Each session gets a generation number. Batches from a closed session are drained and dropped.
 
 A streamed answer changes with each batch, so it costs at most one render of its markdown per frame, about 60 a second.
