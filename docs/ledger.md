@@ -4,6 +4,22 @@ The definitive list of work until it is done or the stop time arrives. Nothing o
 
 Stop time (first round): 07:50 local. Later rounds have none.
 
+## Pending (round 5)
+
+Asked for by the owner: uah as a terminal host backend, inside the mechanisms the terminal host keeps for every harness. Designed, not being built; see [the terminal host integration design](design/hosting.md).
+
+| # | Item | Lane | Status |
+| --- | --- | --- | --- |
+| 52 | `--session-id <uuid>` starts a new session with that ID, as Claude Code's flag; an existing ID is a usage error | — | todo |
+| 53 | Configuration layers: `~/.uah/config.d/*.toml` and `UAH_EXTRA_CONFIG`, merged after the user file by the project file's rules; their hooks run as written | — | todo |
+| 54 | Subagents fire subagent hooks only: SessionStart, SessionEnd, UserPromptSubmit, and Stop for root sessions; a new `SubagentStart`; `agent_id` and `parent_session_id` in hooks that fire inside a subagent | — | todo |
+| 55 | Session lookup: `workspace`, `first_prompt`, and `last_activity` in the sidecar; `uah sessions --workspace` and `--since` | — | todo |
+| 56 | A change signal: `last_sequence` in the sidecar, written at the end of each turn | — | todo |
+| 57 | `uah sessions rm <id>` (`--force`, `--dry-run`, `--json`), with the session's runs, index rows, and subagents | — | todo |
+| 58 | `uah exec`, with `run` as an alias: `-` reads all of stdin as one prompt, `--ephemeral`, `-o/--output-last-message`, `--json` | — | todo |
+| 59 | The terminal title shows idle, working, or waiting for an approval, with OSC 9;4 progress; `[tui] title = false` turns it off | — | todo |
+| 60 | The session file documented as a versioned format, with `Sequence` as the paging cursor, and a test that reads a recorded file by the documented rules | — | todo |
+
 ## Pending (round 4)
 
 Asked for by the owner after v1.0.1.
@@ -322,6 +338,7 @@ Done: items 13–27. `/context`, shell completion, module READMEs and a root REA
 
 Ideas that come up while working go here, not into the items.
 
+- After round 5: rewrite the repository history as agreed with the owner on 2026-09-29 (generic names in design records; tags moved; old history backed up locally).
 - Flaky test: `TestTUI_CtrlEnterSendsTheQueue` timed out once in CI (1eaf812, 2026-09-29) waiting for the first model request; it passes 30 times alone and 6 times with the package on 2 CPUs locally. Look again if it recurs.
 - Stop reading `~/.codex/AGENTS.md` and `~/.codex/skills` by default; `uah import codex` copies them into `~/.uah` once, visibly, and an opt-in `codex_home = true` keeps live sharing. Repository `AGENTS.md` and `.agents/skills` stay (owner, 2026-09-25).
 - Subagents: stopping a child while the parent is idle; Codex's v2 tools, `items`, and `fork_context`; Codex's completion notification into the parent's history (see docs/design/subagents.md, Validation).
