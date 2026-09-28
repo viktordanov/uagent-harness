@@ -46,7 +46,7 @@ The only differences:
 2. the spawn tools, never offered to a child, except to a forked child, which keeps its parent's tools and whose spawns are refused;
 3. approvals, asked through the parent session;
 4. the model, effort, service tier, and instructions a role, the spawn call, or `[agents]` defaults set, and a role's tools and pre-approvals;
-5. a hook runner of its own with the same hooks, so hook results stay with the child's session;
+5. a hook runner of its own with the same hooks, so hook results stay with the child's session, which fires the subagent hooks only (see [Events and hooks](#events-and-hooks));
 6. its engine handle, which does not close the shared engine when the child closes;
 7. its prompt cache key, the root session's ID, as Codex keys every agent of a tree;
 8. no streaming: `Stream` is off, since neither the parent nor the agent view shows a child's text as it arrives.
@@ -59,7 +59,7 @@ The only differences:
 
 A child is a `session.Session` on the parent's engine. The engine is wrapped so that closing a child leaves the shared MCP servers running. The manager's lock guards every child's fields.
 
-1. **Start.** `spawn` checks the depth and, on the openai-codex provider, the model (see [The tools](#the-tools)). `start` checks the limit, registers the child with the ID `subagent-<uuid>`, sets its prompt cache key, and opens its session with `childOptions` (see [Parity](#parity-with-the-root-session)). The spawn call, the role, and the configured defaults override the model and effort in that order, a role's `service_tier` sets fast mode, and a role's `developer_instructions` follow the host prompt. With `fork_context`, the engine copies the parent's history into the child's session now (see [Forking](#forking)). A goroutine, `watch`, then follows the session's events until it closes.
+1. **Start.** `spawn` checks the depth and, on the openai-codex provider, the model (see [The tools](#the-tools)). `start` checks the limit, registers the child with the ID `subagent-<uuid>`, sets its prompt cache key, and opens its session with `childOptions` (see [Parity](#parity-with-the-root-session)). The spawn call, the role, and the configured defaults override the model and effort in that order, a role's `service_tier` sets fast mode, and a role's `developer_instructions` follow the host prompt. With `fork_context`, the engine copies the parent's history into the child's session now (see [Forking](#forking)). `SubagentStart` hooks run next, and then the first message goes out. A goroutine, `watch`, then follows the session's events until it closes.
 2. **Running.** `submit` sends a message and marks the child `running`. The session queues the message while a run is live, so a child reads a second message after its current run.
 3. **Finished.** When the session reports `Idle` and has queued every message sent (tracked by message ID, so an `Idle` from before a message, or a message the session added itself, such as a Stop hook's, does not count), the child is `completed` with the last run's answer, `interrupted`, or `errored`. An errored child's message is the cause in one line (`cause.go`): the provider's message from its JSON error body when the run's `RunnerError` has one, such as `The 'gpt-luna-6' model is not supported when using Codex with a ChatGPT account.`, else the error itself. With `SubagentStop` hooks, a completed child first runs them (see [Events and hooks](#events-and-hooks)).
 4. **Closed.** `close_agent`, closing the parent, or `Close` closes the child's session and its open descendants. The watcher then reports `shutdown`.
@@ -114,7 +114,9 @@ Waiters sleep on a channel that is closed and replaced at every change. A spawn 
 Hooks come from `Config.Hooks`, the session's runner:
 
 - **SubagentStop** runs when a child completes, with Claude Code's payload: the parent's `session_id` and `transcript_path`, and the child's `agent_id`, `agent_type` (its role, or `default`), `agent_transcript_path`, and `last_assistant_message`. A block with a reason sends the reason to the child as its next message, at most 5 times in a row (`stop_hook_active` is true after the first). The child stays `running` while the hooks run; a message from the parent meanwhile makes their decision moot.
-- **Every other hook** runs for a child as for the root session: PreToolUse on the engine, and SessionStart, UserPromptSubmit, PostToolUse, Stop, PreCompact, and SessionEnd in the child's session, which has its own runner (`hooks.Runner.Clone`). PermissionRequest runs in the parent session, where the child's approvals go.
+- **SubagentStart** runs when `spawn_agent` has opened a child, before its first message, with the same payload less `last_assistant_message`. It only observes. The spawn waits for it, so it comes before any hook of the child's own. A resumed child does not run it.
+- **Session hooks** (SessionStart, SessionEnd, UserPromptSubmit, and Stop, `hooks.RootOnly`) never run for a child, as in Claude Code. `Bind` gives the runner the manager's parent lookup (`hooks.Runner.SetParents`, the same walk `lineage` uses), and the runner skips these events for any session with a parent.
+- **Tool hooks and PreCompact** run for a child as for the root session: PreToolUse and PreCompact on the engine, PostToolUse in the child's session, which has its own runner (`hooks.Runner.Clone`), and PermissionRequest in the parent session, where the child's approvals go. Their payloads keep the child's `session_id` and add `agent_id` (the same ID) and `parent_session_id`, so a hook can tell a child's call from the root's.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="fork" files="ops.go manager.go record.go" -->

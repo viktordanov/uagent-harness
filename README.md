@@ -288,11 +288,11 @@ Add a hook, for example a notification when the agent is idle:
 command = "osascript -e 'display notification \"uah is idle\"'"
 ```
 
-Hooks in a project's `.uah/config.toml` run only after `uah hooks trust`; `uah hooks` lists them and whether each runs.
+Hooks in a project's `.uah/config.toml` run only after `uah hooks trust`; hooks in the user file and the layers (`~/.uah/config.d/*.toml`, `UAH_EXTRA_CONFIG`) run as written. `uah hooks` lists them all and whether each runs.
 
 ### The `/config` panel
 
-Type `/config` in the TUI. It lists the basic settings (compaction, the model and effort, fast mode, the permission mode, the details view, and the mouse) with each value and its source. ↑↓ choose, enter or space changes, esc closes. Each change is saved to your user file, keeping its comments, and applies to the running session where it can; compaction settings apply from the next session. A flag or a trusted project file that sets the same key still wins, and `/config` says so.
+Type `/config` in the TUI. It lists the basic settings (compaction, the model and effort, fast mode, the permission mode, the details view, and the mouse) with each value and its source. ↑↓ choose, enter or space changes, esc closes. Each change is saved to your user file, keeping its comments, and applies to the running session where it can; compaction settings apply from the next session. A flag, a configuration layer, or a trusted project file that sets the same key still wins, and `/config` says so.
 
 ### Inspect the configuration
 
@@ -301,19 +301,21 @@ Type `/config` in the TUI. It lists the basic settings (compaction, the model an
 
 ---
 
-<!-- memoria:section id="configuration" files="internal/config/config.go cmd/uah/flags.go cmd/uah/config.go internal/app/resolve.go internal/app/setup.go internal/app/explain.go internal/app/explain_files.go internal/app/compaction.go internal/app/configedit.go internal/config/edit.go internal/config/legacy.go internal/home/home.go internal/home/migrate/migrate.go .uah/config.toml" -->
+<!-- memoria:section id="configuration" files="internal/config/config.go internal/config/layers.go internal/config/merge.go cmd/uah/flags.go cmd/uah/config.go internal/app/resolve.go internal/app/setup.go internal/app/explain.go internal/app/explain_files.go internal/app/compaction.go internal/app/configedit.go internal/config/edit.go internal/config/legacy.go internal/home/home.go internal/home/migrate/migrate.go .uah/config.toml" -->
 ## Configuration
 
 Everything uah reads and writes lives in `~/.uah`, as Codex keeps `~/.codex`: the configuration, `AGENTS.md`, agents, prompts, skills, hook trust, MCP credentials, sessions, run records, the session index, pasted images, the model cache, and logs. `UAH_HOME` names another home; `--config` (`UAH_CONFIG`) and `--state-dir` (`UAH_STATE_DIR`) move just the user file or the state.
 
-Two TOML files:
+The TOML files, each merged over the ones before it:
 
 | File | Applies to | When |
 | --- | --- | --- |
 | `~/.uah/config.toml` (or `--config`) | Every workspace | Always |
-| `<workspace>/.uah/config.toml` | One workspace | The user file marks the workspace `trusted` under `[projects]`; its hooks also need `uah hooks trust` |
+| `~/.uah/config.d/*.toml`, in lexical order | Every workspace | Always; for configuration another program owns, such as a terminal host's hooks |
+| The file `UAH_EXTRA_CONFIG` names | Every workspace | When the variable is set, as for one session's MCP servers and permissions |
+| `<workspace>/.uah/config.toml` | One workspace | The user file or a layer marks the workspace `trusted` under `[projects]`; its hooks also need `uah hooks trust` |
 
-A flag wins over the environment, which wins over a resumed session's settings (its provider, model, effort, fast mode, and permission mode), then the project file, the user file, and the defaults. Unknown keys are errors, so a typo fails loudly.
+A flag wins over the environment, which wins over a resumed session's settings (its provider, model, effort, fast mode, and permission mode), then the project file, `UAH_EXTRA_CONFIG`, `config.d`, the user file, and the defaults. Unknown keys are errors, so a typo fails loudly.
 
 Earlier versions used `~/.config/uagent`, `~/.local/state/unreal-agent`, and a project's `.uagent`. On its first start without `~/.uah`, uah copies the two folders into `~/.uah` and says so; the old folders are only read. It never moves a project's `.uagent`: uah and `uah doctor` show the `git mv .uagent .uah` that does. `UAGENT_CONFIG` and `UAGENT_STATE_DIR` are no longer read, and uah warns when either is set.
 
@@ -459,7 +461,7 @@ Read more: [MCP](internal/mcp/README.md), and the [design and validation](docs/d
 Subagents are child sessions that a session's agent starts, messages, waits for, and closes through Codex's v1 multi-agent tools. `internal/agents` implements them behind the `engine.Subagents` seam: the embedded engine offers the tools and runs their calls in the background, and the package owns the tools, the children's lifecycle, approvals through the parent, limits, hooks, and resume.
 <!-- /memoria:import -->
 
-A subagent is the same as the main agent in every way except its session, which is nested under the parent's: the same instructions, skills, sandbox, approvals, hooks, MCP servers, and compaction. It asks for approval through the parent's session.
+A subagent is the same as the main agent in every way except its session, which is nested under the parent's: the same instructions, skills, sandbox, approvals, hooks, MCP servers, and compaction. It asks for approval through the parent's session. It fires the subagent hooks only, as in Claude Code: `SessionStart`, `SessionEnd`, `UserPromptSubmit`, and `Stop` fire for the main session alone, `SubagentStart` and `SubagentStop` mark a subagent's start and end, and a tool or `PreCompact` hook inside a subagent gets `agent_id` and `parent_session_id`.
 
 - Its session ID is `subagent-<uuid>`. A role or the spawn call can give it another model, effort, or fast mode on the parent's provider.
 - A role is a Markdown file with front matter, as Claude Code's, or a Codex TOML role file; it can limit the subagent's tools and approve commands and MCP tools in advance, within the permission mode.

@@ -81,7 +81,7 @@ This audit (items 33 and 51 of the ledger) lists each behavior and the code that
 | PreToolUse hooks | `embedded/pretooluse.go`, around the tool registry |
 | PermissionRequest hooks | `internal/session/approvals.go`, in the ask the approver calls |
 | PreCompact hooks | `internal/app/setup.go` (`preCompactHook`), called by `embedded/compact.go` |
-| SubagentStop hooks | `internal/agents` |
+| SubagentStart and SubagentStop hooks, and which hooks a subagent fires | `internal/agents` |
 | Permission mode to sandbox | `approval.Mode.Sandbox()`; the session sends the mode as `Options.Mode`, and the engine switches the shell per command (`embedded/mode.go`) |
 | The sandbox | `internal/sandbox`: `Wrap` and `Shell`; the engine picks a shell per command |
 | Rules: `allow`, `forbidden`, `prompt` | `approval.Approver.Decide`, called in the Bash tool (`embedded/sandboxtool.go`) |

@@ -36,6 +36,7 @@ command = "osascript -e 'display notification \"uah is idle\"'"
 | `PreToolUse` | Before each tool call | Deny it (exit 2, or `permissionDecision` `"deny"` or `"ask"`); the reason is the tool's error. Rewrite it (`updatedInput`) | engine |
 | `PostToolUse` | After each tool call | Observe only | session |
 | `Stop` | When the agent finished and nothing is queued | Keep it going: `"decision": "block"` with a `reason` sends the reason as the next message, at most 5 times in a row. `stop_hook_active` is true after the first | session |
+| `SubagentStart` | When a subagent starts, before its first message (`agent_id`, `agent_type`, `agent_transcript_path`; `session_id` is the parent's) | Observe only | internal/agents |
 | `SubagentStop` | When a subagent finished (`agent_id`, `agent_type`, `agent_transcript_path`, `last_assistant_message`; `session_id` is the parent's) | Keep it going: `"decision": "block"` with a `reason` sends the reason to the subagent, at most 5 times in a row | internal/agents |
 | `PermissionRequest` | Before the user is asked to approve an escalated command, a `prompt` rule, or an MCP call | Answer for the user with `permissionDecision` `"allow"` or `"deny"` (exit 2 denies); works headless too | session |
 | `PreCompact` | Before a compaction (`trigger`: manual or auto) | Stop it (exit 2 or `"decision": "block"`) | engine |
@@ -44,15 +45,17 @@ command = "osascript -e 'display notification \"uah is idle\"'"
 `matcher` applies to the tool events: `PreToolUse`, `PostToolUse`, and `PermissionRequest`. It must match the whole tool name (`^(?:matcher)$`); an empty matcher matches every tool. A PermissionRequest hook sees an escalated command or a `prompt` rule as `tool_name` `Bash` with `tool_input.command`, and an MCP call as its `mcp__<server>__<tool>` name with its arguments. The PreToolUse and PostToolUse hooks see MCP tools by the same names. An `apply_patch` call is `tool_name` `apply_patch` with Codex's `tool_input` `{"command": "<patch>"}`, plus `file_path` and `file_paths`, at PreToolUse, PostToolUse, and PermissionRequest; the matchers `apply_patch`, `Edit`, and `Write` all match it, as in Codex. A PreToolUse `updatedInput` with a new `command` replaces the patch.
 
 The engine runs PreToolUse and PreCompact hooks itself, and the session runs PermissionRequest hooks in the ask the approver calls ([where each behavior lives](../engine/README.md#where-each-behavior-lives)).
+
+A subagent fires the subagent hooks only, as in Claude Code. `SessionStart`, `SessionEnd`, `UserPromptSubmit`, and `Stop` (`RootOnly`) fire for root sessions only. The tool events and `PreCompact` still fire inside a subagent, and then carry `agent_id` (the subagent's session ID, which is also `session_id`) and `parent_session_id`. `Runner.SetParents` gives the runner a lookup from a session ID to its parent; `Run` uses it to skip a root-only event and fill the two fields, and a payload that already has `agent_id`, such as `SubagentStop`'s, is left as it is. No setting makes a subagent fire the session events.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="running" files="exec.go payload.go hooks.go" -->
 ## Running a hook
 
-`Runner.Run(ctx, Input)` runs the matching hooks in configuration order (the user file's first) and stops at the first block.
+`Runner.Run(ctx, Input)` runs the matching hooks in configuration order (the user file's first, then each layer's, then the project file's) and stops at the first block.
 
 1. The command runs with `/bin/sh -c` in the workspace, in its own process group, with `UAH_HOOK_EVENT` and `UAH_PROJECT_DIR` added to the environment.
-2. `Input` arrives as JSON on stdin. Its field names are Claude Code's: `hook_event_name`, `session_id`, `cwd`, `transcript_path`, `prompt`, `tool_name`, `tool_input`, `tool_response`, `stop_hook_active`, `trigger`, `source`, and `reason`, plus uah's `run_id`, `model`, and `effort`.
+2. `Input` arrives as JSON on stdin. Its field names are Claude Code's: `hook_event_name`, `session_id`, `cwd`, `transcript_path`, `prompt`, `tool_name`, `tool_input`, `tool_response`, `stop_hook_active`, `trigger`, `source`, `reason`, and, for subagents, `agent_id`, `agent_type`, `agent_transcript_path`, `last_assistant_message`, and `parent_session_id`, plus uah's `run_id`, `model`, and `effort`.
 3. The timeout kills the whole process group. Output past 1 MiB is dropped.
 4. Every result goes to the function set with `OnResult`; the session reports it as a `HookRan` event, shown in the TUI's detailed view, while blocks and failures show in both views.
 
@@ -100,7 +103,7 @@ To add an event: add it to `Events` in `hooks.go` and any payload fields to `Inp
 <!-- memoria:section id="trust" files="trust.go script.go" -->
 ## Trust
 
-Hooks in the user file run as written. Hooks in a trusted project's `.uah/config.toml` run only after `uah hooks trust` records them in `~/.uah/trusted-hooks.json`. Trust is based on content:
+Hooks in the user file and in the configuration layers (`~/.uah/config.d/*.toml` and `UAH_EXTRA_CONFIG`) run as written: a program that can write a layer can already write the user file. Their `Source` is the layer's name, such as `config.d/host.toml`, which `uah hooks` and `uah doctor` show. Hooks in a trusted project's `.uah/config.toml` run only after `uah hooks trust` records them in `~/.uah/trusted-hooks.json`. Trust is based on content:
 
 1. Each command is recorded by its SHA-256, so a changed command needs trust again.
 2. When the command's first word is a path to a local file (absolute, relative to the workspace, or through a variable such as `"$UAH_PROJECT_DIR"/check.sh`), the entry also records the script's path and SHA-256. An edited script is reported as untrusted ("the script changed") until `uah hooks trust` runs again.
@@ -112,5 +115,5 @@ An untrusted hook is skipped and reported once per command. The file is written 
 <!-- memoria:section id="tests" files="hooks_test.go trust_test.go" -->
 ## Tests
 
-`hooks_test.go` pins the exit codes, the stdin payload, PreToolUse decisions, timeouts, and validation. `trust_test.go` pins script hashing, commands without a script, old entries, and the "script changed" report. The session's event handling is tested in `internal/session/hooks_test.go`, and PreToolUse and PermissionRequest in `internal/engine/embedded`.
+`hooks_test.go` pins the exit codes, the stdin payload, PreToolUse decisions, timeouts, validation, and the subagent rules (`TestRun_Subagents`); `internal/app`'s `TestSetup_SubagentHooks` runs every event through a real session with a subagent. `trust_test.go` pins script hashing, commands without a script, old entries, and the "script changed" report. The session's event handling is tested in `internal/session/hooks_test.go`, and PreToolUse and PermissionRequest in `internal/engine/embedded`.
 <!-- /memoria:section -->

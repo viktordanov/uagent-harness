@@ -1,6 +1,6 @@
 # Configuration reference
 
-uah reads its configuration from TOML files and combines it with flags, the environment, and a resumed session. This page lists every key: its type, default, meaning, which files may set it, and how a project file merges with the user file. `uah config` shows the effective value of each key for a workspace and where it came from.
+uah reads its configuration from TOML files and combines it with flags, the environment, and a resumed session. This page lists every key: its type, default, meaning, which files may set it, and how a layer or a project file merges with the files before it. `uah config` shows the effective value of each key for a workspace and where it came from.
 
 1. [Files](#files)
 2. [Precedence](#precedence)
@@ -18,7 +18,9 @@ The first time uah starts without `~/.uah` and without `UAH_HOME`, it copies the
 | File | What it holds | Applies when |
 | --- | --- | --- |
 | `~/.uah/config.toml` | The user file: every key | Always. `--config` or `UAH_CONFIG` names another file |
-| `<workspace>/.uah/config.toml` | The project file: every key except `[projects]` | The user file has `[projects."<workspace>"]` with `trusted = true`. The path is the absolute workspace path, symlinks not resolved |
+| `~/.uah/config.d/*.toml` | Layers: every key, `[projects]` included | Always, each in lexical order after the user file. Files that do not end in `.toml` are skipped |
+| The file `UAH_EXTRA_CONFIG` names | A layer: every key, `[projects]` included | When the variable is set, after `config.d`. A relative path is relative to the current directory, and a missing file is an error |
+| `<workspace>/.uah/config.toml` | The project file: every key except `[projects]` | The user file or a layer has `[projects."<workspace>"]` with `trusted = true`. The path is the absolute workspace path, symlinks not resolved |
 | `~/.uah/rules/*.rules` | The user's command rules (Starlark `prefix_rule`); "don't ask again" appends to `default.rules` | Always |
 | `<workspace>/.uah/rules/*.rules` | The project's command rules | The workspace is trusted, with or without a project file |
 | `~/.uah/trusted-hooks.json` | The project hook commands `uah hooks trust` approved, by SHA-256 | Written by uah; do not edit |
@@ -29,7 +31,9 @@ The first time uah starts without `~/.uah` and without `UAH_HOME`, it copies the
 
 uah no longer reads a workspace's `.uagent` directory. When a workspace has `.uagent` and no `.uah`, uah and `uah doctor` show the command that moves it: `git mv .uagent .uah` in a repository, else `mv .uagent .uah`. uah never moves the files itself.
 
-A missing file is not an error. An unknown key is, in either file, so a typo fails loudly. A project file with a `[projects]` table is an error.
+A missing file is not an error, except the file `UAH_EXTRA_CONFIG` names. An unknown key is, in any file, so a typo fails loudly. A project file with a `[projects]` table is an error.
+
+The layers let another program add configuration without editing the user file: a terminal host writes its hooks into its own `config.d` file and starts a session with `UAH_EXTRA_CONFIG` pointing at that session's MCP servers and permissions. A layer's hooks run as written, like the user file's: a program that can write a layer can already write the user file, so there is no trust step.
 
 ## Precedence
 
@@ -39,21 +43,23 @@ Each value comes from the first of these that sets it:
 2. The flag's environment variable (see [Environment variables](#environment-variables)).
 3. The resumed session (`--session`, `uah resume`, `uah run --last`): the `provider`, `model`, `effort`, `fast`, and `permission_mode` it last used, which its sidecar (`sessions/<id>.uah.json`) keeps whenever they change, and its workspace. A session from before uah kept them gives the provider, model, and effort of its last run.
 4. The project file.
-5. The user file.
-6. The default.
+5. The file `UAH_EXTRA_CONFIG` names.
+6. `~/.uah/config.d/*.toml`, the last in lexical order first.
+7. The user file.
+8. The default.
 
 The exceptions, as the code applies them:
 
 - A `--provider` flag that changes the provider, compared with the resumed session's, else the configured one, else openai-codex, drops the resumed and configured models. The model is then `--model`, or the provider's default: `gpt-6-sol` for openai-codex and none for the others.
 - The workspace comes from `-C`, the resumed session, or the current directory; no file sets it.
 - `--timeout` (30m) and `--max-disk` (5G) have defaults, but a default counts only when the flag is not given: the files come first.
-- `--fast` given, even as `--fast=false`, wins. Otherwise the resumed session's fast mode wins, unless a `--provider` flag changes the provider. Otherwise `fast` is on when either file turns it on.
-- The permission mode is `--sandbox` (or `UAH_SANDBOX`) as a mode, else the resumed session's, else `permission_mode`, else `sandbox_mode` as a mode, else `workspace`. `sandbox_mode` follows from the mode. A project file's `sandbox_mode` does not override a user file's `permission_mode`, because `permission_mode` from either file comes first.
+- `--fast` given, even as `--fast=false`, wins. Otherwise the resumed session's fast mode wins, unless a `--provider` flag changes the provider. Otherwise `fast` is on when any file turns it on.
+- The permission mode is `--sandbox` (or `UAH_SANDBOX`) as a mode, else the resumed session's, else `permission_mode`, else `sandbox_mode` as a mode, else `workspace`. `sandbox_mode` follows from the mode. A project file's `sandbox_mode` does not override a user file's `permission_mode`, because `permission_mode` from any file comes first.
 - `--no-instructions` turns instructions off whatever the files say; no flag turns them on over `enabled = false`.
-- `project_doc_max_bytes`, from either file, wins over `[instructions] max_bytes` from either file.
+- `project_doc_max_bytes`, from any file, wins over `[instructions] max_bytes` from any file.
 - Keys without a flag come only from the files and the defaults.
 
-A project file merges into the user file key by key, in one of four ways. The key tables below name the way for each key.
+Each layer, then the project file, merges into the files before it key by key, in one of four ways. The key tables below name the way for each key, in terms of a project file over the user file; a layer merges the same way.
 
 | Merge | Rule |
 | --- | --- |
@@ -64,7 +70,7 @@ A project file merges into the user file key by key, in one of four ways. The ke
 
 ## Keys
 
-Every key may be set in the user file and in a trusted project file, except `[projects]`, which is user-file only.
+Every key may be set in the user file, in a layer, and in a trusted project file, except `[projects]`, which the project file may not set.
 
 ### Model
 
@@ -197,7 +203,7 @@ The prompt describes Codex's tools and harness, and uah's tools are different:
 
 ### Hooks
 
-Each `[[hooks.<Event>]]` entry runs a command at an event. The events are `SessionStart`, `SessionEnd`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `Stop`, `SubagentStop`, `PreCompact`, and `PermissionRequest`; the contract is in the README's [Hooks](../README.md#hooks).
+Each `[[hooks.<Event>]]` entry runs a command at an event. The events are `SessionStart`, `SessionEnd`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `Stop`, `SubagentStart`, `SubagentStop`, `PreCompact`, and `PermissionRequest`; the contract is in the README's [Hooks](../README.md#hooks). A subagent fires the tool events and `PreCompact` only, with `agent_id` and `parent_session_id` in the payload; the session events fire for the main session alone.
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -205,7 +211,7 @@ Each `[[hooks.<Event>]]` entry runs a command at an event. The events are `Sessi
 | `command` | string | required | The command, run with `/bin/sh -c` in the workspace |
 | `timeout` | duration | `60s` | The limit for one run of the hook |
 
-Merge: append, per event, the user file's hooks first. Project hooks run only after `uah hooks trust` records their exact commands.
+Merge: append, per event, the user file's hooks first, then each layer's, then the project file's. User and layer hooks run as written. Project hooks run only after `uah hooks trust` records their exact commands.
 
 ### MCP servers
 
@@ -335,7 +341,7 @@ developer_instructions = "Review the diff you are given. List only real bugs, ea
 
 ### Projects
 
-`[projects."<absolute workspace path>"]`, in the user file only:
+`[projects."<absolute workspace path>"]`, in the user file or a layer, not in the project file. Merge: replace by name, so a later layer's entry for a workspace replaces an earlier one's:
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -354,6 +360,7 @@ developer_instructions = "Review the diff you are given. List only real bugs, ea
 | `UAH_HOME` | none | none | uah's home, `~/.uah` by default |
 | `UAH_CONFIG` | `--config` | none | The user file, `<home>/config.toml` by default |
 | `UAH_STATE_DIR` | `--state-dir` | none | Sessions, logs, and run records; the home by default |
+| `UAH_EXTRA_CONFIG` | none | none | One more configuration layer, merged after `config.d` and before the project file |
 | `CODEX_HOME` | none | none | Codex's directory (`~/.codex`) for `AGENTS.md` and skills |
 | `BROWSER` | none | none | The program `uah mcp login` opens the authorization URL with, instead of the system's opener |
 
@@ -361,7 +368,7 @@ developer_instructions = "Review the diff you are given. List only real bugs, ea
 
 ## uah config
 
-`uah config` takes the session flags and shows what a session started with them would use: the home, the workspace, the files read, and one line per key with its value and source (`flag`, `env`, `session`, `project file`, `user file`, or `default`). Keys that append or OR list every file that set them, such as `user file + project file`. `--json` prints the same as JSON. A flag equal to its environment variable's value is reported as `env`.
+`uah config` takes the session flags and shows what a session started with them would use: the home, the workspace, the files read (a `layer:` line for each layer), and one line per key with its value and source (`flag`, `env`, `session`, `project file`, `UAH_EXTRA_CONFIG`, `config.d/<file>`, `user file`, or `default`). Keys that append or OR list every file that set them in merge order, such as `user file + config.d/host.toml + project file`. `--json` prints the same as JSON. A flag equal to its environment variable's value is reported as `env`.
 
 ```sh
 uah config                     # the current directory
@@ -370,7 +377,7 @@ uah config --session 3f2a      # as resuming a session would
 uah config --json | jq '.settings[] | select(.sources != ["default"])'
 ```
 
-`/config` in the TUI shows the same values and sources for the basic settings (auto-compact and its token limit, `compact_model`, `model`, `effort`, `fast`, `permission_mode`, `[tui] details` and `mouse`) and changes them in the user file (`--config` or the default path). It edits one key in place and keeps the file's comments and formatting, with the editor `uah mcp add` uses; a change that would stop a session from starting is undone. The project file is never written.
+`/config` in the TUI shows the same values and sources for the basic settings (auto-compact and its token limit, `compact_model`, `model`, `effort`, `fast`, `permission_mode`, `[tui] details` and `mouse`) and changes them in the user file (`--config` or the default path). It edits one key in place and keeps the file's comments and formatting, with the editor `uah mcp add` uses; a change that would stop a session from starting is undone. The layers and the project file are never written, and a value one of them sets still wins over the change.
 
 ## Examples
 
