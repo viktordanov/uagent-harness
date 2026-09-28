@@ -5,6 +5,7 @@ package bubble
 
 import (
 	"context"
+	"math"
 	"strings"
 	"time"
 
@@ -143,9 +144,14 @@ func newComposer(theme *render.Styles) textarea.Model {
 	// The λ marks the composer's first row only; the rows below it line up
 	// under the text, as Codex's composer does.
 	ta.SetPromptFunc(2, firstRowPrompt("λ "))
+	// The composer grows to 8 rows and then scrolls to keep the cursor in
+	// view. MaxHeight alone would also refuse new lines once the draft has
+	// 8, so after a long paste shift+enter did nothing; the content's only
+	// limit is the textarea's own 10,000 lines.
 	ta.DynamicHeight = true
 	ta.MinHeight = 1
 	ta.MaxHeight = 8
+	ta.MaxContentHeight = math.MaxInt
 	ta.KeyMap.InsertNewline = key.NewBinding(key.WithKeys("shift+enter", "ctrl+j"))
 	ta.SetStyles(composerStyles(theme))
 	ta.SetVirtualCursor(false)
