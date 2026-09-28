@@ -55,6 +55,16 @@ type Sidecar struct {
 	// Settings are what the session last used, restored on resume (nil in
 	// sidecars from before uah kept them).
 	Settings *Saved `json:"settings,omitempty"`
+	// Workspace, FirstPrompt, and LastActivity find a session from this
+	// file alone: its absolute workspace, its first message cut to
+	// FirstPromptMax characters, and the time of its last item. Sidecars
+	// from before uah kept them lack them until the session resumes.
+	Workspace    string    `json:"workspace,omitempty"`
+	FirstPrompt  string    `json:"first_prompt,omitempty"`
+	LastActivity time.Time `json:"last_activity,omitzero"`
+	// LastSequence is the Sequence of the last item in the session file
+	// when the last turn ended: it changes only when the session does.
+	LastSequence uint64 `json:"last_sequence,omitempty"`
 }
 
 // RemoveSidecar deletes a session's sidecar, for a session that never ran.

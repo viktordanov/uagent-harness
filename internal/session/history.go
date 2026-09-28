@@ -39,6 +39,9 @@ type Info struct {
 	// Saved reports whether the sidecar recorded the settings, which then
 	// replaced the provider, model, and effort of the newest run.
 	Saved bool
+	// LastSequence is the sidecar's last_sequence: the Sequence of the
+	// session file's last item when the last turn ended (0: unknown).
+	LastSequence uint64
 }
 
 // LoadedRun is one run of a session with its decoded runner events.
@@ -165,6 +168,18 @@ func InDir(infos []Info, dir string) []Info {
 	var out []Info
 	for _, in := range infos {
 		if in.Workspace != "" && normalizeDir(in.Workspace) == want {
+			out = append(out, in)
+		}
+	}
+
+	return out
+}
+
+// ActiveSince keeps the sessions with activity after t.
+func ActiveSince(infos []Info, t time.Time) []Info {
+	var out []Info
+	for _, in := range infos {
+		if in.LastActivity.After(t) {
 			out = append(out, in)
 		}
 	}

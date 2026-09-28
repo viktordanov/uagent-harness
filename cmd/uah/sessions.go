@@ -33,12 +33,17 @@ func sessionsCommand() *cli.Command {
 	jsonFlag := &cli.BoolFlag{Name: flagJSON, Usage: "print JSON"}
 	all := &cli.BoolFlag{Name: flagAll, Usage: "list sessions from every directory"}
 	search := &cli.StringFlag{Name: "search", Usage: "only sessions whose prompts or answers contain these words (any directory)"}
-	workspace := &cli.StringFlag{Name: flagWorkspace, Aliases: []string{"C"}, Usage: "list this directory's sessions", DefaultText: "the current directory", TakesFile: true}
+	workspace := &cli.StringFlag{Name: flagWorkspace, Aliases: []string{"C"}, Usage: "list this directory's sessions (also with --all or --search)", DefaultText: "the current directory", TakesFile: true}
+	since := &cli.StringFlag{Name: flagSince, Usage: "only sessions active after this RFC 3339 time, such as 2026-09-29T08:00:00Z", Validator: func(v string) error {
+		_, err := parseSince(v)
+
+		return err
+	}}
 
 	return &cli.Command{
 		Name:         "sessions",
 		Usage:        "list this directory's sessions, most recent first (--all for every directory)",
-		Flags:        []cli.Flag{stateDir, jsonFlag, all, workspace, search},
+		Flags:        []cli.Flag{stateDir, jsonFlag, all, workspace, search, since},
 		OnUsageError: onUsageError,
 		Action:       listSessions,
 		Commands: []*cli.Command{{
@@ -68,11 +73,19 @@ func listSessions(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	showAll := cmd.Bool(flagAll) || cmd.String("search") != ""
+	showAll := (cmd.Bool(flagAll) || cmd.String("search") != "") && !cmd.IsSet(flagWorkspace)
 	if !showAll {
 		infos = session.InDir(infos, cwd)
 	}
+	if v := cmd.String(flagSince); v != "" {
+		t, _ := parseSince(v) // the flag's validator checked it
+		infos = session.ActiveSince(infos, t)
+	}
 	if cmd.Bool(flagJSON) {
+		if infos == nil {
+			infos = []session.Info{} // [] rather than null
+		}
+
 		return writeJSON(os.Stdout, infos)
 	}
 	if len(infos) == 0 {
@@ -108,6 +121,19 @@ func listSessions(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	return tw.Flush()
+}
+
+// flagSince is `uah sessions --since`.
+const flagSince = "since"
+
+// parseSince reads --since, an RFC 3339 time.
+func parseSince(v string) (time.Time, error) {
+	t, err := time.Parse(time.RFC3339, v)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("invalid --since %q (want an RFC 3339 time, such as 2026-09-29T08:00:00Z)", v)
+	}
+
+	return t, nil
 }
 
 func showSession(ctx context.Context, cmd *cli.Command) error {

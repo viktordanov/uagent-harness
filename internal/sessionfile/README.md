@@ -56,7 +56,7 @@ A message with images that the user pasted in the TUI has a tag line at its end 
 
 `Sequence` is the cursor. To read in pages, keep the `Sequence` of the last item you read, and next time read only the items with a higher `Sequence`. This is how the runner's own `Items` call pages: the cursor before the first item is 0. Because the runner only appends, a page never changes after you read it.
 
-To find out whether a session changed, compare the last `Sequence`.
+To find out whether a session changed, compare the last `Sequence`. uah also writes it to the sidecar, `sessions/<id>.uah.json`, as `last_sequence` at the end of each turn, so a reader can check it without opening the session file. It does not change while a turn runs; to see a turn that is still running, read the session file.
 
 ## Files beside the session file
 
@@ -71,7 +71,7 @@ These files change what the model sees. They never remove an item from the sessi
 ## Reading it from Go
 
 - `Read(path, after, limit)` returns the header and a `Page`: the items with a `Sequence` higher than `after`, at most `limit` of them (all when `limit` is 0), with `Next`, the cursor for the next page, and `More`. It refuses a header with another version (`ErrVersion`).
-- `Last(path)` returns the last item. It reads from the end of the file, so its cost does not grow with the history.
+- `Last(path)` returns the last item. It reads from the end of the file, so its cost does not grow with the history. The session writes the sidecar's `last_sequence` and `last_activity` with it.
 - `Item.Decode` and `Output.Decode` decode the data into `Input`, `Turn`, `ModelResponse`, `ToolCallStatus`, `Fork`, `Message`, `Reasoning`, or `ToolCall`. `Operation` reads an operation snapshot.
 <!-- /memoria:section -->
 

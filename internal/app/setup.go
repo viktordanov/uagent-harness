@@ -55,7 +55,7 @@ func Setup(ctx context.Context, in Inputs, logOutput io.Writer) (Result, error) 
 		if err != nil {
 			return Result{}, err
 		}
-		resumed, opts.ID, opts.Resumed = info, info.ID, true
+		resumed, opts.ID, opts.Resumed, opts.FirstPrompt = info, info.ID, true, info.FirstPrompt
 	}
 	if in.NewSessionID != "" {
 		if opts.ID, err = newSessionID(stateDir, in); err != nil {

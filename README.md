@@ -128,7 +128,10 @@ It exits 0 when the run succeeds, 1 when it fails, 2 on a usage error, 3 at the 
 uah sessions                           # this directory's sessions, newest first (--all: every directory)
 uah sessions --search "flaky parser"   # sessions whose prompts or answers contain the words
 uah sessions show 3f2a                 # the transcript (--json)
+uah sessions --json -C ~/src/app --since 2026-09-29T08:00:00Z   # a directory's sessions active since then
 ```
+
+Each session's sidecar, `~/.uah/sessions/<id>.uah.json`, also has its `workspace`, its `first_prompt` (200 characters), its `last_activity`, and its `last_sequence`, so a program can find a session and see that it changed from that file alone. `last_sequence` is the `Sequence` of the last item in the [session file](internal/sessionfile/README.md) when the last turn ended.
 
 ### Images
 

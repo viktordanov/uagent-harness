@@ -29,11 +29,15 @@ func savedOf(s Settings) Saved {
 }
 
 // ApplySidecar adds what the sidecar records to the summary: the source,
-// the parent, and the saved settings, which replace the provider, model,
+// the parent, the last item (LastSequence, and LastActivity when later),
+// and the saved settings, which replace the provider, model,
 // and effort of the newest run. A session without saved settings (from
 // before uah kept them) keeps its newest run's.
 func (in *Info) ApplySidecar(sc Sidecar) {
-	in.Source, in.Parent = sc.Source, sc.Parent
+	in.Source, in.Parent, in.LastSequence = sc.Source, sc.Parent, sc.LastSequence
+	if sc.LastActivity.After(in.LastActivity) {
+		in.LastActivity = sc.LastActivity
+	}
 	if sc.Settings == nil {
 		return
 	}
@@ -45,21 +49,34 @@ func (in *Info) ApplySidecar(sc Sidecar) {
 }
 
 // saveSettings records the settings in the session's sidecar, creating the
-// sidecar when the session has none. It replaces the file whole, so a
-// reader never sees half of it.
+// sidecar when the session has none.
 func saveSettings(sessionsDir, id string, s Settings) error {
+	saved := savedOf(s)
+
+	return updateSidecar(sessionsDir, id, func(sc *Sidecar) bool {
+		if sc.Settings != nil && *sc.Settings == saved {
+			return false
+		}
+		sc.Settings = &saved
+
+		return true
+	})
+}
+
+// updateSidecar changes the session's sidecar with change, creating it when
+// the session has none. It replaces the file whole, so a reader never sees
+// half of it; change returns false when it changed nothing.
+func updateSidecar(sessionsDir, id string, change func(*Sidecar) bool) error {
 	sc, found, err := ReadSidecar(sessionsDir, id)
 	if err != nil {
 		return err
 	}
-	saved := savedOf(s)
-	if sc.Settings != nil && *sc.Settings == saved {
+	if !change(&sc) {
 		return nil
 	}
 	if !found {
 		sc.Created = time.Now().UTC()
 	}
-	sc.Settings = &saved
 	data, err := json.Marshal(sc)
 	if err != nil {
 		return fmt.Errorf("failed to encode the session sidecar: %w", err)
@@ -69,18 +86,18 @@ func saveSettings(sessionsDir, id string, s Settings) error {
 	}
 	tmp, err := os.CreateTemp(sessionsDir, "."+id+".uah-*")
 	if err != nil {
-		return fmt.Errorf("failed to save the session settings: %w", err)
+		return fmt.Errorf("failed to write the session sidecar: %w", err)
 	}
 	_, werr := tmp.Write(append(data, '\n'))
 	if err := errors.Join(werr, tmp.Close()); err != nil {
 		_ = os.Remove(tmp.Name())
 
-		return fmt.Errorf("failed to save the session settings: %w", err)
+		return fmt.Errorf("failed to write the session sidecar: %w", err)
 	}
 	if err := os.Rename(tmp.Name(), sidecarPath(sessionsDir, id)); err != nil {
 		_ = os.Remove(tmp.Name())
 
-		return fmt.Errorf("failed to save the session settings: %w", err)
+		return fmt.Errorf("failed to write the session sidecar: %w", err)
 	}
 
 	return nil

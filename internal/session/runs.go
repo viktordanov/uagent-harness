@@ -14,6 +14,7 @@ import (
 // goroutine and the loop gets evStarted.
 func (s *Session) startRun(inputs []core.UserInput) {
 	// Injected messages that waited for a run go first (Inject).
+	s.noteFirstPrompt(inputs)
 	inputs, s.held = slices.Concat(s.held, inputs), nil
 	s.state = StateStarting
 	s.markSent(inputs)
@@ -108,6 +109,7 @@ func (s *Session) onRunEvent(e core.Event) {
 // onEnded handles the end of a run and reports whether the session closed.
 func (s *Session) onEnded(m evEnded) bool {
 	s.run = nil
+	s.noteLast(nil)
 	s.declinePending(false)
 	if m.err != nil {
 		s.emit(Notice{At: time.Now(), Level: LevelError, Message: m.err.Error()})
