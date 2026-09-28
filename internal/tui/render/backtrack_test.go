@@ -116,7 +116,6 @@ func allDim(line, dimFg string) bool {
 func backtrackRuns(t *testing.T) state.State {
 	t.Helper()
 	s := base()
-	s.Caps.Rewind = true
 	for i := 1; i <= 8; i++ {
 		run := fmt.Sprintf("run-%d", i)
 		s = apply(s,

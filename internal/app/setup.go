@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -68,6 +67,9 @@ func Setup(ctx context.Context, in Inputs, logOutput io.Writer) (Result, error) 
 	if notice := config.ProjectMoveNotice(in.Workspace); notice != "" {
 		opts.Notices = append(opts.Notices, notice)
 	}
+	if notice := EngineNotice(in, cfg); notice != "" {
+		opts.Notices = append(opts.Notices, notice)
+	}
 	r, err := Resolve(in, resumed, cfg)
 	if err != nil {
 		return Result{}, err
@@ -107,14 +109,8 @@ func Setup(ctx context.Context, in Inputs, logOutput io.Writer) (Result, error) 
 		return Result{}, err
 	}
 	subagents := newAgents(r, cfg, in.Workspace, &opts, catalog)
-	opts.Uses = usedFeatures(r, cfg, in.Workspace, approver.Rules())
-	eng, err := newEngine(r, in.Runner, stateDir, logger, parts{servers: servers, approver: approver, subagents: subagents, models: catalog, gate: in.Gate}, &opts) //nolint:contextcheck // on Linux, the sandbox probes bwrap once per process, with its own timeout
-	if err != nil {
-		return Result{}, err
-	}
-	if subagents != nil {
-		subagents.Bind(eng, opts) // children open exactly as this session does
-	}
+	eng := newEngine(r, stateDir, logger, parts{servers: servers, approver: approver, subagents: subagents, models: catalog}, &opts)
+	subagents.Bind(eng, opts) // children open exactly as this session does
 	opts.Shell = userShell(r, cfg, stateDir, approver)
 
 	return Result{StateDir: stateDir, Engine: eng, Options: opts, Config: cfg, Models: catalog, Usage: NewUsage(r.Settings, os.Getenv)}, nil
@@ -142,40 +138,26 @@ func loadHooks(cfg config.Config, workspace string) (*hooks.Runner, error) {
 	return runner, nil
 }
 
-// newEngine builds the resolved engine and adds its notices to opts.
-// parts are what Setup builds for the embedded engine.
+// parts are what Setup builds for the engine.
 type parts struct {
 	servers   *mcp.Manager
 	approver  *approval.Approver
 	subagents *agents.Manager
 	models    *models.Manager
-	// gate is the executable that applies the command rules on the
-	// process engine (Inputs.Gate).
-	gate string
 }
 
-func newEngine(r Resolved, runnerPath, stateDir string, logger *slog.Logger, p parts, opts *session.Options) (engine.Engine, error) {
-	sandboxDir := filepath.Join(stateDir, "sandbox")
-	if r.Engine == EngineProcess {
-		return newProcess(r, runnerPath, stateDir, logger, p, opts)
-	}
+// newEngine builds the embedded engine for the resolved settings.
+func newEngine(r Resolved, stateDir string, logger *slog.Logger, p parts, opts *session.Options) engine.Engine {
 	ecfg := embedded.Config{
 		StateDir: stateDir, MaxDisk: r.MaxDisk, Logger: logger, Provider: r.Settings.Provider, Hooks: opts.Hooks,
-		Sandbox: &r.Sandbox, SandboxDir: sandboxDir, Env: r.Env, MCP: p.servers, Approver: p.approver, Models: p.models,
+		Sandbox: &r.Sandbox, SandboxDir: filepath.Join(stateDir, "sandbox"), Env: r.Env, MCP: p.servers, Approver: p.approver, Models: p.models,
 		AutoReview: r.ApprovalsReviewer == review.ReviewerAuto, Review: r.Review,
 		InstructionFiles: instructionFiles(opts.Instructions),
 		Compaction:       r.Compaction, ContextWindow: r.Settings.ContextWindow,
-		BeforeCompact: preCompactHook(opts.Hooks, r.Settings),
-	}
-	if p.subagents != nil {
-		ecfg.Subagents = p.subagents
-	}
-	emb := embedded.New(ecfg)
-	if r.Settings.ServiceTier != "" && !emb.Capabilities().ServiceTier {
-		return nil, usage(errors.New("--fast needs the openai or openai-codex provider"))
+		BeforeCompact: preCompactHook(opts.Hooks, r.Settings), Subagents: p.subagents,
 	}
 
-	return emb, nil
+	return embedded.New(ecfg)
 }
 
 // preCompactHook runs PreCompact hooks before each compaction; a block

@@ -83,11 +83,11 @@ func TestTUI_ConfigUndoesAChangeThatBreaksTheStart(t *testing.T) {
 	d := &withUserFile{Deps: deps(t, "simple.jsonl")}
 	configDeps(t, d)
 	require.NoError(t, os.MkdirAll(filepath.Dir(d.path), 0o700))
-	before := []byte("engine = \"process\"\n")
+	before := []byte("provider = \"ollama\"\n")
 	require.NoError(t, os.WriteFile(d.path, before, 0o600))
 
 	err := d.SaveConfig("fast", true)
-	require.ErrorContains(t, err, "not saved: --fast needs the embedded engine")
+	require.ErrorContains(t, err, "not saved: --fast needs the openai or openai-codex provider")
 	data, rerr := os.ReadFile(d.path)
 	require.NoError(t, rerr)
 	assert.Equal(t, before, data)

@@ -36,13 +36,8 @@ func TestReduce_ContextMeter(t *testing.T) {
 }
 
 func TestReduce_CompactCommand(t *testing.T) {
-	s, effects := apply(opened(), state.Submit{Text: "/compact"})
-	assert.Empty(t, effects, "the process engine cannot compact")
-	assert.Contains(t, s.Items[len(s.Items)-1].Text, "needs the embedded engine")
-
-	s = opened()
-	s.Caps = engine.Capabilities{Compaction: true}
-	_, effects = apply(s, state.Submit{Text: "/compact"})
+	s := opened()
+	_, effects := apply(s, state.Submit{Text: "/compact"})
 	assert.Equal(t, []state.Effect{state.EffCompact{}}, effects)
 	_, effects = apply(s, state.Submit{Text: "/compact  keep the failing test names "})
 	assert.Equal(t, []state.Effect{state.EffCompact{Focus: "keep the failing test names"}}, effects, "words after /compact steer the summary")
@@ -82,7 +77,6 @@ func TestReduce_ReloadedCompactionAndInterrupt(t *testing.T) {
 
 func TestReduce_ClearStaysInTheSession(t *testing.T) {
 	s := opened()
-	s.Caps = engine.Capabilities{Compaction: true}
 	s, _ = apply(s, state.Submit{Text: "hello"})
 	id := s.SessionID
 	s, effects := apply(s, state.Submit{Text: "/clear"})

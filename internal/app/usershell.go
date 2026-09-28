@@ -9,7 +9,7 @@ import (
 )
 
 // userShell runs the commands the user types in the TUI's shell mode, in
-// uah itself, so both engines have them: with the sandbox scripts, the
+// uah itself, not in the engine: with the sandbox scripts, the
 // environment policy, and the shell the agent's commands use, and with the
 // sandbox and the rules only when user_shell_sandbox asks for them.
 func userShell(r Resolved, cfg config.Config, stateDir string, approver *approval.Approver) *usershell.Runner {

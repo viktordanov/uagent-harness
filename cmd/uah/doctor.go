@@ -16,7 +16,7 @@ import (
 func doctorCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "doctor",
-		Usage: "check the setup: runner, credentials, models, sandbox, configuration, hooks, MCP servers, and state",
+		Usage: "check the setup: credentials, models, sandbox, configuration, hooks, MCP servers, and state",
 		Description: "Checks what a session in the workspace would use, with the same flags, and prints one\n" +
 			"line per check: ✓ fine, ! works but needs a look, ✗ broken, each with a fix. It calls no\n" +
 			"model; it lists the provider's models, runs `true` in the sandbox, and starts the MCP servers.\n" +

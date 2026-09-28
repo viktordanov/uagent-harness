@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -48,11 +47,10 @@ func sessionFlags() []cli.Flag {
 			Name: "state-dir", Usage: "sessions, logs, and run records; must be outside the workspace",
 			Value: home.Dir(), Sources: cli.EnvVars(home.EnvStateDir), TakesFile: true,
 		},
-		&cli.StringFlag{
-			Name: "engine", Usage: "embedded (the runner's packages in process: live steering, effort, model, and /fast) or process (spawn unreal-agent-runner)",
-			DefaultText: app.EngineEmbedded, Sources: cli.EnvVars(app.EnvEngine), Validator: oneOf("engine", app.Engines),
-		},
-		&cli.BoolFlag{Name: "fast", Usage: "priority processing (service_tier priority; embedded engine, openai and openai-codex)"},
+		// Removed in uah 1.2 with the process engine; still accepted, so an
+		// old script runs, and any value only adds a warning.
+		&cli.StringFlag{Name: "engine", Hidden: true, Sources: cli.EnvVars(app.EnvEngine)},
+		&cli.BoolFlag{Name: "fast", Usage: "priority processing (service_tier priority; openai and openai-codex)"},
 		&cli.StringFlag{
 			Name: "sandbox", Usage: "where commands may write: read-only, workspace-write, or danger-full-access (no sandbox)",
 			DefaultText: "workspace-write", Sources: cli.EnvVars(app.EnvSandbox), Validator: oneOf("sandbox", sandboxModes()),
@@ -60,10 +58,6 @@ func sessionFlags() []cli.Flag {
 		&cli.StringFlag{
 			Name: "ask", Usage: "approval policy: on-request (ask before running a command outside the sandbox) or never (deny such commands)",
 			DefaultText: "on-request", Sources: cli.EnvVars(app.EnvAsk), Validator: oneOf("ask", approval.Policies),
-		},
-		&cli.StringFlag{
-			Name: "runner", Usage: "path to unreal-agent-runner, for the process engine", DefaultText: "~/.local/bin, then PATH",
-			Sources: cli.EnvVars("UAGENT_RUNNER"), TakesFile: true,
 		},
 		&cli.StringFlag{
 			Name: "base-url", Usage: "LLM base URL override", DefaultText: "provider default",
@@ -132,7 +126,6 @@ func inputs(cmd *cli.Command) app.Inputs {
 		Effort:         cmd.String("effort"),
 		Workspace:      cmd.String(flagWorkspace),
 		Engine:         cmd.String("engine"),
-		Runner:         cmd.String("runner"),
 		BaseURL:        cmd.String("base-url"),
 		Timeout:        cmd.Duration("timeout"),
 		TimeoutSet:     cmd.IsSet("timeout"),
@@ -145,19 +138,7 @@ func inputs(cmd *cli.Command) app.Inputs {
 		Ask:            cmd.String("ask"),
 		AllowDotenv:    cmd.Bool("allow-dotenv"),
 		NoInstructions: cmd.Bool("no-instructions"),
-		Gate:           gateExecutable(),
 	}
-}
-
-// gateExecutable is uah itself, which applies the command rules to the
-// process engine's commands ("" when it cannot be found).
-func gateExecutable() string {
-	exe, err := os.Executable()
-	if err != nil {
-		return ""
-	}
-
-	return exe
 }
 
 // oneOf accepts one of allowed, or empty (unset).

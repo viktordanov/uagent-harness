@@ -18,7 +18,7 @@ import (
 // reaches the run.
 func TestSession_SavesSettingsInTheSidecar(t *testing.T) {
 	dir := t.TempDir()
-	eng := newFakeEngine(engine.Capabilities{LiveMode: true})
+	eng := newFakeEngine(fakeCaps{LiveMode: true})
 	s, err := session.Open(context.Background(), eng, session.Options{Settings: settings(), SessionsDir: dir, Source: session.SourceTUI})
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = s.Close() })
@@ -56,7 +56,7 @@ func TestSession_SavesSettingsInTheSidecar(t *testing.T) {
 // TestSession_ModeAppliesLive pins that a mode change alone reaches a live
 // run when the engine can take it.
 func TestSession_ModeAppliesLive(t *testing.T) {
-	h := newHarness(t, engine.Capabilities{LiveMode: true})
+	h := newHarness(t, fakeCaps{LiveMode: true})
 	_, err := h.s.Submit("go")
 	require.NoError(t, err)
 	run := <-h.eng.started

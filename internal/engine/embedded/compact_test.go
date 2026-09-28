@@ -51,7 +51,6 @@ func TestEmbedded_CompactKeepsUserMessagesAndResumes(t *testing.T) {
 		fakellm.Reply{Text: "answer four"},
 	)
 	s, ev := e.open(t, e.compacting(0), "")
-	require.True(t, s.Capabilities().Compaction)
 	ask(t, s, ev, "first")
 	ask(t, s, ev, "second")
 	require.NoError(t, s.Compact())

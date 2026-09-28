@@ -40,6 +40,18 @@ type Provider struct {
 
 var errNoPriority = errors.New("this provider has no priority processing")
 
+// Priority reports whether the named provider of DefaultProviders accepts
+// priority processing, for checks made before an engine exists.
+func Priority(name string) bool {
+	for _, p := range DefaultProviders() {
+		if p.Name == name {
+			return p.Priority
+		}
+	}
+
+	return false
+}
+
 // DefaultProviders are the runner's providers, with clients whose retries
 // the engine can watch (clients.go).
 func DefaultProviders() []Provider {

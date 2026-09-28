@@ -14,8 +14,9 @@ import (
 )
 
 var (
-	// ErrNoRewind means the engine cannot go back to an earlier message.
-	ErrNoRewind = errors.New("going back to an earlier message needs the embedded engine")
+	// ErrNoRewind means the session's engine cannot go back to an earlier
+	// message (it is no engine.Rewinder), such as a subagent's.
+	ErrNoRewind = errors.New("this session cannot go back to an earlier message")
 	// ErrRewindBusy means the agent works or a message waits.
 	ErrRewindBusy = errors.New("going back to an earlier message waits until the agent is idle and nothing is queued")
 )
@@ -35,7 +36,7 @@ func (s *Session) Rewind(id string) error {
 
 func (s *Session) onRewind(id string) error {
 	r, ok := s.eng.(engine.Rewinder)
-	if !ok || !s.caps.Rewind {
+	if !ok {
 		return ErrNoRewind
 	}
 	if s.state != StateIdle || len(s.queue) > 0 || len(s.hooks.checking) > 0 {

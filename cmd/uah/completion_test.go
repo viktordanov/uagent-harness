@@ -20,7 +20,6 @@ func TestCompletionValues(t *testing.T) {
 	for args, want := range map[string][]string{
 		"--effort":           {"low", "medium", "high", "xhigh", "max"},
 		"run --sandbox":      {"read-only", "workspace-write", "danger-full-access"},
-		"--engine":           {"embedded", "process"},
 		"run --ask":          {"on-request", "never"},
 		"--provider":         {"openai", "openai-codex", "openrouter", "fireworks", "ollama"},
 		"config --log-level": {"debug", "error", "info", "warn"},
@@ -34,7 +33,7 @@ func TestCompletionValues(t *testing.T) {
 }
 
 func TestCompletionSessionIDs(t *testing.T) {
-	e, env := fakeEnv(t, "simple.jsonl")
+	e, env := fakeEnv(t)
 	res := uahWith(t, env, "", "run", "-C", e.Workspace, "hello")
 	require.Equal(t, 0, res.code, res.stderr)
 

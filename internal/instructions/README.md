@@ -32,7 +32,7 @@ Later files are more specific. Empty files are skipped. `ProjectDirs` is exporte
 
 1. `Assemble` joins the files in order, each under a `## <path>` header, and skips blank files. It stops before the file that would pass `project_doc_max_bytes` (32 KiB by default); a first file larger than the cap is cut.
 2. `HostPrompt(base, instructions)` puts the base instructions first, then `ProjectHeader` (a short "Project instructions" preamble), then the files. The base is the text of `model_instructions_file`, or `RunnerHostPrompt` (unreal-agent-runner v0.1.1's default text) when that key is not set. With neither a base nor instructions, it returns "", which leaves the runner's own prompt untouched. With a base and no instructions, it returns the base alone.
-3. `internal/app/setup.go` reads `model_instructions_file` (`readModelInstructions`: trimmed, and a missing or empty file is an error, as in Codex) and the files (`loadInstructions`). It sets the result as the session's `SystemPrompt`, which both engines send with every run. It reports the files as `InstructionsLoaded`, shown by `/status` and `uah doctor`. The embedded engine lists them in `/context`, which finds them by the whole `ProjectHeader`, so a heading in the base does not split it.
+3. `internal/app/setup.go` reads `model_instructions_file` (`readModelInstructions`: trimmed, and a missing or empty file is an error, as in Codex) and the files (`loadInstructions`). It sets the result as the session's `SystemPrompt`, which the session sends with every run. It reports the files as `InstructionsLoaded`, shown by `/status` and `uah doctor`. The engine lists them in `/context`, which finds them by the whole `ProjectHeader`, so a heading in the base does not split it.
 
 The runner's context builder always puts its own preamble and the skill list before this prompt. `--no-instructions` or `[instructions] enabled = false` turns discovery off, but a `model_instructions_file` still applies. Subagents get the parent's system prompt, and a role's instructions follow it.
 
@@ -49,7 +49,7 @@ Skills are Codex's `<name>/SKILL.md` folders. The embedded engine (`internal/eng
 3. `~/.uah/skills`.
 4. `$CODEX_HOME/skills` (`~/.codex/skills` by default).
 
-A name found in a more specific folder wins. The process engine offers only the runner's `.harness/skills`.
+A name found in a more specific folder wins.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="tests" files="instructions_test.go" -->

@@ -15,8 +15,6 @@ import (
 	uaharness "github.com/viktordanov/uagent/harness"
 	"github.com/viktordanov/uagent/testing/fixtures"
 
-	"github.com/viktordanov/uagent-harness/internal/engine"
-	"github.com/viktordanov/uagent-harness/internal/engine/process"
 	"github.com/viktordanov/uagent-harness/internal/sandbox"
 	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/internal/usershell"
@@ -29,7 +27,7 @@ func shellRunner(t *testing.T) *usershell.Runner {
 	return &usershell.Runner{Dir: t.TempDir(), Policy: sandbox.Policy{Workspace: t.TempDir()}, Shell: "/bin/sh"}
 }
 
-func newShellHarness(t *testing.T, caps engine.Capabilities) *harness {
+func newShellHarness(t *testing.T, caps fakeCaps) *harness {
 	t.Helper()
 	eng := newFakeEngine(caps)
 	s, err := session.Open(context.Background(), eng, session.Options{Settings: settings(), Shell: shellRunner(t)})
@@ -43,7 +41,7 @@ func newShellHarness(t *testing.T, caps engine.Capabilities) *harness {
 // starts a run, and its record goes first with the next message, with the
 // command's ID, as Session.Inject does.
 func TestSession_RunShell(t *testing.T) {
-	h := newShellHarness(t, engine.Capabilities{})
+	h := newShellHarness(t, fakeCaps{})
 
 	res, err := h.s.RunShell(t.Context(), "echo hi; exit 2")
 	require.NoError(t, err)
@@ -74,7 +72,7 @@ func TestSession_RunShell(t *testing.T) {
 // agent works, as Codex does, without sending it into the live run; it
 // goes with the next message.
 func TestSession_RunShellWhileRunning(t *testing.T) {
-	h := newShellHarness(t, engine.Capabilities{LiveInput: true})
+	h := newShellHarness(t, fakeCaps{LiveInput: true})
 	_, err := h.s.Submit("work")
 	require.NoError(t, err)
 	run := h.nextRun()
@@ -96,7 +94,7 @@ func TestSession_RunShellWhileRunning(t *testing.T) {
 // TestSession_InterruptStopsShell stops a running command with the
 // session's interrupt (esc esc), and the agent still hears of it.
 func TestSession_InterruptStopsShell(t *testing.T) {
-	h := newShellHarness(t, engine.Capabilities{})
+	h := newShellHarness(t, fakeCaps{})
 	done := make(chan usershell.Result, 1)
 	go func() {
 		res, err := h.s.RunShell(t.Context(), "sleep 30")
@@ -116,19 +114,19 @@ func TestSession_InterruptStopsShell(t *testing.T) {
 }
 
 func TestSession_RunShellWithoutRunner(t *testing.T) {
-	h := newHarness(t, engine.Capabilities{})
+	h := newHarness(t, fakeCaps{})
 
 	_, err := h.s.RunShell(t.Context(), "true")
 	require.ErrorIs(t, err, session.ErrNoShell)
 }
 
-// TestSession_RunShellProcessEngine runs a command in uah itself on the
-// process engine, and the record reaches the runner with the next message.
-func TestSession_RunShellProcessEngine(t *testing.T) {
+// TestSession_RunShellRunner runs a command in uah itself, and the record
+// reaches a real runner with the next message.
+func TestSession_RunShellRunner(t *testing.T) {
 	env := harnesstest.NewEnv(t)
 	t.Setenv("FAKERUNNER_FIXTURE", fixtures.Path("simple.jsonl"))
 	t.Setenv("FAKERUNNER_CAPTURE", env.Capture)
-	eng := process.New(uaharness.Config{RunnerPath: harnesstest.FakeRunner(t), StateDir: env.StateDir, KillGrace: time.Second, Getenv: env.Getenv})
+	eng := harnesstest.RunnerEngine(uaharness.Config{RunnerPath: harnesstest.FakeRunner(t), StateDir: env.StateDir, KillGrace: time.Second, Getenv: env.Getenv})
 	settings := session.Settings{Provider: "openai-codex", Model: "gpt-6-sol", Effort: "high", Workspace: env.Workspace}
 	s, err := session.Open(context.Background(), eng, session.Options{Settings: settings, Shell: shellRunner(t)})
 	require.NoError(t, err)

@@ -45,7 +45,7 @@ func TestDoctor_Healthy(t *testing.T) {
 		}
 		assert.Equal(t, app.CheckOK, c.Status, "%s: %s", c.Name, c.Detail)
 	}
-	assert.Equal(t, []string{"config", "home", "runner", "engine", "workspace", "credentials", "models", "usage", "sandbox", "system prompt", "instructions", "hooks", "mcp", "state"}, names)
+	assert.Equal(t, []string{"config", "home", "workspace", "credentials", "models", "usage", "sandbox", "system prompt", "instructions", "hooks", "mcp", "state"}, names)
 	assert.True(t, app.Healthy(checks))
 	assert.Contains(t, find(t, checks, "credentials").Detail, "openai-codex credentials found")
 }
@@ -74,12 +74,6 @@ func TestDoctor_Problems(t *testing.T) {
 				writeFile(t, filepath.Join(e.Workspace, ".uah", "config.toml"), "effort = \"low\"\n")
 			},
 			check: "project config", status: app.CheckWarn, detail: "not trusted",
-		},
-		"no runner for the process engine": {
-			prepare: func(_ *testing.T, _ *harnesstest.Env, in *app.Inputs, _ *app.DoctorOptions) {
-				in.Engine, in.Runner = app.EngineProcess, "/nonexistent/unreal-agent-runner"
-			},
-			check: "runner", status: app.CheckFail, detail: "not an executable file",
 		},
 		"an expired Codex token": {
 			prepare: func(t *testing.T, e *harnesstest.Env, _ *app.Inputs, _ *app.DoctorOptions) {

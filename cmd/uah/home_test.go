@@ -8,8 +8,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/viktordanov/uagent/testing/fixtures"
 )
 
 const migratedLine = "uah: moved your config and sessions to ~/.uah (the old folders are untouched)\n"
@@ -19,7 +17,7 @@ const migratedLine = "uah: moved your config and sessions to ~/.uah (the old fol
 // the environment of a uah that uses the default home there.
 func oldFolders(t *testing.T) (string, []string) {
 	t.Helper()
-	e, env := fakeEnv(t, "simple.jsonl")
+	e, env := fakeEnv(t)
 	userHome := t.TempDir()
 	oldState := filepath.Join(userHome, ".local", "state", "unreal-agent")
 	res := uahWith(t, append(env, "UAH_STATE_DIR="+oldState), "", "run", "-C", e.Workspace, "first question")
@@ -29,7 +27,6 @@ func oldFolders(t *testing.T) (string, []string) {
 	return userHome, []string{
 		"HOME=" + userHome, "UAH_HOME=", // TestMain unsets UAH_CONFIG and UAH_STATE_DIR
 		"XDG_CONFIG_HOME=", "XDG_STATE_HOME=", "CODEX_HOME=" + e.CodexHome,
-		"FAKERUNNER_FIXTURE=" + fixtures.Path("simple.jsonl"),
 	}
 }
 
@@ -70,7 +67,7 @@ func TestOldVariablesWarn(t *testing.T) {
 }
 
 func TestOldProjectDirectoryNotice(t *testing.T) {
-	e, env := fakeEnv(t, "simple.jsonl")
+	e, env := fakeEnv(t)
 	require.NoError(t, os.Mkdir(filepath.Join(e.Workspace, ".uagent"), 0o700))
 
 	res := uahWith(t, env, "", "run", "-C", e.Workspace, "hi")

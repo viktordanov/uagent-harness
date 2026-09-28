@@ -9,7 +9,6 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/hooks"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
@@ -41,7 +40,7 @@ func queueTwo(t *testing.T, h *harness) (*fakeRun, []string) {
 
 func TestSession_SteerQueued(t *testing.T) {
 	t.Run("live input: the queue reaches the running agent in order", func(t *testing.T) {
-		h := newHarness(t, engine.Capabilities{LiveInput: true})
+		h := newHarness(t, fakeCaps{LiveInput: true})
 		run, queued := queueTwo(t, h)
 		h.until(isType[session.InputDelivered]) // "work"
 
@@ -66,7 +65,7 @@ func TestSession_SteerQueued(t *testing.T) {
 	})
 
 	t.Run("live input while the run starts: sent once it has", func(t *testing.T) {
-		h := newHarness(t, engine.Capabilities{LiveInput: true})
+		h := newHarness(t, fakeCaps{LiveInput: true})
 		h.eng.gate = make(chan struct{})
 		_, err := h.s.Submit("work")
 		require.NoError(t, err)
@@ -87,8 +86,8 @@ func TestSession_SteerQueued(t *testing.T) {
 		h.until(isType[session.Idle])
 	})
 
-	t.Run("process engine: interrupt and restart with the queue", func(t *testing.T) {
-		h := newHarness(t, engine.Capabilities{})
+	t.Run("without live input: interrupt and restart with the queue", func(t *testing.T) {
+		h := newHarness(t, fakeCaps{})
 		first, queued := queueTwo(t, h)
 
 		_, err := h.s.SteerQueued()
@@ -102,7 +101,7 @@ func TestSession_SteerQueued(t *testing.T) {
 	})
 
 	t.Run("the queue an interrupt kept starts a run", func(t *testing.T) {
-		h := newHarness(t, engine.Capabilities{LiveInput: true})
+		h := newHarness(t, fakeCaps{LiveInput: true})
 		_, queued := queueTwo(t, h)
 		require.NoError(t, h.s.Interrupt())
 		h.until(isType[session.Idle])
@@ -118,7 +117,7 @@ func TestSession_SteerQueued(t *testing.T) {
 	})
 
 	t.Run("nothing queued: nothing happens", func(t *testing.T) {
-		h := newHarness(t, engine.Capabilities{LiveInput: true})
+		h := newHarness(t, fakeCaps{LiveInput: true})
 		n, err := h.s.SteerQueued()
 		require.NoError(t, err)
 		assert.Zero(t, n)

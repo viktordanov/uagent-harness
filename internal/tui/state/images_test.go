@@ -10,7 +10,6 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/images"
 	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/internal/tui/state"
@@ -20,12 +19,7 @@ func stored(c string) images.Image {
 	return images.Image{Ref: strings.Repeat(c, 64) + ".png", Width: 4, Height: 3}
 }
 
-func withImages() state.State {
-	s := opened()
-	s.Caps = engine.Capabilities{Images: true}
-
-	return s
-}
+func withImages() state.State { return opened() }
 
 // TestImages_PlaceholdersAndSend: each attached image gets the next
 // placeholder at the cursor, and on send the images the text still names go
@@ -95,8 +89,8 @@ func TestImages_WithdrawnMessageKeepsItsImages(t *testing.T) {
 	assert.Equal(t, []state.Effect{state.EffSteer{Text: queued}}, effects)
 }
 
-// TestImages_PathsAndFailures: a pasted image path attaches the file; on an
-// engine without images, or when the file fails, the text is pasted.
+// TestImages_PathsAndFailures: a pasted image path attaches the file; when
+// the file fails, the text is pasted.
 func TestImages_PathsAndFailures(t *testing.T) {
 	_, effects := apply(withImages(), state.AttachFile{Path: "/tmp/a.png", Text: "'/tmp/a.png'"})
 	assert.Equal(t, []state.Effect{state.EffAttachFile{Path: "/tmp/a.png", Text: "'/tmp/a.png'"}}, effects)
@@ -104,14 +98,6 @@ func TestImages_PathsAndFailures(t *testing.T) {
 	s, effects := apply(withImages(), state.ImageFailed{Err: errors.New("not an image"), Text: "/tmp/a.png"})
 	assert.Equal(t, []state.Effect{state.EffInsertText{Text: "/tmp/a.png"}}, effects)
 	assert.Contains(t, s.Items[len(s.Items)-1].Text, "could not attach the image: not an image")
-
-	s, effects = apply(opened(), state.AttachFile{Path: "/tmp/a.png", Text: "/tmp/a.png"})
-	assert.Equal(t, []state.Effect{state.EffInsertText{Text: "/tmp/a.png"}}, effects)
-	assert.Contains(t, s.Items[len(s.Items)-1].Text, "pasted images: not supported by the process engine")
-
-	s, effects = apply(opened(), state.ImageAttached{Image: stored("a")})
-	assert.Empty(t, effects)
-	assert.Empty(t, s.Attached)
 }
 
 // TestImages_MentionAttachesAnImageFile: choosing an image after "@"

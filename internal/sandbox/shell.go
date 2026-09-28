@@ -36,12 +36,12 @@ func Shell(dir string, p Policy, env EnvPolicy, realShell string) (string, error
 	}
 	script := "#!/bin/sh\n# Written by uah: runs the command in the " + string(p.Mode) + " sandbox.\nexec " + strings.Join(words, " ") + " \"$@\"\n"
 
-	return WriteScript(dir, script)
+	return writeScript(dir, script)
 }
 
-// WriteScript writes an executable script into dir, named by its content
+// writeScript writes an executable script into dir, named by its content
 // (sh-<hash>), unless it is there already, and returns its path.
-func WriteScript(dir, script string) (string, error) {
+func writeScript(dir, script string) (string, error) {
 	sum := sha256.Sum256([]byte(script))
 	path := filepath.Join(dir, "sh-"+hex.EncodeToString(sum[:8]))
 	if _, err := os.Stat(path); err == nil {

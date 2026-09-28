@@ -22,8 +22,7 @@ const (
 	refreshInterval = 8 * 24 * time.Hour
 	// runWindow is how soon a token may expire when a run starts: uagent's
 	// preflight (v0.4.4, harness/preflight.go:18 and 145-157) warns within
-	// an hour and blocks an expired token, and the runner the process
-	// engine spawns reads the file once.
+	// an hour and blocks an expired token.
 	runWindow = time.Hour
 )
 

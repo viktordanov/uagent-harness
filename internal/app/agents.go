@@ -50,14 +50,10 @@ func pickAgents(c config.Agents) (Agents, error) {
 }
 
 // newAgents builds the subagent manager with the user's and, in a trusted
-// workspace, the project's role files; it is nil on the process engine,
-// which cannot run subagents. With agents off it offers no tools but still
-// answers a resumed session's past calls. Role file warnings become
-// notices.
+// workspace, the project's role files. With agents off it offers no tools
+// but still answers a resumed session's past calls. Role file warnings
+// become notices.
 func newAgents(r Resolved, cfg config.Config, workspace string, opts *session.Options, catalog *models.Manager) *agents.Manager {
-	if r.Engine != EngineEmbedded {
-		return nil
-	}
 	depth := r.Agents.MaxDepth
 	if !r.Agents.Enabled {
 		depth = 0

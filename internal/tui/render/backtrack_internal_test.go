@@ -17,7 +17,6 @@ import (
 func longTranscript(n int) state.State {
 	at := time.Date(2026, 9, 24, 12, 0, 0, 0, time.UTC)
 	s := state.New(at)
-	s.Caps.Rewind = true
 	evs := []any{session.SessionOpened{At: at, ID: "3f2a1b2c-0000-4000-8000-000000000000", Engine: "embedded"}}
 	for i := 1; i <= n; i++ {
 		run := fmt.Sprintf("run-%d", i)

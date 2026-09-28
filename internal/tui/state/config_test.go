@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/viktordanov/uagent-harness/internal/approval"
-	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/models"
 	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/internal/tui/state"
@@ -99,9 +98,9 @@ func TestConfig_ModelEffortAndFastChangeTheSession(t *testing.T) {
 
 	s = openConfig(t, opened(), "Fast mode")
 	_, effects = apply(s, state.ConfigChange{Delta: 1})
-	assert.Equal(t, []state.Effect{state.EffSaveConfig{Key: "fast", Value: true}}, effects, "the process engine has no fast mode: saved only")
+	assert.Equal(t, []state.Effect{state.EffSaveConfig{Key: "fast", Value: true}}, effects, "a provider without priority processing: saved only")
 	s = opened()
-	s.Caps = engine.Capabilities{ServiceTier: true}
+	s.Priority = true
 	s = openConfig(t, s, "Fast mode")
 	_, effects = apply(s, state.ConfigChange{Delta: 1})
 	next = settings()

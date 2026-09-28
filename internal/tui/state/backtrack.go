@@ -74,9 +74,7 @@ func cmdRewind(s *State, _ string) []Effect {
 
 		return nil
 	}
-	if s.rewindSupported() {
-		s.startBacktrack()
-	}
+	s.startBacktrack()
 
 	return nil
 }
@@ -98,25 +96,10 @@ func (s *State) onSelecting(ev any) ([]Effect, bool) {
 	return nil, true
 }
 
-// canBacktrack reports whether esc may start going back: the session is
-// idle with nothing queued, and its engine can rewind.
+// canBacktrack reports whether esc may start going back: a session is
+// open and idle with nothing queued.
 func (s *State) canBacktrack() bool {
-	return !s.Busy && !s.ShellRunning() && len(s.Queue) == 0 && s.Caps.Rewind && s.SessionID != ""
-}
-
-// rewindSupported says why not when the engine cannot go back, from the
-// capability table.
-func (s *State) rewindSupported() bool {
-	if s.Caps.Rewind {
-		return true
-	}
-	for _, r := range s.Caps.Lacks() {
-		if r.Feature == engine.FeatureRewind {
-			s.notice(session.LevelWarning, r.Notice(s.engineName()))
-		}
-	}
-
-	return false
+	return !s.Busy && !s.ShellRunning() && len(s.Queue) == 0 && s.SessionID != ""
 }
 
 func (s *State) startBacktrack() {

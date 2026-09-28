@@ -15,7 +15,6 @@ import (
 
 	"github.com/urfave/cli/v3"
 
-	"github.com/viktordanov/uagent-harness/internal/engine/process/shellgate"
 	"github.com/viktordanov/uagent-harness/internal/home"
 	"github.com/viktordanov/uagent-harness/internal/home/migrate"
 )
@@ -30,11 +29,6 @@ const (
 var version = "dev"
 
 func main() {
-	// The process engine's $SHELL runs uah as the shell gate for every
-	// command, so it starts before anything else.
-	if len(os.Args) > 1 && os.Args[1] == shellgate.Command {
-		os.Exit(shellgate.Main(os.Args[2:], os.Stderr))
-	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	ctx = context.WithValue(ctx, startupKey{}, startup(ctx, os.Stderr, os.Args))
 	err := newApp().Run(ctx, os.Args)

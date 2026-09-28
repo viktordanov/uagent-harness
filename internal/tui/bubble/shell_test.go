@@ -11,7 +11,6 @@ import (
 	uaharness "github.com/viktordanov/uagent/harness"
 	"github.com/viktordanov/uagent/testing/fixtures"
 
-	"github.com/viktordanov/uagent-harness/internal/engine/process"
 	"github.com/viktordanov/uagent-harness/internal/sandbox"
 	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/internal/tui/bubble"
@@ -19,14 +18,14 @@ import (
 	"github.com/viktordanov/uagent-harness/testing/harnesstest"
 )
 
-// shellDeps opens sessions on the process engine with the fake runner, as
-// deps does, and with a runner for the user's commands.
+// shellDeps opens sessions on uagent's fake runner, as deps does, and with
+// a runner for the user's commands.
 func shellDeps(t *testing.T) bubble.Deps {
 	t.Helper()
 	env := harnesstest.NewEnv(t)
 	t.Setenv("FAKERUNNER_FIXTURE", fixtures.Path("simple.jsonl"))
 	t.Setenv("FAKERUNNER_ECHO", "1")
-	eng := process.New(uaharness.Config{
+	eng := harnesstest.RunnerEngine(uaharness.Config{
 		RunnerPath: harnesstest.FakeRunner(t), StateDir: env.StateDir, KillGrace: 300 * time.Millisecond, Getenv: env.Getenv,
 	})
 	opts := session.Options{
@@ -45,7 +44,7 @@ func shellDeps(t *testing.T) bubble.Deps {
 }
 
 // TestTUI_ShellMode types ! into the empty composer, runs a command in a
-// real session on the process engine, and sends the next message with its
+// real session on the fake runner, and sends the next message with its
 // record: the fake runner echoes it, and the transcript shows it once.
 func TestTUI_ShellMode(t *testing.T) {
 	d := start(t, shellDeps(t))

@@ -18,23 +18,30 @@ import (
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
 
+// fakeCaps are what a fake run takes live; a change it does not take
+// fails with errNotLive, as a real run's does once it stopped, and the
+// session applies it from the next run.
+type fakeCaps struct{ LiveInput, LiveEffort, LiveMode bool }
+
+var errNotLive = errors.New("the run takes no live changes")
+
 // fakeEngine scripts runs: each run echoes its messages (unless noEcho) and
 // ends when the test finishes it or it is interrupted.
 type fakeEngine struct {
 	// gate, when set, holds Start until it is closed.
 	gate     chan struct{}
-	caps     engine.Capabilities
+	caps     fakeCaps
 	noEcho   bool
 	startErr error
 	started  chan *fakeRun
 }
 
-func newFakeEngine(caps engine.Capabilities) *fakeEngine {
+func newFakeEngine(caps fakeCaps) *fakeEngine {
 	return &fakeEngine{caps: caps, started: make(chan *fakeRun, 16)}
 }
 
-func (e *fakeEngine) Name() string                      { return "fake" }
-func (e *fakeEngine) Capabilities() engine.Capabilities { return e.caps }
+func (e *fakeEngine) Name() string   { return "fake" }
+func (e *fakeEngine) Priority() bool { return false }
 
 func (e *fakeEngine) Start(_ context.Context, req core.Request, opts engine.Options, sink core.Sink) (engine.Run, error) {
 	if e.gate != nil {
@@ -60,7 +67,7 @@ type fakeRun struct {
 	req    core.Request
 	opts   engine.Options
 	sink   core.Sink
-	caps   engine.Capabilities
+	caps   fakeCaps
 	end    chan core.Status
 	done   chan struct{}
 	once   sync.Once
@@ -84,7 +91,7 @@ func (r *fakeRun) finish(status core.Status) { r.once.Do(func() { r.end <- statu
 
 func (r *fakeRun) Send(in core.UserInput) error {
 	if !r.caps.LiveInput {
-		return engine.ErrUnsupported
+		return errNotLive
 	}
 	r.sent = append(r.sent, in)
 	if !r.unread {
@@ -96,26 +103,26 @@ func (r *fakeRun) Send(in core.UserInput) error {
 
 func (r *fakeRun) SetEffort(e string) error {
 	if !r.caps.LiveEffort {
-		return engine.ErrUnsupported
+		return errNotLive
 	}
 	r.effort = e
 
 	return nil
 }
 
-func (r *fakeRun) SetModel(string) error       { return engine.ErrUnsupported }
-func (r *fakeRun) SetServiceTier(string) error { return engine.ErrUnsupported }
+func (r *fakeRun) SetModel(string) error       { return errNotLive }
+func (r *fakeRun) SetServiceTier(string) error { return errNotLive }
 
 func (r *fakeRun) SetMode(m approval.Mode) error {
 	if !r.caps.LiveMode {
-		return engine.ErrUnsupported
+		return errNotLive
 	}
 	r.mode = m
 
 	return nil
 }
-func (r *fakeRun) Compact(string) error { return engine.ErrUnsupported }
-func (r *fakeRun) Clear() error         { return engine.ErrUnsupported }
+func (r *fakeRun) Compact(string) error { return errNotLive }
+func (r *fakeRun) Clear() error         { return errNotLive }
 func (r *fakeRun) Interrupt()           { r.finish(core.StatusInterrupted) }
 func (r *fakeRun) Kill()                { r.finish(core.StatusInterrupted) }
 
@@ -132,7 +139,7 @@ type harness struct {
 	events []core.Event
 }
 
-func newHarness(t *testing.T, caps engine.Capabilities) *harness {
+func newHarness(t *testing.T, caps fakeCaps) *harness {
 	t.Helper()
 	eng := newFakeEngine(caps)
 	s, err := session.Open(context.Background(), eng, session.Options{Settings: settings()})
@@ -199,7 +206,7 @@ func texts(msgs []core.UserInput) []string {
 }
 
 func TestSession_SubmitWhenIdleStartsARun(t *testing.T) {
-	h := newHarness(t, engine.Capabilities{})
+	h := newHarness(t, fakeCaps{})
 
 	in, err := h.s.Submit("hello")
 	require.NoError(t, err)
@@ -218,7 +225,7 @@ func TestSession_SubmitWhenIdleStartsARun(t *testing.T) {
 }
 
 func TestSession_QueueWhileRunning(t *testing.T) {
-	h := newHarness(t, engine.Capabilities{})
+	h := newHarness(t, fakeCaps{})
 	_, err := h.s.Submit("first")
 	require.NoError(t, err)
 	first := h.nextRun()
@@ -236,7 +243,7 @@ func TestSession_QueueWhileRunning(t *testing.T) {
 }
 
 func TestSession_InterruptKeepsTheQueue(t *testing.T) {
-	h := newHarness(t, engine.Capabilities{})
+	h := newHarness(t, fakeCaps{})
 	_, err := h.s.Submit("work")
 	require.NoError(t, err)
 	run := h.nextRun()
@@ -263,8 +270,8 @@ func TestSession_InterruptKeepsTheQueue(t *testing.T) {
 }
 
 func TestSession_SteerNow(t *testing.T) {
-	t.Run("process engine: interrupt and restart with the queue", func(t *testing.T) {
-		h := newHarness(t, engine.Capabilities{})
+	t.Run("without live input: interrupt and restart with the queue", func(t *testing.T) {
+		h := newHarness(t, fakeCaps{})
 		_, err := h.s.Submit("work")
 		require.NoError(t, err)
 		first := h.nextRun()
@@ -281,7 +288,7 @@ func TestSession_SteerNow(t *testing.T) {
 	})
 
 	t.Run("live input: the message reaches the running agent", func(t *testing.T) {
-		h := newHarness(t, engine.Capabilities{LiveInput: true})
+		h := newHarness(t, fakeCaps{LiveInput: true})
 		_, err := h.s.Submit("work")
 		require.NoError(t, err)
 		run := h.nextRun()
@@ -300,7 +307,7 @@ func TestSession_SteerNow(t *testing.T) {
 
 func TestSession_Failures(t *testing.T) {
 	t.Run("a run that cannot start fails its messages", func(t *testing.T) {
-		h := newHarness(t, engine.Capabilities{})
+		h := newHarness(t, fakeCaps{})
 		h.eng.startErr = errors.New("preflight blocked the run: run codex login")
 
 		in, err := h.s.Submit("hello")
@@ -315,7 +322,7 @@ func TestSession_Failures(t *testing.T) {
 	})
 
 	t.Run("messages the runner never accepted fail when the run ends", func(t *testing.T) {
-		h := newHarness(t, engine.Capabilities{})
+		h := newHarness(t, fakeCaps{})
 		h.eng.noEcho = true
 
 		in, err := h.s.Submit("hello")
@@ -328,7 +335,7 @@ func TestSession_Failures(t *testing.T) {
 	})
 
 	t.Run("empty messages are rejected", func(t *testing.T) {
-		h := newHarness(t, engine.Capabilities{})
+		h := newHarness(t, fakeCaps{})
 
 		_, err := h.s.Submit("  ")
 
@@ -337,7 +344,7 @@ func TestSession_Failures(t *testing.T) {
 }
 
 func TestSession_Withdraw(t *testing.T) {
-	h := newHarness(t, engine.Capabilities{})
+	h := newHarness(t, fakeCaps{})
 	_, err := h.s.Submit("work")
 	require.NoError(t, err)
 	run := h.nextRun()
@@ -361,8 +368,8 @@ func TestSession_Withdraw(t *testing.T) {
 }
 
 func TestSession_SetSettings(t *testing.T) {
-	t.Run("process engine applies changes at the next run", func(t *testing.T) {
-		h := newHarness(t, engine.Capabilities{})
+	t.Run("without live settings: changes apply at the next run", func(t *testing.T) {
+		h := newHarness(t, fakeCaps{})
 		_, err := h.s.Submit("work")
 		require.NoError(t, err)
 		run := h.nextRun()
@@ -383,7 +390,7 @@ func TestSession_SetSettings(t *testing.T) {
 	})
 
 	t.Run("live effort applies now", func(t *testing.T) {
-		h := newHarness(t, engine.Capabilities{LiveEffort: true})
+		h := newHarness(t, fakeCaps{LiveEffort: true})
 		_, err := h.s.Submit("work")
 		require.NoError(t, err)
 		run := h.nextRun()
@@ -399,7 +406,7 @@ func TestSession_SetSettings(t *testing.T) {
 	})
 
 	t.Run("invalid settings are rejected", func(t *testing.T) {
-		h := newHarness(t, engine.Capabilities{})
+		h := newHarness(t, fakeCaps{})
 		bad := settings()
 		bad.Effort = "huge"
 
@@ -410,7 +417,7 @@ func TestSession_SetSettings(t *testing.T) {
 }
 
 func TestSession_CloseInterruptsTheLiveRun(t *testing.T) {
-	h := newHarness(t, engine.Capabilities{})
+	h := newHarness(t, fakeCaps{})
 	_, err := h.s.Submit("work")
 	require.NoError(t, err)
 	run := h.nextRun()
@@ -425,7 +432,7 @@ func TestSession_CloseInterruptsTheLiveRun(t *testing.T) {
 }
 
 func TestSession_RequeuesLiveMessagesTheRunNeverRead(t *testing.T) {
-	h := newHarness(t, engine.Capabilities{LiveInput: true})
+	h := newHarness(t, fakeCaps{LiveInput: true})
 	_, err := h.s.Submit("first")
 	require.NoError(t, err)
 	run := <-h.eng.started
@@ -451,7 +458,7 @@ func TestSession_RequeuesLiveMessagesTheRunNeverRead(t *testing.T) {
 }
 
 func TestSession_SteerWhileStartingGoesLive(t *testing.T) {
-	h := newHarness(t, engine.Capabilities{LiveInput: true})
+	h := newHarness(t, fakeCaps{LiveInput: true})
 	h.eng.gate = make(chan struct{})
 	_, err := h.s.Submit("work")
 	require.NoError(t, err)

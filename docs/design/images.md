@@ -1,5 +1,7 @@
 # Pasting images: research and plan
 
+Update 2026-09-29: the process engine was removed (ledger 51).
+
 Status: researched, planned, and built 2026-09-24. Ledger item 37. Codex facts are from openai/codex at rust-v0.156.1 (`C/` is `codex-rs/`). Claude Code facts are from its public documentation. Runner facts are from `github.com/unreallabsai/unreal-agent` v0.1.1, and uagent facts from `github.com/viktordanov/uagent` v0.4.3.
 
 1. [How Codex does it](#how-codex-does-it)

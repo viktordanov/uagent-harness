@@ -286,7 +286,7 @@ func (m *Manager) serviceTier(parent string, role Role) string {
 	switch {
 	case role.ServiceTier == TierDefault:
 		return ""
-	case role.ServiceTier == TierPriority && m.eng != nil && m.eng.Capabilities().ServiceTier:
+	case role.ServiceTier == TierPriority && m.eng != nil && m.eng.Priority():
 		return TierPriority
 	}
 

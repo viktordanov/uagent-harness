@@ -5,7 +5,7 @@ uah is a pure core with well-organized infrastructure around it, not layered DDD
 | Package | Role |
 | --- | --- |
 | `internal/session` | The long-lived session: one goroutine owns settings, the queue, the live run, hooks, and one ordered event stream. |
-| `internal/engine` | How runs execute: `process` spawns the runner through uagent; `embedded` runs the runner's packages in process as a uagent `harness.Backend`. |
+| `internal/engine` | How runs execute: `embedded` runs the runner's packages in process as a uagent `harness.Backend` (uah 1.2 removed the `process` engine). |
 | `internal/instructions` | AGENTS.md discovery and the host prompt, following Codex. |
 | `internal/config` | TOML configuration: the user file and trusted project files. |
 | `internal/home` | uah's home, `~/.uah` or `$UAH_HOME`, where every file uah reads and writes lives; `migrate` copies the folders earlier versions used into it once, at startup. |
@@ -15,8 +15,8 @@ uah is a pure core with well-organized infrastructure around it, not layered DDD
 | `internal/rules` | Codex's `.rules` files (Starlark `prefix_rule`) and command splitting for matching. |
 | `internal/approval` | The approver: rules and the approval policy decide whether a command runs sandboxed, unsandboxed, or not, and ask the user through the session. |
 | `internal/usershell` | A command the user types in the TUI's `!` shell mode: running it (outside the sandbox and the rules unless `user_shell_sandbox`), its bounded output, and Codex's `<user_shell_command>` record the agent sees. The session runs it and holds the record for the next message. |
-| `internal/agents` | Subagents behind the `engine.Subagents` seam: Codex's v1 tools, child sessions on the parent's engine, their limits, depth, approvals through the parent, SubagentStop hooks, resume, and Codex role files. The embedded engine only offers the tools and runs their calls; see the package README. |
-| `internal/compaction` | Compaction the Codex way: the request rewrite, the summary call over any `llm.Adapter`, token estimates, the window table, and the compaction log. The embedded engine decides when to compact. |
+| `internal/agents` | Subagents behind the `engine.Subagents` seam: Codex's v1 tools, child sessions on the parent's engine, their limits, depth, approvals through the parent, SubagentStop hooks, resume, and Codex role files. The engine only offers the tools and runs their calls; see the package README. |
+| `internal/compaction` | Compaction the Codex way: the request rewrite, the summary call over any `llm.Adapter`, token estimates, the window table, and the compaction log. The engine decides when to compact. |
 | `internal/llmcall` | One model call outside the agent loop over any runner `llm.Adapter`, for summaries and reviews. |
 | `internal/review` | The auto-reviewer: one model call over `internal/llmcall` judges an action that needs approval, with Codex's prompt, a fail-closed verdict, and a circuit breaker. No engine wiring. |
 | `internal/tui/state` | The pure TUI model: a reducer from events and intents to state and effects. No I/O. |
@@ -24,11 +24,11 @@ uah is a pure core with well-organized infrastructure around it, not layered DDD
 | `internal/tui/bubble` | The Bubble Tea shell: keys to intents, effects to commands, and frames. |
 | `internal/app` | Session setup: `Resolve` picks settings from flags, the resumed session, the configuration, and defaults with no I/O; `Explain` reports each effective value and its source the same way; `Setup` loads files and builds the engine; `Doctor` runs the same steps as checks for `uah doctor`. |
 | `cmd/uah` | The CLI: flags, `run`, `resume`, `sessions`, `hooks`, `config`, `doctor`, `mcp`, and the TUI launcher. |
-| `testing` | `harnesstest` (fake and real runners, isolated state), `fakellm` (a scripted Responses API), `mcpserver` (a stdio MCP server), and `oauthserver` (an MCP server behind a small OAuth authorization server). |
+| `testing` | `harnesstest` (fake and real runners, `RunnerEngine` that spawns either for tests, isolated state), `fakellm` (a scripted Responses API), `mcpserver` (a stdio MCP server), and `oauthserver` (an MCP server behind a small OAuth authorization server). |
 
 ## Rules
 
-- The runner stays unchanged. uah reproduces its wiring instead of patching it, and the equivalence test compares both engines.
+- The runner stays unchanged. uah reproduces its wiring instead of patching it, and the equivalence test compares the embedded engine with the real runner.
 - `internal/tui/state` and `internal/tui/render` do no I/O; effects are values the shell runs.
 - Session state is owned by the session goroutine; other goroutines talk to it through messages.
 - Files are the source of truth for state: the runner's session files, uagent's run records, and uah's sidecars (see `docs/design/state.md`).

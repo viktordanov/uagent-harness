@@ -91,7 +91,7 @@ func (s *Session) dispatch(input core.UserInput, steer bool) {
 		s.queue = nil
 		s.startRun(inputs)
 	case StateRunning:
-		if steer && s.caps.LiveInput {
+		if steer {
 			if err := s.run.Send(input); err == nil {
 				s.markSent([]core.UserInput{input})
 				s.live = append(s.live, input)
@@ -105,15 +105,11 @@ func (s *Session) dispatch(input core.UserInput, steer bool) {
 			s.interruptLive()
 		}
 	case StateStarting:
-		if steer && s.caps.LiveInput {
+		if steer {
 			s.startSteers = append(s.startSteers, input) // sent live once the run starts
 			return
 		}
 		s.queue = append(s.queue, input)
-		if steer {
-			s.restartAfterStop = true
-			s.interruptLive()
-		}
 	case StateStopping:
 		s.queue = append(s.queue, input)
 		if steer {

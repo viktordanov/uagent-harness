@@ -66,8 +66,6 @@ func completionValues(ctx context.Context, cmd *cli.Command, prev string) []stri
 		return session.Efforts
 	case "sandbox":
 		return sandboxModes()
-	case "engine":
-		return app.Engines
 	case "ask":
 		return approval.Policies
 	case "log-level":

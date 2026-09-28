@@ -19,7 +19,6 @@ import (
 
 	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/engine/embedded"
-	"github.com/viktordanov/uagent-harness/internal/engine/process"
 	"github.com/viktordanov/uagent-harness/internal/hooks"
 	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/testing/fakellm"
@@ -126,7 +125,6 @@ func TestEmbedded_RunsToolsAndAnswers(t *testing.T) {
 		fakellm.Reply{Text: "hello"},
 	)
 	s, ev := e.open(t, e.embedded(), "")
-	assert.True(t, s.Capabilities().LiveInput)
 
 	in, err := s.Submit("say hello")
 	require.NoError(t, err)
@@ -179,13 +177,13 @@ func TestEmbedded_MatchesTheRunner(t *testing.T) {
 
 	pe := newEnv(t, script()...)
 	t.Setenv("OPENAI_API_KEY", "test-key")
-	proc := process.New(uaharness.Config{RunnerPath: harnesstest.RealRunner(t), StateDir: pe.StateDir, Getenv: pe.getenv, KillGrace: time.Second})
-	procResult, procEvents, procItems := runWith(t, pe, proc)
+	runner := harnesstest.RunnerEngine(uaharness.Config{RunnerPath: harnesstest.RealRunner(t), StateDir: pe.StateDir, Getenv: pe.getenv, KillGrace: time.Second})
+	procResult, procEvents, procItems := runWith(t, pe, runner)
 
 	ee := newEnv(t, script()...)
 	embResult, embEvents, embItems := runWith(t, ee, ee.embedded())
 
-	// Parallel tools finish in any order, in both engines: compare the order
+	// Parallel tools finish in any order, in both: compare the order
 	// of everything else, and the tool results and session items as sets.
 	assert.Equal(t, withoutPrefix(procEvents, "done "), withoutPrefix(embEvents, "done "))
 	assert.ElementsMatch(t, procEvents, embEvents)
@@ -230,7 +228,7 @@ func TestEmbedded_ChangesSettingsLive(t *testing.T) {
 	gate := make(chan struct{})
 	e := newEnv(t, fakellm.Reply{Commands: []string{"true"}, Gate: gate}, fakellm.Reply{Text: "done"})
 	s, ev := e.open(t, e.embedded(), "")
-	assert.True(t, s.Capabilities().ServiceTier, "openai offers priority processing")
+	assert.True(t, s.Priority(), "openai offers priority processing")
 
 	_, err := s.Submit("go")
 	require.NoError(t, err)
@@ -271,14 +269,18 @@ func TestEmbedded_InterruptThenContinue(t *testing.T) {
 	assert.Equal(t, []string{"wait a while", "carry on"}, reqs[len(reqs)-1].UserTexts, "the session resumes after the hard stop")
 }
 
+// TestEmbedded_ResumesAProcessSession resumes a session the real runner
+// started, as the removed process engine left them: both write the
+// runner's session file and uagent's run records under the state
+// directory, so the embedded engine replays its history.
 func TestEmbedded_ResumesAProcessSession(t *testing.T) {
 	if testing.Short() {
 		t.Skip("builds unreal-agent-runner")
 	}
 	e := newEnv(t, fakellm.Reply{Text: "first"}, fakellm.Reply{Text: "second"})
 	t.Setenv("OPENAI_API_KEY", "test-key")
-	proc := process.New(uaharness.Config{RunnerPath: harnesstest.RealRunner(t), StateDir: e.StateDir, Getenv: e.getenv, KillGrace: time.Second})
-	s, ev := e.open(t, proc, "")
+	runner := harnesstest.RunnerEngine(uaharness.Config{RunnerPath: harnesstest.RealRunner(t), StateDir: e.StateDir, Getenv: e.getenv, KillGrace: time.Second})
+	s, ev := e.open(t, runner, "")
 	_, err := s.Submit("remember the number 7")
 	require.NoError(t, err)
 	ev.finished()

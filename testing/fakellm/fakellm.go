@@ -1,7 +1,7 @@
 // Package fakellm is a scripted OpenAI Responses API for tests. Point the
 // runner's openai provider at URL (with any API key) and every model request
-// gets the next Reply, so the process and embedded engines can be driven by
-// the same script and compared.
+// gets the next Reply, so the real runner and the embedded engine can be
+// driven by the same script and compared.
 package fakellm
 
 import (

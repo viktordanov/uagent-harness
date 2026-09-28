@@ -7,7 +7,7 @@ Section IDs identify a concern within a README. Keep the ID stable when a headin
 | `overview` | What the README covers and why it exists |
 | `usage` | Commands, inputs, and results |
 | `tui` | Keys, commands, and views of the terminal UI |
-| `engines` | The embedded and process engines |
+| `engines` | The engine, and the removed process engine's settings |
 | `compaction` | Compaction and the context meter |
 | `instructions` | AGENTS.md discovery and the host prompt |
 | `hooks` | Hook events, contract, and trust |

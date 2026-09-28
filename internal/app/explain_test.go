@@ -54,7 +54,7 @@ func TestExplainSources(t *testing.T) {
 			name: "defaults",
 			want: map[string]string{
 				"workspace": "default", "provider": "default", "model": "default", "effort": "default", "timeout": "default",
-				"engine": "default", "fast": "default", "sandbox_mode": "default", "approvals.allow": "default", "request_max_attempts": "default",
+				"fast": "default", "sandbox_mode": "default", "approvals.allow": "default", "request_max_attempts": "default",
 				"projects.<workspace>.trusted": "default",
 			},
 			vals: map[string]string{
@@ -67,12 +67,12 @@ func TestExplainSources(t *testing.T) {
 		{
 			name: "a flag equal to its environment variable counts as the environment",
 			in: func(in *app.Inputs) {
-				in.Provider, in.Engine, in.Sandbox, in.Ask, in.Effort = "openai", "process", "read-only", "never", "max"
+				in.Provider, in.Sandbox, in.Ask, in.Effort = "openai", "read-only", "never", "max"
 				in.Workspace = "rel"
 			},
-			o: app.Origins{Env: map[string]string{app.EnvProvider: "openai", app.EnvEngine: "embedded"}},
+			o: app.Origins{Env: map[string]string{app.EnvProvider: "openai"}},
 			want: map[string]string{
-				"provider": "env", "engine": "flag", "sandbox_mode": "flag", "approval_policy": "flag", "effort": "flag", "workspace": "flag",
+				"provider": "env", "sandbox_mode": "flag", "approval_policy": "flag", "effort": "flag", "workspace": "flag",
 			},
 			vals: map[string]string{"workspace": "/cwd/rel", "model": `""`},
 		},

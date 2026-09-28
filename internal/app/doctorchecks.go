@@ -15,7 +15,6 @@ import (
 	"github.com/viktordanov/uagent/harness"
 
 	"github.com/viktordanov/uagent-harness/internal/config"
-	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/engine/embedded"
 	"github.com/viktordanov/uagent-harness/internal/home"
 	"github.com/viktordanov/uagent-harness/internal/hooks"
@@ -26,22 +25,9 @@ import (
 
 const sandboxProbeTimeout = 10 * time.Second
 
-// checkRunner finds unreal-agent-runner, which only the process engine needs.
-func checkRunner(engine, explicit string) Check {
-	path, err := harness.FindRunner(explicit)
-	switch {
-	case err == nil:
-		return ok("runner", path)
-	case engine == EngineProcess:
-		return fail("runner", err.Error(), "install unreal-agent-runner as the error says, or pass --runner")
-	default:
-		return ok("runner", "unreal-agent-runner not found; only --engine process needs it")
-	}
-}
-
 // checkCredentials runs uagent's preflight for the provider (credentials,
-// token expiry, and the workspace checks every run makes) and, for the
-// embedded engine, builds the provider's client as a run would. A Codex
+// token expiry, and the workspace checks every run makes) and builds the
+// provider's client as a run would. A Codex
 // login uah can refresh is not reported as expired, since each run
 // refreshes it first (codexauth.BeforeRun).
 func checkCredentials(r Resolved, stateDir string, getenv func(string) string) []Check {
@@ -71,10 +57,8 @@ func checkCredentials(r Resolved, stateDir string, getenv func(string) string) [
 	case len(auth) > 0:
 		return append(checks, fail(name, withLogin(auth[0].Message, login), credentialFix(s.Provider)))
 	}
-	if r.Engine == EngineEmbedded {
-		if err := embedded.CheckCredentials(s.Provider, getenv); err != nil {
-			return append(checks, fail(name, err.Error(), credentialFix(s.Provider)))
-		}
+	if err := embedded.CheckCredentials(s.Provider, getenv); err != nil {
+		return append(checks, fail(name, err.Error(), credentialFix(s.Provider)))
 	}
 	if s.Provider == "ollama" {
 		return append(checks, ok(name, "ollama needs none"))
@@ -217,12 +201,9 @@ func checkHooks(cfg config.Config, workspace, trustFile string) []Check {
 // checkMCP starts the configured MCP servers, each within its startup
 // timeout, and reports how many tools each offers. A server that needs an
 // OAuth login is a warning (a failure when it is required).
-func checkMCP(ctx context.Context, cfg config.Config, caps engine.Capabilities, workspace string, stderr io.Writer) []Check {
+func checkMCP(ctx context.Context, cfg config.Config, workspace string, stderr io.Writer) []Check {
 	if len(cfg.MCPServers) == 0 {
 		return []Check{ok("mcp", "no servers configured")}
-	}
-	if !caps.MCP {
-		return []Check{warn("mcp", fmt.Sprintf("%d servers configured; this engine does not start them", len(cfg.MCPServers)), "use --engine embedded")}
 	}
 	m, err := mcpManager(cfg, workspace, slog.New(slog.NewTextHandler(stderr, nil)), "")
 	if err != nil {

@@ -5,7 +5,7 @@ Address the reader directly only in instructions.
 
 ## Start with the reader
 
-uah is the interactive harness on top of uagent: sessions, two engines, instructions, configuration, hooks, and a TUI. Keep that framing visible, and keep uagent's own guards described in uagent.
+uah is the interactive harness on top of uagent: sessions, the embedded engine, instructions, configuration, hooks, and a TUI. Keep that framing visible, and keep uagent's own guards described in uagent.
 The root README is written for someone who wants to use uah: install, run, keys, engines, instructions, hooks, configuration, and development.
 Design and decision records live in `docs/design`; the root README links to them rather than repeating them.
 Add a vertical, numbered list of contents near the top when a README has more than two sections.

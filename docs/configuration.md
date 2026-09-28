@@ -24,7 +24,7 @@ The first time uah starts without `~/.uah` and without `UAH_HOME`, it copies the
 | `~/.uah/trusted-hooks.json` | The project hook commands `uah hooks trust` approved, by SHA-256 | Written by uah; do not edit |
 | `~/.uah/mcp-credentials.json` | MCP OAuth logins from `uah mcp login`, readable only by you (0600) | Written by uah when `mcp_oauth_credentials_store` is `file`, or `auto` without a usable OS keyring; do not edit |
 | `~/.uah/AGENTS.md`, `$CODEX_HOME/AGENTS.md` | User instructions; see [Instructions and skills](../README.md#instructions-and-skills) | Unless `--no-instructions` or `[instructions] enabled = false` |
-| `~/.uah/skills`, `$CODEX_HOME/skills`, `.agents/skills` | Skills; see [Instructions and skills](../README.md#instructions-and-skills) | Embedded engine |
+| `~/.uah/skills`, `$CODEX_HOME/skills`, `.agents/skills` | Skills; see [Instructions and skills](../README.md#instructions-and-skills) | Always |
 | `$CODEX_HOME/auth.json` (`~/.codex/auth.json`, or `OPENAI_CODEX_AUTH_FILE`) | The ChatGPT login from `codex login`. uah refreshes its token as Codex does and writes it back (0600), with a lock file beside it, `.auth.json.uah-lock`; see [the design](design/codex-auth.md) | openai-codex, unless `OPENAI_CODEX_ACCESS_TOKEN` is set, which uah never refreshes |
 
 uah no longer reads a workspace's `.uagent` directory. When a workspace has `.uagent` and no `.uah`, uah and `uah doctor` show the command that moves it: `git mv .uagent .uah` in a repository, else `mv .uagent .uah`. uah never moves the files itself.
@@ -47,7 +47,7 @@ The exceptions, as the code applies them:
 - A `--provider` flag that changes the provider, compared with the resumed session's, else the configured one, else openai-codex, drops the resumed and configured models. The model is then `--model`, or the provider's default: `gpt-6-sol` for openai-codex and none for the others.
 - The workspace comes from `-C`, the resumed session, or the current directory; no file sets it.
 - `--timeout` (30m) and `--max-disk` (5G) have defaults, but a default counts only when the flag is not given: the files come first.
-- `--fast` given, even as `--fast=false`, wins. Otherwise the resumed session's fast mode wins, unless a `--provider` flag changes the provider or the engine is `process`. Otherwise `fast` is on when either file turns it on.
+- `--fast` given, even as `--fast=false`, wins. Otherwise the resumed session's fast mode wins, unless a `--provider` flag changes the provider. Otherwise `fast` is on when either file turns it on.
 - The permission mode is `--sandbox` (or `UAH_SANDBOX`) as a mode, else the resumed session's, else `permission_mode`, else `sandbox_mode` as a mode, else `workspace`. `sandbox_mode` follows from the mode. A project file's `sandbox_mode` does not override a user file's `permission_mode`, because `permission_mode` from either file comes first.
 - `--no-instructions` turns instructions off whatever the files say; no flag turns them on over `enabled = false`.
 - `project_doc_max_bytes`, from either file, wins over `[instructions] max_bytes` from either file.
@@ -76,8 +76,8 @@ Every key may be set in the user file and in a trusted project file, except `[pr
 | `timeout` | duration | `30m` | `-t`, `--timeout` | override | The wall-clock limit per run, as Go durations (`90s`, `1h`); `0s` disables it |
 | `request_max_attempts` | integer | 10 | `--max-attempts`, `UNREAL_HARNESS_LLM_MAX_ATTEMPTS` | override | How many times a model request is sent before the run fails. A lost connection, a timeout, a 429, or most 5xx statuses are retried after 2 s, then 4, 8, and 16 s, and then every 30 s (less up to a fifth of jitter, or the server's `Retry-After` up to 30 s): 10 attempts wait about 3 minutes in all. The runner's own default is 5 |
 | `max_disk` | size | `5G` | `--max-disk` | override | Stop a run when tool output exceeds this size (`500M`, `5G`, bytes without a suffix); `0` disables it |
-| `engine` | string | `embedded` | `--engine`, `UAH_ENGINE` | override | `embedded` runs the runner's packages in process; `process` spawns unreal-agent-runner ([engines](../README.md#engines)) |
-| `fast` | bool | false | `--fast` | OR | Priority processing (`service_tier = "priority"`); needs the embedded engine and the openai or openai-codex provider |
+| `engine` | string | none | `--engine`, `UAH_ENGINE` (both hidden) | none | Deprecated. uah 1.2 removed the process engine and always uses the embedded one. Any value is accepted, so an older file still loads, and only adds one warning when a session opens and in `uah doctor`'s `engine` check. A later version may drop the key ([the engine](../README.md#the-engine)) |
+| `fast` | bool | false | `--fast` | OR | Priority processing (`service_tier = "priority"`); needs the openai or openai-codex provider, and any other provider refuses it before the session starts |
 
 ### Sandbox and approvals
 
@@ -89,8 +89,6 @@ Every key may be set in the user file and in a trusted project file, except `[pr
 | `approvals_reviewer` | string | `user` | none | override | Who answers an escalation in the read-only and workspace modes: `user` asks you; `auto_review` lets the auto-reviewer judge first and asks you only when it leaves the decision to you. Auto mode always uses the auto-reviewer |
 | `user_shell_sandbox` | bool | false | none | OR | Run the commands you type in the TUI's shell mode (`!`) like the agent's: in the permission mode's sandbox, refused by `forbidden` rules, and outside the sandbox for `allow` rules. Off, they run as your own commands, outside the sandbox and the rules, as in Codex and Claude Code ([shell mode](design/shell-mode.md)) |
 
-The process engine applies `allow` and `forbidden` rules too, in the shell the runner runs each command with, but it cannot ask: a `prompt` rule refuses the command with the reason a headless run gives, nothing escalates, and `auto` is the `workspace` sandbox without the auto-reviewer.
-
 The permission modes:
 
 | Mode | Sandbox | Escalations and `prompt` rules |
@@ -100,9 +98,7 @@ The permission modes:
 | `auto` | `workspace-write` | The auto-reviewer decides, also with `approvals_reviewer = "user"`. The user is not asked; a decline reaches the model with the reviewer's reason |
 | `full-access` | none (`danger-full-access`) | No escalations; `prompt` rules ask as in `workspace`. Only a flag or a file sets it; shift+tab moves from it to `read-only` |
 
-`approval_policy = "never"` still denies whatever needs approval, in every mode. The embedded engine applies a mode change to a live run from its next command and model request; the process engine applies it from the next run.
-
-On the process engine, each configured feature it does not run (MCP servers, PreToolUse, PermissionRequest, or PreCompact hooks, `prompt` rules, `auto` mode, `[agents] enabled = true`, compaction keys, and Codex skills) gets one notice when the session opens and a warning in `uah doctor`'s `engine` check; the [engine README](../internal/engine/README.md#what-each-engine-supports) has the table.
+`approval_policy = "never"` still denies whatever needs approval, in every mode. A mode change reaches a live run from its next command and model request.
 
 `[sandbox_workspace_write]` configures the `workspace-write` mode:
 
@@ -178,7 +174,7 @@ Discovery order and the skill folders are in the README's [Instructions and skil
 
 `model_instructions_file` follows Codex rust-v0.156.1:
 
-- **Replaces the base instructions.** Codex reads the file into `base_instructions`. The file wins over the inline `instructions` key and loses only to a session's own override (`codex-rs/core/src/config/mod.rs` lines 3917–3929). The key's comment says that the text overrides the model's built-in instructions (`codex-rs/config/src/config_toml.rs` lines 257–261). In uah, the text replaces the runner's host prompt, `system.md`. The context builder of unreal-agent v0.1.1 still puts its own preamble (turns and asynchronous tool calls) and the skill list before it (`harness/contextbuilder/builder.go`). uah does not change the runner, so this preamble stays. The AGENTS.md instructions follow the file, as they follow the host prompt without it. Subagents and both engines get the same text. `/context` counts the file as the system prompt.
+- **Replaces the base instructions.** Codex reads the file into `base_instructions`. The file wins over the inline `instructions` key and loses only to a session's own override (`codex-rs/core/src/config/mod.rs` lines 3917–3929). The key's comment says that the text overrides the model's built-in instructions (`codex-rs/config/src/config_toml.rs` lines 257–261). In uah, the text replaces the runner's host prompt, `system.md`. The context builder of unreal-agent v0.1.1 still puts its own preamble (turns and asynchronous tool calls) and the skill list before it (`harness/contextbuilder/builder.go`). uah does not change the runner, so this preamble stays. The AGENTS.md instructions follow the file, as they follow the host prompt without it. Subagents get the same text. `/context` counts the file as the system prompt.
 - **Resolves a path like the other paths in a config file.** The key is an `AbsolutePathBuf`. `~` and `~/` expand to the home directory. A relative path is resolved against the directory of the config file that sets it (`codex-rs/utils/absolute-path/src/lib.rs` lines 27–56 and 392–401, and the base directory in `codex-rs/config/src/loader/layer_io.rs` lines 197–203). A trusted project's `.uah/config.toml` resolves against `.uah`, and its value wins over the user file's.
 - **Fails on a missing or empty file.** Codex trims the text and stops with an error when the file cannot be read or is empty (`try_read_non_empty_file`, `codex-rs/core/src/config/mod.rs` lines 4461–4490). uah does the same when a session starts, and `uah doctor` reports the error as `system prompt`.
 
@@ -269,7 +265,7 @@ Codex keys uah does not support are errors: `bearer_token`, `http_headers_helper
 
 ### Subagents
 
-`[agents]` (embedded engine; [README](../README.md#subagents)):
+`[agents]` ([README](../README.md#subagents)):
 
 | Key | Type | Default | Merge | Meaning |
 | --- | --- | --- | --- | --- |
@@ -352,14 +348,13 @@ developer_instructions = "Review the diff you are given. List only real bugs, ea
 | `UNREAL_HARNESS_LLM_PROVIDER` | `--provider` | `provider` | The provider |
 | `UNREAL_HARNESS_LLM_MODEL` | `--model` | `model` | The model |
 | `UNREAL_HARNESS_LLM_BASE_URL` | `--base-url` | none | The LLM base URL |
-| `UNREAL_HARNESS_LLM_MAX_ATTEMPTS` | `--max-attempts` | `request_max_attempts` | The attempts per model request. uah passes the resolved value to both engines, so the variable no longer reaches the runner directly |
-| `UAH_ENGINE` | `--engine` | `engine` | The engine |
+| `UNREAL_HARNESS_LLM_MAX_ATTEMPTS` | `--max-attempts` | `request_max_attempts` | The attempts per model request. uah passes the resolved value to the runner's client, so the variable does not reach the runner directly |
+| `UAH_ENGINE` | `--engine` (hidden) | `engine` | Deprecated: any value only warns that the process engine was removed |
 | `UAH_SANDBOX` | `--sandbox` | `sandbox_mode` | The sandbox mode, and the permission mode of that sandbox |
 | `UAH_ASK` | `--ask` | `approval_policy` | The approval policy |
 | `UAH_HOME` | none | none | uah's home, `~/.uah` by default |
 | `UAH_CONFIG` | `--config` | none | The user file, `<home>/config.toml` by default |
 | `UAH_STATE_DIR` | `--state-dir` | none | Sessions, logs, and run records; the home by default |
-| `UAGENT_RUNNER` | `--runner` | none | unreal-agent-runner, for the process engine |
 | `CODEX_HOME` | none | none | Codex's directory (`~/.codex`) for `AGENTS.md` and skills |
 | `BROWSER` | none | none | The program `uah mcp login` opens the authorization URL with, instead of the system's opener |
 
@@ -389,7 +384,6 @@ effort = "high"
 timeout = "30m"                    # per run; "0s" disables
 max_disk = "5G"                    # tool output per run; "0" disables
 request_max_attempts = 10          # per model request; a lost connection is retried with backoff
-engine = "embedded"                # or "process"
 fast = false                       # priority processing
 sandbox_mode = "workspace-write"   # read-only, workspace-write, danger-full-access
 # permission_mode = "workspace"    # read-only, workspace, auto, full-access; wins over sandbox_mode
@@ -437,7 +431,7 @@ timeout = "90s"
 details = false
 mouse = true                       # false: the terminal selects text
 
-[[hooks.PreToolUse]]               # embedded engine only
+[[hooks.PreToolUse]]
 matcher = "Bash"                   # the whole tool name, as a regular expression
 command = "~/.uah/hooks/no-rm-rf.sh"
 timeout = "10s"                    # default 60s

@@ -16,22 +16,21 @@ import (
 	"github.com/viktordanov/uagent/testing/fixtures"
 
 	"github.com/viktordanov/uagent-harness/internal/approval"
-	"github.com/viktordanov/uagent-harness/internal/engine"
-	"github.com/viktordanov/uagent-harness/internal/engine/process"
 	"github.com/viktordanov/uagent-harness/internal/hooks"
 	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/testing/harnesstest"
 )
 
-// TestSession_ProcessEngine drives real runs of the fake runner: a first
-// message, a steer that interrupts and restarts, then history and transcript.
-func TestSession_ProcessEngine(t *testing.T) {
+// TestSession_RunnerRuns drives real runs of uagent's fake runner, which
+// takes no live input: a first message, a steer that interrupts and
+// restarts the run, then history and transcript.
+func TestSession_RunnerRuns(t *testing.T) {
 	env := harnesstest.NewEnv(t)
 	t.Setenv("FAKERUNNER_FIXTURE", fixtures.Path("timeout.jsonl"))
 	t.Setenv("FAKERUNNER_ECHO", "1")
 	t.Setenv("FAKERUNNER_HANG", "1")
 	t.Setenv("FAKERUNNER_CAPTURE", env.Capture)
-	eng := process.New(uaharness.Config{
+	eng := harnesstest.RunnerEngine(uaharness.Config{
 		RunnerPath: harnesstest.FakeRunner(t), StateDir: env.StateDir,
 		KillGrace: 300 * time.Millisecond, Getenv: env.Getenv,
 	})
@@ -96,16 +95,15 @@ func waitForFile(t *testing.T, path string) {
 	require.NoError(t, os.Remove(path))
 }
 
-// TestSession_ProcessEngineSharedBehavior pins what the session does the
-// same on both engines, on real runs of the fake runner: the host prompt,
-// the session-level hooks (SessionStart, UserPromptSubmit, Stop,
-// SessionEnd), the saved settings and when they apply, and one notice per
-// configured feature the engine does not run.
-func TestSession_ProcessEngineSharedBehavior(t *testing.T) {
+// TestSession_RunnerSharedBehavior pins what the session does for any
+// engine, on real runs of the fake runner, which records its request: the
+// host prompt, the session-level hooks (SessionStart, UserPromptSubmit,
+// Stop, SessionEnd), and the saved settings and when they apply.
+func TestSession_RunnerSharedBehavior(t *testing.T) {
 	env := harnesstest.NewEnv(t)
 	t.Setenv("FAKERUNNER_FIXTURE", fixtures.Path("simple.jsonl"))
 	t.Setenv("FAKERUNNER_CAPTURE", env.Capture)
-	eng := process.New(uaharness.Config{RunnerPath: harnesstest.FakeRunner(t), StateDir: env.StateDir, KillGrace: time.Second, Getenv: env.Getenv})
+	eng := harnesstest.RunnerEngine(uaharness.Config{RunnerPath: harnesstest.FakeRunner(t), StateDir: env.StateDir, KillGrace: time.Second, Getenv: env.Getenv})
 	marks := t.TempDir()
 	runner, err := hooks.New([]hooks.Hook{
 		{Event: hooks.SessionStart, Command: "echo 'from SessionStart'", Source: hooks.SourceUser},
@@ -120,7 +118,6 @@ func TestSession_ProcessEngineSharedBehavior(t *testing.T) {
 	sessionsDir := filepath.Join(env.StateDir, "sessions")
 	s, err := session.Open(context.Background(), eng, session.Options{
 		Settings: settings, Hooks: runner, SessionsDir: sessionsDir, Source: session.SourceRun,
-		Uses: []engine.Feature{engine.FeatureMCP, engine.FeaturePreToolUseHooks, engine.FeatureCompaction},
 	})
 	require.NoError(t, err)
 	h := &harness{t: t, s: s}
@@ -129,17 +126,6 @@ func TestSession_ProcessEngineSharedBehavior(t *testing.T) {
 	require.NoError(t, err)
 	h.until(isType[core.RunFinished])
 	h.until(isType[session.Idle])
-	var notices []string
-	for _, e := range h.events {
-		if n, ok := e.(session.Notice); ok {
-			notices = append(notices, n.Message)
-		}
-	}
-	assert.Equal(t, []string{
-		"compaction: not supported by the process engine (/compact and /clear are not available and the context is never compacted); use the embedded engine",
-		"PreToolUse hooks: not supported by the process engine (they do not run); use the embedded engine",
-		"MCP servers: not supported by the process engine (they do not start); use the embedded engine",
-	}, notices, "one notice per configured feature the engine lacks, in the table's order")
 
 	var req struct {
 		SystemPrompt string `json:"system_prompt"`
@@ -165,12 +151,6 @@ func TestSession_ProcessEngineSharedBehavior(t *testing.T) {
 	require.True(t, found)
 	require.NotNil(t, sc.Settings)
 	assert.Equal(t, session.Saved{Provider: "openai-codex", Model: "gpt-6-sol", Effort: "low", Mode: approval.ModeReadOnly}, *sc.Settings)
-	require.ErrorIs(t, s.Compact(), session.ErrNoCompaction)
-	require.ErrorIs(t, s.Clear(), session.ErrNoCompaction)
-	_, ok := s.ContextUsage()
-	assert.False(t, ok, "no /context")
-	_, ok = s.MCPServers()
-	assert.False(t, ok, "no MCP servers")
 
 	require.NoError(t, s.Close())
 	assert.FileExists(t, filepath.Join(marks, "end"))

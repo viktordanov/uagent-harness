@@ -1,5 +1,6 @@
 // Package harnesstest sets up isolated uagent environments for tests: the
-// fake runner from uagent, a workspace, a state directory, and Codex
+// fake runner from uagent, the real unreal-agent-runner, an engine that
+// spawns either (RunnerEngine), a workspace, a state directory, and Codex
 // credentials that pass preflight.
 package harnesstest
 

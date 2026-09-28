@@ -160,13 +160,12 @@ func (e *Engine) Close() error {
 	return errors.Join(errs...)
 }
 
-func (e *Engine) Capabilities() engine.Capabilities {
+// Priority reports whether the configured provider accepts priority
+// processing (Provider.Priority).
+func (e *Engine) Priority() bool {
 	p, err := e.provider(e.cfg.Provider)
 
-	return engine.Capabilities{
-		LiveInput: true, LiveEffort: true, LiveModel: true, ServiceTier: err == nil && p.Priority, Compaction: true, LiveMode: true,
-		Rules: true, Approvals: true, ToolHooks: true, MCP: true, Subagents: true, ApplyPatch: true, CodexSkills: true, ContextUsage: true, Images: true, Reconnect: true, Stream: true, Rewind: true,
-	}
+	return err == nil && p.Priority
 }
 
 // startKey carries a run's options and event sink to the backend.

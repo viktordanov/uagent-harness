@@ -14,8 +14,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent/testing/fixtures"
-
 	"github.com/viktordanov/uagent-harness/testing/fakellm"
 	"github.com/viktordanov/uagent-harness/testing/harnesstest"
 )
@@ -110,27 +108,35 @@ func TestTUINeedsATerminal(t *testing.T) {
 	assert.Contains(t, res.stderr, "use uah run")
 }
 
-// fakeEnv points uah at the fake runner replaying fixture, in a fresh state dir.
-func fakeEnv(t *testing.T, fixture string) (*harnesstest.Env, []string) {
+// fakeEnv points uah at a fake model that answers with replies, then
+// "done", on the default openai-codex provider with a valid login, in a
+// fresh state dir.
+func fakeEnv(t *testing.T, replies ...fakellm.Reply) (*harnesstest.Env, []string) {
+	t.Helper()
+
+	return modelEnv(t, fakellm.New(t, replies...))
+}
+
+// modelEnv is fakeEnv with the fake model llm, for a test that reads its
+// requests.
+func modelEnv(t *testing.T, llm *fakellm.Server) (*harnesstest.Env, []string) {
 	t.Helper()
 	e := harnesstest.NewEnv(t)
 
 	return e, []string{
-		"UAGENT_RUNNER=" + harnesstest.FakeRunner(t),
-		"UAH_ENGINE=process",
+		"UAH_ENGINE=",
 		"UAH_STATE_DIR=" + e.StateDir,
 		"CODEX_HOME=" + e.CodexHome,
-		"FAKERUNNER_FIXTURE=" + fixtures.Path(fixture),
-		"FAKERUNNER_ECHO=1",
 		"UNREAL_HARNESS_LLM_PROVIDER=",
 		"UNREAL_HARNESS_LLM_MODEL=",
+		"UNREAL_HARNESS_LLM_BASE_URL=" + llm.URL,
 		"UAH_HOME=" + filepath.Join(e.StateDir, "..", "home"),
-		"FAKERUNNER_CAPTURE=" + e.Capture,
 	}
 }
 
 func TestInstructionsAndConfig(t *testing.T) {
-	e, env := fakeEnv(t, "simple.jsonl")
+	llm := fakellm.New(t)
+	e, env := modelEnv(t, llm)
 	configDir := filepath.Join(e.StateDir, "..", "home")
 	require.NoError(t, os.MkdirAll(configDir, 0o700))
 	require.NoError(t, os.WriteFile(filepath.Join(configDir, "config.toml"), []byte("effort = \"low\"\n"), 0o600))
@@ -141,38 +147,31 @@ func TestInstructionsAndConfig(t *testing.T) {
 
 	require.Equal(t, 0, res.code, res.stderr)
 	assert.Contains(t, res.stdout, `"type":"instructions_loaded"`)
-	stdin, err := os.ReadFile(filepath.Join(e.Capture, "stdin.json"))
-	require.NoError(t, err)
-	var req struct {
-		SystemPrompt  string `json:"system_prompt"`
-		ThinkingLevel string `json:"thinking_level"`
-	}
-	require.NoError(t, json.Unmarshal(stdin, &req))
-	assert.Equal(t, "low", req.ThinkingLevel, "the config file sets the default effort")
-	assert.True(t, strings.HasPrefix(req.SystemPrompt, "You are an AI agent running inside an isolated sandbox container."),
-		"the runner's own host prompt is kept")
-	assert.Less(t, strings.Index(req.SystemPrompt, "haiku"), strings.Index(req.SystemPrompt, "Use tabs"), "user file first, then the workspace")
+	req := lastRequest(t, llm)
+	assert.Equal(t, "low", req.Effort, "the config file sets the default effort")
+	assert.Contains(t, req.System, "You are an AI agent running inside an isolated sandbox container.", "the runner's own host prompt is kept")
+	assert.Less(t, strings.Index(req.System, "haiku"), strings.Index(req.System, "Use tabs"), "user file first, then the workspace")
 
 	t.Run("flags win over the config file, and instructions can be turned off", func(t *testing.T) {
 		res := uahWith(t, env, "", "run", "-q", "-e", "max", "--no-instructions", "-C", e.Workspace, "hi")
 
 		require.Equal(t, 0, res.code, res.stderr)
-		stdin, err := os.ReadFile(filepath.Join(e.Capture, "stdin.json"))
-		require.NoError(t, err)
-		assert.Contains(t, string(stdin), `"thinking_level":"max"`)
-		assert.NotContains(t, string(stdin), "system_prompt")
+		req := lastRequest(t, llm)
+		assert.Equal(t, "max", req.Effort)
+		assert.Contains(t, req.System, "You are an AI agent running inside an isolated sandbox container.")
+		assert.NotContains(t, req.System, "haiku")
 	})
 
-	t.Run("model_instructions_file replaces the host prompt on the process engine", func(t *testing.T) {
+	t.Run("model_instructions_file replaces the host prompt", func(t *testing.T) {
 		require.NoError(t, os.WriteFile(filepath.Join(configDir, "config.toml"), []byte("model_instructions_file = \"system.md\"\n"), 0o600))
 		require.NoError(t, os.WriteFile(filepath.Join(configDir, "system.md"), []byte("BASE-PROMPT\n"), 0o600))
 
 		res := uahWith(t, env, "", "run", "-q", "--no-instructions", "-C", e.Workspace, "hi")
 
 		require.Equal(t, 0, res.code, res.stderr)
-		stdin, err := os.ReadFile(filepath.Join(e.Capture, "stdin.json"))
-		require.NoError(t, err)
-		assert.Contains(t, string(stdin), `"system_prompt":"BASE-PROMPT\n"`)
+		system := lastRequest(t, llm).System
+		assert.True(t, strings.HasSuffix(system, "\n\nBASE-PROMPT"), "after the runner's preamble: %s", system)
+		assert.NotContains(t, system, "isolated sandbox container", "the runner's host prompt is replaced")
 	})
 
 	t.Run("a config typo is a usage error", func(t *testing.T) {
@@ -185,8 +184,17 @@ func TestInstructionsAndConfig(t *testing.T) {
 	})
 }
 
+// lastRequest is the fake model's latest request.
+func lastRequest(t *testing.T, llm *fakellm.Server) fakellm.Request {
+	t.Helper()
+	reqs := llm.Requests()
+	require.NotEmpty(t, reqs)
+
+	return reqs[len(reqs)-1]
+}
+
 func TestRunAndSessions(t *testing.T) {
-	e, env := fakeEnv(t, "simple.jsonl")
+	e, env := fakeEnv(t, fakellm.Reply{Text: "hello"}, fakellm.Reply{Text: "A; B"})
 
 	first := uahWith(t, env, "", "run", "-C", e.Workspace, "first question")
 	require.Equal(t, 0, first.code, first.stderr)
@@ -212,7 +220,6 @@ func TestRunAndSessions(t *testing.T) {
 	assert.Contains(t, lines[1], "first question")
 	assert.Equal(t, "run", strings.Fields(lines[1])[6], "uah run marks its sessions, which the resume picker hides")
 
-	env = append(env, "FAKERUNNER_FIXTURE="+fixtures.Path("parallel.jsonl"))
 	more := uahWith(t, env, "second\nthird\n", "run", "-C", e.Workspace, "--last", "--stdin")
 	require.Equal(t, 0, more.code, more.stderr)
 	assert.Contains(t, more.stdout, "A; B")
@@ -239,7 +246,7 @@ func TestRunAndSessions(t *testing.T) {
 }
 
 func TestRunStream(t *testing.T) {
-	e, env := fakeEnv(t, "simple.jsonl")
+	e, env := fakeEnv(t)
 
 	res := uahWith(t, env, "", "run", "--stream", "-C", e.Workspace, "hi")
 
@@ -262,13 +269,13 @@ func TestRunStream(t *testing.T) {
 
 func TestRunFailures(t *testing.T) {
 	t.Run("no prompt", func(t *testing.T) {
-		_, env := fakeEnv(t, "simple.jsonl")
+		_, env := fakeEnv(t)
 		res := uahWith(t, env, "", "run")
 		assert.Equal(t, 2, res.code)
 	})
 
 	t.Run("a blocked preflight fails the run", func(t *testing.T) {
-		e, env := fakeEnv(t, "simple.jsonl")
+		e, env := fakeEnv(t)
 		require.NoError(t, os.WriteFile(filepath.Join(e.Workspace, ".env"), []byte("UNREAL_HARNESS_LLM_BASE_URL=http://evil\n"), 0o600))
 
 		res := uahWith(t, env, "", "run", "-C", e.Workspace, "hi")
@@ -278,7 +285,7 @@ func TestRunFailures(t *testing.T) {
 	})
 
 	t.Run("an invalid effort is a usage error", func(t *testing.T) {
-		_, env := fakeEnv(t, "simple.jsonl")
+		_, env := fakeEnv(t)
 		res := uahWith(t, env, "", "run", "-e", "huge", "hi")
 		assert.Equal(t, 2, res.code)
 	})
@@ -290,7 +297,6 @@ func TestRunEmbedded(t *testing.T) {
 	e := harnesstest.NewEnv(t)
 	llm := fakellm.New(t, fakellm.Reply{Text: "Looking.", Commands: []string{"echo hi"}}, fakellm.Reply{Text: "first answer"}, fakellm.Reply{Text: "second answer"})
 	env := []string{
-		"UAH_ENGINE=embedded",
 		"UAH_STATE_DIR=" + e.StateDir,
 		"OPENAI_API_KEY=test-key",
 		"UNREAL_HARNESS_LLM_PROVIDER=",
@@ -343,7 +349,7 @@ func TestRunEmbeddedCompaction(t *testing.T) {
 	require.NoError(t, os.MkdirAll(configHome, 0o700))
 	require.NoError(t, os.WriteFile(filepath.Join(configHome, "config.toml"), []byte("auto_compact_percent = 90\n"), 0o600))
 	env := []string{
-		"UAH_ENGINE=embedded", "UAH_STATE_DIR=" + e.StateDir, "OPENAI_API_KEY=test-key",
+		"UAH_STATE_DIR=" + e.StateDir, "OPENAI_API_KEY=test-key",
 		"UNREAL_HARNESS_LLM_PROVIDER=", "UNREAL_HARNESS_LLM_MODEL=", "UAH_HOME=" + configHome,
 	}
 

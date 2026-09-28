@@ -17,19 +17,19 @@ import (
 	uaharness "github.com/viktordanov/uagent/harness"
 	"github.com/viktordanov/uagent/testing/fixtures"
 
-	"github.com/viktordanov/uagent-harness/internal/engine/process"
 	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/internal/tui/bubble"
 	"github.com/viktordanov/uagent-harness/testing/harnesstest"
 )
 
-// deps opens sessions on the real process engine with the fake runner.
+// deps opens real sessions on uagent's fake runner (harnesstest.RunnerEngine),
+// which takes nothing live, so a change applies from the next run.
 func deps(t *testing.T, fixture string) bubble.Deps {
 	t.Helper()
 	env := harnesstest.NewEnv(t)
 	t.Setenv("FAKERUNNER_FIXTURE", fixtures.Path(fixture))
 	t.Setenv("FAKERUNNER_ECHO", "1")
-	eng := process.New(uaharness.Config{
+	eng := harnesstest.RunnerEngine(uaharness.Config{
 		RunnerPath: harnesstest.FakeRunner(t), StateDir: env.StateDir, KillGrace: 300 * time.Millisecond, Getenv: env.Getenv,
 	})
 	settings := session.Settings{Provider: "openai-codex", Model: "gpt-6-sol", Effort: "high", Workspace: env.Workspace}

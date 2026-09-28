@@ -6,17 +6,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
 
-func TestCompact_NeedsTheEngine(t *testing.T) {
-	h := newHarness(t, engine.Capabilities{})
-	require.ErrorIs(t, h.s.Compact(), session.ErrNoCompaction)
-}
-
 func TestCompact_WhenIdleCompactsTheNextRun(t *testing.T) {
-	h := newHarness(t, engine.Capabilities{Compaction: true})
+	h := newHarness(t, fakeCaps{})
 	require.NoError(t, h.s.Compact())
 	n := h.until(isType[session.Notice]).(session.Notice)
 	assert.Equal(t, session.LevelInfo, n.Level)

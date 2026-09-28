@@ -12,7 +12,6 @@ import (
 	uaharness "github.com/viktordanov/uagent/harness"
 	"github.com/viktordanov/uagent/testing/fixtures"
 
-	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/internal/tui/state"
 )
@@ -53,7 +52,7 @@ func kinds(s state.State) []state.Kind {
 }
 
 func opened() state.State {
-	s, _ := apply(state.New(t0), session.SessionOpened{At: t0, ID: "sess-1", Engine: "process", Settings: settings()})
+	s, _ := apply(state.New(t0), session.SessionOpened{At: t0, ID: "sess-1", Engine: "embedded", Settings: settings()})
 
 	return s
 }
@@ -261,19 +260,19 @@ func TestReduce_Commands(t *testing.T) {
 		effects []state.Effect
 		notice  string
 	}{
-		"model":                  {from: opened(), text: "/model gpt-6-astra", effects: []state.Effect{state.EffSetSettings{Settings: withModel("gpt-6-astra")}}},
-		"bad model":              {from: opened(), text: "/model -x", notice: "starts with a dash"},
-		"effort":                 {from: busy, text: "/effort low", effects: []state.Effect{state.EffSetSettings{Settings: withEffort("low")}}},
-		"bad effort":             {from: opened(), text: "/effort huge", notice: "effort: high"},
-		"fast unavailable":       {from: opened(), text: "/fast", notice: "embedded engine"},
-		"new":                    {from: opened(), text: "/new", effects: []state.Effect{state.EffOpenSession{}}},
-		"clear needs compaction": {from: opened(), text: "/clear", notice: "/clear needs the embedded engine"},
-		"new while busy":         {from: busy, text: "/new", notice: "waits until the agent is idle"},
-		"resume opens list":      {from: opened(), text: "/resume", effects: []state.Effect{state.EffLoadSessions{}}},
-		"stop":                   {from: busy, text: "/stop", effects: []state.Effect{state.EffInterrupt{}}},
-		"unknown":                {from: opened(), text: "/nope", notice: "unknown command /nope"},
-		"help":                   {from: opened(), text: "/help", notice: "/model <id>"},
-		"status":                 {from: opened(), text: "/status", notice: "session sess-1 · process engine", effects: []state.Effect{state.EffLoadActivity{}, state.EffLoadUsage{Reason: state.UsageStatus}}},
+		"model":             {from: opened(), text: "/model gpt-6-astra", effects: []state.Effect{state.EffSetSettings{Settings: withModel("gpt-6-astra")}}},
+		"bad model":         {from: opened(), text: "/model -x", notice: "starts with a dash"},
+		"effort":            {from: busy, text: "/effort low", effects: []state.Effect{state.EffSetSettings{Settings: withEffort("low")}}},
+		"bad effort":        {from: opened(), text: "/effort huge", notice: "effort: high"},
+		"fast unavailable":  {from: opened(), text: "/fast", notice: "/fast needs the openai or openai-codex provider"},
+		"new":               {from: opened(), text: "/new", effects: []state.Effect{state.EffOpenSession{}}},
+		"clear":             {from: opened(), text: "/clear", effects: []state.Effect{state.EffClear{}}},
+		"new while busy":    {from: busy, text: "/new", notice: "waits until the agent is idle"},
+		"resume opens list": {from: opened(), text: "/resume", effects: []state.Effect{state.EffLoadSessions{}}},
+		"stop":              {from: busy, text: "/stop", effects: []state.Effect{state.EffInterrupt{}}},
+		"unknown":           {from: opened(), text: "/nope", notice: "unknown command /nope"},
+		"help":              {from: opened(), text: "/help", notice: "/model <id>"},
+		"status":            {from: opened(), text: "/status", notice: "session sess-1 · embedded engine", effects: []state.Effect{state.EffLoadActivity{}, state.EffLoadUsage{Reason: state.UsageStatus}}},
 	}
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
@@ -283,7 +282,7 @@ func TestReduce_Commands(t *testing.T) {
 			if tc.notice != "" {
 				last := s.Items[len(s.Items)-1]
 				if name == "status" {
-					last = s.Items[len(s.Items)-4]
+					last = s.Items[len(s.Items)-3]
 				}
 				assert.Equal(t, state.KindNotice, last.Kind)
 				assert.Contains(t, last.Text, tc.notice)
@@ -292,20 +291,10 @@ func TestReduce_Commands(t *testing.T) {
 	}
 }
 
-// TestReduce_StatusNamesTheEngineGaps: /status lists what the engine does
-// not run, from its capabilities, and says nothing for one that runs all.
-func TestReduce_StatusNamesTheEngineGaps(t *testing.T) {
+// TestReduce_StatusEndsWithTheInstructions: /status names the session, its
+// totals, and the instruction files, and nothing about the engine's gaps.
+func TestReduce_StatusEndsWithTheInstructions(t *testing.T) {
 	s, _ := apply(opened(), state.Submit{Text: "/status"})
-	last := s.Items[len(s.Items)-1]
-	assert.Equal(t, "the process engine runs without: live input, live settings, fast mode, compaction, PreCompact hooks, command rules, "+
-		"prompt rules, approvals, Auto mode, PermissionRequest hooks, PreToolUse hooks, MCP servers, subagents, apply_patch, Codex skills, /context, pasted images, reconnect status, streaming, rewind", last.Text)
-
-	all := opened()
-	all.Caps = engine.Capabilities{
-		LiveInput: true, LiveEffort: true, LiveModel: true, ServiceTier: true, Compaction: true, LiveMode: true, Rules: true,
-		Approvals: true, ToolHooks: true, MCP: true, Subagents: true, ApplyPatch: true, CodexSkills: true, ContextUsage: true, Images: true, Reconnect: true, Stream: true, Rewind: true,
-	}
-	s, _ = apply(all, state.Submit{Text: "/status"})
 	assert.Equal(t, "instructions: none", s.Items[len(s.Items)-1].Text)
 }
 

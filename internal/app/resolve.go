@@ -15,6 +15,7 @@ import (
 	"github.com/viktordanov/uagent-harness/internal/compaction"
 	"github.com/viktordanov/uagent-harness/internal/config"
 	"github.com/viktordanov/uagent-harness/internal/engine"
+	"github.com/viktordanov/uagent-harness/internal/engine/embedded"
 	"github.com/viktordanov/uagent-harness/internal/review"
 	"github.com/viktordanov/uagent-harness/internal/rules"
 	"github.com/viktordanov/uagent-harness/internal/sandbox"
@@ -27,13 +28,7 @@ const (
 	CodexProvider     = "openai-codex"
 	DefaultCodexModel = "gpt-6-sol"
 	DefaultEffort     = "high"
-
-	EngineEmbedded = "embedded"
-	EngineProcess  = "process"
 )
-
-// Engines are the engine names --engine accepts.
-var Engines = []string{EngineEmbedded, EngineProcess}
 
 // LogLevels are the names --log-level accepts.
 var LogLevels = map[string]slog.Level{"debug": slog.LevelDebug, "info": slog.LevelInfo, "warn": slog.LevelWarn, "error": slog.LevelError}
@@ -51,9 +46,10 @@ type Inputs struct {
 	Model     string
 	Effort    string
 	Workspace string
-	Engine    string
-	Runner    string
-	BaseURL   string
+	// Engine is the removed --engine flag or UAH_ENGINE, still accepted
+	// so an old script runs; a value only adds a warning (EngineNotice).
+	Engine  string
+	BaseURL string
 
 	Timeout    time.Duration
 	TimeoutSet bool
@@ -70,17 +66,12 @@ type Inputs struct {
 
 	AllowDotenv    bool
 	NoInstructions bool
-	// Gate is the executable that applies the command rules to the process
-	// engine's commands: uah itself (internal/engine/process/shellgate). Empty applies
-	// none.
-	Gate string
 }
 
 // Resolved is what Resolve decides.
 type Resolved struct {
 	// Settings has no SystemPrompt yet; Setup adds it from the instructions.
 	Settings session.Settings
-	Engine   string
 	MaxDisk  int64
 	// Instructions reports whether to load AGENTS.md and CLAUDE.md files.
 	Instructions bool
@@ -138,16 +129,15 @@ func Resolve(in Inputs, resumed session.Info, cfg config.Config) (Resolved, erro
 		return Resolved{}, err
 	}
 	if pickFast(in, resumed, cfg) {
+		if !embedded.Priority(s.Provider) {
+			return Resolved{}, usage(errors.New("--fast needs the openai or openai-codex provider"))
+		}
 		s.ServiceTier = "priority"
 	}
 	if err := s.Validate(); err != nil {
 		return Resolved{}, usage(err)
 	}
 	maxDisk, err := pickMaxDisk(in, cfg)
-	if err != nil {
-		return Resolved{}, err
-	}
-	eng, err := pickEngine(in, cfg, s.ServiceTier != "")
 	if err != nil {
 		return Resolved{}, err
 	}
@@ -179,7 +169,7 @@ func Resolve(in Inputs, resumed session.Info, cfg config.Config) (Resolved, erro
 	}
 
 	return Resolved{
-		Settings: s, Engine: eng, MaxDisk: maxDisk, Instructions: !in.NoInstructions && cfg.InstructionsEnabled(),
+		Settings: s, MaxDisk: maxDisk, Instructions: !in.NoInstructions && cfg.InstructionsEnabled(),
 		Sandbox: policy, Env: envPolicy, Compaction: compact, CompactPromptFile: promptFile, Approval: approvalPolicy, Rules: configured,
 		ApprovalsReviewer: reviewer, Review: reviewCfg, Agents: agentSettings,
 	}, nil
@@ -268,23 +258,6 @@ func pickMaxDisk(in Inputs, cfg config.Config) (int64, error) {
 	}
 
 	return n, nil
-}
-
-// pickEngine is the engine flag, the configured engine, or embedded; fast
-// (priority processing) needs the embedded engine.
-func pickEngine(in Inputs, cfg config.Config, fast bool) (string, error) {
-	eng := first(in.Engine, cfg.Engine, EngineEmbedded)
-	switch eng {
-	case EngineProcess:
-		if fast {
-			return "", usage(errors.New("--fast needs the embedded engine"))
-		}
-	case EngineEmbedded:
-	default:
-		return "", usage(errors.New("invalid engine " + eng + " (want embedded or process)"))
-	}
-
-	return eng, nil
 }
 
 // workspaceFor is the workspace flag, the resumed session's, or the current

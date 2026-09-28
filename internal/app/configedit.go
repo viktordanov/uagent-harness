@@ -11,8 +11,8 @@ import (
 // SaveSetting writes one key to the user file (in.ConfigPath) with the
 // comment-preserving editor, as the TUI's /config does; a nil value removes
 // it. A change that would stop a session from starting with these inputs,
-// such as fast mode with the process engine, is undone and returned as the
-// error.
+// such as fast mode with a provider that has no priority processing, is
+// undone and returned as the error.
 func SaveSetting(ctx context.Context, in Inputs, key string, value any) error {
 	before, mode, err := tomledit.Read(in.ConfigPath)
 	if err != nil {

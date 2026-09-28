@@ -145,8 +145,7 @@ func (r *Runner) shellFor(req Request) (shell string, mode sandbox.Mode, refused
 	p.Mode = mode
 	shell, err := sandbox.Shell(r.Dir, p, r.Env, r.Shell)
 	if errors.Is(err, sandbox.ErrUnavailable) {
-		// No sandbox on this system: the command runs without one, as the
-		// process engine runs the agent's.
+		// No sandbox on this system: the command runs without one.
 		p.Mode, mode = sandbox.FullAccess, sandbox.FullAccess
 		shell, err = sandbox.Shell(r.Dir, p, r.Env, r.Shell)
 	}

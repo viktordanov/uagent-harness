@@ -39,7 +39,7 @@ func modelsServer(t *testing.T) *httptest.Server {
 }
 
 func TestModels(t *testing.T) {
-	e, env := fakeEnv(t, "simple.jsonl")
+	e, env := fakeEnv(t)
 	env = append(env, "UNREAL_HARNESS_LLM_BASE_URL="+modelsServer(t).URL)
 
 	res := uahWith(t, env, "", "models", "-C", e.Workspace)
@@ -69,7 +69,7 @@ func TestModels(t *testing.T) {
 }
 
 func TestModelsCompletionBundled(t *testing.T) {
-	_, env := fakeEnv(t, "simple.jsonl")
+	_, env := fakeEnv(t)
 	res := uahWith(t, env, "", "-m", "--generate-shell-completion")
 	require.Equal(t, 0, res.code, res.stderr)
 	assert.Contains(t, strings.Fields(res.stdout), "gpt-6-sol", "no cache: the bundled list")

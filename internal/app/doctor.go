@@ -71,7 +71,7 @@ type DoctorOptions struct {
 }
 
 // Doctor checks what a session in the workspace would need: the
-// configuration, the runner, credentials, the model list, the plan's usage, the sandbox, instructions, hooks,
+// configuration, credentials, the model list, the plan's usage, the sandbox, instructions, hooks,
 // MCP servers, and the state directory. It starts no session and calls no
 // model; it runs `true` in the sandbox and starts the MCP servers.
 func Doctor(ctx context.Context, in Inputs, opts DoctorOptions) []Check {
@@ -106,8 +106,9 @@ func Doctor(ctx context.Context, in Inputs, opts DoctorOptions) []Check {
 		cfg = config.Config{}
 	}
 	r.Sandbox = absPolicy(r.Sandbox, in.Workspace)
-	caps := engineCapabilities(r, in.Gate)
-	checks = append(checks, checkRunner(r.Engine, in.Runner), checkEngine(r, cfg, in.Workspace, caps))
+	if c, ok := checkEngine(in, cfg); ok {
+		checks = append(checks, c)
+	}
 	checks = append(checks, checkCredentials(r, stateDir, opts.Getenv)...)
 	if opts.Models == nil {
 		opts.Models = NewModels(stateDir, r.Settings, opts.Getenv)
@@ -121,7 +122,7 @@ func Doctor(ctx context.Context, in Inputs, opts DoctorOptions) []Check {
 	}
 	checks = append(checks, checkSandbox(ctx, r.Sandbox), checkSystemPrompt(cfg), checkInstructions(r, cfg, in.Workspace))
 	checks = append(checks, checkHooks(cfg, in.Workspace, opts.HookTrustFile)...)
-	checks = append(checks, checkMCP(ctx, cfg, caps, in.Workspace, opts.Stderr)...)
+	checks = append(checks, checkMCP(ctx, cfg, in.Workspace, opts.Stderr)...)
 
 	return append(checks, checkState(ctx, stateDir))
 }

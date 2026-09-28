@@ -1,7 +1,6 @@
 package session
 
 import (
-	"errors"
 	"path/filepath"
 	"slices"
 	"time"
@@ -11,9 +10,6 @@ import (
 	"github.com/viktordanov/uagent-harness/internal/compaction"
 	"github.com/viktordanov/uagent-harness/internal/engine"
 )
-
-// ErrNoCompaction means the engine cannot compact the context.
-var ErrNoCompaction = errors.New("compaction needs the embedded engine")
 
 type cmdCompact struct{ focus string }
 
@@ -31,19 +27,14 @@ func (s *Session) CompactWith(focus string) error {
 	return err
 }
 
-func (s *Session) onCompact(focus string) error {
-	if !s.caps.Compaction {
-		return ErrNoCompaction
-	}
+func (s *Session) onCompact(focus string) {
 	s.compactPending, s.compactFocus = true, focus
 	if s.state == StateRunning && s.run != nil && s.run.Compact(focus) == nil {
 		s.emit(Notice{At: time.Now(), Level: LevelInfo, Message: "Compacting the context before the next model request"})
 
-		return nil
+		return
 	}
 	s.emit(Notice{At: time.Now(), Level: LevelInfo, Message: "The context will be compacted before the next message"})
-
-	return nil
 }
 
 type cmdClear struct{}
@@ -59,16 +50,11 @@ func (s *Session) Clear() error {
 	return err
 }
 
-func (s *Session) onClear() error {
-	if !s.caps.Compaction {
-		return ErrNoCompaction
-	}
+func (s *Session) onClear() {
 	s.clearPending = true
 	if s.state == StateRunning && s.run != nil {
 		_ = s.run.Clear() // a run that ended already leaves it to the next
 	}
-
-	return nil
 }
 
 // noteCompaction clears a pending /compact or /clear once the engine starts

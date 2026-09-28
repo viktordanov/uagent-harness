@@ -46,7 +46,6 @@ func TestEmbedded_RewindCutsTheContextAndSurvivesResume(t *testing.T) {
 	)
 	eng := e.embedded()
 	s, ev := e.open(t, eng, "")
-	require.True(t, s.Capabilities().Rewind)
 	send(t, s, ev, "first")
 	second := send(t, s, ev, "second, the old branch")
 	before, ok := eng.ContextUsage(s.ID())

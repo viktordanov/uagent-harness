@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
 
@@ -48,7 +47,7 @@ func TestInteractive(t *testing.T) {
 
 func TestSidecar(t *testing.T) {
 	dir := t.TempDir()
-	eng := newFakeEngine(engine.Capabilities{})
+	eng := newFakeEngine(fakeCaps{})
 	s, err := session.Open(context.Background(), eng, session.Options{Settings: settings(), SessionsDir: dir, Source: session.SourceRun})
 	require.NoError(t, err)
 	require.NoError(t, s.Close())

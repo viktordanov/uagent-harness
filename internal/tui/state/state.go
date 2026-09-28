@@ -11,7 +11,6 @@ import (
 	"github.com/viktordanov/uagent/core"
 
 	"github.com/viktordanov/uagent-harness/internal/compaction"
-	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/images"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
@@ -77,9 +76,11 @@ type State struct {
 	SessionID string
 	Resumed   bool
 	Engine    string
-	Caps      engine.Capabilities
-	Settings  session.Settings
-	Files     []string // instruction files in the prompt
+	// Priority is whether the session's provider offers priority
+	// processing, which /fast turns on (session.Session.Priority).
+	Priority bool
+	Settings session.Settings
+	Files    []string // instruction files in the prompt
 
 	Items []Item
 	index map[string]int

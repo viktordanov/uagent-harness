@@ -2,54 +2,54 @@ package app_test
 
 import (
 	"context"
+	"io"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/viktordanov/uagent-harness/internal/app"
-	"github.com/viktordanov/uagent-harness/testing/harnesstest"
 )
 
-// TestDoctor_Engine reports what the engine does not run, and warns once
-// for each configured feature among those, with the session's notice.
-func TestDoctor_Engine(t *testing.T) {
-	config := "[mcp_servers.docs]\ncommand = \"true\"\n\n[[hooks.PreToolUse]]\ncommand = \"true\"\n\n[approvals]\nforbid = [\"rm\"]\n"
+// TestEngine_RemovedSettingWarns: engine in a configuration file,
+// UAH_ENGINE, or --engine, whatever its value, no longer fails; the
+// session opens on the embedded engine with one warning, and `uah doctor`
+// shows the same warning.
+func TestEngine_RemovedSettingWarns(t *testing.T) {
+	const removed = "the process engine was removed in uah 1.2; uah always uses the embedded engine"
 	cases := map[string]struct {
-		engine, gate, config string
-		status               app.CheckStatus
-		detail               []string
+		config, flag string
+		where        string
 	}{
-		"embedded": {engine: app.EngineEmbedded, config: config, status: app.CheckOK, detail: []string{"embedded: runs every feature"}},
-		"process, nothing configured": {
-			engine: app.EngineProcess, gate: "/usr/bin/uah", status: app.CheckOK,
-			detail: []string{"process, without live input, live settings", "; nothing configured needs them"},
-		},
-		"process with MCP and PreToolUse hooks": {
-			engine: app.EngineProcess, gate: "/usr/bin/uah", config: config, status: app.CheckWarn,
-			detail: []string{
-				"PreToolUse hooks: not supported by the process engine (they do not run); use the embedded engine; " +
-					"MCP servers: not supported by the process engine (they do not start); use the embedded engine",
-			},
-		},
-		"process without the gate": {
-			engine: app.EngineProcess, config: "[approvals]\nforbid = [\"rm\"]\n", status: app.CheckWarn,
-			detail: []string{"command rules: not supported by the process engine (no command rule applies)"},
-		},
+		"nothing":           {},
+		"the config file":   {config: "engine = \"process\"\n", where: "(drop engine from the configuration)"},
+		"the flag":          {flag: "process", where: "(drop --engine or UAH_ENGINE)"},
+		"both, as embedded": {config: "engine = \"embedded\"\n", flag: "embedded", where: "(drop --engine or UAH_ENGINE and engine from the configuration)"},
+		"an unknown engine": {flag: "turbo", where: "(drop --engine or UAH_ENGINE)"},
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
 			_, in := setupEnv(t)
-			in.Engine, in.Runner, in.Gate = c.engine, harnesstest.FakeRunner(t), c.gate
 			writeConfig(t, &in, c.config)
-			got := find(t, app.Doctor(context.Background(), in, doctorOptions(t, filepath.Join(t.TempDir(), "trust.json"))), "engine")
-			assert.Equal(t, c.status, got.Status, got.Detail)
-			for _, d := range c.detail {
-				assert.Contains(t, got.Detail, d)
+			in.Engine = c.flag
+
+			res, err := app.Setup(context.Background(), in, io.Discard)
+			require.NoError(t, err)
+			assert.Equal(t, "embedded", res.Engine.Name())
+			checks := app.Doctor(context.Background(), in, doctorOptions(t, filepath.Join(t.TempDir(), "trust.json")))
+			i := slices.IndexFunc(checks, func(c app.Check) bool { return c.Name == "engine" })
+			if c.where == "" {
+				assert.Empty(t, res.Options.Notices)
+				assert.Equal(t, -1, i, "no engine check without an engine setting")
+
+				return
 			}
-			if c.gate != "" {
-				assert.NotContains(t, got.Detail, "command rules", "the gate applies them")
-			}
+			assert.Equal(t, []string{removed + " " + c.where}, res.Options.Notices)
+			require.GreaterOrEqual(t, i, 0)
+			assert.Equal(t, app.CheckWarn, checks[i].Status)
+			assert.Equal(t, removed, checks[i].Detail)
 		})
 	}
 }

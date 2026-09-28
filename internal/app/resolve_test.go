@@ -131,14 +131,9 @@ func TestResolve(t *testing.T) {
 			want: func(r *app.Resolved) {},
 		},
 		{
-			name: "engine from the config file",
-			cfg:  config.Config{Engine: app.EngineProcess},
-			want: func(r *app.Resolved) { r.Engine = app.EngineProcess },
-		},
-		{
-			name: "an engine flag beats the config file",
-			in:   func(in *app.Inputs) { in.Engine = app.EngineEmbedded },
-			cfg:  config.Config{Engine: app.EngineProcess},
+			name: "the removed engine setting changes nothing",
+			in:   func(in *app.Inputs) { in.Engine = "process" },
+			cfg:  config.Config{Engine: "process"},
 			want: func(r *app.Resolved) {},
 		},
 		{
@@ -330,7 +325,7 @@ func TestResolve(t *testing.T) {
 					Workspace: "/ws", Timeout: 30 * time.Minute, Mode: approval.ModeWorkspace, Sandbox: string(sandbox.WorkspaceWrite),
 					MaxAttempts: engine.DefaultMaxAttempts,
 				},
-				Engine: app.EngineEmbedded, MaxDisk: 5 << 30, Instructions: true,
+				MaxDisk: 5 << 30, Instructions: true,
 				Sandbox: sandbox.Policy{Mode: sandbox.WorkspaceWrite}, Compaction: compaction.Settings{Percent: 90}, Approval: approval.OnRequest,
 				ApprovalsReviewer: review.ReviewerUser,
 				Review:            review.Config{Model: review.CodexModel, Effort: llm.ReasoningEffortLow, Timeout: review.DefaultTimeout},
@@ -362,7 +357,6 @@ func TestResolveUsageErrors(t *testing.T) {
 		{name: "invalid config effort", cfg: config.Config{Effort: "huge"}, want: `invalid effort "huge"`},
 		{name: "invalid model", in: func(in *app.Inputs) { in.Model = "-x" }, want: "starts with a dash"},
 		{name: "invalid config max disk", cfg: config.Config{MaxDisk: "lots"}, want: `max_disk: invalid size "LOTS"`},
-		{name: "invalid config engine", cfg: config.Config{Engine: "turbo"}, want: "invalid engine turbo (want embedded or process)"},
 		{name: "invalid auto_compact_percent", cfg: config.Config{AutoCompactPercent: new(101)}, want: "invalid auto_compact_percent 101"},
 		{name: "invalid request_max_attempts", cfg: config.Config{RequestMaxAttempts: -1}, want: "invalid request_max_attempts -1"},
 		{name: "invalid --max-attempts", in: func(in *app.Inputs) { in.MaxAttempts = -2 }, want: "invalid --max-attempts -2"},
@@ -383,9 +377,9 @@ func TestResolveUsageErrors(t *testing.T) {
 		{name: "invalid approval policy", in: func(in *app.Inputs) { in.Ask = "untrusted" }, want: `invalid approval policy "untrusted"`},
 		{name: "invalid approval prefix", cfg: config.Config{Approvals: config.Approvals{Allow: []string{"echo $HOME"}}}, want: "not a simple command prefix"},
 		{
-			name: "fast on the process engine",
-			in:   func(in *app.Inputs) { in.Fast, in.FastSet, in.Engine = true, true, app.EngineProcess },
-			want: "--fast needs the embedded engine",
+			name: "fast on a provider without priority processing",
+			in:   func(in *app.Inputs) { in.Fast, in.FastSet, in.Provider = true, true, "ollama" },
+			want: "--fast needs the openai or openai-codex provider",
 		},
 	}
 	for _, tt := range tests {

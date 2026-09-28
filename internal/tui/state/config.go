@@ -210,7 +210,7 @@ func (s *State) save(key string, value any) []Effect {
 	case keyMouse:
 		s.Mouse, _ = value.(bool)
 	}
-	if next != s.Settings && (key != keyFast || s.Caps.ServiceTier) {
+	if next != s.Settings && (key != keyFast || s.Priority) {
 		effects = append(effects, EffSetSettings{Settings: next})
 	}
 
@@ -236,7 +236,7 @@ func (s *State) configSaved(e ConfigSaved) []Effect {
 	if e.Value == nil {
 		what = e.Key + " removed (the default applies)"
 	}
-	s.notice(session.LevelInfo, fmt.Sprintf("saved %s%s; %s", what, path, appliesWhen(e.Key, s.Caps.ServiceTier)))
+	s.notice(session.LevelInfo, fmt.Sprintf("saved %s%s; %s", what, path, appliesWhen(e.Key, s.Priority)))
 	if s.Config == nil {
 		return nil
 	}
@@ -250,7 +250,7 @@ func appliesWhen(key string, fastLive bool) string {
 	case key == keyDetails || key == keyMouse:
 		return "applies now"
 	case key == keyFast && !fastLive:
-		return "applies to new sessions on an engine and provider with fast mode"
+		return "applies to new sessions on a provider with fast mode"
 	case slices.Contains([]string{keyModel, keyEffort, keyFast, keyMode}, key):
 		return "this session changes too"
 	}

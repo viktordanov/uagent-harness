@@ -60,7 +60,6 @@ func (e AutoReviewed) OccurredAt() time.Time { return e.At }
 // Reconnecting means a model request failed, for a lost connection or an
 // HTTP status the client retries, and the client tries again: attempt
 // Attempt of MaxAttempts starts after about Delay. Reason is the failure.
-// Only the embedded engine reports it (Capabilities.Reconnect).
 type Reconnecting struct {
 	At          time.Time
 	Attempt     int
@@ -82,8 +81,7 @@ func (e ReconnectEnded) OccurredAt() time.Time { return e.At }
 // TextDelta is text the model is writing into its message ItemID, as it
 // arrives. Final means the message is the final answer, when the provider
 // says so. The runner's AssistantMessage for the response follows its
-// deltas and is authoritative. Only runs with Options.Stream report it
-// (Capabilities.Stream).
+// deltas and is authoritative. Only runs with Options.Stream report it.
 type TextDelta struct {
 	At     time.Time
 	ItemID string

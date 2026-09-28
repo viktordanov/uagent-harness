@@ -37,14 +37,6 @@ func TestSetupMCP(t *testing.T) {
 	require.Eventually(t, func() bool { return lister.MCPServers()[0].State == mcp.StateReady }, 20*time.Second, 20*time.Millisecond)
 	assert.Equal(t, "mcp__test__add_tool", lister.MCPServers()[0].Tools[0].Name)
 
-	in.Engine = app.EngineProcess
-	in.Runner = harnesstest.FakeRunner(t)
-	res, err = app.Setup(context.Background(), in, io.Discard)
-	require.NoError(t, err)
-	assert.Contains(t, res.Options.Uses, engine.FeatureMCP, "the session says the process engine does not start them")
-	assert.False(t, res.Engine.Capabilities().MCP)
-
-	in.Engine = app.EngineEmbedded
 	write("[mcp_servers.bad]\nurl = \"http://x\"\nargs = [\"a\"]\n")
 	_, err = app.Setup(context.Background(), in, io.Discard)
 	require.ErrorContains(t, err, "mcp_servers.bad: args is not supported for streamable_http")

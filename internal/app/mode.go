@@ -47,7 +47,7 @@ func sandboxMode(name string) (approval.Mode, error) {
 
 // pickFast is the --fast flag when given, else the resumed session's fast
 // mode, else the configured one. The session's does not carry over to
-// another provider or to the process engine, which cannot serve it.
+// another provider, which may not serve it.
 func pickFast(in Inputs, resumed session.Info, cfg config.Config) bool {
 	switch {
 	case in.FastSet:
@@ -61,5 +61,5 @@ func pickFast(in Inputs, resumed session.Info, cfg config.Config) bool {
 
 // sessionFast reports whether the resumed session's fast mode applies.
 func sessionFast(in Inputs, resumed session.Info, cfg config.Config) bool {
-	return resumed.Fast != nil && !providerChanged(in, resumed, cfg) && first(in.Engine, cfg.Engine, EngineEmbedded) == EngineEmbedded
+	return resumed.Fast != nil && !providerChanged(in, resumed, cfg)
 }

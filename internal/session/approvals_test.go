@@ -10,13 +10,12 @@ import (
 	"github.com/viktordanov/uagent/core"
 
 	"github.com/viktordanov/uagent-harness/internal/approval"
-	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
 
 func newInteractive(t *testing.T) *harness {
 	t.Helper()
-	eng := newFakeEngine(engine.Capabilities{})
+	eng := newFakeEngine(fakeCaps{})
 	s, err := session.Open(context.Background(), eng, session.Options{Settings: settings(), Interactive: true})
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = s.Close() })

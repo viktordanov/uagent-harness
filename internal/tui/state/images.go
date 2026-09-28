@@ -6,7 +6,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/images"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
@@ -55,15 +54,8 @@ func (s *State) onImages(ev any) (effects []Effect, ok bool) {
 	case PasteImage:
 		return []Effect{EffPasteImage{}}, true
 	case AttachFile:
-		if !s.imagesSupported() {
-			return insert(e.Text), true
-		}
-
 		return []Effect{EffAttachFile(e)}, true
 	case ImageAttached:
-		if !s.imagesSupported() {
-			return nil, true
-		}
 		img := e.Image
 		img.Label = images.Label(s.nextImage())
 		s.Attached = append(s.Attached, img)
@@ -89,29 +81,6 @@ func insert(text string) []Effect {
 	}
 
 	return []Effect{EffInsertText{Text: text}}
-}
-
-// imagesSupported reports whether the session's engine sends images, and
-// says why not when it does not, from the capability table.
-func (s *State) imagesSupported() bool {
-	if s.Caps.Images {
-		return true
-	}
-	for _, r := range s.Caps.Lacks() {
-		if r.Feature == engine.FeatureImages {
-			s.notice(session.LevelWarning, r.Notice(s.engineName()))
-		}
-	}
-
-	return false
-}
-
-func (s *State) engineName() string {
-	if s.Engine == "" {
-		return "current"
-	}
-
-	return s.Engine
 }
 
 // nextImage numbers a new image after the ones in the draft, so a label is
@@ -149,7 +118,7 @@ func (s *State) withImages(text string) string {
 // as Codex does; ok is false for any other suggestion.
 func (s *State) acceptImage(draft string, picked Suggestion) ([]Effect, bool) {
 	at, ok := mentionAt(draft)
-	if !ok || !s.Caps.Images || !images.IsImagePath(picked.Label) {
+	if !ok || !images.IsImagePath(picked.Label) {
 		return nil, false
 	}
 	path := picked.Label

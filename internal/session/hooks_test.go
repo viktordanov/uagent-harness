@@ -12,7 +12,6 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/hooks"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
@@ -24,7 +23,7 @@ func withHooks(t *testing.T, hs ...hooks.Hook) *harness {
 	}
 	runner, err := hooks.New(hs, nil, t.TempDir())
 	require.NoError(t, err)
-	eng := newFakeEngine(engine.Capabilities{})
+	eng := newFakeEngine(fakeCaps{})
 	s, err := session.Open(context.Background(), eng, session.Options{Settings: settings(), Hooks: runner})
 	require.NoError(t, err)
 	h := &harness{t: t, eng: eng, s: s}

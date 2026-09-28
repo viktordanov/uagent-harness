@@ -124,8 +124,8 @@ func cmdEffort(s *State, args string) []Effect {
 }
 
 func cmdFast(s *State, _ string) []Effect {
-	if !s.Caps.ServiceTier {
-		s.notice(session.LevelWarning, "/fast needs the embedded engine and the openai or openai-codex provider")
+	if !s.Priority {
+		s.notice(session.LevelWarning, "/fast needs the openai or openai-codex provider")
 
 		return nil
 	}
@@ -161,9 +161,6 @@ func cmdStatus(s *State, _ string) []Effect {
 	s.notice(session.LevelInfo, fmt.Sprintf("session %s · %s engine · %s/%s · effort %s · %s", s.SessionID, s.Engine, s.Settings.Provider, s.Settings.Model, s.Settings.Effort, s.Settings.Workspace))
 	s.notice(session.LevelInfo, fmt.Sprintf("%d runs · %d turns · %d tool calls (max %d parallel) · %d in / %d out tokens · tools overlapped the model %s", t.Runs, t.Turns, t.ToolCalls, t.MaxParallel, t.Tokens.InputTokens, t.Tokens.OutputTokens, t.Overlap.Round(100_000_000)))
 	s.notice(session.LevelInfo, "instructions: "+files)
-	if lacks := s.Caps.Summary(); lacks != "" {
-		s.notice(session.LevelInfo, fmt.Sprintf("the %s engine runs without: %s", s.Engine, lacks))
-	}
 
 	return []Effect{EffLoadActivity{}, EffLoadUsage{Reason: UsageStatus}}
 }

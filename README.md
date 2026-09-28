@@ -93,7 +93,7 @@ When you quit the TUI, it prints the session's token usage and the command that 
 
 ### Go back to an earlier message
 
-Press esc twice on an empty prompt while the agent is idle, or type `/rewind`: your latest message is selected. Esc or ↑ selects an earlier one and ↓ a later one; enter puts the message back in the prompt, with its images, to edit and send again. The message and everything after it leave the agent's context and the screen, as Codex's backtrack does, and a resumed session keeps the cut. The session file keeps the old branch, and `uah sessions show` prints it. Files the agent changed stay changed. It needs the embedded engine; see the [rewind design](docs/design/rewind.md).
+Press esc twice on an empty prompt while the agent is idle, or type `/rewind`: your latest message is selected. Esc or ↑ selects an earlier one and ↓ a later one; enter puts the message back in the prompt, with its images, to edit and send again. The message and everything after it leave the agent's context and the screen, as Codex's backtrack does, and a resumed session keeps the cut. The session file keeps the old branch, and `uah sessions show` prints it. Files the agent changed stay changed. See the [rewind design](docs/design/rewind.md).
 
 ### Select and copy text
 
@@ -110,7 +110,7 @@ printf 'first\nsecond\n' | uah run --stdin       # each line is a message; lines
 uah run --stream "..."                           # JSONL events for scripts, with the answer as it arrives
 ```
 
-On the embedded engine, the TUI shows the answer as the model writes it, and `--stream` adds `text_delta`, `reasoning_delta`, and `stream_reset` events before the final `assistant_message`. Plain `uah run` prints each answer once, when it is complete. See the [streaming design](docs/design/streaming.md).
+The TUI shows the answer as the model writes it, and `--stream` adds `text_delta`, `reasoning_delta`, and `stream_reset` events before the final `assistant_message`. Plain `uah run` prints each answer once, when it is complete. See the [streaming design](docs/design/streaming.md).
 
 It exits 0 when the run succeeds, 1 when it fails, 3 at the disk limit, 124 on a timeout, and 130 on an interrupt. Nobody can answer an approval headless, so commands that need one are declined with a reason. `uah run --help` lists the flags.
 
@@ -128,11 +128,11 @@ uah sessions show 3f2a                 # the transcript (--json)
 2. Or paste or drop an image file on the terminal, or choose one after `@`. The path becomes `[Image #N]`.
 3. Write your message around the placeholders and press enter. The images go to the model with the message.
 
-To remove an image, delete its placeholder: one backspace at its end removes it all. On Linux, uah reads the clipboard with `wl-paste` (Wayland) or `xclip` (X11); install one of them. Images larger than 2000 pixels on a side are scaled down. Images need the embedded engine; see the [images design](docs/design/images.md).
+To remove an image, delete its placeholder: one backspace at its end removes it all. On Linux, uah reads the clipboard with `wl-paste` (Wayland) or `xclip` (X11); install one of them. Images larger than 2000 pixels on a side are scaled down. See the [images design](docs/design/images.md).
 
 ### Model and effort
 
-- For this session: `/model gpt-6-luna` or `/effort low` in the TUI, or alt+, and alt+. to lower or raise the effort. On the embedded engine it applies from the next model request, even mid-run.
+- For this session: `/model gpt-6-luna` or `/effort low` in the TUI, or alt+, and alt+. to lower or raise the effort. It applies from the next model request, even mid-run.
 - At start: `uah -m gpt-6-luna -e medium`, and `--fast` for priority processing.
 - For every session: `model` and `effort` in the [configuration](#configuration).
 - See what the provider offers: `uah models` (`--json`, `--refresh`), `/model ` then tab in the TUI, or tab after `-m`. A model the provider does not list is refused with the nearest names ("gpt-luna-6 is not available on openai-codex; did you mean gpt-6-luna?").
@@ -161,7 +161,7 @@ When a model request fails because the connection dropped, it timed out, or the 
 λ Reconnecting, attempt 3 of 10 (retrying in 8s • esc to interrupt)
 ```
 
-When every attempt loses the connection, the run fails with "gave up after 10 attempts because the connection to the model was lost". Change the limit with `request_max_attempts` in the [configuration](#configuration), `--max-attempts`, or `UNREAL_HARNESS_LLM_MAX_ATTEMPTS`. The process engine retries the same way, but it cannot show the attempts.
+When every attempt loses the connection, the run fails with "gave up after 10 attempts because the connection to the model was lost". Change the limit with `request_max_attempts` in the [configuration](#configuration), `--max-attempts`, or `UNREAL_HARNESS_LLM_MAX_ATTEMPTS`.
 
 ### Command rules
 
@@ -187,7 +187,7 @@ Press shift+tab in the TUI. It cycles three modes, and the footer shows the curr
 | workspace (default) | Write the workspace | You |
 | auto | Write the workspace | The auto-reviewer decides; you are not asked |
 
-- On the embedded engine, a change applies from the next command, even mid-run. On the process engine, it applies from the next run.
+- A change applies from the next command, even mid-run.
 - A resumed session keeps its mode, with its model, effort, and fast mode.
 - To start in a mode, set `permission_mode` in the [configuration](#configuration). `--sandbox read-only` or `--sandbox workspace-write` also picks a mode for one session.
 - Full access (no sandbox) is not in the cycle. Set it with `--sandbox danger-full-access` or `permission_mode = "full-access"`; shift+tab then moves to read only.
@@ -307,7 +307,7 @@ Earlier versions used `~/.config/uagent`, `~/.local/state/unreal-agent`, and a p
 
 | Group | Keys |
 | --- | --- |
-| Model and engine | `provider`, `model`, `effort`, `fast`, `engine`, `timeout`, `max_disk`, `request_max_attempts` |
+| Model | `provider`, `model`, `effort`, `fast`, `timeout`, `max_disk`, `request_max_attempts`; `engine` is deprecated and only warns |
 | Sandbox | `permission_mode`, `sandbox_mode`; `[sandbox_workspace_write]` `network_access`, `writable_roots`; `[shell_environment_policy]` `inherit`, `ignore_default_excludes`, `exclude`, `include_only`, `set` |
 | Approvals | `approval_policy`, `approvals_reviewer`; `[approvals]` `allow`, `forbid`; `[review]` `model`, `effort`, `timeout`, `policy_file` |
 | Compaction | `auto_compact_percent`, `model_auto_compact_token_limit`, `model_context_window`, `compact_model`, `compact_effort`, `compact_prompt`, `experimental_compact_prompt_file`, `compact_user_message_max_tokens` |
@@ -360,14 +360,14 @@ The TUI is a pure reducer from session events and user intents to state and effe
 Read more: [sessions](internal/session/README.md), [the session index](internal/store/README.md), and [the TUI](internal/tui/README.md) with its look. Diagnostics go to `~/.uah/logs/uah-tui.log`.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="engines" files="internal/app/resolve.go internal/app/setup.go internal/app/features.go internal/app/process.go" -->
-### Engines
+<!-- memoria:section id="engines" files="internal/app/resolve.go internal/app/setup.go internal/app/removedengine.go" -->
+### The engine
 
 <!-- memoria:import src="internal/engine/README.md#summary" -->
-An engine starts runs of unreal-agent-runner for a session: the embedded engine (the default) runs the runner's packages inside uah, so messages, model, effort, fast mode, and the permission mode reach a live run, and the process engine spawns the runner binary through uagent. Both keep uagent's guards, session lock, and run records, apply the command rules, and write the same session files, so a session can move between them; one capability table says what the process engine does not run, and the session, `uah doctor`, and `/status` report it from there.
+The embedded engine runs unreal-agent-runner's packages inside uah, so messages, model, effort, fast mode, and the permission mode reach a live run. It keeps uagent's guards, session lock, and run records, applies the command rules, and writes the runner's session files, so a session the removed process engine started resumes on it.
 <!-- /memoria:import -->
 
-`embedded` is the default; choose with `--engine` or `engine`. The process engine sandboxes every command and applies the `allow` and `forbidden` command rules in the shell it gives the runner, but it has no live input, approvals, compaction, PreToolUse hooks, MCP servers, subagents, `apply_patch`, pasted images, a status line for a retried model request, or streaming: the answer appears when the model finishes it. A session on it shows one notice for each such feature the configuration uses, `uah doctor` warns about them in its `engine` check, and `/status` lists what the engine runs without. The [engine README](internal/engine/README.md#what-each-engine-supports) has the capability table and where each behavior lives.
+uah 1.2 removed the process engine, which spawned `unreal-agent-runner` and ran without live input, approvals, compaction, MCP servers, subagents, and more. `--engine`, `UAH_ENGINE`, and `engine` in a configuration file are still accepted, whatever their value: the session says once that the process engine was removed and runs on the embedded engine, and `uah doctor` shows the same warning in its `engine` check. `--runner` and `UAGENT_RUNNER` are gone, since nothing spawns the runner. A session the process engine started resumes as any other. What still varies is the provider and the model, such as `/fast` on openai and openai-codex only; the [engine README](internal/engine/README.md#what-varies-by-provider-and-model) lists it, and where each behavior lives.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="patch" files="cmd/uah/sessions.go" -->
@@ -404,7 +404,7 @@ Read more: [sandbox](internal/sandbox/README.md).
 ### Approvals, rules, and auto-review
 
 <!-- memoria:import src="internal/approval/README.md#summary" -->
-On the embedded engine, each command runs in the sandbox unless a rule or an approval says otherwise: a command rule can allow, forbid, or ask; the model can ask to run a command outside the sandbox; and an escalation goes to PermissionRequest hooks, then you. The permission mode, which shift+tab cycles, picks the sandbox and who answers: you in read-only and workspace, the auto-reviewer alone in auto. The defaults are Codex's: workspace-write, on-request, and the user as reviewer (Codex's "Ask for approval").
+Each command runs in the sandbox unless a rule or an approval says otherwise: a command rule can allow, forbid, or ask; the model can ask to run a command outside the sandbox; and an escalation goes to PermissionRequest hooks, then you. The permission mode, which shift+tab cycles, picks the sandbox and who answers: you in read-only and workspace, the auto-reviewer alone in auto. The defaults are Codex's: workspace-write, on-request, and the user as reviewer (Codex's "Ask for approval").
 <!-- /memoria:import -->
 
 Read more: [approvals](internal/approval/README.md), [rules](internal/rules/README.md), and [auto-review](internal/review/README.md).
@@ -487,10 +487,10 @@ The usage package reads the ChatGPT subscription's rate limits for the openai-co
 
 ---
 
-<!-- memoria:section id="development" files=".github/workflows/ci.yml .github/workflows/release.yml scripts/package-release.sh .golangci.yml testing/fakellm/fakellm.go testing/harnesstest/harnesstest.go" -->
+<!-- memoria:section id="development" files=".github/workflows/ci.yml .github/workflows/release.yml scripts/package-release.sh .golangci.yml testing/fakellm/fakellm.go testing/harnesstest/harnesstest.go testing/harnesstest/runner.go" -->
 ## Development
 
-Tests need no model or tokens: the process engine runs against uagent's fake runner, and the embedded engine against `testing/fakellm`, a scripted Responses API. One test drives the real `unreal-agent-runner` and the embedded engine with the same script and requires the same events; `go test -short` skips it.
+Tests need no model or tokens: the engine runs against `testing/fakellm`, a scripted Responses API, and session and TUI tests also run on uagent's fake runner through `harnesstest.RunnerEngine`, a test-only engine. One test drives the real `unreal-agent-runner` and the embedded engine with the same script and requires the same events; `go test -short` skips it.
 
 ```sh
 go run ./cmd/uah --version   # build and run

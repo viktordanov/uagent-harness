@@ -29,7 +29,7 @@ func serveUsage(w http.ResponseWriter, r *http.Request) {
 }
 
 func TestUsage(t *testing.T) {
-	e, env := fakeEnv(t, "simple.jsonl")
+	e, env := fakeEnv(t)
 	srv := httptest.NewServer(http.HandlerFunc(serveUsage))
 	t.Cleanup(srv.Close)
 	env = append(env, "UNREAL_HARNESS_LLM_BASE_URL="+srv.URL, "TZ=UTC")
@@ -66,7 +66,7 @@ func TestUsage(t *testing.T) {
 }
 
 func TestUsage_OtherProviders(t *testing.T) {
-	e, env := fakeEnv(t, "simple.jsonl")
+	e, env := fakeEnv(t)
 	res := uahWith(t, env, "", "usage", "--provider", "ollama", "-m", "llama3", "-C", e.Workspace)
 	assert.Equal(t, 1, res.code)
 	assert.Equal(t, "uah: usage is not available for ollama\n", res.stderr)

@@ -55,10 +55,6 @@ type Options struct {
 	SessionsDir string
 	// Notices are shown after SessionOpened, such as configuration warnings.
 	Notices []string
-	// Uses are the features the configuration asks for. Each one the
-	// engine does not run (engine.Capabilities.Unsupported) gets one
-	// notice when the session opens.
-	Uses []engine.Feature
 	// Source (SourceTUI or SourceRun) is recorded in a new session's sidecar
 	// in SessionsDir when set.
 	Source string
@@ -80,14 +76,15 @@ type Options struct {
 // Session is safe to use from any goroutine. All state lives on one internal
 // goroutine, which is also the only writer of Events.
 type Session struct {
-	id   string
-	eng  engine.Engine
-	caps engine.Capabilities
-	in   chan any
-	out  chan core.Event
-	ctx  context.Context
-	stop context.CancelFunc
-	done chan struct{}
+	id  string
+	eng engine.Engine
+	// priority is Engine.Priority, read once when the session opens.
+	priority bool
+	in       chan any
+	out      chan core.Event
+	ctx      context.Context
+	stop     context.CancelFunc
+	done     chan struct{}
 
 	// Owned by the loop goroutine.
 	settings Settings
@@ -97,7 +94,7 @@ type Session struct {
 	// live are messages sent into a running run, in order; the ones it had
 	// not read when it ended go out again with the next run.
 	live []core.UserInput
-	// startSteers are steers made while a live-input run was starting.
+	// startSteers are steers made while a run was starting.
 	startSteers          []core.UserInput
 	run                  engine.Run
 	restartAfterStop     bool
@@ -137,7 +134,7 @@ func Open(ctx context.Context, eng engine.Engine, opts Options) (*Session, error
 	}
 	runCtx, stop := context.WithCancel(ctx)
 	s := &Session{
-		id: id, eng: eng, caps: eng.Capabilities(),
+		id: id, eng: eng, priority: eng.Priority(),
 		in: make(chan any, eventBuffer), out: make(chan core.Event, eventBuffer),
 		ctx: runCtx, stop: stop, done: make(chan struct{}),
 		settings: opts.Settings, state: StateIdle, sent: map[string]bool{},
@@ -163,9 +160,6 @@ func Open(ctx context.Context, eng engine.Engine, opts Options) (*Session, error
 	for _, n := range opts.Notices {
 		s.out <- Notice{At: time.Now(), Level: LevelWarning, Message: n}
 	}
-	for _, r := range s.caps.Unsupported(opts.Uses) {
-		s.out <- Notice{At: time.Now(), Level: LevelWarning, Message: r.Notice(eng.Name())}
-	}
 	s.startHooks(opts.Resumed)
 	go s.loop()
 
@@ -175,8 +169,9 @@ func Open(ctx context.Context, eng engine.Engine, opts Options) (*Session, error
 // ID is the runner session ID; resume the session with it.
 func (s *Session) ID() string { return s.id }
 
-// Capabilities are the engine's live capabilities.
-func (s *Session) Capabilities() engine.Capabilities { return s.caps }
+// Priority reports whether the session's provider accepts priority
+// processing, so /fast can turn it on (engine.Engine.Priority).
+func (s *Session) Priority() bool { return s.priority }
 
 // Events is the ordered stream of run and session events. It is closed after Close.
 func (s *Session) Events() <-chan core.Event { return s.out }

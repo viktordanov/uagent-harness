@@ -93,11 +93,6 @@ func (s *State) onEngineEvent(ev core.Event) bool {
 // clears, and the agent's next request starts fresh. /new starts a new
 // session instead.
 func cmdClear(s *State, _ string) []Effect {
-	if !s.Caps.Compaction {
-		s.notice(session.LevelWarning, "/clear needs the embedded engine; /new starts a new session")
-
-		return nil
-	}
 	s.Items, s.index, s.agentIDs, s.Scroll, s.ContextUsed = nil, map[string]int{}, nil, 0, 0
 	s.notice(session.LevelInfo, "Context cleared: the agent starts fresh in this session. The session keeps its history; /new starts a new session")
 
@@ -106,12 +101,6 @@ func cmdClear(s *State, _ string) []Effect {
 
 // cmdCompact compacts; its argument is what the summary should focus on,
 // as Claude Code's /compact [instructions].
-func cmdCompact(s *State, args string) []Effect {
-	if !s.Caps.Compaction {
-		s.notice(session.LevelWarning, "/compact needs the embedded engine")
-
-		return nil
-	}
-
+func cmdCompact(_ *State, args string) []Effect {
 	return []Effect{EffCompact{Focus: args}}
 }

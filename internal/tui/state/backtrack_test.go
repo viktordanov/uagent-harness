@@ -24,7 +24,6 @@ var imageRef = strings.Repeat("ab", 32) + ".png"
 func talked(t *testing.T) state.State {
 	t.Helper()
 	s, _ := apply(state.New(t0), session.SessionOpened{At: t0, ID: "sess-1", Engine: "embedded", Settings: settings()})
-	s.Caps = engine.Capabilities{Rewind: true, Images: true}
 	img := images.Image{Label: "[Image #1]", Ref: imageRef, Width: 1, Height: 1}
 	texts := map[string]string{"m1": "first", "m2": images.Join("look [Image #1]", []images.Image{img}), "m3": "third"}
 	for _, id := range []string{"m1", "m2", "m3"} {
@@ -118,18 +117,9 @@ func TestBacktrack_NeedsAnIdleSessionAnEmptyComposerAndMessages(t *testing.T) {
 	assert.Equal(t, []state.Effect{state.EffInterrupt{}}, effects, "esc esc still interrupts a busy agent")
 
 	empty, _ := apply(state.New(t0), session.SessionOpened{At: t0, ID: "sess-2", Engine: "embedded", Settings: settings()})
-	empty.Caps.Rewind = true
 	empty, _ = apply(empty, state.Esc{Empty: true}, state.Esc{Empty: true})
 	assert.Nil(t, empty.Backtrack)
 	assert.Equal(t, "No previous message to edit.", empty.Items[len(empty.Items)-1].Text)
-
-	process := talked(t)
-	process.Caps.Rewind = false
-	process, _ = apply(process, state.Esc{Empty: true}, state.Esc{Empty: true})
-	assert.Nil(t, process.Backtrack, "the process engine cannot go back")
-	process, _ = apply(process, state.Submit{Text: "/rewind"})
-	assert.Nil(t, process.Backtrack)
-	assert.Contains(t, process.Items[len(process.Items)-1].Text, "rewind: not supported by the")
 }
 
 func TestBacktrack_SlashRewindSelectsAtOnceAndPrimingExpires(t *testing.T) {

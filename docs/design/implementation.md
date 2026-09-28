@@ -1,5 +1,7 @@
 # Implementation spec
 
+Update 2026-09-29: the process engine was removed (ledger 51).
+
 Status: draft, 2026-09-24. It turns [harness.md](harness.md) and [tui.md](tui.md) into concrete packages, files, types, and milestones.
 
 1. [Repositories and responsibilities](#1-repositories-and-responsibilities)

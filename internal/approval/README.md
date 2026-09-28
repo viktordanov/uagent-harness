@@ -1,10 +1,10 @@
 <!-- memoria:section id="overview" files="approval.go mode.go" -->
 # Approvals
 
-The approver decides how a command runs: in the sandbox, outside it, or not at all. It applies the command rules and the approval policy and, when a command needs approval, asks through an `Ask` function that the engine and the session build. This README describes the whole permission pipeline on the embedded engine, from the sandbox to the user.
+The approver decides how a command runs: in the sandbox, outside it, or not at all. It applies the command rules and the approval policy and, when a command needs approval, asks through an `Ask` function that the engine and the session build. This README describes the whole permission pipeline, from the sandbox to the user.
 
 <!-- memoria:export id="summary" -->
-On the embedded engine, each command runs in the sandbox unless a rule or an approval says otherwise: a command rule can allow, forbid, or ask; the model can ask to run a command outside the sandbox; and an escalation goes to PermissionRequest hooks, then you. The permission mode, which shift+tab cycles, picks the sandbox and who answers: you in read-only and workspace, the auto-reviewer alone in auto. The defaults are Codex's: workspace-write, on-request, and the user as reviewer (Codex's "Ask for approval").
+Each command runs in the sandbox unless a rule or an approval says otherwise: a command rule can allow, forbid, or ask; the model can ask to run a command outside the sandbox; and an escalation goes to PermissionRequest hooks, then you. The permission mode, which shift+tab cycles, picks the sandbox and who answers: you in read-only and workspace, the auto-reviewer alone in auto. The defaults are Codex's: workspace-write, on-request, and the user as reviewer (Codex's "Ask for approval").
 <!-- /memoria:export -->
 
 The pipeline follows Codex (checked against rust-v0.156.1). The decisions are recorded in the [sandbox plan](../../docs/design/sandbox.md), and the keys are in the [configuration reference](../../docs/configuration.md#sandbox-and-approvals).
@@ -21,7 +21,7 @@ The pipeline follows Codex (checked against rust-v0.156.1). The decisions are re
 <!-- memoria:section id="pipeline" files="approval.go" -->
 ## The pipeline
 
-For each Bash call on the embedded engine:
+For each Bash call:
 
 1. **PreToolUse hooks** run first (`internal/engine/embedded/pretooluse.go`). A hook can deny the call or rewrite its arguments. See [hooks](../hooks/README.md).
 2. **Rules.** `Approver.Decide` splits the command into its simple commands and checks the [command rules](../rules/README.md). `forbidden` denies with the rule's justification. `allow` runs the command outside the sandbox without asking. `prompt` needs approval.
@@ -35,14 +35,12 @@ For each Bash call on the embedded engine:
 An approved escalation runs outside the sandbox, with network. An approved `prompt` rule on a command that did not ask for escalation runs in the sandbox. A denied command is not run, and the model gets the reason as the tool's error.
 
 The same ask (steps 6 to 8) serves [patches](#patches) that write outside the sandbox, MCP tools whose `approval_mode` needs approval, and subagents: a subagent runs its own auto-review, then asks its parent's user, with `agent <nickname>:` in front of the reason. A subagent whose role has an `approve` list answers those prompts itself, before its auto-review; an escalation in read only mode is still asked ([Markdown agents](../agents/README.md#markdown-agents)).
-
-The process engine applies steps 2, 3, and 5 in the shell it gives the runner, with the same `Approver.Decide` and no one to ask ([the shell gate](../engine/README.md#the-process-engine)): `forbidden` refuses, `allow` runs outside the sandbox, `prompt` refuses with the headless reason, and the rest runs in the sandbox. It has no escalation, no auto-review, and no PermissionRequest hooks.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="patches" files="approval.go" -->
 ## Patches
 
-An `apply_patch` call (see [patches](../patch/README.md)) goes through the same pipeline, as Codex's patch approval does (`assess_patch_safety` in `codex-rs/core/src/safety.rs`). The embedded engine checks each path the patch writes, move destinations included, against the sandbox policy of the run's current permission mode (`sandbox.Policy.CanWrite`):
+An `apply_patch` call (see [patches](../patch/README.md)) goes through the same pipeline, as Codex's patch approval does (`assess_patch_safety` in `codex-rs/core/src/safety.rs`). The engine checks each path the patch writes, move destinations included, against the sandbox policy of the run's current permission mode (`sandbox.Policy.CanWrite`):
 
 | Mode | A write inside the writable roots | Any other write |
 | --- | --- | --- |
@@ -73,7 +71,7 @@ What uah takes from each:
 
 Differences: Full Access keeps `approval_policy` as configured (Codex's preset sets `never`), because uah's `approval_policy` is a separate key. Auto mode forces the auto-reviewer on, also with `approvals_reviewer = "user"`. Once its circuit breaker opens (3 denials in a row, or 10 in the last 50 reviews), uah's Auto mode declines with the reason, where Claude Code's auto mode goes back to asking the user and Codex's workspace mode asks too; the user is never asked in Auto mode, and switching to Workspace mode brings the prompts back. `approval_policy = "never"` denies what needs approval in every mode.
 
-A change reaches a live run on the embedded engine from its next command and model request: the Bash tool picks that mode's sandboxing shell for each command, and each model request describes that sandbox to the model. On the process engine it applies from the next run, and the TUI says so. A subagent starts in its parent's mode at the time it spawns.
+A change reaches a live run from its next command and model request: the Bash tool picks that mode's sandboxing shell for each command, and each model request describes that sandbox to the model. A subagent starts in its parent's mode at the time it spawns.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="defaults" files="approval.go" -->

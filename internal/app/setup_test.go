@@ -44,7 +44,7 @@ func TestSetup(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, e.StateDir, res.StateDir)
-	assert.Equal(t, app.EngineEmbedded, res.Engine.Name())
+	assert.Equal(t, "embedded", res.Engine.Name())
 	assert.Equal(t, filepath.Join(e.StateDir, "sessions"), res.Options.SessionsDir)
 	assert.False(t, res.Options.Resumed)
 	assert.Equal(t, app.CodexProvider, res.Options.Settings.Provider)

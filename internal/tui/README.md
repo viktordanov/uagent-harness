@@ -88,13 +88,13 @@ The answer streams on the embedded engine (`state/stream.go`, the [streaming des
 | Key | Action |
 | --- | --- |
 | enter | Send. While the agent works, the message queues and goes out when the run ends |
-| ctrl+enter, alt+enter | Send now. The embedded engine gives the message to the running agent before its next model request; the process engine restarts the run with the queue and the message. On an empty composer it sends the queued messages now, in order, the same way, also a queue an interrupt kept (`EffSteerQueued`, `Session.SteerQueued`); with nothing queued it does nothing |
+| ctrl+enter, alt+enter | Send now. The engine gives the message to the running agent before its next model request; a run that just stopped restarts with the queue and the message. On an empty composer it sends the queued messages now, in order, the same way, also a queue an interrupt kept (`EffSteerQueued`, `Session.SteerQueued`); with nothing queued it does nothing |
 | shift+enter, ctrl+j | New line. The composer grows to 8 rows, then scrolls to keep the cursor in view; a draft, typed or pasted, has no limit short of the textarea's 10,000 lines |
 | esc esc | Interrupt the run (the second esc within 2 seconds); queued messages stay. It also stops a running shell-mode command. While idle with nothing queued, on an empty composer, it goes back to an earlier message instead (below) |
 | `!` on an empty composer | Shell mode (see below) |
 | ↑ on an empty composer | Take the last queued message back to edit it |
 | alt+, / alt+. | Lower or raise the effort |
-| shift+tab | Next permission mode: read only, workspace, auto, and back to read only; from full access, read only. The footer shows the mode, and the session applies it (live on the embedded engine, from the next run on the process engine); `state/mode.go` |
+| shift+tab | Next permission mode: read only, workspace, auto, and back to read only; from full access, read only. The footer shows the mode, and the session applies it from the next command, even mid-run; `state/mode.go` |
 | ctrl+s | Session picker |
 | ctrl+n | New session |
 | `/`, `@` | Open the menu: commands and their values after `/`, workspace files (fuzzy) after `@`. Tab fills in the selection, enter runs a command, esc closes the menu |
@@ -148,7 +148,7 @@ In the `/config` panel, ↑/↓ choose a setting, enter or space changes it, ←
 | `/compact [focus]` | Compact the context before the next model request; words after it tell the summary what to focus on, as Claude Code's `/compact [instructions]` (embedded engine) | Yes |
 | `/context` | Break down what fills the context window | Yes |
 | `/config` | The settings panel: change the basic settings and save them to the user file (see [/config](#config)) | Yes |
-| `/status` | Session, settings, totals, what the engine runs without (from its capabilities), a 12-week activity heatmap, and the plan's usage (see [Plan usage](#plan-usage)) | Yes |
+| `/status` | Session, settings, totals, a 12-week activity heatmap, and the plan's usage (see [Plan usage](#plan-usage)) | Yes |
 | `/usage` | Your plan's usage, read fresh: each limit with a bar, what is left, and when it resets, as `uah usage` prints it (openai-codex) | Yes |
 | `/mcp [verbose]` | MCP servers: state, transport, tool count, and a login hint; `verbose` (or the detailed view) adds each server's command or URL, auth, and tools with their approval mode | Yes |
 | `/agents [name]` | Subagents and their state; with a nickname or ID, that agent's live transcript (see [The agent view](#the-agent-view)) | Yes |
@@ -160,7 +160,7 @@ In the `/config` panel, ↑/↓ choose a setting, enter or space changes it, ←
 
 `/model` offers the provider's model list after a space: the first `/model` draft loads it through an effect (`EffLoadModels`, `state/models.go`), off the update loop, from the catalog in `internal/models`. When that list came from the provider, `/model` refuses a model it lacks with the nearest names; with no list, or only the bundled one, any model passes.
 
-`/model`, `/effort`, and `/fast` apply from the next model request on the embedded engine, and from the next run on the process engine; the session's `SettingsChanged` event says which.
+`/model`, `/effort`, and `/fast` apply from the next model request, or from the next run when the run just stopped; the session's `SettingsChanged` event says which. `/fast` needs a provider with priority processing (`Session.Priority`, kept in `State.Priority`); on another it says so.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="config" files="state/config.go state/configrows.go render/config.go bubble/keys.go bubble/effects.go" -->
@@ -184,7 +184,7 @@ The split follows the rest of the TUI:
 
 - **State** (`state/config.go`, `state/configrows.go`): `ConfigPanel` holds the loaded values, the selected row, and a value being typed. The reducer turns a change into `EffSaveConfig`, shows the new value at once with the user file as its source, and, for a setting the session takes live, adds the same `EffSetSettings` that `/model`, `/effort`, `/fast`, and shift+tab send. Opening the panel loads the values (`EffLoadConfig`) and the model list (`EffLoadModels`).
 - **Render** (`render/config.go`): the rows, the value in bold, on in the good color, the source dim, and the keys at the bottom.
-- **Effects** (`bubble/effects.go`): `Deps.Config` and `Deps.SaveConfig`, which `cmd/uah` backs with `app.Inspect` and `app.SaveSetting`. A save goes through the comment-preserving editor that `uah mcp add` uses (`internal/config/tomledit`); a change that would stop a session from starting, such as fast mode with the process engine, is undone and reported. After each save the panel reloads, and says so when a flag, the environment, or a trusted project file still sets the key and wins over the user file.
+- **Effects** (`bubble/effects.go`): `Deps.Config` and `Deps.SaveConfig`, which `cmd/uah` backs with `app.Inspect` and `app.SaveSetting`. A save goes through the comment-preserving editor that `uah mcp add` uses (`internal/config/tomledit`); a change that would stop a session from starting, such as fast mode with a provider that has no priority processing, is undone and reported. After each save the panel reloads, and says so when a flag, the environment, or a trusted project file still sets the key and wins over the user file.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="agentview" files="state/agentview.go bubble/agentview.go render/agentview.go" -->
@@ -240,8 +240,6 @@ The composer takes images as Codex's does; the [images design](../../docs/design
 3. `ImageAttached` adds the image to `State.Attached` with the next label, and `EffInsertText` puts `[Image #N] ` at the cursor. `ImageFailed` shows a warning and pastes the text it came from.
 4. `DraftChanged` drops the images whose placeholder is gone. Backspace at the end of a placeholder first deletes the rest of it (`eatPlaceholder`), so one key removes it. Numbers are not reused within a draft and not renumbered.
 5. Submit and steer join the draft's images to the message as tag lines (`images.Join`). The transcript, the queue, and a resumed session show the text without them (`images.Display`), and ↑ takes a queued message back with its images (`DraftRestored`).
-
-When the engine lacks `Images` (the process engine), a pasted image or path shows the capability table's notice, and a path stays text.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="usage" files="state/usage.go bubble/usage.go render/screen.go state/commands.go" -->
@@ -289,7 +287,7 @@ To add a key, map it to an intent in `bubble/keys.go` and handle the intent in `
 | `state/*_test.go` | The reducer: a run from a captured fixture, tools keeping their place, the queue, keys, commands, history, the picker, the menu, approvals, and `/context` |
 | `render/screen_test.go` and the other render tests | Whole screens against golden files in `render/testdata` (with a diff in both views, `patch` and `patch-details`, and its tints in `render/diff_test.go`) (`go test ./internal/tui/render -update` rewrites them), and scrolling |
 | `render/markdown/markdown_test.go`, `render/markdown/incremental_test.go`, `render/markdown_test.go`, `render/markdown_bench_test.go` | Markdown: every construct against goldens at several widths (`render/markdown/testdata`, `-update` rewrites them), alerts, diff blocks, and right-aligned numbers among them, zebra tables down to records, highlighting and its cache, incremental rendering equal to full rendering for every prefix, each update parsing only the last block, each theme's colors, and the benchmarks (`go test -run '^$' -bench Markdown -benchmem ./internal/tui/render`) |
-| `bubble/bubble_test.go` | The shell end to end, with real sessions on the process engine and uagent's fake runner: sending, commands, the picker, queue and interrupt, scrolling, and the menu |
+| `bubble/bubble_test.go` | The shell end to end, with real sessions on uagent's fake runner (`harnesstest.RunnerEngine`): sending, commands, the picker, queue and interrupt, scrolling, and the menu |
 | `state/reduce_test.go`, `state/agents_test.go`, `bubble/steer_test.go` | ctrl+enter on an empty composer: the queue goes now in order under its IDs, also a queue an interrupt kept, nothing without a queue or in shell mode, the viewed agent's own queue, and a real embedded session whose working agent reads both queued messages before its next model request |
 | `bubble/approval_test.go` | Approving and declining an escalation, with real sessions on the embedded engine and `testing/fakellm` |
 | `state/mode_test.go`, `render/mode_test.go`, `bubble/mode_test.go` | shift+tab's cycle, the mode notice, the footer and header in each mode, and shift+tab through a real session |

@@ -7,7 +7,7 @@ import (
 )
 
 // TestTUI_ShiftTabCyclesTheMode drives shift+tab through the session: the
-// footer follows each change, and the process engine applies it from the
+// footer follows each change, and the fake runner applies it from the
 // next run.
 func TestTUI_ShiftTabCyclesTheMode(t *testing.T) {
 	d := start(t, deps(t, "simple.jsonl"))

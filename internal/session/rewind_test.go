@@ -28,13 +28,15 @@ func (e *rewindingEngine) Rewind(_ context.Context, _, messageID string) (engine
 	return engine.Rewound{At: time.Now(), MessageID: messageID}, e.held, nil
 }
 
+// TestRewind_NeedsTheEngine: an engine that is no engine.Rewinder, such as
+// a subagent's, cannot go back.
 func TestRewind_NeedsTheEngine(t *testing.T) {
-	h := newHarness(t, engine.Capabilities{})
+	h := newHarness(t, fakeCaps{})
 	require.ErrorIs(t, h.s.Rewind("m1"), session.ErrNoRewind)
 }
 
 func TestRewind_WaitsForAnIdleSessionAndSendsHeldTextsAgain(t *testing.T) {
-	eng := &rewindingEngine{fakeEngine: newFakeEngine(engine.Capabilities{Rewind: true}), held: []string{"a note"}}
+	eng := &rewindingEngine{fakeEngine: newFakeEngine(fakeCaps{}), held: []string{"a note"}}
 	s, err := session.Open(context.Background(), eng, session.Options{Settings: settings()})
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = s.Close() })
