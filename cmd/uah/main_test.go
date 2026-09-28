@@ -91,6 +91,7 @@ func TestHelpListsCommands(t *testing.T) {
 	for _, command := range []string{"run", "resume", "sessions", "hooks", "config", "doctor"} {
 		assert.Regexp(t, `(?m)^\s+`+command+`\b`, res.stdout)
 	}
+	assert.NotContains(t, res.stdout, "--runner", "nothing spawns the runner")
 	assert.Contains(t, res.stdout, "a general-purpose harness for unreal-agent-runner")
 }
 
