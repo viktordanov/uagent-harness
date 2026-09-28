@@ -78,11 +78,21 @@ func New(cfg Config) *Manager {
 
 // Bind sets the engine children run on, the parent's, and the options the
 // process opens its sessions with; children open with the same, less what
-// makes them children (see childOptions).
+// makes them children (see childOptions). It tells the hooks which
+// sessions are children, so these fire subagent hooks only.
 func (m *Manager) Bind(eng engine.Engine, template session.Options) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.eng, m.tmpl = childEngine{eng}, template
+	template.Hooks.SetParents(m.parentID)
+}
+
+// parentID is a session's parent, "" for a root session.
+func (m *Manager) parentID(id string) string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	return m.parentOf(id)
 }
 
 // template is the process's session options.

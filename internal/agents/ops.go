@@ -43,6 +43,7 @@ func (m *Manager) spawn(ctx context.Context, call engine.AgentCall, a spawnArgs)
 			return spawnResult{}, err
 		}
 	}
+	m.startHooks(ctx, c)
 	if _, err := m.submit(c, a.Message, false); err != nil {
 		m.discard(c)
 

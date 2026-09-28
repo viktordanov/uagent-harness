@@ -27,6 +27,8 @@ const (
 	PreToolUse       Event = "PreToolUse"
 	PostToolUse      Event = "PostToolUse"
 	Stop             Event = "Stop"
+	// SubagentStart runs when a subagent starts; it only observes.
+	SubagentStart Event = "SubagentStart"
 	// SubagentStop runs when a subagent finishes; a block with a reason
 	// sends the reason to the subagent as its next message.
 	SubagentStop Event = "SubagentStop"
@@ -37,7 +39,11 @@ const (
 )
 
 // Events are the supported events.
-var Events = []Event{SessionStart, SessionEnd, UserPromptSubmit, PreToolUse, PostToolUse, Stop, SubagentStop, PreCompact, PermissionRequest}
+var Events = []Event{SessionStart, SessionEnd, UserPromptSubmit, PreToolUse, PostToolUse, Stop, SubagentStart, SubagentStop, PreCompact, PermissionRequest}
+
+// RootOnly are the events that fire for root sessions only, as in Claude
+// Code: a subagent's session fires none of them.
+var RootOnly = []Event{SessionStart, SessionEnd, UserPromptSubmit, Stop}
 
 const (
 	// DefaultTimeout applies when a hook sets none.
@@ -95,6 +101,7 @@ type Runner struct {
 
 	mu      sync.Mutex
 	report  func(Result)
+	parent  func(sessionID string) string
 	skipped map[string]bool // untrusted commands already reported
 }
 
@@ -153,7 +160,45 @@ func (r *Runner) Clone() *Runner {
 		return nil
 	}
 
-	return &Runner{hooks: slices.Clone(r.hooks), trust: r.trust, workspace: r.workspace}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	return &Runner{hooks: slices.Clone(r.hooks), trust: r.trust, workspace: r.workspace, parent: r.parent}
+}
+
+// SetParents tells the runner which sessions are subagents: parent returns
+// a subagent's parent session ID, or "" for a root session. A subagent then
+// fires no RootOnly event, and its other payloads carry agent_id and
+// parent_session_id. Clones made after the call share it.
+func (r *Runner) SetParents(parent func(sessionID string) string) {
+	if r == nil {
+		return
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.parent = parent
+}
+
+// inAgent fills agent_id and parent_session_id when in fired inside a
+// subagent, and reports false for an event a subagent does not fire. A
+// payload that already names an agent, such as SubagentStop's, is kept.
+func (r *Runner) inAgent(in *Input) bool {
+	r.mu.Lock()
+	parentOf := r.parent
+	r.mu.Unlock()
+	if parentOf == nil || in.AgentID != "" || in.SessionID == "" {
+		return true
+	}
+	parent := parentOf(in.SessionID)
+	if parent == "" {
+		return true
+	}
+	if slices.Contains(RootOnly, in.Event) {
+		return false
+	}
+	in.AgentID, in.ParentSessionID = in.SessionID, parent
+
+	return true
 }
 
 // OnResult sets a function that sees every result, from any goroutine.
@@ -201,8 +246,12 @@ func matches(matcher, tool string) bool {
 }
 
 // Run runs the matching hooks in order and returns their combined decision.
+// Inside a subagent (SetParents), a RootOnly event runs nothing.
 func (r *Runner) Run(ctx context.Context, in Input) Decision {
 	var d Decision
+	if r == nil || !r.inAgent(&in) {
+		return d
+	}
 	for _, h := range r.matching(in.Event, in.ToolName) {
 		var res Result
 		if ok, why := r.TrustState(h); ok {

@@ -1,6 +1,7 @@
 package agents
 
 import (
+	"context"
 	"path/filepath"
 	"strings"
 
@@ -53,11 +54,34 @@ func (m *Manager) checkStop(c *child, check stopCheck) {
 // session, and the child's ID, type, transcript, and final answer. It
 // holds m.mu.
 func (m *Manager) stopInput(c *child, answer string) hooks.Input {
+	in := m.agentInput(hooks.SubagentStop, c)
+	in.StopHookActive, in.LastAssistantMessage = c.stopStreak > 0, answer
+
+	return in
+}
+
+// startHooks runs the SubagentStart hooks for a child that is about to get
+// its first message. They only observe; the spawn waits for them, so they
+// run before any hook of the child's own.
+func (m *Manager) startHooks(ctx context.Context, c *child) {
+	runner := m.template().Hooks
+	if !runner.Has(hooks.SubagentStart, "") {
+		return
+	}
+	m.mu.Lock()
+	in := m.agentInput(hooks.SubagentStart, c)
+	m.mu.Unlock()
+	runner.Run(ctx, in)
+}
+
+// agentInput is the payload a subagent event starts from, Claude Code's:
+// the parent's session, and the child's ID, type, and transcript. It holds
+// m.mu.
+func (m *Manager) agentInput(event hooks.Event, c *child) hooks.Input {
 	p := m.parents[c.parent].Request
 	in := hooks.Input{
-		Event: hooks.SubagentStop, SessionID: c.parent, Cwd: p.Workspace, Model: p.Model,
-		StopHookActive: c.stopStreak > 0, AgentID: c.id, AgentType: first(c.role, defaultRole),
-		LastAssistantMessage: answer,
+		Event: event, SessionID: c.parent, Cwd: p.Workspace, Model: p.Model,
+		AgentID: c.id, AgentType: first(c.role, defaultRole),
 	}
 	if dir := m.tmpl.SessionsDir; dir != "" {
 		in.TranscriptPath = filepath.Join(dir, c.parent+".session.jsonl")

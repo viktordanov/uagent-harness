@@ -29,7 +29,8 @@ var agentTools = []string{"spawn_agent", "send_input", "wait_agent", "close_agen
 // way but what makes it a child: set up with instructions, a skill, an MCP
 // server, hooks, and fast mode, its model request carries the root's
 // system prompt, model, effort, service tier, and tools (less the agent
-// tools, at max_depth 1), and its session runs the same hooks.
+// tools, at max_depth 1), and its session has the same hooks, of which it
+// fires the subagent ones only (see TestSetup_SubagentHooks).
 func TestSetup_SubagentParity(t *testing.T) {
 	e, in := setupEnv(t)
 	t.Setenv("OPENAI_API_KEY", "test-key")
@@ -98,13 +99,10 @@ command = "grep -o '\"session_id\":\"[^\"]*\"' >> `+stops+`"
 	assert.Contains(t, child.Tools, "mcp__test__echo")
 	assert.Contains(t, child.Tools, "SkillUse")
 
-	sessions := sessionIDs(t, e.StateDir)
-	require.Len(t, sessions, 2)
+	require.Len(t, sessionIDs(t, e.StateDir), 2)
 	data, err := os.ReadFile(stops)
 	require.NoError(t, err)
-	for _, id := range sessions {
-		assert.Contains(t, string(data), `"session_id":"`+id+`"`, "Stop hooks ran for the root and the child")
-	}
+	assert.Equal(t, `"session_id":"`+s.ID()+`"`+"\n", string(data), "Stop hooks ran for the root only")
 }
 
 func waitFinished(t *testing.T, s *session.Session) {

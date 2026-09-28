@@ -151,3 +151,51 @@ func TestHas_ApplyPatchAliases(t *testing.T) {
 		assert.False(t, r.Has(hooks.PreToolUse, "Edit") && matcher == "apply_patch", "the alias works one way")
 	}
 }
+
+// TestRun_Subagents checks SetParents: a subagent's session fires no root
+// session events, its other payloads name the agent and its parent, and a
+// clone keeps the lookup.
+func TestRun_Subagents(t *testing.T) {
+	out := filepath.Join(t.TempDir(), "payload.json")
+	var hs []hooks.Hook
+	for _, event := range hooks.Events {
+		hs = append(hs, user(event, "cat > "+out))
+	}
+	r, err := hooks.New(hs, nil, t.TempDir())
+	require.NoError(t, err)
+	r.SetParents(func(id string) string {
+		if id == "child" {
+			return "root"
+		}
+
+		return ""
+	})
+	payload := func(r *hooks.Runner, in hooks.Input) (hooks.Input, bool) {
+		t.Helper()
+		require.NoError(t, os.RemoveAll(out))
+		r.Run(context.Background(), in)
+		data, err := os.ReadFile(out)
+		if os.IsNotExist(err) {
+			return hooks.Input{}, false
+		}
+		require.NoError(t, err)
+		var got hooks.Input
+		require.NoError(t, json.Unmarshal(data, &got))
+
+		return got, true
+	}
+
+	for _, event := range hooks.RootOnly {
+		_, ran := payload(r, hooks.Input{Event: event, SessionID: "child"})
+		assert.False(t, ran, "%s in a subagent", event)
+		_, ran = payload(r, hooks.Input{Event: event, SessionID: "root"})
+		assert.True(t, ran, "%s in the root", event)
+	}
+	got, ran := payload(r.Clone(), hooks.Input{Event: hooks.PreToolUse, SessionID: "child", ToolName: "Bash"})
+	require.True(t, ran)
+	assert.Equal(t, [3]string{"child", "child", "root"}, [3]string{got.SessionID, got.AgentID, got.ParentSessionID})
+	got, _ = payload(r, hooks.Input{Event: hooks.PreToolUse, SessionID: "root", ToolName: "Bash"})
+	assert.Empty(t, got.AgentID+got.ParentSessionID)
+	got, _ = payload(r, hooks.Input{Event: hooks.SubagentStart, SessionID: "root", AgentID: "child", AgentType: "default"})
+	assert.Equal(t, [3]string{"root", "child", ""}, [3]string{got.SessionID, got.AgentID, got.ParentSessionID}, "a payload that names its agent is kept")
+}

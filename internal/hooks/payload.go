@@ -26,12 +26,17 @@ type Input struct {
 	// so a hook can avoid looping.
 	StopHookActive bool `json:"stop_hook_active,omitempty"`
 
-	// SubagentStop: the subagent's ID, type (its role, or "default"),
-	// transcript, and final answer; SessionID is the parent's.
+	// SubagentStart and SubagentStop: the subagent's ID, type (its role, or
+	// "default"), and transcript, and SubagentStop's final answer;
+	// SessionID is the parent's.
 	AgentID              string `json:"agent_id,omitempty"`
 	AgentType            string `json:"agent_type,omitempty"`
 	AgentTranscriptPath  string `json:"agent_transcript_path,omitempty"`
 	LastAssistantMessage string `json:"last_assistant_message,omitempty"`
+	// ParentSessionID is set, with AgentID, in a hook that fired inside a
+	// subagent: SessionID and AgentID are the subagent's session, and this
+	// is its parent's.
+	ParentSessionID string `json:"parent_session_id,omitempty"`
 
 	// PreCompact: "manual" (/compact) or "auto".
 	Trigger string `json:"trigger,omitempty"`
