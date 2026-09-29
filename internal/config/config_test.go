@@ -33,24 +33,20 @@ func TestLoad(t *testing.T) {
 		ws := filepath.Join(root, "ws")
 		user := filepath.Join(root, "config.toml")
 		write(t, config.ProjectFile(ws), "effort = \"max\"\n[instructions]\nenabled = false\n")
-		write(t, user, "provider = \"openrouter\"\neffort = \"low\"\ntimeout = \"10m\"\n")
+		write(t, user, "provider = \"openrouter\"\neffort = \"low\"\n")
 
 		untrusted, loaded, err := config.Load(user, ws)
 		require.NoError(t, err)
 		assert.Equal(t, "low", untrusted.Effort)
 		assert.Equal(t, []string{user}, loaded)
 
-		write(t, user, "provider = \"openrouter\"\neffort = \"low\"\ntimeout = \"10m\"\n[projects.\""+ws+"\"]\ntrusted = true\n")
+		write(t, user, "provider = \"openrouter\"\neffort = \"low\"\n[projects.\""+ws+"\"]\ntrusted = true\n")
 		trusted, loaded, err := config.Load(user, ws)
 		require.NoError(t, err)
 		assert.Equal(t, "max", trusted.Effort, "the project file overrides the user file")
 		assert.Equal(t, "openrouter", trusted.Provider, "unset project values keep the user's")
 		assert.False(t, trusted.InstructionsEnabled())
 		assert.Equal(t, []string{user, config.ProjectFile(ws)}, loaded)
-		d, ok, err := trusted.TimeoutValue()
-		require.NoError(t, err)
-		assert.True(t, ok)
-		assert.Equal(t, 10*time.Minute, d)
 	})
 
 	t.Run("compaction keys, and the project file overrides them", func(t *testing.T) {
@@ -89,6 +85,15 @@ func TestLoad(t *testing.T) {
 		_, _, err := config.Load(user, t.TempDir())
 
 		require.ErrorContains(t, err, `unknown key "efort"`)
+	})
+
+	t.Run("timeout is an unknown key: a turn has no wall-clock limit", func(t *testing.T) {
+		user := filepath.Join(t.TempDir(), "config.toml")
+		write(t, user, "timeout = \"30m\"\n")
+
+		_, _, err := config.Load(user, t.TempDir())
+
+		require.ErrorContains(t, err, `unknown key "timeout"`)
 	})
 
 	t.Run("a project file cannot trust itself", func(t *testing.T) {

@@ -22,7 +22,7 @@ import (
 
 // flagDefaults are the inputs the CLI passes when no flag is given.
 func flagDefaults() app.Inputs {
-	return app.Inputs{Workspace: "/ws", Timeout: 30 * time.Minute, MaxDisk: "5G"}
+	return app.Inputs{Workspace: "/ws", MaxDisk: "5G"}
 }
 
 func TestResolve(t *testing.T) {
@@ -102,17 +102,6 @@ func TestResolve(t *testing.T) {
 			name: "the current directory when nothing sets the workspace",
 			in:   func(in *app.Inputs) { in.Workspace = "" },
 			want: func(r *app.Resolved) { r.Settings.Workspace = "." },
-		},
-		{
-			name: "timeout from the config file",
-			cfg:  config.Config{Timeout: "5m"},
-			want: func(r *app.Resolved) { r.Settings.Timeout = 5 * time.Minute },
-		},
-		{
-			name: "a timeout flag beats the config file",
-			in:   func(in *app.Inputs) { in.Timeout, in.TimeoutSet = 0, true },
-			cfg:  config.Config{Timeout: "5m"},
-			want: func(r *app.Resolved) { r.Settings.Timeout = 0 },
 		},
 		{
 			name: "fast by flag",
@@ -316,7 +305,7 @@ func TestResolve(t *testing.T) {
 			want := app.Resolved{
 				Settings: session.Settings{
 					Provider: app.CodexProvider, Model: app.DefaultCodexModel, Effort: app.DefaultEffort,
-					Workspace: "/ws", Timeout: 30 * time.Minute, Mode: approval.ModeWorkspace, Sandbox: string(sandbox.WorkspaceWrite),
+					Workspace: "/ws", Mode: approval.ModeWorkspace, Sandbox: string(sandbox.WorkspaceWrite),
 					MaxAttempts: engine.DefaultMaxAttempts,
 				},
 				MaxDisk: 5 << 30, Instructions: true,
@@ -346,7 +335,6 @@ func TestResolveUsageErrors(t *testing.T) {
 		cfg  config.Config
 		want string
 	}{
-		{name: "invalid config timeout", cfg: config.Config{Timeout: "soon"}, want: `invalid timeout "soon"`},
 		{name: "invalid config provider", cfg: config.Config{Provider: "acme"}, want: `invalid provider "acme"`},
 		{name: "invalid config effort", cfg: config.Config{Effort: "huge"}, want: `invalid effort "huge"`},
 		{name: "invalid model", in: func(in *app.Inputs) { in.Model = "-x" }, want: "starts with a dash"},

@@ -18,7 +18,6 @@ import (
 
 const (
 	exitDiskLimit = 3
-	exitTimeout   = 124
 	exitInterrupt = 130
 )
 
@@ -197,13 +196,11 @@ func (o *runOutput) exit(interrupted bool) error {
 	switch o.last.Status {
 	case core.StatusOK:
 		return nil
-	case core.StatusTimeout:
-		return cli.Exit("", exitTimeout)
 	case core.StatusInterrupted:
 		return cli.Exit("", exitInterrupt)
 	case core.StatusDiskLimit:
 		return cli.Exit("", exitDiskLimit)
-	case core.StatusRunning, core.StatusFailed:
+	case core.StatusRunning, core.StatusTimeout, core.StatusFailed:
 	}
 
 	return cli.Exit("", exitFailed)

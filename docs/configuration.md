@@ -52,7 +52,7 @@ The exceptions, as the code applies them:
 
 - A `--provider` flag that changes the provider, compared with the resumed session's, else the configured one, else openai-codex, drops the resumed and configured models. The model is then `--model`, or the provider's default: `gpt-6-sol` for openai-codex and none for the others.
 - The workspace comes from `-C`, the resumed session, or the current directory; no file sets it.
-- `--timeout` (30m) and `--max-disk` (5G) have defaults, but a default counts only when the flag is not given: the files come first.
+- `--max-disk` (5G) has a default, but the default counts only when the flag is not given: the files come first.
 - `--fast` given, even as `--fast=false`, wins. Otherwise the resumed session's fast mode wins, unless a `--provider` flag changes the provider. Otherwise `fast` is on when any file turns it on.
 - The permission mode is `--sandbox` (or `UAH_SANDBOX`) as a mode, else the resumed session's, else `permission_mode`, else `sandbox_mode` as a mode, else `workspace`. `sandbox_mode` follows from the mode. A project file's `sandbox_mode` does not override a user file's `permission_mode`, because `permission_mode` from any file comes first.
 - `--no-instructions` turns instructions off whatever the files say; no flag turns them on over `enabled = false`.
@@ -79,7 +79,6 @@ Every key may be set in the user file, in a layer, and in a trusted project file
 | `provider` | string | `openai-codex` | `--provider`, `UNREAL_HARNESS_LLM_PROVIDER` | override | The LLM provider: openai, openai-codex, openrouter, fireworks, or ollama |
 | `model` | string | `gpt-6-sol` on openai-codex, else none | `-m`, `--model`, `UNREAL_HARNESS_LLM_MODEL` | override | The model ID |
 | `effort` | string | `high` | `-e`, `--effort` | override | The thinking level: low, medium, high, xhigh, or max |
-| `timeout` | duration | `30m` | `-t`, `--timeout` | override | The wall-clock limit per run, as Go durations (`90s`, `1h`); `0s` disables it |
 | `request_max_attempts` | integer | 10 | `--max-attempts`, `UNREAL_HARNESS_LLM_MAX_ATTEMPTS` | override | How many times a model request is sent before the run fails. A lost connection, a timeout, a 429, or most 5xx statuses are retried after 2 s, then 4, 8, and 16 s, and then every 30 s (less up to a fifth of jitter, or the server's `Retry-After` up to 30 s): 10 attempts wait about 3 minutes in all. The runner's own default is 5 |
 | `max_disk` | size | `5G` | `--max-disk` | override | Stop a run when tool output exceeds this size (`500M`, `5G`, bytes without a suffix); `0` disables it |
 | `fast` | bool | false | `--fast` | OR | Priority processing (`service_tier = "priority"`); needs the openai or openai-codex provider, and any other provider refuses it before the session starts |
@@ -387,7 +386,6 @@ A complete user file, `~/.uah/config.toml`:
 provider = "openai-codex"
 model = "gpt-6-sol"
 effort = "high"
-timeout = "30m"                    # per run; "0s" disables
 max_disk = "5G"                    # tool output per run; "0" disables
 request_max_attempts = 10          # per model request; a lost connection is retried with backoff
 fast = false                       # priority processing

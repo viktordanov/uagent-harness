@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"slices"
 	"strings"
-	"time"
 	"unicode"
 
 	"github.com/viktordanov/uagent/core"
@@ -28,7 +27,6 @@ type Settings struct {
 	ServiceTier string // "" or "priority"
 	Workspace   string
 	BaseURL     string
-	Timeout     time.Duration
 	AllowDotenv bool
 	// MaxAttempts is how many times a model request is sent before the
 	// run fails (0: the engine's default).
@@ -103,7 +101,6 @@ func (s Settings) request(sessionID string, messages []core.UserInput) core.Requ
 		BaseURL:      s.BaseURL,
 		SystemPrompt: s.SystemPrompt,
 		Workspace:    s.Workspace,
-		Timeout:      s.Timeout,
 		AllowDotenv:  s.AllowDotenv,
 		MaxAttempts:  s.MaxAttempts,
 	}
@@ -114,7 +111,7 @@ func (s Settings) request(sessionID string, messages []core.UserInput) core.Requ
 // parent's run as it is.
 func (s Settings) WithRequest(req core.Request) Settings {
 	s.Provider, s.Model, s.Effort, s.BaseURL = req.Provider, req.Model, req.Effort, req.BaseURL
-	s.SystemPrompt, s.Workspace, s.Timeout, s.AllowDotenv = req.SystemPrompt, req.Workspace, req.Timeout, req.AllowDotenv
+	s.SystemPrompt, s.Workspace, s.AllowDotenv = req.SystemPrompt, req.Workspace, req.AllowDotenv
 	s.MaxAttempts = req.MaxAttempts
 
 	return s

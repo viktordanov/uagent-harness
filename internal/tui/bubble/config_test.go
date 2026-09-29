@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
@@ -23,7 +22,7 @@ func configDeps(t *testing.T, d *withUserFile) {
 	t.Setenv("UAH_HOME", dir)
 	in := app.Inputs{
 		ConfigPath: filepath.Join(dir, "config.toml"), StateDir: t.TempDir(), Workspace: t.TempDir(),
-		Timeout: 30 * time.Minute, MaxDisk: "5G",
+		MaxDisk: "5G",
 	}
 	d.path = in.ConfigPath
 	d.Config = func(ctx context.Context) state.ConfigLoaded {

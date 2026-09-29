@@ -121,7 +121,7 @@ uah exec --ephemeral -o answer.md "..."           # keep no session; write the f
 
 The TUI shows the answer as the model writes it, and `--json` adds `text_delta`, `reasoning_delta`, and `stream_reset` events before the final `assistant_message`. Plain `uah exec` prints each answer once, when it is complete. See the [streaming design](docs/design/streaming.md).
 
-It exits 0 when the run succeeds, 1 when it fails, 2 on a usage error, 3 at the disk limit, 124 on a timeout, and 130 on an interrupt. Nobody can answer an approval headless, so commands that need one are declined with a reason. `uah exec --help` lists the flags.
+It exits 0 when the run succeeds, 1 when it fails, 2 on a usage error, 3 at the disk limit, and 130 on an interrupt. A run has no time limit; a script that needs one wraps it, as in `timeout 30m uah exec …` with GNU coreutils, which exits 124. Nobody can answer an approval headless, so commands that need one are declined with a reason. `uah exec --help` lists the flags.
 
 ### Search old sessions
 
@@ -324,7 +324,7 @@ Earlier versions used `~/.config/uagent`, `~/.local/state/unreal-agent`, and a p
 
 | Group | Keys |
 | --- | --- |
-| Model | `provider`, `model`, `effort`, `fast`, `timeout`, `max_disk`, `request_max_attempts` |
+| Model | `provider`, `model`, `effort`, `fast`, `max_disk`, `request_max_attempts` |
 | Sandbox | `permission_mode`, `sandbox_mode`, `user_shell_sandbox`; `[sandbox_workspace_write]` `network_access`, `writable_roots`; `[shell_environment_policy]` `inherit`, `ignore_default_excludes`, `exclude`, `include_only`, `set` |
 | Approvals | `approval_policy`, `approvals_reviewer`; `[approvals]` `allow`, `forbid`; `[review]` `model`, `effort`, `timeout`, `policy_file` |
 | Compaction | `auto_compact_percent`, `model_auto_compact_token_limit`, `model_context_window`, `compact_model`, `compact_effort`, `compact_prompt`, `experimental_compact_prompt_file`, `compact_user_message_max_tokens` |

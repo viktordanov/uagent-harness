@@ -2,7 +2,6 @@ package app_test
 
 import (
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -35,7 +34,7 @@ func explain(t *testing.T, in app.Inputs, o app.Origins) (app.Report, explained)
 func (e explained) source(key string) string { return e[key].SourceText() }
 
 func TestExplainSources(t *testing.T) {
-	defaults := app.Inputs{ConfigPath: "/cfg/config.toml", Timeout: 30 * time.Minute, MaxDisk: "5G"}
+	defaults := app.Inputs{ConfigPath: "/cfg/config.toml", MaxDisk: "5G"}
 	trusted := func(user, project config.Config) config.Layers {
 		user.Projects = map[string]config.Project{"/ws": {Trusted: true}}
 
@@ -53,12 +52,12 @@ func TestExplainSources(t *testing.T) {
 		{
 			name: "defaults",
 			want: map[string]string{
-				"workspace": "default", "provider": "default", "model": "default", "effort": "default", "timeout": "default",
+				"workspace": "default", "provider": "default", "model": "default", "effort": "default",
 				"fast": "default", "sandbox_mode": "default", "approvals.allow": "default", "request_max_attempts": "default",
 				"projects.<workspace>.trusted": "default",
 			},
 			vals: map[string]string{
-				"workspace": "/cwd", "provider": "openai-codex", "model": "gpt-6-sol", "effort": "high", "timeout": "30m0s", "max_disk": "5G", "request_max_attempts": "10",
+				"workspace": "/cwd", "provider": "openai-codex", "model": "gpt-6-sol", "effort": "high", "max_disk": "5G", "request_max_attempts": "10",
 				"sandbox_mode": "workspace-write", "approval_policy": "on-request", "approvals_reviewer": "user",
 				"review.model": "codex-auto-review", "auto_compact_percent": "90", "project_root_markers": "[.git]",
 				"shell_environment_policy.set": "{}", "approvals.allow": "[]",
@@ -78,9 +77,9 @@ func TestExplainSources(t *testing.T) {
 		},
 		{
 			name: "the resumed session beats the files",
-			o:    app.Origins{Resumed: resumed, Layers: config.Layers{User: config.Config{Provider: "openrouter", Model: "m", Timeout: "1h"}}},
-			want: map[string]string{"provider": "session", "model": "session", "effort": "session", "workspace": "session", "timeout": "user file"},
-			vals: map[string]string{"model": "gpt-resumed", "timeout": "1h0m0s"},
+			o:    app.Origins{Resumed: resumed, Layers: config.Layers{User: config.Config{Provider: "openrouter", Model: "m", MaxDisk: "1G"}}},
+			want: map[string]string{"provider": "session", "model": "session", "effort": "session", "workspace": "session", "max_disk": "user file"},
+			vals: map[string]string{"model": "gpt-resumed", "max_disk": "1G"},
 		},
 		{
 			name: "the resumed session's saved fast mode and permission mode beat the files",
@@ -108,12 +107,12 @@ func TestExplainSources(t *testing.T) {
 		{
 			name: "flags with defaults count only when given",
 			in: func(in *app.Inputs) {
-				in.Timeout, in.TimeoutSet, in.MaxDisk, in.MaxDiskSet = time.Minute, true, "1G", true
+				in.MaxDisk, in.MaxDiskSet = "1G", true
 				in.FastSet, in.NoInstructions = true, true
 			},
-			o:    app.Origins{Layers: config.Layers{User: config.Config{Timeout: "1h", MaxDisk: "2G", Fast: true}}},
-			want: map[string]string{"timeout": "flag", "max_disk": "flag", "fast": "flag", "instructions.enabled": "flag"},
-			vals: map[string]string{"timeout": "1m0s", "max_disk": "1G", "fast": "false", "instructions.enabled": "false"},
+			o:    app.Origins{Layers: config.Layers{User: config.Config{MaxDisk: "2G", Fast: true}}},
+			want: map[string]string{"max_disk": "flag", "fast": "flag", "instructions.enabled": "flag"},
+			vals: map[string]string{"max_disk": "1G", "fast": "false", "instructions.enabled": "false"},
 		},
 		{
 			name: "--max-attempts beats request_max_attempts",

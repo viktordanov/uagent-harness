@@ -43,14 +43,14 @@ func newFakeEngine(caps fakeCaps) *fakeEngine {
 func (e *fakeEngine) Name() string   { return "fake" }
 func (e *fakeEngine) Priority() bool { return false }
 
-func (e *fakeEngine) Start(_ context.Context, req core.Request, opts engine.Options, sink core.Sink) (engine.Run, error) {
+func (e *fakeEngine) Start(ctx context.Context, req core.Request, opts engine.Options, sink core.Sink) (engine.Run, error) {
 	if e.gate != nil {
 		<-e.gate
 	}
 	if e.startErr != nil {
 		return nil, e.startErr
 	}
-	r := &fakeRun{req: req, opts: opts, sink: sink, caps: e.caps, end: make(chan core.Status, 1), done: make(chan struct{})}
+	r := &fakeRun{ctx: ctx, req: req, opts: opts, sink: sink, caps: e.caps, end: make(chan core.Status, 1), done: make(chan struct{})}
 	sink(core.RunStarted{At: time.Now(), RunID: fmt.Sprintf("run-%d", len(e.started)), SessionID: req.SessionID})
 	if !e.noEcho {
 		for _, m := range req.Messages {
@@ -64,6 +64,7 @@ func (e *fakeEngine) Start(_ context.Context, req core.Request, opts engine.Opti
 }
 
 type fakeRun struct {
+	ctx    context.Context
 	req    core.Request
 	opts   engine.Options
 	sink   core.Sink
@@ -222,6 +223,22 @@ func TestSession_SubmitWhenIdleStartsARun(t *testing.T) {
 		"session.SessionOpened", "session.InputQueued", "session.InputSent", "core.RunStarted",
 		"core.UserMessage", "session.InputDelivered", "core.RunFinished", "session.Idle",
 	}, typesOf(h.events))
+}
+
+// TestSession_RunHasNoDeadline pins that a turn runs as long as it needs:
+// the engine gets no timeout and a context with no deadline.
+func TestSession_RunHasNoDeadline(t *testing.T) {
+	h := newHarness(t, fakeCaps{})
+
+	_, err := h.s.Submit("hello")
+	require.NoError(t, err)
+	run := h.nextRun()
+
+	assert.Zero(t, run.req.Timeout)
+	_, ok := run.ctx.Deadline()
+	assert.False(t, ok, "the run's context has a deadline")
+	run.finish(core.StatusOK)
+	h.until(isType[session.Idle])
 }
 
 func TestSession_QueueWhileRunning(t *testing.T) {

@@ -9,7 +9,6 @@ import (
 	"log/slog"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/viktordanov/uagent-harness/internal/approval"
 	"github.com/viktordanov/uagent-harness/internal/compaction"
@@ -50,8 +49,6 @@ type Inputs struct {
 	Workspace string
 	BaseURL   string
 
-	Timeout    time.Duration
-	TimeoutSet bool
 	MaxDisk    string
 	MaxDiskSet bool
 	// MaxAttempts is --max-attempts or its environment variable (0: unset).
@@ -123,11 +120,7 @@ func Resolve(in Inputs, resumed session.Info, cfg config.Config) (Resolved, erro
 		AllowDotenv: in.AllowDotenv,
 	}
 	s.Model = pickModel(in, resumed, cfg, s.Provider)
-	timeout, err := pickTimeout(in, cfg)
-	if err != nil {
-		return Resolved{}, err
-	}
-	s.Timeout = timeout
+	var err error
 	if s.MaxAttempts, err = pickMaxAttempts(in, cfg); err != nil {
 		return Resolved{}, err
 	}
@@ -212,23 +205,6 @@ func pickModel(in Inputs, resumed session.Info, cfg config.Config, provider stri
 // configured one, or the default.
 func providerChanged(in Inputs, resumed session.Info, cfg config.Config) bool {
 	return in.Provider != "" && in.Provider != first(resumed.Provider, cfg.Provider, CodexProvider)
-}
-
-// pickTimeout is the timeout flag when given, else the configured timeout,
-// else the flag's default.
-func pickTimeout(in Inputs, cfg config.Config) (time.Duration, error) {
-	if in.TimeoutSet {
-		return in.Timeout, nil
-	}
-	d, ok, err := cfg.TimeoutValue()
-	if err != nil {
-		return 0, usage(err)
-	}
-	if !ok {
-		return in.Timeout, nil
-	}
-
-	return d, nil
 }
 
 // pickMaxAttempts is the max-attempts flag or its environment variable,

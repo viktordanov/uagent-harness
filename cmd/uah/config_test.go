@@ -63,7 +63,7 @@ func writeFile(t *testing.T, path, content string) {
 func TestConfigCommand(t *testing.T) {
 	root, ws, _, env := configEnv(t)
 
-	res := uahWith(t, env, "", "config", "-C", ws, "--timeout", "10m")
+	res := uahWith(t, env, "", "config", "-C", ws, "--max-disk", "1G")
 
 	require.Equal(t, 0, res.code, res.stderr)
 	got := strings.ReplaceAll(res.stdout, root, "$ROOT")

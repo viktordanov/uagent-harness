@@ -19,7 +19,6 @@ type Config struct {
 	Provider string `toml:"provider"`
 	Model    string `toml:"model"`
 	Effort   string `toml:"effort"`
-	Timeout  string `toml:"timeout"`
 	MaxDisk  string `toml:"max_disk"`
 	// RequestMaxAttempts is how many times a model request is sent before
 	// the run fails (0: uah's default, engine.DefaultMaxAttempts).
@@ -256,19 +255,6 @@ func (c Config) InstructionOptions() (fallbacks []string, markers []string, maxB
 // InstructionsEnabled reports whether instruction files should be loaded.
 func (c Config) InstructionsEnabled() bool {
 	return c.Instructions.Enabled == nil || *c.Instructions.Enabled
-}
-
-// TimeoutValue parses Timeout; ok is false when it is unset.
-func (c Config) TimeoutValue() (d time.Duration, ok bool, err error) {
-	if c.Timeout == "" {
-		return 0, false, nil
-	}
-	d, err = time.ParseDuration(c.Timeout)
-	if err != nil {
-		return 0, false, fmt.Errorf("invalid timeout %q: %w", c.Timeout, err)
-	}
-
-	return d, true, nil
 }
 
 // Dir holds the user's files: uah's home, ~/.uah or $UAH_HOME.

@@ -174,7 +174,6 @@ func sessionSettings(in Inputs, o Origins, r Resolved, cfg config.Config) []Sett
 		one("provider", s.Provider, pick(input(in.Provider, EnvProvider, env), sessionValue(resumed.Provider), overrides(l, func(c config.Config) any { return c.Provider }), FromDefault)),
 		one("model", s.Model, modelSource),
 		one("effort", s.Effort, pick(input(in.Effort, "", nil), sessionValue(resumed.Effort), overrides(l, func(c config.Config) any { return c.Effort }), FromDefault)),
-		one("timeout", s.Timeout.String(), pick(given(in.TimeoutSet), overrides(l, func(c config.Config) any { return c.Timeout }), FromDefault)),
 		one("request_max_attempts", s.MaxAttempts, pick(attemptsInput(in, env), overrides(l, func(c config.Config) any { return c.RequestMaxAttempts }), FromDefault)),
 		one("max_disk", maxDisk, pick(given(in.MaxDiskSet), overrides(l, func(c config.Config) any { return c.MaxDisk }), FromDefault)),
 		{Key: "fast", Value: s.ServiceTier != "", Sources: fastSources(in, o, cfg)},

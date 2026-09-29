@@ -16,7 +16,6 @@ func merge(base, over Config) Config {
 	set(&base.Provider, over.Provider)
 	set(&base.Model, over.Model)
 	set(&base.Effort, over.Effort)
-	set(&base.Timeout, over.Timeout)
 	set(&base.MaxDisk, over.MaxDisk)
 	base.Fast = base.Fast || over.Fast
 	base.TUI.Details = base.TUI.Details || over.TUI.Details

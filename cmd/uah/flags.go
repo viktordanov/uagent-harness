@@ -8,7 +8,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/urfave/cli/v3"
 
@@ -43,7 +42,6 @@ func sessionFlags() []cli.Flag {
 		},
 		&cli.StringFlag{Name: "session", Aliases: []string{"s"}, Usage: "resume a session by ID or unique ID prefix"},
 		&cli.StringFlag{Name: flagSessionID, Usage: "start a new session with this ID, a UUID; an ID that exists is an error"},
-		&cli.DurationFlag{Name: "timeout", Aliases: []string{"t"}, Value: 30 * time.Minute, Usage: "wall-clock limit per run (0 disables)"},
 		&cli.StringFlag{
 			Name: "state-dir", Usage: "sessions, logs, and run records; must be outside the workspace",
 			Value: home.Dir(), Sources: cli.EnvVars(home.EnvStateDir), TakesFile: true,
@@ -134,8 +132,6 @@ func inputs(cmd *cli.Command) app.Inputs {
 		Effort:         cmd.String("effort"),
 		Workspace:      cmd.String(flagWorkspace),
 		BaseURL:        cmd.String("base-url"),
-		Timeout:        cmd.Duration("timeout"),
-		TimeoutSet:     cmd.IsSet("timeout"),
 		MaxDisk:        cmd.String("max-disk"),
 		MaxDiskSet:     cmd.IsSet("max-disk"),
 		MaxAttempts:    cmd.Int("max-attempts"),

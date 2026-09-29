@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -31,7 +30,6 @@ func setupEnv(t *testing.T) (*harnesstest.Env, app.Inputs) {
 		StateDir:   e.StateDir,
 		Workspace:  e.Workspace,
 		LogLevel:   "warn",
-		Timeout:    30 * time.Minute,
 		MaxDisk:    "5G",
 	}
 }

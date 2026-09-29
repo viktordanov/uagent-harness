@@ -65,7 +65,7 @@ Every feature runs on the one engine. What still varies is the provider and the 
 | Codex's `apply_patch` and its diffs | Model: the catalog entry's `apply_patch_tool_type`, and always on openai and openai-codex | `models.ApplyPatch`, read when a run builds its tools ([below](#the-tool-registry)); other models edit files with commands |
 | Automatic compaction | Model: its context window | `internal/compaction`'s window table, or `model_context_window` |
 
-A run keeps uagent's guards (timeout, disk limit, session lock) and writes run records. The engine never loads the workspace `.env`.
+A run keeps uagent's disk limit and session lock and writes run records. uah sends no timeout, so uagent puts no wall-clock limit on a run or a subagent's run. The engine never loads the workspace `.env`.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="behaviors" files="embedded/tools.go embedded/mode.go embedded/skills.go embedded/pretooluse.go" -->
