@@ -158,6 +158,8 @@ func (m Model) run(e state.Effect) tea.Cmd { //nolint:gocyclo // a dispatch swit
 		return nil
 	case state.EffCopySelection:
 		return m.copySelection()
+	case state.EffEditDraft:
+		return m.editDraft(e.Text)
 	case state.EffQuit:
 		return func() tea.Msg {
 			if sess != nil {

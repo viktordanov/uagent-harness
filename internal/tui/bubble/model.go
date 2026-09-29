@@ -85,6 +85,9 @@ type Deps struct {
 	// image says it cannot).
 	Images    *images.Store
 	Clipboard clipboard.Reader
+	// Exec runs the editor for ctrl+g with the terminal released (default
+	// tea.Exec); tests run it directly.
+	Exec func(tea.ExecCommand, tea.ExecCallback) tea.Cmd
 }
 
 // Model is the Bubble Tea model.
@@ -290,7 +293,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		return m, tea.Quit
 	case state.Failed, state.SessionsLoaded, state.ActivityLoaded, state.FilesLoaded, state.MCPListed, state.ContextShown,
-		state.ModelsLoaded, state.ConfigLoaded, state.ConfigSaved, state.ImageAttached, state.ImageFailed:
+		state.ModelsLoaded, state.ConfigLoaded, state.ConfigSaved, state.ImageAttached, state.ImageFailed, state.DraftEdited:
 		return m.dispatch(msg)
 	case state.UsageLoaded, state.Copied:
 		return m.dispatch(msg)

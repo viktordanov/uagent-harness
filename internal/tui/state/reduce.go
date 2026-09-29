@@ -75,14 +75,10 @@ func Reduce(s State, ev any) (State, []Effect) {
 	if s.onUsage(ev) {
 		return s, nil
 	}
-	if effects, ok := s.onImages(ev); ok {
-		return s, effects
-	}
-	if effects, ok := s.onConfig(ev); ok {
-		return s, effects
-	}
-	if effects, ok := s.onMenu(ev); ok {
-		return s, effects
+	for _, on := range []func(*State, any) ([]Effect, bool){(*State).onImages, (*State).onEditor, (*State).onConfig, (*State).onMenu} {
+		if effects, ok := on(&s, ev); ok {
+			return s, effects
+		}
 	}
 
 	return s.onIntent(ev)

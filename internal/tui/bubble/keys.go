@@ -135,6 +135,8 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) { //nolint:gocycl
 		if draft == "" {
 			return m.dispatch(state.EnterShell{})
 		}
+	case "ctrl+g":
+		return m.dispatch(state.EditDraft{Draft: draft})
 	case "ctrl+r":
 		return m.dispatch(state.ToggleReasoning{})
 	case "ctrl+t":
