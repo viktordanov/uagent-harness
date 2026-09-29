@@ -86,28 +86,32 @@ func streamPieces(w http.ResponseWriter, r *http.Request, n int, reply Reply) bo
 		_, _ = fmt.Fprintf(w, "data: %s\n\n", data)
 		_ = rc.Flush()
 	}
-	index := 0
-	for i, search := range reply.Searches {
-		item := searchItem(n, i, search)
-		started := outputItem{ID: item.ID, Type: item.Type, Status: "in_progress"}
-		send(deltaEvent{Type: eventItemAdded, OutputIndex: index, Item: &started})
-		pace(reply.Pace)
-		send(deltaEvent{Type: "response.output_item.done", OutputIndex: index, Item: &item})
-		index++
-	}
-	if len(reply.Reasoning) > 0 {
-		send(deltaEvent{Type: eventItemAdded, OutputIndex: index, Item: &outputItem{ID: reasoningID(n), Type: "reasoning"}})
-		for _, piece := range reply.Reasoning {
+	for index, item := range response(n, reply).Output {
+		switch item.Type {
+		case "web_search_call":
+			started := outputItem{ID: item.ID, Type: item.Type, Status: "in_progress"}
+			send(deltaEvent{Type: eventItemAdded, OutputIndex: index, Item: &started})
 			pace(reply.Pace)
-			send(deltaEvent{Type: "response.reasoning_summary_text.delta", OutputIndex: index, ItemID: reasoningID(n), Delta: piece})
-		}
-		index++
-	}
-	if len(reply.Deltas) > 0 {
-		send(deltaEvent{Type: eventItemAdded, OutputIndex: index, Item: &outputItem{ID: messageID(n), Type: typeMessage, Role: "assistant", Phase: reply.phase()}})
-		for _, piece := range reply.Deltas {
-			pace(reply.Pace)
-			send(deltaEvent{Type: "response.output_text.delta", OutputIndex: index, ItemID: messageID(n), Delta: piece})
+			send(deltaEvent{Type: "response.output_item.done", OutputIndex: index, Item: &item})
+		case "reasoning":
+			send(deltaEvent{Type: eventItemAdded, OutputIndex: index, Item: &outputItem{ID: item.ID, Type: item.Type}})
+			for _, piece := range reply.Reasoning {
+				pace(reply.Pace)
+				send(deltaEvent{Type: "response.reasoning_summary_text.delta", OutputIndex: index, ItemID: item.ID, Delta: piece})
+			}
+		case typeMessage:
+			if len(reply.Deltas) == 0 && len(reply.Searches) == 0 {
+				continue
+			}
+			send(deltaEvent{Type: eventItemAdded, OutputIndex: index, Item: &outputItem{ID: item.ID, Type: item.Type, Role: item.Role, Phase: item.Phase}})
+			for _, piece := range reply.Deltas {
+				pace(reply.Pace)
+				send(deltaEvent{Type: "response.output_text.delta", OutputIndex: index, ItemID: item.ID, Delta: piece})
+			}
+		default: // a function call opens when searches precede it
+			if len(reply.Searches) > 0 {
+				send(deltaEvent{Type: eventItemAdded, OutputIndex: index, Item: &outputItem{ID: item.ID, Type: item.Type, CallID: item.CallID, Name: item.Name}})
+			}
 		}
 	}
 	if reply.Hold != nil {

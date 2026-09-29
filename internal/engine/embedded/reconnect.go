@@ -116,6 +116,10 @@ func retryAfter(h http.Header) time.Duration {
 type watchTransport struct{ base http.RoundTripper }
 
 func (t watchTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	req, err := withRecordedSearches(req)
+	if err != nil {
+		return nil, err
+	}
 	a, _ := req.Context().Value(attemptsKey{}).(*attempts)
 	if a == nil {
 		return t.base.RoundTrip(req) //nolint:wrapcheck // a transport returns its base's errors unchanged

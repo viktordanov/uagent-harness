@@ -114,6 +114,9 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 	if err != nil {
 		return nil, err
 	}
+	if sw.searches, err = w.searchLog(req.Provider, string(s.id)); err != nil {
+		return nil, err
+	}
 
 	// The run stops through the inbox; the harness cancels only after the grace period.
 	runCtx, cancel := context.WithCancel(context.WithoutCancel(ctx))

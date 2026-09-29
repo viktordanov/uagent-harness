@@ -44,16 +44,20 @@ type stream struct {
 	streamed bool
 	// final are the message items that are the final answer.
 	final map[string]bool
+	// log, when set, records the attempt's web searches (outputs) when the
+	// request succeeds (websearch.go).
+	log     *searchLog
+	outputs attemptOutputs
 }
 
 // streaming gives a turn request its stream when the run has events. done
 // sends what is left before the request returns, so every delta reaches
 // the session before the runner's final events for the response.
 func (s *switcher) streaming(ctx context.Context) (context.Context, func(error)) {
-	if s.stream == nil {
+	if s.stream == nil && s.searches == nil {
 		return ctx, func(error) {}
 	}
-	st := &stream{emit: s.stream, text: s.text, wake: make(chan struct{}, 1), done: make(chan struct{}), final: map[string]bool{}}
+	st := &stream{emit: s.stream, text: s.text, log: s.searches, wake: make(chan struct{}, 1), done: make(chan struct{}), final: map[string]bool{}}
 	go st.pump()
 
 	return context.WithValue(ctx, streamKey{}, st), st.close
@@ -72,6 +76,9 @@ func (s *stream) flush() {
 	events := s.pending
 	s.pending = nil
 	s.mu.Unlock()
+	if s.emit == nil {
+		return
+	}
 	for _, e := range events {
 		s.emit(e)
 	}
@@ -80,6 +87,9 @@ func (s *stream) flush() {
 // close ends the stream: a failed request's text is void, since the runner
 // records nothing for it.
 func (s *stream) close(err error) {
+	if err == nil {
+		s.record()
+	}
 	s.mu.Lock()
 	if err != nil {
 		s.resetLocked()
@@ -96,6 +106,7 @@ func (s *stream) attempt() {
 	defer s.mu.Unlock()
 	if !s.closed {
 		s.resetLocked()
+		s.outputs = attemptOutputs{}
 	}
 }
 
@@ -159,9 +170,11 @@ type streamEvent struct {
 	ItemID       string `json:"item_id"`
 	Delta        string `json:"delta"`
 	SummaryIndex int    `json:"summary_index"`
+	OutputIndex  *int   `json:"output_index"`
 	Item         struct {
 		ID     string          `json:"id"`
 		Type   string          `json:"type"`
+		Status string          `json:"status"`
 		Phase  string          `json:"phase"`
 		Action webSearchAction `json:"action"`
 	} `json:"item"`
@@ -181,6 +194,7 @@ func (s *stream) line(line []byte) {
 	if json.Unmarshal(payload, &ev) != nil {
 		return
 	}
+	s.output(ev)
 	if ev.Item.Type == webSearchCall {
 		s.search(ev)
 

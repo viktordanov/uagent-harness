@@ -226,7 +226,7 @@ On openai and openai-codex, the model can search the web with the provider's hos
 
 - The search runs on the provider's servers, so the sandbox's network rule does not block it, and it needs no approval, in every permission mode.
 - To turn it off, set `web_search = "disabled"` in the [configuration](#configuration) or in `/config`.
-- The runner keeps no record of a search. A resumed transcript does not show it, and on later turns the model does not see that it searched.
+- The model sees its past searches on later turns, as in Codex: uah keeps them beside the session and puts them back into its requests. A resumed transcript does not show them.
 
 The [web search design](docs/design/web-search.md) compares it with Codex.
 

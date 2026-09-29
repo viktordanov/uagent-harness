@@ -36,6 +36,9 @@ type switcher struct {
 	// (stream.go).
 	stream func(core.Event)
 	text   bool
+	// searches, when set, records the session's web searches and puts
+	// them back into later turn requests (searchlog.go).
+	searches *searchLog
 }
 
 func newSwitcher(model string, priority bool, build func(bool) (Client, error)) (*switcher, error) {

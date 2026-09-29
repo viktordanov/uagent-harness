@@ -62,6 +62,9 @@ func (e *Engine) Fork(ctx context.Context, parentID, childID, callID string) err
 	if err := copyCompactions(dir, parentID, childID, at); err != nil {
 		return err
 	}
+	if err := copySearches(dir, parentID, childID); err != nil {
+		return err
+	}
 	e.forks.Store(childID, true)
 
 	return nil

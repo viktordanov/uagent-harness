@@ -27,7 +27,7 @@ Design:
 18. [Integration with the terminal host](design/hosting.md): what the terminal host needs from a harness, and the changes that let it run uah inside the mechanisms it keeps for every harness.
 19. [Editing the prompt in an editor](design/editor.md): what Claude Code's and Codex's ctrl+g do, and how uah runs `$VISUAL` or `$EDITOR` on a draft file the sandbox cannot reach, with the terminal released, and keeps its images.
 20. [The system prompt](design/system-prompt.md): Codex's prompt for gpt-6-sol with the nine changes uah needs, each with its reason, and Codex's `<environment_context>` at the end of the system message.
-21. [Web search](design/web-search.md): how Codex offers the hosted `web_search` tool, what the runner sends and drops, how uah offers it and shows each search, the probe on openai-codex, and the limits.
+21. [Web search](design/web-search.md): how Codex offers the hosted `web_search` tool, what the runner sends and drops, how uah offers it, shows each search, and puts the dropped searches back into later requests by insertion, the probes on openai-codex, and the limits.
 
 Reference:
 
