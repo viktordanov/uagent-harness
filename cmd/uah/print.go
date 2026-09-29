@@ -104,7 +104,7 @@ func (p *printer) print(event core.Event) { //nolint:gocyclo // a dispatch switc
 		} else if e.Err != "" {
 			p.say("compaction failed: " + e.Err)
 		} else {
-			p.say(fmt.Sprintf("context compacted (%d-char summary)", len(e.Summary)))
+			p.say(compactedLine(e))
 			if e.Warning != "" {
 				p.say("warning: " + e.Warning)
 			}
@@ -186,4 +186,14 @@ func sandboxLabel(s session.Settings) string {
 	}
 
 	return s.Sandbox
+}
+
+// compactedLine describes a compaction that succeeded: with its stats when
+// it has them, else the summary's length.
+func compactedLine(e engine.Compacted) string {
+	if e.Stats != nil {
+		return fmt.Sprintf("context compacted (%s): %s", e.Trigger, e.Stats.Line())
+	}
+
+	return fmt.Sprintf("context compacted (%s, %d-char summary)", e.Trigger, len(e.Summary))
 }

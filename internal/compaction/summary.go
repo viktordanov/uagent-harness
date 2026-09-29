@@ -54,9 +54,14 @@ func Trim(items []llm.Item, budget int64) []llm.Item {
 }
 
 // Summarizer is a summary call: the history as the model sees it (system
-// message first) in, the summary text out. Summarize is the local one; a
-// remote compaction endpoint would be another.
-type Summarizer func(ctx context.Context, view []llm.Item) (string, error)
+// message first) in, the summary out. Summarize is the local one.
+type Summarizer func(ctx context.Context, view []llm.Item) (Summary, error)
+
+// Summary is a summary call's result: the text and what the call used.
+type Summary struct {
+	Text  string
+	Usage llm.Usage
+}
 
 // SummaryCall configures Summarize.
 type SummaryCall struct {
@@ -75,7 +80,7 @@ type SummaryCall struct {
 // Summarize asks the model for a summary of view with the call's prompt and
 // no tools. A history larger than the window is trimmed from the oldest item
 // first, and trimmed further when the provider still reports an overflow.
-func Summarize(ctx context.Context, call SummaryCall, view []llm.Item) (string, error) {
+func Summarize(ctx context.Context, call SummaryCall, view []llm.Item) (Summary, error) {
 	system, input := SummaryRequest(view, call.Prompt)
 	history, prompt := input[:len(input)-1], input[len(input)-1]
 	budget := call.Window - EstimateTokens([]llm.Item{prompt}) - EstimateTokens([]llm.Item{llmcall.Message(llm.RoleSystem, system)})
@@ -89,10 +94,10 @@ func Summarize(ctx context.Context, call SummaryCall, view []llm.Item) (string, 
 			Input: append(slices.Clip(trimmed), prompt), CacheKey: call.CacheKey,
 		})
 		if err == nil {
-			return res.Text, nil
+			return Summary{Text: res.Text, Usage: res.Usage}, nil
 		}
 		if !errors.Is(err, llmcall.ErrContextWindow) || attempt == overflowRetries || len(trimmed) <= 1 {
-			return "", fmt.Errorf("failed to summarize the context: %w", err)
+			return Summary{}, fmt.Errorf("failed to summarize the context: %w", err)
 		}
 		budget = EstimateTokens(trimmed) * 3 / 4
 	}

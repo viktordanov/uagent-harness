@@ -9,6 +9,7 @@ import (
 	"github.com/viktordanov/uagent/core"
 	"github.com/viktordanov/uagent/stream"
 
+	"github.com/viktordanov/uagent-harness/internal/compaction"
 	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
@@ -169,12 +170,13 @@ func engineEventDTO(event core.Event) (any, bool) {
 		return struct {
 			sessionHeader
 
-			Trigger     string `json:"trigger"`
-			Summary     string `json:"summary,omitempty"`
-			Error       string `json:"error,omitempty"`
-			Interrupted bool   `json:"interrupted,omitempty"`
-			Warning     string `json:"warning,omitempty"`
-		}{header("compacted", e.At), string(e.Trigger), e.Summary, e.Err, e.Interrupted, e.Warning}, true
+			Trigger     string            `json:"trigger"`
+			Summary     string            `json:"summary,omitempty"`
+			Error       string            `json:"error,omitempty"`
+			Interrupted bool              `json:"interrupted,omitempty"`
+			Warning     string            `json:"warning,omitempty"`
+			Stats       *compaction.Stats `json:"stats,omitempty"`
+		}{header("compacted", e.At), string(e.Trigger), e.Summary, e.Err, e.Interrupted, e.Warning, e.Stats}, true
 	case engine.TextDelta:
 		return struct {
 			sessionHeader

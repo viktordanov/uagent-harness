@@ -360,6 +360,11 @@ func TestRunEmbeddedCompaction(t *testing.T) {
 		Type    string `json:"type"`
 		Trigger string `json:"trigger"`
 		Summary string `json:"summary"`
+		Stats   struct {
+			Strategy string `json:"strategy"`
+			Before   int64  `json:"tokens_before"`
+			After    int64  `json:"tokens_after"`
+		} `json:"stats"`
 	}
 	var types []string
 	for line := range strings.Lines(res.stdout) {
@@ -375,10 +380,12 @@ func TestRunEmbeddedCompaction(t *testing.T) {
 	assert.Contains(t, types, "compaction_started")
 	assert.Equal(t, "auto", compacted.Trigger)
 	assert.Equal(t, "THE SUMMARY", compacted.Summary)
+	assert.Equal(t, "local", compacted.Stats.Strategy)
+	assert.Greater(t, compacted.Stats.Before, compacted.Stats.After, "the stats say how much it freed")
 
 	show := uahWith(t, env, "", "sessions", "show", "--state-dir", e.StateDir, "--all", lastSessionID(t, e.StateDir))
 	require.Equal(t, 0, show.code, show.stderr)
-	assert.Contains(t, show.stdout, "⋯ context compacted (auto, 11-char summary)")
+	assert.Regexp(t, `⋯ context compacted \(auto\): [0-9,]+ → [0-9,]+ tokens \(local, mid-turn, 3-token summary`, show.stdout)
 }
 
 // lastSessionID is the one session file's ID in stateDir.

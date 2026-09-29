@@ -28,6 +28,9 @@ type Compacted struct {
 	Err         string
 	Interrupted bool
 	Warning     string
+	// Stats measure a compaction that succeeded (nil for one recorded
+	// before uah measured them).
+	Stats *compaction.Stats
 }
 
 func (e CompactionStarted) OccurredAt() time.Time { return e.At }

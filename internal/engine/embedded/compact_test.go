@@ -67,7 +67,19 @@ func TestEmbedded_CompactKeepsUserMessagesAndResumes(t *testing.T) {
 		}
 	}
 	assert.True(t, sawStart)
-	assert.Equal(t, engine.Compacted{At: done.At, Trigger: compaction.TriggerManual, Summary: "SUMMARY"}, done)
+	require.NotNil(t, done.Stats, "every compaction is measured")
+	stats := *done.Stats
+	assert.Equal(t, engine.Compacted{At: done.At, Trigger: compaction.TriggerManual, Summary: "SUMMARY", Stats: done.Stats}, done)
+	assert.Equal(t, compaction.StrategyLocal, stats.Strategy)
+	assert.Equal(t, compaction.PhasePreTurn, stats.Phase, "compacted before the new message's first request")
+	assert.Equal(t, int64(2), stats.SummaryTokens)
+	assert.Positive(t, stats.Call.Input, "the summary call's usage")
+	assert.Positive(t, stats.Before)
+	assert.Positive(t, stats.After)
+	records, _, err := compaction.OpenLog(filepath.Join(e.StateDir, "sessions"), s.ID()).Records()
+	require.NoError(t, err)
+	require.Len(t, records, 1)
+	assert.Equal(t, done.Stats, records[0].Stats, "the record keeps the stats")
 
 	reqs := e.llm.Requests()
 	require.Len(t, reqs, 6)
@@ -112,6 +124,11 @@ func TestEmbedded_AutoCompactsAtTheThreshold(t *testing.T) {
 	assert.Empty(t, reqs[2].ToolOutputs, "the tool output is in the summary")
 	assert.Equal(t, 1, countKind[engine.CompactionStarted](ev.all))
 	for _, x := range ev.all {
+		if v, ok := x.(engine.Compacted); ok {
+			require.NotNil(t, v.Stats)
+			assert.Equal(t, compaction.PhaseMidTurn, v.Stats.Phase, "compacted after the tool output")
+			assert.Greater(t, v.Stats.Before, v.Stats.After)
+		}
 		if v, ok := x.(engine.CompactionStarted); ok {
 			assert.Equal(t, compaction.TriggerAuto, v.Trigger)
 			assert.Greater(t, v.Tokens, int64(250_010), "the last response plus the tool output after it")

@@ -83,7 +83,7 @@ func withCompactions(stateDir, id string, runs []LoadedRun) ([]LoadedRun, error)
 		return nil, err
 	}
 	for _, rec := range records {
-		place(runs, engine.Compacted{At: rec.At, Trigger: rec.Trigger, Summary: rec.Summary})
+		place(runs, engine.Compacted{At: rec.At, Trigger: rec.Trigger, Summary: rec.Summary, Stats: rec.Stats})
 	}
 
 	return runs, nil

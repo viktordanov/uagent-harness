@@ -79,6 +79,9 @@ type Record struct {
 	// Focus is what the user asked the summary to focus on (/compact
 	// <instructions>).
 	Focus string `json:"focus,omitempty"`
+	// Stats measure the compaction; records before uah measured them have
+	// none.
+	Stats *Stats `json:"stats,omitempty"`
 }
 
 // keepTokens is the record's cap on kept user messages.

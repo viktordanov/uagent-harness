@@ -213,7 +213,7 @@ func (w *wiring) compactor(ctx context.Context, s runStore, sw *switcher, first 
 	}
 
 	return &compactor{
-		ctx: ctx, next: sw, log: log, emit: emit, before: before, window: cfg.ContextWindow, windows: w.e.models.Window, settings: cfg.Compaction,
+		ctx: ctx, next: sw, log: log, emit: emit, logger: cfg.Logger, before: before, window: cfg.ContextWindow, windows: w.e.models.Window, settings: cfg.Compaction,
 		record: rec, older: records, cuts: cuts, pending: first, focus: focus, used: used,
 	}, nil
 }

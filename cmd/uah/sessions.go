@@ -220,7 +220,7 @@ func printTranscript(w io.Writer, info session.Info, runs []session.LoadedRun) {
 			case core.RunnerError:
 				fmt.Fprintf(w, "error: %s\n", m.Message)
 			case engine.Compacted:
-				fmt.Fprintf(w, "⋯ context compacted (%s, %d-char summary)\n", m.Trigger, len(m.Summary))
+				fmt.Fprintf(w, "⋯ %s\n", compactedLine(m))
 			case engine.Rewound:
 				fmt.Fprintf(w, "↺ went back to before %q; it and what followed left the agent's context\n", oneLine(images.Display(said[m.MessageID]), 60))
 			}

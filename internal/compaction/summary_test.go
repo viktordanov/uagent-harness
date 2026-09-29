@@ -43,7 +43,7 @@ func TestSummarize_TrimsAHistoryLargerThanTheWindow(t *testing.T) {
 		Adapter: client(t, srv), Model: "gpt-test", Window: 1_000,
 	}, longHistory(20))
 	require.NoError(t, err)
-	assert.Equal(t, "S", got)
+	assert.Equal(t, "S", got.Text)
 	req := srv.Requests()[0]
 	require.Len(t, req.UserTexts, 1+8, "about 850 tokens of history fit next to the prompt")
 	assert.True(t, strings.HasPrefix(req.UserTexts[0], "012"), "the oldest messages go first")
@@ -59,7 +59,7 @@ func TestSummarize_RetriesWithLessOnAnOverflow(t *testing.T) {
 		Adapter: client(t, srv), Model: "gpt-test", Window: 272_000,
 	}, longHistory(20))
 	require.NoError(t, err)
-	assert.Equal(t, "S", got)
+	assert.Equal(t, "S", got.Text)
 	reqs := srv.Requests()
 	require.Len(t, reqs, 2)
 	assert.Len(t, reqs[0].UserTexts, 21)
