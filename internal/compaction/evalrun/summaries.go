@@ -115,7 +115,11 @@ func (s *Summaries) file(hash string) string {
 	if s.Dir == "" {
 		return ""
 	}
-	key := sha256.Sum256([]byte(hash + "\x00" + s.Prompt))
+	prompt := s.Prompt
+	if prompt == "" {
+		prompt = compaction.Prompt
+	}
+	key := sha256.Sum256([]byte(hash + "\x00" + prompt))
 
 	return filepath.Join(s.Dir, hex.EncodeToString(key[:])+".txt")
 }
