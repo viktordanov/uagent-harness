@@ -31,9 +31,11 @@ type switcher struct {
 	// images, when set, gives the model the images pasted into user
 	// messages (images.go).
 	images func(llm.Request) llm.Request
-	// stream, when set, receives the text of each request as it arrives
+	// stream, when set, receives each turn request's web searches as they
+	// happen (websearch.go) and, when text is set, its text as it arrives
 	// (stream.go).
 	stream func(core.Event)
+	text   bool
 }
 
 func newSwitcher(model string, priority bool, build func(bool) (Client, error)) (*switcher, error) {

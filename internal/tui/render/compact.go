@@ -144,6 +144,7 @@ var toolLabels = map[string]string{
 	"spawn_agent": "SPAWN", "send_input": "SEND", "wait_agent": "WAIT", "wait": "WAIT",
 	"close_agent": "CLOSE", "resume_agent": "RESUME",
 	"apply_patch": "EDIT",
+	"web_search":  "WEB",
 }
 
 // toolLabel is a tool's column label: RAN for commands, MCP for a server's

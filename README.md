@@ -23,6 +23,7 @@ brew install viktordanov/tap/uah
 - A [sandbox](#permission-modes) (Seatbelt, bubblewrap) with [approvals](#command-rules), permission modes, and an auto-reviewer
 - [Compaction](#compaction-and-clear), `/context`, and `/clear`
 - [Pasted images](#images), [`!` shell commands](#shell-mode), `apply_patch` diffs, and [hooks](#hook-setup)
+- [Web search](#web-search) through the provider's hosted tool, on by default as in Codex
 - Your ChatGPT plan's [usage](#usage-limits) in the footer
 - [Configuration](#configuration) in TOML or `/config`, including the prompts
 
@@ -119,7 +120,7 @@ uah exec --ephemeral -o answer.md "..."           # keep no session; write the f
 
 `--ephemeral` keeps nothing: the session runs in a temporary directory that uah removes at exit, so `sessions/`, `runs/`, and the index do not change and `uah sessions` does not list it. It starts a new session, so it cannot be used with `--last` or `--session`. `-o` (`--output-last-message`) writes the last run's answer to the file at exit; with no answer, it writes an empty file and warns on stderr, as Codex does.
 
-The TUI shows the answer as the model writes it, and `--json` adds `text_delta`, `reasoning_delta`, and `stream_reset` events before the final `assistant_message`. Plain `uah exec` prints each answer once, when it is complete. See the [streaming design](docs/design/streaming.md).
+The TUI shows the answer as the model writes it, and `--json` adds `text_delta`, `reasoning_delta`, and `stream_reset` events before the final `assistant_message`. A [web search](#web-search) is a `web_search` event when it starts and when it ends, with its query or URL. Plain `uah exec` prints each answer once, when it is complete. See the [streaming design](docs/design/streaming.md).
 
 It exits 0 when the run succeeds, 1 when it fails, 2 on a usage error, 3 at the disk limit, and 130 on an interrupt. A run has no time limit; a script that needs one wraps it, as in `timeout 30m uah exec …` with GNU coreutils, which exits 124. Nobody can answer an approval headless, so commands that need one are declined with a reason. `uah exec --help` lists the flags.
 
@@ -219,6 +220,16 @@ Press shift+tab in the TUI. It cycles three modes, and the footer shows the curr
 
 The [shell mode design](docs/design/shell-mode.md) compares Codex and Claude Code.
 
+### Web search
+
+On openai and openai-codex, the model can search the web with the provider's hosted `web_search` tool, as in Codex. It is on by default. The transcript shows each search as a `WEB` line, such as `searched: latest Go release` or `opened: https://go.dev/dl/`, and `uah exec` prints the same line.
+
+- The search runs on the provider's servers, so the sandbox's network rule does not block it, and it needs no approval, in every permission mode.
+- To turn it off, set `web_search = "disabled"` in the [configuration](#configuration) or in `/config`.
+- The runner keeps no record of a search. A resumed transcript does not show it, and on later turns the model does not see that it searched.
+
+The [web search design](docs/design/web-search.md) compares it with Codex.
+
 ### MCP setup
 
 ```sh
@@ -293,7 +304,7 @@ Hooks in a project's `.uah/config.toml` run only after `uah hooks trust`; hooks 
 
 ### The `/config` panel
 
-Type `/config` in the TUI. It lists the basic settings (compaction, the model and effort, fast mode, the permission mode, the details view, and the mouse) with each value and its source. ↑↓ choose, enter or space changes, esc closes. Each change is saved to your user file, keeping its comments, and applies to the running session where it can; compaction settings apply from the next session. A flag, a configuration layer, or a trusted project file that sets the same key still wins, and `/config` says so.
+Type `/config` in the TUI. It lists the basic settings (compaction, the model and effort, fast mode, the permission mode, web search, the details view, and the mouse) with each value and its source. ↑↓ choose, enter or space changes, esc closes. Each change is saved to your user file, keeping its comments, and applies to the running session where it can; compaction settings apply from the next session. A flag, a configuration layer, or a trusted project file that sets the same key still wins, and `/config` says so.
 
 ### Inspect the configuration
 
@@ -302,7 +313,7 @@ Type `/config` in the TUI. It lists the basic settings (compaction, the model an
 
 ---
 
-<!-- memoria:section id="configuration" files="internal/config/config.go internal/config/layers.go internal/config/merge.go cmd/uah/flags.go cmd/uah/config.go internal/app/resolve.go internal/app/setup.go internal/app/explain.go internal/app/explain_files.go internal/app/compaction.go internal/app/configedit.go internal/config/edit.go internal/config/legacy.go internal/home/home.go internal/home/migrate/migrate.go .uah/config.toml" -->
+<!-- memoria:section id="configuration" files="internal/config/config.go internal/config/layers.go internal/config/merge.go cmd/uah/flags.go cmd/uah/config.go internal/app/resolve.go internal/app/setup.go internal/app/explain.go internal/app/explain_files.go internal/app/compaction.go internal/app/configedit.go internal/app/websearch.go internal/config/edit.go internal/config/legacy.go internal/home/home.go internal/home/migrate/migrate.go .uah/config.toml" -->
 ## Configuration
 
 Everything uah reads and writes lives in `~/.uah`, as Codex keeps `~/.codex`: the configuration, `AGENTS.md`, agents, prompts, skills, hook trust, MCP credentials, sessions, run records, the session index, pasted images, the model cache, and logs. `UAH_HOME` names another home; `--config` (`UAH_CONFIG`) and `--state-dir` (`UAH_STATE_DIR`) move just the user file or the state.
@@ -324,7 +335,7 @@ Earlier versions used `~/.config/uagent`, `~/.local/state/unreal-agent`, and a p
 
 | Group | Keys |
 | --- | --- |
-| Model | `provider`, `model`, `effort`, `fast`, `max_disk`, `request_max_attempts` |
+| Model | `provider`, `model`, `effort`, `fast`, `web_search`, `max_disk`, `request_max_attempts` |
 | Sandbox | `permission_mode`, `sandbox_mode`, `user_shell_sandbox`; `[sandbox_workspace_write]` `network_access`, `writable_roots`; `[shell_environment_policy]` `inherit`, `ignore_default_excludes`, `exclude`, `include_only`, `set` |
 | Approvals | `approval_policy`, `approvals_reviewer`; `[approvals]` `allow`, `forbid`; `[review]` `model`, `effort`, `timeout`, `policy_file` |
 | Compaction | `auto_compact_percent`, `model_auto_compact_token_limit`, `model_context_window`, `compact_model`, `compact_effort`, `compact_prompt`, `experimental_compact_prompt_file`, `compact_user_message_max_tokens` |
@@ -526,7 +537,7 @@ Pushing a `v1.2.3` tag builds the release archives for macOS and Linux (arm64 an
 CI runs the build, the race tests, the Markdown renderer's benchmarks once (so they keep running; its tests hold the bounds), and the linter on each push; the linter also fails on a function above 20 cyclomatic complexity, a backstop for the rule of about 15. Design records, the architecture rules, and the documentation procedure are in [docs](docs/README.md):
 
 <!-- memoria:import src="docs/README.md#summary" -->
-The configuration reference, design records for the harness, the TUI, state storage, sandboxing, compaction, MCP, subagents, pasted images, streaming, Markdown rendering, going back to an earlier message, selecting text with the mouse, editing the prompt in an editor, the system prompt, keeping the ChatGPT login fresh, and running uah as a terminal host backend, plus the architecture rules and documentation procedure for uagent-harness.
+The configuration reference, design records for the harness, the TUI, state storage, sandboxing, compaction, MCP, subagents, pasted images, streaming, Markdown rendering, going back to an earlier message, selecting text with the mouse, editing the prompt in an editor, the system prompt, web search, keeping the ChatGPT login fresh, and running uah as a terminal host backend, plus the architecture rules and documentation procedure for uagent-harness.
 <!-- /memoria:import -->
 
 [`bench/tui`](bench/tui/README.md) is a separate Go module with the benchmark behind choosing Bubble Tea v2. `go test -run '^$' -bench Markdown -benchmem ./internal/tui/render` measures the Markdown renderer.

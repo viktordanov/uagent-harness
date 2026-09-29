@@ -31,6 +31,9 @@ type streamKey struct{}
 // blocking; a pump goroutine sends them to emit, merged when they pile up.
 type stream struct {
 	emit func(core.Event)
+	// text streams the text deltas; without it, the stream reports only
+	// web searches.
+	text bool
 	wake chan struct{}
 	done chan struct{}
 
@@ -43,14 +46,14 @@ type stream struct {
 	final map[string]bool
 }
 
-// streaming gives a turn request its stream when the run streams. done
+// streaming gives a turn request its stream when the run has events. done
 // sends what is left before the request returns, so every delta reaches
 // the session before the runner's final events for the response.
 func (s *switcher) streaming(ctx context.Context) (context.Context, func(error)) {
 	if s.stream == nil {
 		return ctx, func(error) {}
 	}
-	st := &stream{emit: s.stream, wake: make(chan struct{}, 1), done: make(chan struct{}), final: map[string]bool{}}
+	st := &stream{emit: s.stream, text: s.text, wake: make(chan struct{}, 1), done: make(chan struct{}), final: map[string]bool{}}
 	go st.pump()
 
 	return context.WithValue(ctx, streamKey{}, st), st.close
@@ -157,24 +160,33 @@ type streamEvent struct {
 	Delta        string `json:"delta"`
 	SummaryIndex int    `json:"summary_index"`
 	Item         struct {
-		ID    string `json:"id"`
-		Type  string `json:"type"`
-		Phase string `json:"phase"`
+		ID     string          `json:"id"`
+		Type   string          `json:"type"`
+		Phase  string          `json:"phase"`
+		Action webSearchAction `json:"action"`
 	} `json:"item"`
 }
 
 // streamTypes are the event types the tee decodes; it skips any other line
 // without decoding it.
-var streamTypes = [][]byte{[]byte(`"response.output_text.delta"`), []byte(`"response.reasoning_summary_text.delta"`), []byte(`"response.output_item.added"`)}
+var streamTypes = [][]byte{[]byte(`"response.output_text.delta"`), []byte(`"response.reasoning_summary_text.delta"`), []byte(`"response.output_item.added"`), []byte(`"response.output_item.done"`)}
 
 // line reads one SSE line.
 func (s *stream) line(line []byte) {
 	payload, ok := bytes.CutPrefix(bytes.TrimSuffix(line, []byte("\r")), []byte("data:"))
-	if !ok || !containsAny(payload, streamTypes) {
+	if !ok || !containsAny(payload, streamTypes) || !s.wants(payload) {
 		return
 	}
 	var ev streamEvent
 	if json.Unmarshal(payload, &ev) != nil {
+		return
+	}
+	if ev.Item.Type == webSearchCall {
+		s.search(ev)
+
+		return
+	}
+	if !s.text {
 		return
 	}
 	switch ev.Type {

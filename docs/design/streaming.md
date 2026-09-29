@@ -60,6 +60,7 @@ Only a session's own turn requests stream, and only when the session asks (`sess
 - A compaction summary and an auto-review call go through `switcher.direct()` and carry no stream.
 - A subagent is a session of its own, and the agents package always opens it without `Stream`, so nothing streams into the parent's transcript or the subagent's view.
 - The TUI's sessions and `uah run --stream` set `Stream`; plain `uah run` does not, since it prints the final answer only.
+- Since item 64, every turn request of a run with events carries a tee, so it can report hosted web searches ([web search](web-search.md)); without `Stream`, the tee reads only those and sends no text.
 
 The process engine runs the runner as a subprocess and sees only its output, so it cannot stream: `Capabilities.Stream` is false there, and the capability table says the answer appears when the model finishes it.
 

@@ -79,6 +79,9 @@ type Config struct {
 	// rules and the approval policy. Nil applies no rules and asks for
 	// escalations.
 	Approver *approval.Approver
+	// WebSearch offers the provider's hosted web search tool to a run on a
+	// provider that has it (Provider.WebSearch), subagents' runs included.
+	WebSearch bool
 	// Subagents, when set, offers its tools to the runs it attaches and
 	// hears when the user interrupts a run; the engine closes it when it is
 	// an io.Closer.

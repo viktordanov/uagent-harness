@@ -35,6 +35,7 @@ const (
 	keyMode         = "permission_mode"
 	keyDetails      = "tui.details"
 	keyMouse        = "tui.mouse"
+	keyWebSearch    = "web_search"
 )
 
 // rowKind is how a /config row changes.
@@ -71,6 +72,7 @@ var configKeys = []struct {
 	{keyEffort, "Effort", rowChoice},
 	{keyFast, "Fast mode", rowToggle},
 	{keyMode, "Permission mode", rowChoice},
+	{keyWebSearch, "Web search", rowChoice},
 	{keyDetails, "Details view", rowToggle},
 	{keyMouse, "Mouse", rowToggle},
 }
@@ -81,6 +83,9 @@ var autoPercents = []int{0, 50, 60, 70, 80, 85, 90, 95}
 // cycledModes are the permission modes /config steps through, as
 // shift+tab does; full access stays a value to type into the file.
 var cycledModes = []string{string(approval.ModeReadOnly), string(approval.ModeWorkspace), string(approval.ModeAuto)}
+
+// webSearchModes are web_search's values (docs/design/web-search.md).
+var webSearchModes = []string{"live", "disabled"}
 
 // sessionModel is the compaction model's choice for "the session's model".
 const sessionModel = "session model"
@@ -138,6 +143,8 @@ func (s State) next(row ConfigRow, delta int) (value any, ok bool) {
 		return cycle(session.Efforts, current, delta), true
 	case keyMode:
 		return cycle(cycledModes, current, delta), true
+	case keyWebSearch:
+		return cycle(webSearchModes, current, delta), true
 	}
 	percent, _ := strconv.Atoi(current)
 	i := slices.Index(autoPercents, percent)

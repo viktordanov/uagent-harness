@@ -8,8 +8,9 @@ import (
 	"time"
 )
 
-// A reply with Deltas or Reasoning streams them as the Responses API does:
-// output_item.added opens an item, its text arrives in delta events, and
+// A reply with Deltas, Reasoning, or Searches streams them as the
+// Responses API does: output_item.added opens an item, its text arrives in
+// delta events, output_item.done closes a web search, and
 // response.completed carries the whole response, which the runner keeps.
 
 // text is the message: Text, or the deltas joined.
@@ -42,10 +43,26 @@ type deltaEvent struct {
 	Item         *outputItem `json:"item,omitempty"`
 }
 
-const typeMessage = "message"
+const (
+	typeMessage    = "message"
+	eventItemAdded = "response.output_item.added"
+)
 
 func messageID(n int) string   { return fmt.Sprintf("msg-%d", n) }
 func reasoningID(n int) string { return fmt.Sprintf("rs-%d", n) }
+
+// searchItem is search i of response n as a finished web_search_call.
+func searchItem(n, i int, search Search) outputItem {
+	action := search.Action
+	if action == "" {
+		action = "search"
+	}
+
+	return outputItem{
+		ID: fmt.Sprintf("ws-%d-%d", n, i), Type: "web_search_call", Status: completed,
+		Action: &searchAction{Type: action, Query: search.Query, URL: search.URL, Pattern: search.Pattern},
+	}
+}
 
 func reasoningItem(n int, reply Reply) outputItem {
 	return outputItem{
@@ -57,7 +74,7 @@ func reasoningItem(n int, reply Reply) outputItem {
 // streamPieces writes the reply's reasoning and message pieces, then waits
 // for Hold. It reports false when the request was canceled while held.
 func streamPieces(w http.ResponseWriter, r *http.Request, n int, reply Reply) bool {
-	if len(reply.Deltas) == 0 && len(reply.Reasoning) == 0 {
+	if len(reply.Deltas) == 0 && len(reply.Reasoning) == 0 && len(reply.Searches) == 0 {
 		return true
 	}
 	rc := http.NewResponseController(w)
@@ -70,8 +87,16 @@ func streamPieces(w http.ResponseWriter, r *http.Request, n int, reply Reply) bo
 		_ = rc.Flush()
 	}
 	index := 0
+	for i, search := range reply.Searches {
+		item := searchItem(n, i, search)
+		started := outputItem{ID: item.ID, Type: item.Type, Status: "in_progress"}
+		send(deltaEvent{Type: eventItemAdded, OutputIndex: index, Item: &started})
+		pace(reply.Pace)
+		send(deltaEvent{Type: "response.output_item.done", OutputIndex: index, Item: &item})
+		index++
+	}
 	if len(reply.Reasoning) > 0 {
-		send(deltaEvent{Type: "response.output_item.added", OutputIndex: index, Item: &outputItem{ID: reasoningID(n), Type: "reasoning"}})
+		send(deltaEvent{Type: eventItemAdded, OutputIndex: index, Item: &outputItem{ID: reasoningID(n), Type: "reasoning"}})
 		for _, piece := range reply.Reasoning {
 			pace(reply.Pace)
 			send(deltaEvent{Type: "response.reasoning_summary_text.delta", OutputIndex: index, ItemID: reasoningID(n), Delta: piece})
@@ -79,7 +104,7 @@ func streamPieces(w http.ResponseWriter, r *http.Request, n int, reply Reply) bo
 		index++
 	}
 	if len(reply.Deltas) > 0 {
-		send(deltaEvent{Type: "response.output_item.added", OutputIndex: index, Item: &outputItem{ID: messageID(n), Type: typeMessage, Role: "assistant", Phase: reply.phase()}})
+		send(deltaEvent{Type: eventItemAdded, OutputIndex: index, Item: &outputItem{ID: messageID(n), Type: typeMessage, Role: "assistant", Phase: reply.phase()}})
 		for _, piece := range reply.Deltas {
 			pace(reply.Pace)
 			send(deltaEvent{Type: "response.output_text.delta", OutputIndex: index, ItemID: messageID(n), Delta: piece})

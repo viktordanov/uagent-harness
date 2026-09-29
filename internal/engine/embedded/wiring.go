@@ -125,9 +125,7 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 	}
 	sw.tools = w.bashTools
 	sw.images = w.e.pastedImages
-	if opts.Stream {
-		sw.stream = w.emit
-	}
+	sw.stream, sw.text = w.emit, opts.Stream
 	operations := operation.NewLocalOperationManager(runCtx, newMCPJobs(runCtx, w.e.cfg.MCP), newAgentJobs(runCtx, w.e.cfg.Subagents, string(s.id)), newPatchJobs(runCtx))
 	first := compaction.Trigger("")
 	switch {
@@ -148,6 +146,9 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 	a.compactor, a.mode = comp, w.mode
 
 	builder := newContextBuilder(registry, model, req)
+	for _, t := range w.hostedTools(req.Provider) {
+		builder.AddTool(t)
+	}
 	obs := &observer{sessionID: s.id, out: io.MultiWriter(s.log, w.l.Stdout), cancel: cancel, emit: w.emit}
 	observerID := s.store.AddObserver(obs.observe)
 	coord := coordinator.New(coordinator.Dependencies{

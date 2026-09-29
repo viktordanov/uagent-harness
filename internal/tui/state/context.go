@@ -82,6 +82,8 @@ func (s *State) onEngineEvent(ev core.Event) bool {
 		s.onPatchApplied(e)
 	case engine.Rewound:
 		s.onRewound(e)
+	case engine.WebSearch:
+		s.onWebSearch(e)
 	default:
 		return s.onStream(ev)
 	}

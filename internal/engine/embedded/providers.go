@@ -34,7 +34,9 @@ type Provider struct {
 	// APIKeyEnv is empty when the client finds its own credentials.
 	APIKeyEnv string
 	// Priority says whether the provider accepts service_tier "priority".
-	Priority  bool
+	Priority bool
+	// WebSearch says whether the provider runs the hosted web_search tool.
+	WebSearch bool
 	NewClient func(ClientConfig) (Client, error)
 }
 
@@ -59,9 +61,9 @@ func DefaultProviders() []Provider {
 		{Name: "ollama", BaseURL: ollama.BaseURL, NewClient: noPriority(ollamaClient)},
 		{
 			Name: "openai", BaseURL: "https://api.openai.com/v1", DefaultModel: "gpt-6-astra",
-			APIKeyEnv: "OPENAI_API_KEY", Priority: true, NewClient: openaiClient,
+			APIKeyEnv: "OPENAI_API_KEY", Priority: true, WebSearch: true, NewClient: openaiClient,
 		},
-		{Name: "openai-codex", BaseURL: openaicodex.BaseURL, Priority: true, NewClient: codexClient},
+		{Name: "openai-codex", BaseURL: openaicodex.BaseURL, Priority: true, WebSearch: true, NewClient: codexClient},
 		{Name: "openrouter", BaseURL: "https://openrouter.ai/api/v1", APIKeyEnv: "OPENROUTER_API_KEY", NewClient: noPriority(openrouterClient)},
 		{Name: "fireworks", BaseURL: "https://api.fireworks.ai/inference/v1", APIKeyEnv: "FIREWORKS_API_KEY", NewClient: noPriority(fireworksClient)},
 	}

@@ -291,6 +291,11 @@ func TestResolve(t *testing.T) {
 			want: func(r *app.Resolved) { r.Settings.MaxAttempts = 3 },
 		},
 		{
+			name: "web_search disabled",
+			cfg:  config.Config{WebSearch: "disabled"},
+			want: func(r *app.Resolved) { r.WebSearch = app.WebSearchDisabled },
+		},
+		{
 			name: "the prompt file is read by Setup",
 			cfg:  config.Config{ExperimentalCompactPromptFile: "/prompts/compact.md"},
 			want: func(r *app.Resolved) { r.CompactPromptFile = "/prompts/compact.md" },
@@ -313,6 +318,7 @@ func TestResolve(t *testing.T) {
 				ApprovalsReviewer: review.ReviewerUser,
 				Review:            review.Config{Model: review.CodexModel, Effort: llm.ReasoningEffortLow, Timeout: review.DefaultTimeout},
 				Agents:            app.Agents{Enabled: true, MaxThreads: 4, MaxDepth: 1},
+				WebSearch:         app.WebSearchLive,
 			}
 			tt.want(&want)
 			want.Sandbox.Workspace = want.Settings.Workspace
@@ -347,6 +353,8 @@ func TestResolveUsageErrors(t *testing.T) {
 		{name: "invalid compact_effort", cfg: config.Config{CompactEffort: "huge"}, want: `invalid compact_effort "huge"`},
 		{name: "invalid compact_user_message_max_tokens", cfg: config.Config{CompactUserMessageMaxTokens: -1}, want: "invalid compact_user_message_max_tokens -1"},
 		{name: "relative experimental_compact_prompt_file", cfg: config.Config{ExperimentalCompactPromptFile: "prompt.md"}, want: `invalid experimental_compact_prompt_file "prompt.md"`},
+		{name: "invalid web_search", cfg: config.Config{WebSearch: "sometimes"}, want: `invalid web_search "sometimes"`},
+		{name: "cached web_search", cfg: config.Config{WebSearch: "cached"}, want: `web_search = "cached" is not available`},
 		{name: "invalid approvals_reviewer", cfg: config.Config{ApprovalsReviewer: "robot"}, want: `invalid approvals_reviewer "robot"`},
 		{name: "invalid review effort", cfg: config.Config{Review: config.Review{Effort: "huge"}}, want: `invalid review.effort "huge"`},
 		{name: "invalid review timeout", cfg: config.Config{Review: config.Review{Timeout: "-1s"}}, want: `invalid review.timeout "-1s"`},

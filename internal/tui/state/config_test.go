@@ -21,6 +21,7 @@ func configValues() map[string]state.ConfigValue {
 		"effort":                         {Value: "high", Source: "default"},
 		"fast":                           {Value: "false", Source: "default"},
 		"permission_mode":                {Value: "workspace", Source: "default"},
+		"web_search":                     {Value: "live", Source: "default"},
 		"tui.details":                    {Value: "false", Source: "default"},
 		"tui.mouse":                      {Value: "false", Source: "user file"},
 	}
@@ -51,7 +52,7 @@ func TestConfig_OpensAndShowsValuesWithSources(t *testing.T) {
 
 	s, _ = apply(s, state.ConfigLoaded{Path: "/cfg.toml", Values: configValues()})
 	rows := s.ConfigRows()
-	require.Len(t, rows, 9)
+	require.Len(t, rows, 10)
 	got := map[string][2]string{}
 	for _, r := range rows {
 		got[r.Label] = [2]string{r.Value, r.Source}
@@ -61,6 +62,7 @@ func TestConfig_OpensAndShowsValuesWithSources(t *testing.T) {
 	assert.Equal(t, [2]string{"session model (gpt-6-sol)", "default"}, got["Compaction model"])
 	assert.Equal(t, [2]string{"gpt-6-sol", "user file"}, got["Model"])
 	assert.Equal(t, [2]string{"off", "user file"}, got["Mouse"])
+	assert.Equal(t, [2]string{"live", "default"}, got["Web search"])
 
 	s, _ = apply(s, state.ConfigEsc{})
 	assert.Nil(t, s.Config, "esc closes")
@@ -71,8 +73,8 @@ func TestConfig_TogglesAndAppliesLive(t *testing.T) {
 	s, effects := apply(s, state.ConfigChange{Delta: 1})
 	assert.Equal(t, []state.Effect{state.EffSaveConfig{Key: "tui.mouse", Value: true}}, effects)
 	assert.True(t, s.Mouse, "the TUI reports the mouse at once")
-	assert.Equal(t, "on", s.ConfigRows()[8].Value)
-	assert.Equal(t, state.SourceUser, s.ConfigRows()[8].Source)
+	assert.Equal(t, "on", s.ConfigRows()[9].Value)
+	assert.Equal(t, state.SourceUser, s.ConfigRows()[9].Source)
 
 	s, effects = apply(s, state.ConfigSaved{Key: "tui.mouse", Value: true})
 	assert.Equal(t, []state.Effect{state.EffLoadConfig{}}, effects, "reload the sources")
@@ -81,6 +83,16 @@ func TestConfig_TogglesAndAppliesLive(t *testing.T) {
 	s = openConfig(t, opened(), "Details view")
 	s, _ = apply(s, state.ConfigEnter{})
 	assert.True(t, s.Details)
+}
+
+// TestConfig_WebSearch: the row cycles web_search's values and applies to
+// the sessions opened next.
+func TestConfig_WebSearch(t *testing.T) {
+	s := openConfig(t, opened(), "Web search")
+	s, effects := apply(s, state.ConfigChange{Delta: 1})
+	assert.Equal(t, []state.Effect{state.EffSaveConfig{Key: "web_search", Value: "disabled"}}, effects, "no session change")
+	s, _ = apply(s, state.ConfigSaved{Key: "web_search", Value: "disabled"})
+	assert.Contains(t, s.Items[len(s.Items)-1].Text, "applies to sessions opened from now on")
 }
 
 func TestConfig_ModelEffortAndFastChangeTheSession(t *testing.T) {

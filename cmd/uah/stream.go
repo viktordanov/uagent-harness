@@ -193,6 +193,17 @@ func engineEventDTO(event core.Event) (any, bool) {
 		}{header("reasoning_delta", e.At), e.ItemID, e.Part, e.Text}, true
 	case engine.StreamReset:
 		return header("stream_reset", e.At), true
+	case engine.WebSearch:
+		return struct {
+			sessionHeader
+
+			ItemID  string `json:"item_id"`
+			Done    bool   `json:"done"`
+			Action  string `json:"action,omitempty"`
+			Query   string `json:"query,omitempty"`
+			URL     string `json:"url,omitempty"`
+			Pattern string `json:"pattern,omitempty"`
+		}{header("web_search", e.At), e.ItemID, e.Done, e.Action, e.Query, e.URL, e.Pattern}, true
 	case engine.Rewound:
 		return struct {
 			sessionHeader

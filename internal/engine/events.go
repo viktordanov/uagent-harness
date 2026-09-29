@@ -107,3 +107,47 @@ type StreamReset struct {
 func (e TextDelta) OccurredAt() time.Time      { return e.At }
 func (e ReasoningDelta) OccurredAt() time.Time { return e.At }
 func (e StreamReset) OccurredAt() time.Time    { return e.At }
+
+// Web search actions, as the Responses API names them.
+const (
+	WebSearchSearch     = "search"
+	WebSearchOpenPage   = "open_page"
+	WebSearchFindInPage = "find_in_page"
+)
+
+// WebSearch is the provider's hosted web search at work in the model's
+// item ItemID: Done is false when it starts, and true with its Action
+// (search, open_page, find_in_page, or other) and details when it ends.
+// The runner keeps no record of it, so it reaches only live runs.
+type WebSearch struct {
+	At      time.Time
+	ItemID  string
+	Done    bool
+	Action  string
+	Query   string
+	URL     string
+	Pattern string
+}
+
+func (e WebSearch) OccurredAt() time.Time { return e.At }
+
+// Text says what the search did, as Codex's history cell does:
+// "searched: <query>", "opened: <url>", or "searched: '<pattern>' in <url>".
+func (e WebSearch) Text() string {
+	switch {
+	case !e.Done:
+		return "searching the web"
+	case e.Action == WebSearchOpenPage && e.URL != "":
+		return "opened: " + e.URL
+	case e.Action == WebSearchFindInPage && e.Pattern != "" && e.URL != "":
+		return "searched: '" + e.Pattern + "' in " + e.URL
+	case e.Action == WebSearchFindInPage && e.Pattern != "":
+		return "searched: '" + e.Pattern + "'"
+	case e.Action == WebSearchFindInPage && e.URL != "":
+		return "searched page: " + e.URL
+	case e.Query != "":
+		return "searched: " + e.Query
+	}
+
+	return "searched the web"
+}

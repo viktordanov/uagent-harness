@@ -50,6 +50,9 @@ type Config struct {
 	// refused by forbid rules. Off (the default), they run as the user's
 	// own, as in Codex and Claude Code.
 	UserShellSandbox bool `toml:"user_shell_sandbox"`
+	// WebSearch offers the provider's hosted web search tool: live (the
+	// default where the provider has it) or disabled, as Codex's key.
+	WebSearch string `toml:"web_search"`
 
 	// AutoCompactPercent compacts the context once a response used this
 	// share of the model's window (default 90; 0 turns it off).

@@ -9,7 +9,7 @@ import (
 func TestToolLabel(t *testing.T) {
 	for name, want := range map[string]string{
 		"Bash": "RAN", "SkillUse": "SKILL", "ViewImage": "VIEW", "view_image": "VIEW",
-		"wait_agent": "WAIT", "mcp__docs__search": "MCP", "Read": "READ",
+		"wait_agent": "WAIT", "mcp__docs__search": "MCP", "Read": "READ", "web_search": "WEB",
 	} {
 		assert.Equal(t, want, toolLabel(name), name)
 	}

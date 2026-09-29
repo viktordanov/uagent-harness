@@ -82,6 +82,7 @@ Every key may be set in the user file, in a layer, and in a trusted project file
 | `request_max_attempts` | integer | 10 | `--max-attempts`, `UNREAL_HARNESS_LLM_MAX_ATTEMPTS` | override | How many times a model request is sent before the run fails. A lost connection, a timeout, a 429, or most 5xx statuses are retried after 2 s, then 4, 8, and 16 s, and then every 30 s (less up to a fifth of jitter, or the server's `Retry-After` up to 30 s): 10 attempts wait about 3 minutes in all. The runner's own default is 5 |
 | `max_disk` | size | `5G` | `--max-disk` | override | Stop a run when tool output exceeds this size (`500M`, `5G`, bytes without a suffix); `0` disables it |
 | `fast` | bool | false | `--fast` | OR | Priority processing (`service_tier = "priority"`); needs the openai or openai-codex provider, and any other provider refuses it before the session starts |
+| `web_search` | string | `live` | none | override | The provider's hosted web search tool, as Codex's key: `live` offers it on openai and openai-codex (other providers never get it), `disabled` does not. Codex's `cached` and `indexed` are errors: the runner sends the tool without Codex's access options, which the API treats as live search. The search runs on the provider's servers, so the sandbox's network rule does not apply; it is offered in every permission mode, as in Codex ([web search](design/web-search.md)) |
 
 ### Sandbox and approvals
 
@@ -413,6 +414,7 @@ effort = "high"
 max_disk = "5G"                    # tool output per run; "0" disables
 request_max_attempts = 10          # per model request; a lost connection is retried with backoff
 fast = false                       # priority processing
+web_search = "live"                # or disabled: the provider's hosted web search
 sandbox_mode = "workspace-write"   # read-only, workspace-write, danger-full-access
 # permission_mode = "workspace"    # read-only, workspace, auto, full-access; wins over sandbox_mode
 approval_policy = "on-request"     # or never

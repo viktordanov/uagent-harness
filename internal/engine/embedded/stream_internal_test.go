@@ -38,7 +38,7 @@ func TestTeeBody(t *testing.T) {
 
 	var mu sync.Mutex
 	var got []core.Event
-	sw := &switcher{stream: func(e core.Event) { mu.Lock(); got = append(got, e); mu.Unlock() }}
+	sw := &switcher{stream: func(e core.Event) { mu.Lock(); got = append(got, e); mu.Unlock() }, text: true}
 	ctx, done := sw.streaming(t.Context())
 	tee := teed(ctx, io.NopCloser(iotest.OneByteReader(strings.NewReader(body))))
 	read, err := io.ReadAll(tee)

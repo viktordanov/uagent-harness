@@ -17,6 +17,7 @@ func merge(base, over Config) Config {
 	set(&base.Model, over.Model)
 	set(&base.Effort, over.Effort)
 	set(&base.MaxDisk, over.MaxDisk)
+	set(&base.WebSearch, over.WebSearch)
 	base.Fast = base.Fast || over.Fast
 	base.TUI.Details = base.TUI.Details || over.TUI.Details
 	if over.TUI.Mouse != nil {

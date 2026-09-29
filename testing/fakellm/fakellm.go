@@ -60,6 +60,18 @@ type Reply struct {
 	Reasoning []string
 	Pace      time.Duration
 	Hold      <-chan struct{}
+	// Searches are hosted web searches, streamed and listed before the
+	// other output items, as the provider runs them.
+	Searches []Search
+}
+
+// Search is a web_search_call item: Action is search (the default),
+// open_page, or find_in_page.
+type Search struct {
+	Action  string
+	Query   string
+	URL     string
+	Pattern string
 }
 
 // Call is a function call to a tool by name, with JSON arguments.
@@ -256,6 +268,13 @@ type (
 		Phase     string        `json:"phase,omitempty"`
 		Content   []contentPart `json:"content,omitempty"`
 		Summary   []contentPart `json:"summary,omitempty"`
+		Action    *searchAction `json:"action,omitempty"`
+	}
+	searchAction struct {
+		Type    string `json:"type"`
+		Query   string `json:"query,omitempty"`
+		URL     string `json:"url,omitempty"`
+		Pattern string `json:"pattern,omitempty"`
 	}
 	contentPart struct {
 		Type        string `json:"type"`
@@ -274,6 +293,9 @@ const completed = "completed"
 
 func response(n int, reply Reply) responseBody {
 	output := []outputItem{}
+	for i := range reply.Searches {
+		output = append(output, searchItem(n, i, reply.Searches[i]))
+	}
 	type bashArgs struct {
 		Command       string `json:"command"`
 		Permissions   string `json:"sandbox_permissions,omitempty"`

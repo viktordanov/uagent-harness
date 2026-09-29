@@ -35,6 +35,7 @@ func fileSettings(workspace string, l config.Layers, r Resolved, cfg config.Conf
 		overridden(l, "review.effort", string(r.Review.Effort), func(c config.Config) any { return c.Review.Effort }),
 		overridden(l, "review.timeout", r.Review.Timeout.String(), func(c config.Config) any { return c.Review.Timeout }),
 		overridden(l, "review.policy_file", first(cfg.Review.PolicyFile, "Codex's policy"), func(c config.Config) any { return c.Review.PolicyFile }),
+		overridden(l, "web_search", r.WebSearch, func(c config.Config) any { return c.WebSearch }),
 	}
 	out = append(out, compactionSettings(l, r, cfg)...)
 	out = append(out, []Setting{
