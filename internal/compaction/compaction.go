@@ -124,7 +124,12 @@ func Coverable(input []llm.Item) int {
 
 // NewRecord covers the Coverable items of input with the summary.
 func NewRecord(input []llm.Item, summary string, trigger Trigger, model string, at time.Time) (Record, error) {
-	covered := Coverable(input)
+	return NewRecordCovering(input, Coverable(input), summary, trigger, model, at)
+}
+
+// NewRecordCovering covers the first covered items after input's system
+// message with the summary (see CoverableKeeping).
+func NewRecordCovering(input []llm.Item, covered int, summary string, trigger Trigger, model string, at time.Time) (Record, error) {
 	hash, err := Hash(input[min(1, len(input)) : 1+covered])
 	if err != nil {
 		return Record{}, err
@@ -236,4 +241,30 @@ func orphanNote(r llm.ToolResult) llm.Item {
 		Role: llm.RoleUser,
 		Text: fmt.Sprintf("Output of the earlier tool call %s, which the summary covers:\n%s", r.CallID, strings.Join(text, "\n")),
 	}}
+}
+
+// CoverableKeeping is Coverable leaving the last calls tool calls, with
+// the model output around them, after the summary: the covered range ends
+// where the model response that made the calls-th last call starts, so no
+// call is split from its output. 0 is Coverable.
+func CoverableKeeping(input []llm.Item, calls int) int {
+	n := Coverable(input)
+	if calls <= 0 {
+		return n
+	}
+	i, seen := n, 0 // input[1:1+i] is covered
+	for i > 0 && seen < calls {
+		if _, ok := input[i].Data.(llm.ToolCall); ok {
+			seen++
+		}
+		i--
+	}
+	if seen < calls {
+		return 0
+	}
+	for i > 0 && modelGenerated(input[i]) {
+		i--
+	}
+
+	return i
 }

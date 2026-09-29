@@ -101,3 +101,18 @@ func TestWindowAndMeter(t *testing.T) {
 	assert.Equal(t, 50, compaction.PercentLeft(142_000, 272_000))
 	assert.Equal(t, 0, compaction.PercentLeft(400_000, 272_000))
 }
+
+func TestCoverableKeeping(t *testing.T) {
+	reasoning := llm.Item{Type: llm.ItemReasoning, Data: llm.Reasoning{Summary: []string{"r"}}}
+	input := []llm.Item{
+		msg(llm.RoleSystem, "sys"), msg(llm.RoleUser, "go"),
+		reasoning, call("a"), result("a", "1"),
+		reasoning, call("b"), call("c"), result("b", "2"), result("c", "3"),
+		msg(llm.RoleAssistant, "done"), msg(llm.RoleUser, "new"),
+	}
+	assert.Equal(t, 10, compaction.CoverableKeeping(input, 0))
+	assert.Equal(t, 4, compaction.CoverableKeeping(input, 1), "c's response also made b: both stay, with its reasoning")
+	assert.Equal(t, 4, compaction.CoverableKeeping(input, 2))
+	assert.Equal(t, 1, compaction.CoverableKeeping(input, 3), "the user's message is the last covered item")
+	assert.Equal(t, 0, compaction.CoverableKeeping(input, 4), "fewer calls than asked: nothing to cover")
+}

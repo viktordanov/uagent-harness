@@ -93,9 +93,9 @@ func Elide(items []llm.Item, ids []string) []llm.Item {
 // command, the exit code, and the size.
 func Stub(call llm.ToolCall, r llm.ToolResult) llm.ToolResult {
 	what := call.Name
-	if cmd := argument(call.Arguments, "command"); cmd != "" {
+	if cmd := Argument(call.Arguments, "command"); cmd != "" {
 		what += fmt.Sprintf(" %#q", clip(oneLine(cmd), 200))
-	} else if p := argument(call.Arguments, "path"); p != "" {
+	} else if p := Argument(call.Arguments, "path"); p != "" {
 		what += " " + p
 	}
 	if m := exitLine.FindAllStringSubmatch(ResultText(r), -1); len(m) > 0 {

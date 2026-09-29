@@ -110,20 +110,20 @@ type factReader struct {
 func (x *factReader) onCall(call llm.ToolCall) {
 	switch call.Name {
 	case toolBash:
-		x.read = appendNew(x.read, PathsIn(argument(call.Arguments, "command"))...)
+		x.read = appendNew(x.read, PathsIn(Argument(call.Arguments, "command"))...)
 	case toolViewImage:
-		x.read = appendNew(x.read, argument(call.Arguments, "path"))
+		x.read = appendNew(x.read, Argument(call.Arguments, "path"))
 	case toolSkillUse:
-		x.skills = appendNew(x.skills, argument(call.Arguments, "name"))
+		x.skills = appendNew(x.skills, Argument(call.Arguments, "name"))
 	case toolClose:
-		delete(x.agents, argument(call.Arguments, "target"))
+		delete(x.agents, Argument(call.Arguments, "target"))
 	}
 }
 
 func (x *factReader) onResult(call llm.ToolCall, text string) {
 	switch call.Name {
 	case toolBash:
-		x.onBash(argument(call.Arguments, "command"), text)
+		x.onBash(Argument(call.Arguments, "command"), text)
 	case patch.ToolName:
 		if strings.HasPrefix(text, "Success.") {
 			x.onPatch(call.Arguments)
@@ -242,8 +242,8 @@ func (x *factReader) facts() Facts {
 	return f
 }
 
-// argument is a string argument of a tool call's JSON arguments.
-func argument(arguments, name string) string {
+// Argument is a string argument of a tool call's JSON arguments, or "".
+func Argument(arguments, name string) string {
 	var args map[string]any
 	if json.Unmarshal([]byte(arguments), &args) != nil {
 		return ""

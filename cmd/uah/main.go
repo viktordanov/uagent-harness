@@ -57,7 +57,7 @@ func newApp() *cli.Command {
 			c.Hidden = false
 			c.Usage = "print the shell completion script: bash, zsh, fish, or pwsh"
 		},
-		Commands: []*cli.Command{runCommand(), resumeCommand(), sessionsCommand(), hooksCommand(), configCommand(), doctorCommand(), modelsCommand(), usageCommand(), mcpCommand(), promptsCommand()},
+		Commands: []*cli.Command{runCommand(), resumeCommand(), sessionsCommand(), hooksCommand(), configCommand(), doctorCommand(), modelsCommand(), usageCommand(), mcpCommand(), promptsCommand(), compactionCommand()},
 	})
 }
 

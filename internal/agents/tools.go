@@ -50,7 +50,10 @@ var tools = []tool{
 func fixed(s string) func(*Manager) string { return func(*Manager) string { return s } }
 
 // ToolNames are the tools' names and the names past calls may use.
-func (m *Manager) ToolNames() []string {
+func (m *Manager) ToolNames() []string { return ToolNames() }
+
+// ToolNames are the subagent tools' names and the names past calls may use.
+func ToolNames() []string {
 	names := []string{toolWaitBefore}
 	for _, t := range tools {
 		names = append(names, t.name)
