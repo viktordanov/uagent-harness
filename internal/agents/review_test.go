@@ -207,3 +207,26 @@ func TestReview_NoWebSearch(t *testing.T) {
 	assert.True(t, offered, "the parent keeps web search")
 	assert.True(t, inserted, "and its own recorded search")
 }
+
+// TestReview_ReadOnlyUnderYolo: a parent in yolo mode still gets a
+// reviewer in the read-only sandbox that never asks: its write fails and
+// its escalation is declined.
+func TestReview_ReadOnlyUnderYolo(t *testing.T) {
+	e := newEnv(t, agents.Config{})
+	e.yolo = true
+	e.llm.Route(uncommitted,
+		fakellm.Reply{Commands: []string{"touch written.txt"}},
+		fakellm.Reply{Escalated: []string{"touch escalated.txt"}},
+		fakellm.Reply{Text: reviewAnswer},
+	)
+	s, ev := e.open(t, true, e.sandboxed(t))
+
+	require.NoError(t, s.Review(context.Background(), codereview.Target{Kind: codereview.Uncommitted}))
+	fin := ev.reviewFinished()
+
+	require.Empty(t, fin.Err)
+	outputs := strings.Join(reviewerRequests(e)[len(reviewerRequests(e))-1].ToolOutputs, "\n")
+	assert.Contains(t, outputs, "this session never asks for approval", "the escalation was declined")
+	assert.NoFileExists(t, filepath.Join(e.Workspace, "written.txt"), "the sandbox is read-only")
+	assert.NoFileExists(t, filepath.Join(e.Workspace, "escalated.txt"), "an escalation is declined")
+}

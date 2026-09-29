@@ -14,6 +14,7 @@ import (
 	"github.com/viktordanov/uagent/core"
 
 	"github.com/viktordanov/uagent-harness/internal/agents"
+	"github.com/viktordanov/uagent-harness/internal/approval"
 	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/engine/embedded"
 	"github.com/viktordanov/uagent-harness/internal/hooks"
@@ -35,6 +36,8 @@ type env struct {
 	// stream opens the parent as the TUI does, asking for its text as it
 	// arrives.
 	stream bool
+	// yolo opens the parent as --yolo does, in yolo mode.
+	yolo bool
 }
 
 // newEnv starts one fake model for the parent (the main script) and its
@@ -82,7 +85,10 @@ func (e *env) openID(t *testing.T, id string, interactive bool, configure ...fun
 	eng := embedded.New(cfg)
 	opts := session.Options{
 		ID: id, Resumed: id != "", Settings: e.settings(), Hooks: e.hooks,
-		SessionsDir: e.sessionsDir(), Source: session.SourceTUI, Interactive: interactive, Stream: e.stream,
+		SessionsDir: e.sessionsDir(), Source: session.SourceTUI, Interactive: interactive, Stream: e.stream, Yolo: e.yolo,
+	}
+	if e.yolo {
+		opts.Settings = opts.Settings.WithMode(approval.ModeYolo)
 	}
 	e.mgr.Bind(eng, opts)
 	s, err := session.Open(context.Background(), eng, opts)

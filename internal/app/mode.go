@@ -39,32 +39,30 @@ func modeOf(in Inputs, resumed session.Info, cfg config.Config) (approval.Mode, 
 	case resumed.Mode != "" && !resumed.Mode.AsksNoOne():
 		return approval.ParseMode(string(resumed.Mode)) //nolint:wrapcheck // ParseMode names the value
 	case cfg.PermissionMode != "":
-		m, err := approval.ParseMode(cfg.PermissionMode)
-		if err == nil && m.AsksNoOne() {
-			err = errYoloFlagOnly
-		}
-
-		return m, err //nolint:wrapcheck // ParseMode names the value
+		return permissionMode(cfg.PermissionMode)
 	}
 
 	return sandboxMode(first(cfg.SandboxMode, string(sandbox.WorkspaceWrite)))
 }
 
-// errYoloFlagOnly refuses yolo mode from a file: it needs --yolo each time.
-var errYoloFlagOnly = errors.New("yolo mode (no sandbox, no approvals) needs --yolo each time; no file sets it")
+// permissionMode reads permission_mode: read-only, workspace, or auto.
+// Yolo is not a value for a file; only --yolo gives it.
+func permissionMode(name string) (approval.Mode, error) {
+	if m, err := approval.ParseMode(name); err == nil && !m.AsksNoOne() {
+		return m, nil
+	}
 
-// sandboxMode is the mode of a sandbox mode name; danger-full-access, no
-// sandbox, is yolo mode, which only --yolo gives.
+	return "", fmt.Errorf("invalid permission mode %q (want read-only, workspace, or auto)", name)
+}
+
+// sandboxMode is the mode of a sandbox mode name: read-only or
+// workspace-write. No sandbox is yolo mode, which only --yolo gives.
 func sandboxMode(name string) (approval.Mode, error) {
-	m, err := sandbox.ParseMode(name)
-	if err != nil {
-		return "", fmt.Errorf("invalid sandbox mode %q (want read-only or workspace-write; no sandbox is --yolo)", name)
-	}
-	if m == sandbox.FullAccess {
-		return "", errYoloFlagOnly
+	if m, err := sandbox.ParseMode(name); err == nil && m != sandbox.FullAccess {
+		return approval.ModeFor(m), nil
 	}
 
-	return approval.ModeFor(m), nil
+	return "", fmt.Errorf("invalid sandbox mode %q (want read-only or workspace-write)", name)
 }
 
 // pickFast is the --fast flag when given, else the resumed session's fast
