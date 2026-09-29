@@ -106,8 +106,10 @@ func (c *compactor) compact(ctx context.Context, req llm.Request, opts llm.Reque
 		rec.Floor = min(c.record.Floor, rec.Covered)
 	}
 	c.mu.Unlock()
+	rec.Ledger = compaction.Ledger(req.Input[1+rec.Floor:1+rec.Covered], rec.Focus)
 	stats := c.measure(req.Input, rec, ask, start, compaction.StrategyLocal)
 	stats.SummaryTokens, stats.Call = int64(compaction.ApproxTokens(summary.Text)), compaction.UsageOf(summary.Usage)
+	stats.LedgerTokens = int64(compaction.ApproxTokens(rec.Ledger))
 	rec.Stats = &stats
 	if err := c.log.Append(rec); err != nil {
 		return compaction.Record{}, err

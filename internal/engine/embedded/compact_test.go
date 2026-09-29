@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -188,4 +189,28 @@ func TestEmbedded_BeforeCompactCanStopIt(t *testing.T) {
 	reqs := e.llm.Requests()
 	require.Len(t, reqs, 2, "no summary request: the compaction was stopped")
 	assert.Equal(t, []string{"first", "second"}, reqs[1].UserTexts)
+}
+
+func TestEmbedded_TheSummaryCarriesTheStateLedger(t *testing.T) {
+	e := newEnv(t,
+		fakellm.Reply{Commands: []string{"cat notes.md; echo boom >&2; exit 3"}},
+		fakellm.Reply{Text: "answer one"},
+		fakellm.Reply{Text: "SUMMARY"},
+		fakellm.Reply{Text: "answer two"},
+	)
+	s, ev := e.open(t, e.compacting(0), "")
+	ask(t, s, ev, "first")
+	require.NoError(t, s.Compact())
+	ask(t, s, ev, "second")
+
+	reqs := e.llm.Requests()
+	require.Len(t, reqs, 4)
+	summary := reqs[3].UserTexts[1]
+	assert.True(t, strings.HasPrefix(summary, summaryText("SUMMARY")+"\n\n<uah_state_ledger>"), summary)
+	assert.Contains(t, summary, "Failing commands (their last run failed): `cat notes.md; echo boom >&2; exit 3` exit 3: ")
+	assert.Contains(t, summary, "boom")
+	assert.Contains(t, summary, "Files read: notes.md")
+	_, done := compactions(ev.all)
+	require.Len(t, done, 1)
+	assert.Positive(t, done[0].Stats.LedgerTokens)
 }

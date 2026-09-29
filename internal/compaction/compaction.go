@@ -79,6 +79,9 @@ type Record struct {
 	// Focus is what the user asked the summary to focus on (/compact
 	// <instructions>).
 	Focus string `json:"focus,omitempty"`
+	// Ledger is the state ledger uah generated from the covered items
+	// (Ledger), sent after the summary.
+	Ledger string `json:"ledger,omitempty"`
 	// Stats measure the compaction; records before uah measured them have
 	// none.
 	Stats *Stats `json:"stats,omitempty"`
@@ -151,10 +154,20 @@ func Apply(input []llm.Item, rec Record) ([]llm.Item, error) {
 	out = append(out, input[0])
 	out = append(out, kept...)
 	if rec.Floor < rec.Covered {
-		out = append(out, SummaryMessage(rec.Summary))
+		out = append(out, SummaryMessage(rec.SummaryText()))
 	}
 
 	return append(out, detachOrphans(tail)...), nil
+}
+
+// SummaryText is what the summary message carries after the prefix: the
+// summary, then the ledger.
+func (r Record) SummaryText() string {
+	if r.Ledger == "" {
+		return r.Summary
+	}
+
+	return strings.TrimSpace(r.Summary) + "\n\n" + r.Ledger
 }
 
 // NewClear is a /clear over input: every coverable item is dropped.
