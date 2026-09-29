@@ -20,6 +20,8 @@ uah is a pure core with well-organized infrastructure around it, not layered DDD
 | `internal/compaction` | Compaction the Codex way: the request rewrite, the summary call over any `llm.Adapter`, token estimates, the window table, and the compaction log. The engine decides when to compact. |
 | `internal/llmcall` | One model call outside the agent loop over any runner `llm.Adapter`, for summaries and reviews. |
 | `internal/review` | The auto-reviewer: one model call over `internal/llmcall` judges an action that needs approval, with Codex's prompt, a fail-closed verdict, and a circuit breaker. No engine wiring. |
+| `internal/codereview` | Codex's `/review`: the targets, the reviewer's prompts and rubric, and the findings it answers with; the session runs the reviewer through `internal/agents`. |
+| `internal/gitdiff` | Read-only git for `/diff` and `/review`: the work tree's changes as display diffs, the branches, the recent commits, and a merge base. |
 | `internal/tui/state` | The pure TUI model: a reducer from events and intents to state and effects. No I/O. |
 | `internal/tui/render` | Pure drawing of state to lines, with a per-item cache. |
 | `internal/tui/bubble` | The Bubble Tea shell: keys to intents, effects to commands, and frames. |

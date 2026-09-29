@@ -1,8 +1,8 @@
-<!-- memoria:section id="overview" files="design/harness.md design/tui.md design/implementation.md design/state.md design/sandbox-research.md design/sandbox.md design/subagents.md design/compaction.md design/mcp.md design/usage.md design/images.md configuration.md ledger.md documentation/architecture.md documentation/memoria.md design/shell-mode.md design/streaming.md design/markdown.md design/rewind.md design/selection.md design/codex-auth.md design/hosting.md design/editor.md design/system-prompt.md design/web-search.md" -->
+<!-- memoria:section id="overview" files="design/harness.md design/tui.md design/implementation.md design/state.md design/sandbox-research.md design/sandbox.md design/subagents.md design/compaction.md design/mcp.md design/usage.md design/images.md configuration.md ledger.md documentation/architecture.md documentation/memoria.md design/shell-mode.md design/streaming.md design/markdown.md design/rewind.md design/selection.md design/codex-auth.md design/hosting.md design/editor.md design/system-prompt.md design/web-search.md design/review.md" -->
 # Documentation
 
 <!-- memoria:export id="summary" -->
-The configuration reference, design records for the harness, the TUI, state storage, sandboxing, compaction, MCP, subagents, pasted images, streaming, Markdown rendering, going back to an earlier message, selecting text with the mouse, editing the prompt in an editor, the system prompt, web search, keeping the ChatGPT login fresh, and running uah as a terminal host backend, plus the architecture rules and documentation procedure for uagent-harness.
+The configuration reference, design records for the harness, the TUI, state storage, sandboxing, compaction, MCP, subagents, pasted images, streaming, Markdown rendering, going back to an earlier message, selecting text with the mouse, editing the prompt in an editor, the system prompt, web search, `/diff` and `/review`, keeping the ChatGPT login fresh, and running uah as a terminal host backend, plus the architecture rules and documentation procedure for uagent-harness.
 <!-- /memoria:export -->
 
 Design:
@@ -28,6 +28,7 @@ Design:
 19. [Editing the prompt in an editor](design/editor.md): what Claude Code's and Codex's ctrl+g do, and how uah runs `$VISUAL` or `$EDITOR` on a draft file the sandbox cannot reach, with the terminal released, and keeps its images.
 20. [The system prompt](design/system-prompt.md): Codex's prompt for gpt-6-sol with the nine changes uah needs, each with its reason, and Codex's `<environment_context>` at the end of the system message.
 21. [Web search](design/web-search.md): how Codex offers the hosted `web_search` tool, what the runner sends and drops, how uah offers it, shows each search, and puts the dropped searches back into later requests by insertion, the probes on openai-codex, and the limits.
+22. [`/diff` and `/review`](design/review.md): how Codex collects and shows the git diff and runs a code review in a separate thread, and how uah shows the diff and runs a read-only reviewer whose findings reach the agent.
 
 Reference:
 

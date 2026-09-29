@@ -58,7 +58,7 @@ A frame: `View` calls `render.Screen`. The transcript is virtualized: it renders
 Effects made before the first session opens (the startup prompt, for example) are held and run once it opens.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="items" files="state/items.go state/runevents.go state/stream.go state/agents.go state/contextview.go state/approval.go state/mcp.go render/items.go render/mcp.go state/patch.go state/shell.go render/shell.go state/websearch.go" -->
+<!-- memoria:section id="items" files="state/items.go state/runevents.go state/stream.go state/agents.go state/contextview.go state/approval.go state/mcp.go render/items.go render/mcp.go state/patch.go state/shell.go render/shell.go state/websearch.go state/review.go render/review.go" -->
 ## Transcript items
 
 The transcript is a list of `Item`s, each with a stable key. The reducer updates an item in place by key and raises its `Version`, so a tool call that finishes after later turns updates its original row.
@@ -76,6 +76,8 @@ The transcript is a list of `Item`s, each with a stable key. The reducer updates
 | `KindFinish` | `done:<run ID>` | `RunFinished`: the end of a run in the compact view |
 | `KindMCP` | `mcp:<n>` | `/mcp` (`MCPListed`): one line per server; `Final` asks for the verbose form (`render/mcp.go`) |
 | `KindShell` | `msg:<command ID>` | A command you ran in shell mode: `session.ShellStarted`, `ShellOutput` (streamed into `Detail`), and `ShellFinished`; the runner's echo of its record marks it delivered, and a saved record makes it in a resumed transcript (`state/shell.go`, `render/shell.go`) |
+| `KindDiff` | `diff:<n>` | `/diff` (`DiffShown`): the work tree's changes in `GitDiff`, drawn with the edit tool's diff renderer under a `DIFF` line (`render/review.go`) |
+| `KindReview` | `review:<ID>` | `/review`: `session.ReviewStarted`, `ReviewActivity` (the reviewer's latest tool call), and `ReviewFinished` (its findings) in `Review` (`state/review.go`, `render/review.go`). The message that hands the review to the agent shows as a notice |
 
 The compact view draws one line per tool call, as Codex does; the detailed view (ctrl+t) adds the header, run dividers, turns, and token totals. `LevelDebug` notices show only in the detailed view.
 
@@ -90,7 +92,7 @@ The answer streams on the embedded engine (`state/stream.go`, the [streaming des
 | enter | Send. While the agent works, the message queues and goes out when the run ends |
 | ctrl+enter, alt+enter | Send now. The engine gives the message to the running agent before its next model request; a run that just stopped restarts with the queue and the message. On an empty composer it sends the queued messages now, in order, the same way, also a queue an interrupt kept (`EffSteerQueued`, `Session.SteerQueued`); with nothing queued it does nothing |
 | shift+enter, ctrl+j | New line. The composer grows to 8 rows, then scrolls to keep the cursor in view; a draft, typed or pasted, has no limit short of the textarea's 10,000 lines |
-| esc esc | Interrupt the run (the second esc within 2 seconds); queued messages stay. It also stops a running shell-mode command. While idle with nothing queued, on an empty composer, it goes back to an earlier message instead (below) |
+| esc esc | Interrupt the run (the second esc within 2 seconds); queued messages stay. It also stops a running shell-mode command and a running `/review`. While idle with nothing queued, on an empty composer, it goes back to an earlier message instead (below) |
 | `!` on an empty composer | Shell mode (see below) |
 | ↑ on an empty composer | Take the last queued message back to edit it |
 | alt+, / alt+. | Lower or raise the effort |
@@ -134,7 +136,7 @@ In the picker, ↑/↓ choose, enter resumes, tab switches between this director
 In the `/config` panel, ↑/↓ choose a setting, enter or space changes it, ←/→ cycle back and forth, and esc closes; while a value is being typed, enter saves it and esc cancels (see [/config](#config)).
 <!-- /memoria:section -->
 
-<!-- memoria:section id="commands" files="state/commands.go state/menu.go state/models.go state/context.go state/contextview.go state/mcp.go state/agents.go state/heatmap.go" -->
+<!-- memoria:section id="commands" files="state/commands.go state/menu.go state/models.go state/context.go state/contextview.go state/mcp.go state/agents.go state/heatmap.go state/review.go state/reviewmenu.go bubble/review.go" -->
 ## Slash commands
 
 `state.Commands()` is the registry; `/help` prints it in this order. A command without "While busy" waits until the agent is idle.
@@ -150,6 +152,8 @@ In the `/config` panel, ↑/↓ choose a setting, enter or space changes it, ←
 | `/stop` | Interrupt the run; queued messages stay | Yes |
 | `/rewind` | Select your latest message to go back to, as esc esc does while idle (see [Keys](#keys); embedded engine) | No |
 | `/compact [focus]` | Compact the context before the next model request; words after it tell the summary what to focus on, as Claude Code's `/compact [instructions]` (embedded engine) | Yes |
+| `/diff` | The workspace's git changes, staged, unstaged, and untracked, as a transcript item; never sent to the agent | Yes |
+| `/review [target]` | A read-only reviewer looks at `uncommitted` changes, the changes against `branch <name>`, `commit <sha>`, or follows custom instructions, and lists its findings (embedded engine) | No |
 | `/context` | Break down what fills the context window | Yes |
 | `/config` | The settings panel: change the basic settings and save them to the user file (see [/config](#config)) | Yes |
 | `/status` | Session, settings, totals, a 12-week activity heatmap, and the plan's usage (see [Plan usage](#plan-usage)) | Yes |
@@ -163,6 +167,8 @@ In the `/config` panel, ↑/↓ choose a setting, enter or space changes it, ←
 | `/quit` (`/exit`) | Close the session and exit | Yes |
 
 `/model` offers the provider's model list after a space: the first `/model` draft loads it through an effect (`EffLoadModels`, `state/models.go`), off the update loop, from the catalog in `internal/models`. When that list came from the provider, `/model` refuses a model it lacks with the nearest names; with no list, or only the bundled one, any model passes.
+
+`/diff` and `/review` follow Codex's commands (see the [review design](../../docs/design/review.md)). `EffDiff` collects the changes with `internal/gitdiff` off the update loop (`bubble/review.go`), and `DiffShown` brings them back. After `/review ` the menu offers Codex's presets (`state/reviewmenu.go`); `/review branch ` and `/review commit ` list the local branches and the newest 100 commits, read once per review (`EffLoadReviewTargets`, `ReviewTargetsLoaded`). A complete target returns `EffReview`, which calls `Session.Review`; the session's review events draw the item, and esc esc stops the review as it stops a run. One review runs at a time, and the findings reach the agent with the next message.
 
 `/model`, `/effort`, and `/fast` apply from the next model request, or from the next run when the run just stopped; the session's `SettingsChanged` event says which. `/fast` needs a provider with priority processing (`Session.Priority`, kept in `State.Priority`); on another it says so.
 <!-- /memoria:section -->
@@ -203,7 +209,7 @@ The split follows the rest of the TUI:
 - An approval waiting in the session shows the session's screen until it is answered.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="look" files="render/theme.go render/compact.go render/screen.go render/markdown.go render/markdown/markdown.go render/markdown/blocks.go render/markdown/inline.go render/markdown/table.go render/markdown/highlight.go render/markdown/code.go render/markdown/quote.go bubble/model.go render/diff.go render/words.go state/context.go render/backtrack.go render/selection.go render/copytext.go state/title.go" -->
+<!-- memoria:section id="look" files="render/theme.go render/compact.go render/screen.go render/markdown.go render/markdown/markdown.go render/markdown/blocks.go render/markdown/inline.go render/markdown/table.go render/markdown/highlight.go render/markdown/code.go render/markdown/quote.go bubble/model.go render/diff.go render/words.go state/context.go render/backtrack.go render/selection.go render/copytext.go state/title.go render/review.go" -->
 ## The look
 
 The compact view is shaped like Codex's, in amber. The choices came from the style swatchbook and are listed in the [ledger](../../docs/ledger.md) (item 19).
@@ -219,6 +225,7 @@ The compact view is shaped like Codex's, in amber. The choices came from the sty
 | Code blocks | On the band, highlighted with the theme's code colors, not wrapped, with the fence's language dim at the right end of the first line; a fence without a known language in the code color; a `diff` block's `+` and `-` lines on the edit tool's tints | `codeBlock`, `highlight` in `render/markdown` |
 | Tables | Zebra rows: columns two apart with no rules, the header in the accent, every other row on the band, cells wrapped to fit the width; too narrow for that, each row as records (`Header  value`), every other one on the band | `table.go` in `render/markdown` |
 | Subagents | While running, at the bottom above the working line with a blank line before each: `AGENT Ada  42s`, and under it `└ ⠹ Read …`, its live tool call. A finished one is one line where it was spawned: `done in 1m 12s`, or `failed:` and the provider's reason; closing it afterwards keeps that | `activeAgents`, `agentLines` |
+| `/diff` and `/review` | `DIFF   3 files (+12 -4)` in the accent, then each file as `└ path (+a -b)` with its lines as the edit tool draws them, or its note (`binary, not shown`). A review while it runs: `REVIEW changes against 'main'  42s` and `└ ⠹` its latest command; when done, the verdict line (`2 findings · patch is incorrect · 1m 12s`), the explanation, and each finding with its priority in the tool column (P0 and P1 in the error color), its bold title, its place relative to the workspace, and its body as Markdown | `gitDiffLines`, `reviewLines`, `findingLines` in `render/review.go` |
 | Working | A breathing `λ` (seven shades, one breath every 1.6 s) and `Working (12s • esc to interrupt)`; `Thinking` while a model request is out, `Writing` while its answer streams, `Running 2 commands` while tools run | `workingLine`, `breathing`, `statusLine` |
 | Reconnecting | While a model request waits to be sent again (`engine.Reconnecting`, embedded engine), the working line reads `Reconnecting, attempt 3 of 10 (retrying in 8s • esc to interrupt)`, counting down, then `(connecting • …)` while the attempt is in flight; the detailed view shows it in the footer. `State.Live.Reconnect` holds it until `engine.ReconnectEnded`, a response, or the run's end, and each retry leaves a `LevelDebug` notice with its reason | `statusLine`, `reconnectText`; `state/context.go` |
 | A finished run | `12:14 PM · worked 1m 12s`: Codex's time and Claude Code's duration; how it ended first when not ok | `finishLine` (a `KindFinish` item) |
@@ -285,7 +292,7 @@ To add an item kind, follow `KindContext`:
 To add a key, map it to an intent in `bubble/keys.go` and handle the intent in `state.Reduce`. Keep the existing keys' meanings.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="tests" files="state/images_test.go bubble/images_test.go state/reduce_test.go state/menu_test.go state/contextview_test.go state/mode_test.go render/screen_test.go render/contextview_test.go render/mode_test.go bubble/bubble_test.go bubble/approval_test.go bubble/mode_test.go state/config_test.go bubble/config_test.go render/diff_test.go state/shell_test.go render/shell_test.go bubble/shell_test.go state/usage_test.go render/usage_test.go bubble/usage_test.go state/agents_test.go bubble/steer_test.go state/reconnect_test.go render/reconnect_test.go state/stream_test.go render/stream_test.go bubble/stream_test.go render/markdown/markdown_test.go render/markdown/incremental_test.go render/markdown_test.go render/markdown_bench_test.go state/backtrack_test.go render/backtrack_test.go render/backtrack_internal_test.go bubble/rewind_test.go state/selection_test.go render/selection_test.go bubble/selection_test.go bubble/composer_test.go state/title_test.go bubble/title_test.go state/editor_test.go bubble/editor_test.go bubble/editor_internal_test.go render/websearch_test.go" -->
+<!-- memoria:section id="tests" files="state/images_test.go bubble/images_test.go state/reduce_test.go state/menu_test.go state/contextview_test.go state/mode_test.go render/screen_test.go render/contextview_test.go render/mode_test.go bubble/bubble_test.go bubble/approval_test.go bubble/mode_test.go state/config_test.go bubble/config_test.go render/diff_test.go state/shell_test.go render/shell_test.go bubble/shell_test.go state/usage_test.go render/usage_test.go bubble/usage_test.go state/agents_test.go bubble/steer_test.go state/reconnect_test.go render/reconnect_test.go state/stream_test.go render/stream_test.go bubble/stream_test.go render/markdown/markdown_test.go render/markdown/incremental_test.go render/markdown_test.go render/markdown_bench_test.go state/backtrack_test.go render/backtrack_test.go render/backtrack_internal_test.go bubble/rewind_test.go state/selection_test.go render/selection_test.go bubble/selection_test.go bubble/composer_test.go state/title_test.go bubble/title_test.go state/editor_test.go bubble/editor_test.go bubble/editor_internal_test.go render/websearch_test.go state/review_test.go render/review_test.go bubble/review_test.go" -->
 ## Tests
 
 | Test | Pins |
@@ -296,6 +303,7 @@ To add a key, map it to an intent in `bubble/keys.go` and handle the intent in `
 | `bubble/bubble_test.go` | The shell end to end, with real sessions on uagent's fake runner (`harnesstest.RunnerEngine`): sending, commands, the picker, queue and interrupt, scrolling, and the menu |
 | `state/reduce_test.go`, `state/agents_test.go`, `bubble/steer_test.go` | ctrl+enter on an empty composer: the queue goes now in order under its IDs, also a queue an interrupt kept, nothing without a queue or in shell mode, the viewed agent's own queue, and a real embedded session whose working agent reads both queued messages before its next model request |
 | `bubble/approval_test.go` | Approving and declining an escalation, with real sessions on the embedded engine and `testing/fakellm` |
+| `state/review_test.go`, `render/review_test.go`, `bubble/review_test.go` | `/diff` and `/review`: the notices for a clean tree and outside a repository, the review menu's presets, branches, and commits, each target's effect, the review item from start to findings with esc esc stopping it, the hand-over shown as a note, goldens (`gitdiff`, `review-running`, `review`, `review-interrupted`), and `/diff` and the branch list on a real git work tree |
 | `state/mode_test.go`, `render/mode_test.go`, `bubble/mode_test.go` | shift+tab's cycle, the mode notice, the footer and header in each mode, and shift+tab through a real session |
 | `bubble/composer_test.go` | A long draft: after a 50-line paste with wrapped lines, shift+enter and ctrl+j still add lines, the composer stays 8 rows with the cursor's line in view and the λ scrolled away, ↑ and ↓ move the cursor inside the draft and scroll the transcript only at its first and last line, and a real embedded session whose model request carries all 52 lines |
 | `state/images_test.go`, `bubble/images_test.go` | Images: placeholders and their numbers, removal by deleting the placeholder or with one backspace, what a message sends, the transcript with placeholders live and resumed, pasted and dropped paths, `@` image files, the process engine's notice, and a real embedded session whose model request carries the image, with a fake clipboard |

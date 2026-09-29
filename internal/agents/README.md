@@ -15,11 +15,12 @@ This README describes how the package works for someone changing it. The root RE
 6. [Events and hooks](#events-and-hooks)
 7. [Forking](#forking)
 8. [Watching an agent](#watching-an-agent)
-9. [Persistence and resume](#persistence-and-resume)
-10. [Limits](#limits)
-11. [Roles](#roles)
-12. [Markdown agents](#markdown-agents)
-13. [Extending](#extending)
+9. [Code reviews](#code-reviews)
+10. [Persistence and resume](#persistence-and-resume)
+11. [Limits](#limits)
+12. [Roles](#roles)
+13. [Markdown agents](#markdown-agents)
+14. [Extending](#extending)
 <!-- /memoria:section -->
 
 <!-- memoria:section id="seam" files="manager.go tools.go" -->
@@ -148,6 +149,18 @@ Hooks come from `Config.Hooks`, the session's runner:
 - `Stop`: the end of the watch.
 
 The TUI's `/agents <name>` view is built on it (see the TUI README).
+<!-- /memoria:section -->
+
+<!-- memoria:section id="review" files="review.go" -->
+## Code reviews
+
+`Manager` also implements `session.Reviewer`, which runs the TUI's `/review` as Codex runs its review thread (`review.go`; the [review design](../../docs/design/review.md) has the research). `Review(ctx, req)` opens a fresh session on the parent's engine with the process's options, as a child does, but:
+
+- its settings are the parent's now (`ReviewRequest.Settings`) in read only mode, with Codex's review rubric in place of the host prompt and `Config.ReviewModel` (`review_model`), else the parent's model;
+- its scope offers `Bash` and `ViewImage` only and sets `engine.Scope.NeverAsk`, so no `apply_patch`, no MCP tools, and every action that would ask for approval is declined before the auto-reviewer, as Codex's `approval_policy = never`;
+- it has no stream, no shell, and no one to ask; its hooks are its own runner's, and its parent is recorded in `parentIDs`, so it is never offered the agent tools and the root-only hooks skip it.
+
+It sends the prompt, passes the reviewer's tool events to `ReviewRequest.Activity`, and returns the run's answer when the session goes idle; when ctx ends first, it interrupts the run and waits for it. It closes the session either way. The reviewer is not one of the parent's children: no `AgentUpdated`, no `<subagent_notification>`, no place in the limit, and `/agents` does not list it. Its sidecar names the parent, so `uah sessions` lists it under the parent. `TestReview_ReadOnlySubagent` checks the request (the rubric, the model, the two tools), a write that fails in the read-only sandbox, a declined escalation, and the findings reaching the parent's next request.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="resume" files="record.go ops.go" -->

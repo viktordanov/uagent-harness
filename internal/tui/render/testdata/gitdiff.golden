@@ -1,0 +1,24 @@
+╭────────────────────────────────────────────────╮
+│ λ uah                                          │
+│                                                │
+│ model:     gpt-6-sol high   /model to change   │
+│ directory: /workspace/proj                     │
+╰────────────────────────────────────────────────╯
+
+
+  DIFF   3 files (+3 -1)
+  └ cmd/main.go (+1 -1)
+    7  func main() {
+    8 -    fmt.Println("hi")
+    8 +    fmt.Println("hello")
+    9  }
+  └ NOTES.md untracked (+2 -0)
+    1 +# Notes
+    2 +Remember the tests.
+  └ logo.png binary, not shown
+  └ 3 more untracked files, not shown
+
+
+λ
+
+ gpt-6-sol high · workspace mode · /workspace/proj                      ctrl+t details · / commands

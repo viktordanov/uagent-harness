@@ -24,6 +24,7 @@ brew install viktordanov/tap/uah
 - [Compaction](#compaction-and-clear), `/context`, and `/clear`
 - [Pasted images](#images), [`!` shell commands](#shell-mode), `apply_patch` diffs, and [hooks](#hook-setup)
 - [Web search](#web-search) through the provider's hosted tool, on by default as in Codex
+- [`/diff` and `/review`](#review-your-changes): your git changes, and a read-only reviewer's findings
 - Your ChatGPT plan's [usage](#usage-limits) in the footer
 - [Configuration](#configuration) in TOML or `/config`, including the prompts
 
@@ -35,7 +36,7 @@ The [ledger](docs/ledger.md) lists what's next.
 
 ---
 
-<!-- memoria:section id="usage" files="cmd/uah/main.go cmd/uah/models.go cmd/uah/run.go cmd/uah/resume.go cmd/uah/sessions.go cmd/uah/sessionsrm.go internal/app/sessionid.go cmd/uah/tui.go cmd/uah/tuiconfig.go cmd/uah/print.go cmd/uah/completion.go cmd/uah/doctor.go internal/app/doctor.go internal/app/doctorchecks.go cmd/uah/flags.go cmd/uah/prompts.go internal/images/images.go internal/images/store.go internal/images/paths.go internal/images/clipboard/clipboard.go internal/images/clipboard/macos.go internal/images/clipboard/linux.go internal/images/clipboard/write.go internal/app/usershell.go internal/usershell/usershell.go internal/usershell/record.go internal/usershell/capture.go cmd/uah/usage.go internal/app/planusage.go cmd/uah/exit.go cmd/uah/exit_internal_test.go" -->
+<!-- memoria:section id="usage" files="cmd/uah/main.go cmd/uah/models.go cmd/uah/run.go cmd/uah/resume.go cmd/uah/sessions.go cmd/uah/sessionsrm.go internal/app/sessionid.go cmd/uah/tui.go cmd/uah/tuiconfig.go cmd/uah/print.go cmd/uah/completion.go cmd/uah/doctor.go internal/app/doctor.go internal/app/doctorchecks.go cmd/uah/flags.go cmd/uah/prompts.go internal/images/images.go internal/images/store.go internal/images/paths.go internal/images/clipboard/clipboard.go internal/images/clipboard/macos.go internal/images/clipboard/linux.go internal/images/clipboard/write.go internal/app/usershell.go internal/usershell/usershell.go internal/usershell/record.go internal/usershell/capture.go cmd/uah/usage.go internal/app/planusage.go cmd/uah/exit.go cmd/uah/exit_internal_test.go internal/codereview/codereview.go internal/codereview/output.go internal/gitdiff/diff.go internal/gitdiff/refs.go" -->
 ## Get started
 
 1. Install it:
@@ -71,7 +72,7 @@ Keys worth knowing:
 | enter | Send. While the agent works, the message queues and goes out when it finishes |
 | ctrl+enter | Send now: the working agent reads it before its next model request. On an empty prompt, it sends the queued messages now, in order |
 | esc esc | Interrupt; queued messages stay. While the agent is idle, on an empty prompt: go back to an earlier message and edit it |
-| `/` | Commands, such as `/model`, `/effort`, `/compact`, `/context`, `/mcp`, `/agents`, `/status`, `/resume`, and `/new` |
+| `/` | Commands, such as `/model`, `/effort`, `/compact`, `/context`, `/diff`, `/review`, `/mcp`, `/agents`, `/status`, `/resume`, and `/new` |
 | `@` | Mention a workspace file (fuzzy search) |
 | ctrl+t | The detailed view: turns, tokens, and each tool's result |
 | ctrl+g | Edit the prompt in `$VISUAL` or `$EDITOR` (vim by default); the saved text comes back as the prompt, with its images. The draft file lives in `~/.uah/editor`, where sandboxed commands cannot reach it |
@@ -230,6 +231,18 @@ On openai and openai-codex, the model can search the web with the provider's hos
 
 The [web search design](docs/design/web-search.md) compares it with Codex.
 
+### Review your changes
+
+`/diff` shows the workspace's git changes in the transcript: staged, unstaged, and untracked files, with binary and large files named but not shown. The agent does not see it.
+
+`/review` has a reviewer look at your changes and list findings, as Codex's `/review` does:
+
+1. Type `/review ` and pick a target in the menu: `uncommitted`, `branch` (then a base branch), or `commit` (then one of the last 100 commits). Or type instructions: `/review check the error handling`.
+2. The reviewer runs beside the session, read-only: it can run commands in the read-only sandbox and view images, nothing else, and it never asks for approval. Esc esc stops it.
+3. Its findings appear in the transcript with their priority, file and lines, and explanation. Your next message takes them to the agent, as in Codex, so "fix the P1" works.
+
+`review_model` in the [configuration](#configuration) picks the reviewer's model (default: the session's). The [review design](docs/design/review.md) has Codex's behavior and the decisions.
+
 ### MCP setup
 
 ```sh
@@ -343,6 +356,7 @@ Earlier versions used `~/.config/uagent`, `~/.local/state/unreal-agent`, and a p
 | Hooks | `[[hooks.<Event>]]` `matcher`, `command`, `timeout` |
 | MCP servers | `[mcp_servers.<name>]` `command`, `args`, `env`, `env_vars`, `cwd`, `url`, `bearer_token_env_var`, `http_headers`, `env_http_headers`, `enabled`, `required`, `startup_timeout_sec`, `tool_timeout_sec`, `enabled_tools`, `disabled_tools`, `supports_parallel_tool_calls`, `default_tools_approval_mode`, `tools.<tool>.approval_mode`, `auth`, `scopes`, `oauth_resource`, `[oauth]`; `mcp_oauth_credentials_store`, `mcp_oauth_callback_port`, `mcp_oauth_callback_url` |
 | Subagents | `[agents]` `enabled`, `max_concurrent_threads_per_session`, `max_depth`, `default_subagent_model`, `default_subagent_reasoning_effort` |
+| `/review` | `review_model` |
 | TUI | `[tui]` `details`, `mouse`, `title` |
 | Projects | `[projects."<path>"]` `trusted` |
 
@@ -550,5 +564,5 @@ The configuration reference, design records for the harness, the TUI, state stor
 
 uah is licensed under the [Apache License, Version 2.0](LICENSE).
 
-uah owes its shape to [OpenAI Codex](https://github.com/openai/codex). Its configuration format, sandbox profiles, approval rules, auto-review, compaction, `apply_patch`, MCP handling, and subagent tools follow Codex closely, and some of its code and prompts are adapted from Codex's (Apache License 2.0, Copyright 2025 OpenAI). It runs on [unreal-agent](https://github.com/unreallabsai/unreal-agent) through [uagent](https://github.com/viktordanov/uagent), with a few files adapted from unreal-agent's (MIT License, Copyright 2026 Unreal Labs), and borrows ideas from [Claude Code](https://code.claude.com) (hooks, `/context`, Markdown agents, permission modes). [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) lists every adapted file and its license.
+uah owes its shape to [OpenAI Codex](https://github.com/openai/codex). Its configuration format, sandbox profiles, approval rules, auto-review, compaction, `apply_patch`, MCP handling, subagent tools, and `/review` follow Codex closely, and some of its code and prompts are adapted from Codex's (Apache License 2.0, Copyright 2025 OpenAI). It runs on [unreal-agent](https://github.com/unreallabsai/unreal-agent) through [uagent](https://github.com/viktordanov/uagent), with a few files adapted from unreal-agent's (MIT License, Copyright 2026 Unreal Labs), and borrows ideas from [Claude Code](https://code.claude.com) (hooks, `/context`, Markdown agents, permission modes). [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) lists every adapted file and its license.
 <!-- /memoria:section -->

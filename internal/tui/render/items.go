@@ -121,6 +121,10 @@ func (st *Styles) itemLines(it state.Item, w int, now time.Time, v view) []strin
 		return st.mcpLines(it, w, v.details)
 	case state.KindShell:
 		return st.shellLines(it, w, now, v.details)
+	case state.KindDiff:
+		return st.gitDiffLines(it.GitDiff, w)
+	case state.KindReview:
+		return st.reviewLines(it, w, now)
 	case state.KindAssistant:
 		if it.Final {
 			return append([]string{"", st.accent.Render("● answer")}, st.markdownLines(it.Text, w, "  ", "  ")...)

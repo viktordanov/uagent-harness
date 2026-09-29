@@ -129,6 +129,8 @@ type State struct {
 	// Shell is shell mode: enter runs the composer's line as a command
 	// (shell.go).
 	Shell bool
+	// Reviewing is the running /review's ID ("": none; review.go).
+	Reviewing string
 	// Attached are the images pasted into the composer, in order; each
 	// placeholder in the draft names one (see images.go).
 	Attached []images.Image

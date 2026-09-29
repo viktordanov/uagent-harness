@@ -34,6 +34,9 @@ func (m Model) run(e state.Effect) tea.Cmd { //nolint:gocyclo // a dispatch swit
 	if cmd, ok := m.runImage(e); ok {
 		return cmd
 	}
+	if cmd, ok := m.runReview(e); ok {
+		return cmd
+	}
 	switch e := e.(type) {
 	case state.EffSubmit:
 		return withSession(func(s *session.Session) error { _, err := s.Submit(e.Text); return err })

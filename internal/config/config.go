@@ -71,6 +71,9 @@ type Config struct {
 	CompactModel                string `toml:"compact_model"`
 	CompactEffort               string `toml:"compact_effort"`
 	CompactUserMessageMaxTokens int    `toml:"compact_user_message_max_tokens"`
+	// ReviewModel is /review's model, as Codex's key (the session's by
+	// default).
+	ReviewModel string `toml:"review_model"`
 
 	// ModelInstructionsFile is a file whose text replaces the base
 	// instructions, uah's default prompt, as Codex's key does. A

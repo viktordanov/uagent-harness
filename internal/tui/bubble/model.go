@@ -298,7 +298,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case state.Failed, state.SessionsLoaded, state.ActivityLoaded, state.FilesLoaded, state.MCPListed, state.ContextShown,
 		state.ModelsLoaded, state.ConfigLoaded, state.ConfigSaved, state.ImageAttached, state.ImageFailed, state.DraftEdited:
 		return m.dispatch(msg)
-	case state.UsageLoaded, state.Copied:
+	case state.UsageLoaded, state.Copied, state.DiffShown, state.ReviewTargetsLoaded:
 		return m.dispatch(msg)
 	}
 	var cmd tea.Cmd

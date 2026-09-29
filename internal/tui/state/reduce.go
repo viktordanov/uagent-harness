@@ -27,6 +27,9 @@ func Reduce(s State, ev any) (State, []Effect) {
 	if effects, ok := s.onSelectionOrShell(ev); ok {
 		return s, effects
 	}
+	if s.onReview(ev) {
+		return s, nil
+	}
 	if s.View != nil {
 		if effects, ok := s.onAgentView(ev); ok {
 			return s, effects
@@ -92,7 +95,7 @@ func (s *State) onEvent(ev core.Event) {
 			s.View = nil
 		}
 		s.SessionID, s.Resumed, s.Engine, s.Settings = e.ID, e.Resumed, e.Engine, e.Settings
-		s.Queue, s.Live, s.Busy, s.Quitting, s.Approvals = nil, nil, false, false, nil
+		s.Queue, s.Live, s.Busy, s.Quitting, s.Approvals, s.Reviewing = nil, nil, false, false, nil, ""
 	case session.InstructionsLoaded:
 		s.Files = e.Files
 	case session.InputQueued:
@@ -223,7 +226,7 @@ func (s *State) onIntent(ev any) (State, []Effect) { //nolint:gocyclo // a dispa
 
 		return *s, []Effect{EffSteer{Text: s.withImages(text)}}
 	case Esc:
-		if !s.Busy && !s.ShellRunning() {
+		if !s.Busy && !s.ShellRunning() && !s.ReviewRunning() {
 			return *s, nil
 		}
 		if !s.escArmed.IsZero() && s.Now.Sub(s.escArmed) < confirmWindow {

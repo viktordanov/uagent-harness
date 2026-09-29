@@ -8,6 +8,7 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
+	"github.com/viktordanov/uagent-harness/internal/gitdiff"
 	"github.com/viktordanov/uagent-harness/internal/mcp"
 	"github.com/viktordanov/uagent-harness/internal/patch"
 )
@@ -38,6 +39,11 @@ const (
 	// is the command, Detail its output, Tool its state, Exit its exit
 	// code, Label why it was refused, and Input whether the agent has it.
 	KindShell
+	// KindDiff is /diff's changes in GitDiff (review.go).
+	KindDiff
+	// KindReview is a /review in Review: running, then its findings
+	// (review.go).
+	KindReview
 )
 
 // InputState tracks a user message from the queue to the runner.
@@ -114,6 +120,11 @@ type Item struct {
 	// Agent is the latest update of a KindAgent: its spawn call's ID and
 	// message, model, effort, and why it failed.
 	Agent *engine.AgentUpdated
+
+	// KindDiff
+	GitDiff *gitdiff.Diff
+	// KindReview
+	Review *Review
 }
 
 // Live reports whether an item changes with time (spinners, elapsed times)
@@ -121,5 +132,6 @@ type Item struct {
 func (it Item) Live() bool {
 	return (it.Kind == KindTurn && it.Pending) || (it.Kind == KindTool && (it.Tool == ToolRunning || it.Tool == ToolCalled)) ||
 		(it.Kind == KindShell && it.Tool == ToolRunning) ||
-		(it.Kind == KindRun && it.Status == core.StatusRunning) || (it.Kind == KindAgent && it.Detail == engine.AgentRunning)
+		(it.Kind == KindRun && it.Status == core.StatusRunning) || (it.Kind == KindAgent && it.Detail == engine.AgentRunning) ||
+		(it.Kind == KindReview && it.Review != nil && it.Review.Running)
 }

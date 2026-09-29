@@ -144,6 +144,7 @@ func (s *Session) handle(cmd any) (any, error) {
 	case cmdInterrupt:
 		s.restartAfterStop = false
 		s.stopShells()
+		s.stopReview()
 		s.interruptLive()
 
 		return struct{}{}, nil
@@ -167,6 +168,8 @@ func (s *Session) handle(cmd any) (any, error) {
 		return struct{}{}, s.onResolve(c)
 	case cmdShell:
 		return s.onShell(c), nil
+	case cmdReview:
+		return s.onReview(c)
 	}
 
 	return nil, fmt.Errorf("unknown session command %T", cmd)

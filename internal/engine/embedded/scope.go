@@ -23,7 +23,7 @@ var builtinTools = []string{tool.BashName, tool.ViewImageName, tool.SkillUseName
 // SetScope narrows a session's tools and pre-approves some of its actions
 // from its next run (engine.Scoper).
 func (e *Engine) SetScope(sessionID string, s engine.Scope) {
-	if s.Tools == nil && len(s.Approve) == 0 {
+	if s.Tools == nil && len(s.Approve) == 0 && !s.NeverAsk {
 		e.scopes.Delete(sessionID)
 
 		return
@@ -129,6 +129,12 @@ func (s *scope) ask(next approval.Ask, mode func() approval.Mode) approval.Ask {
 
 		return next(ctx, p)
 	}
+}
+
+// neverAsk declines what would ask: the scope's session has no one to
+// approve anything (engine.Scope.NeverAsk).
+func neverAsk(context.Context, approval.Prompt) approval.Answer {
+	return approval.DeclineBecause("this session never asks for approval; stay within the sandbox.")
 }
 
 // matchTool reports whether a tool name is in the list: by its name, or,

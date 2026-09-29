@@ -26,6 +26,9 @@ type Menu struct {
 	// Models is the provider's model list for /model, loaded on first use.
 	Models        *models.Catalog
 	modelsLoading bool
+	// Review is the branches and commits for /review (reviewmenu.go).
+	Review        *ReviewTargetsLoaded
+	reviewLoading bool
 }
 
 // Suggestion is one menu entry. Accepting it replaces the draft with Draft.
@@ -98,6 +101,8 @@ func (s State) argSuggestions(name, arg string) []Suggestion {
 	switch name {
 	case "model":
 		return s.modelSuggestions(arg)
+	case cmdReviewName:
+		return s.reviewSuggestions(arg)
 	case "effort":
 		values = session.Efforts
 	case cmdAgentsName:
@@ -158,6 +163,9 @@ func (s *State) onMenu(ev any) (effects []Effect, ok bool) {
 		if eff := s.loadModels(e.Draft); eff != nil {
 			return []Effect{eff}, true
 		}
+		if eff := s.loadReviewTargets(e.Draft); eff != nil {
+			return []Effect{eff}, true
+		}
 		if _, mention := mentionAt(e.Draft); mention && s.Menu.Files == nil && !s.Menu.filesLoading {
 			s.Menu.filesLoading = true
 
@@ -212,11 +220,14 @@ func (s *State) onMenu(ev any) (effects []Effect, ok bool) {
 	return nil, true
 }
 
-// setDraft puts an accepted suggestion in the composer and, for /model,
-// starts loading the model list.
+// setDraft puts an accepted suggestion in the composer and, for /model or
+// /review, starts loading the model list or the review targets.
 func (s *State) setDraft(draft string) []Effect {
 	effects := []Effect{EffSetDraft{Text: draft}}
 	if eff := s.loadModels(draft); eff != nil {
+		effects = append(effects, eff)
+	}
+	if eff := s.loadReviewTargets(draft); eff != nil {
 		effects = append(effects, eff)
 	}
 

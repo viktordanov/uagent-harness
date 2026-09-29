@@ -24,7 +24,11 @@ func (s *State) onRunEvent(ev core.Event) { //nolint:gocyclo // a dispatch switc
 		if s.shellMessage(e) {
 			return
 		}
-		if note, ok := s.agentNote(e.Text); ok {
+		note, ok := s.agentNote(e.Text)
+		if !ok {
+			note, ok = reviewNote(e.Text)
+		}
+		if ok {
 			s.put(Item{Kind: KindNotice, Key: "msg:" + e.ID, Text: note, Level: session.LevelInfo})
 
 			return

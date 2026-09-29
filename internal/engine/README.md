@@ -19,7 +19,7 @@ The embedded engine runs unreal-agent-runner's packages inside uah, so messages,
 8. [Tests](#tests)
 <!-- /memoria:section -->
 
-<!-- memoria:section id="interface" files="engine.go events.go subagents.go patch.go" -->
+<!-- memoria:section id="interface" files="engine.go events.go subagents.go patch.go embedded/scope.go" -->
 ## The interface
 
 `engine.Engine` has three methods: `Name`, `Priority`, and `Start(ctx, request, options, sink) (Run, error)`. The sink receives `RunStarted` first and `RunFinished` last, from one goroutine at a time. A `Run` takes messages and settings while it is live (`Send`, `SetEffort`, `SetModel`, `SetServiceTier`, `SetMode`, `Compact`, `Clear`), stops (`Interrupt`, `Kill`), and ends (`Wait`). A live change fails when the run can no longer take it, such as when it has just stopped, and the session then applies it from the next run. `Priority` says whether the session's provider accepts priority processing, which `/fast` turns on ([below](#what-varies-by-provider-and-model)).
@@ -50,6 +50,7 @@ Optional interfaces are the seams the session probes with a type assertion. The 
 | `Subagents` | The agent tools: `Attach` returns the tools to offer a run, `ToolNames` every name it answers, `Call` runs one, `Interrupt` stops a parent's children. The engine knows no tool name, schema, or result; [internal/agents](../agents/README.md) implements it | `internal/agents` |
 | `Rewinder` | `Rewind` cuts a session's context before an earlier message, as Codex's backtrack (`Session.Rewind`), and returns `Rewound` and the texts that went to the agent with the message, which the session holds again | embedded |
 | `Forker` | `Fork` copies a parent's history into a new child session for `spawn_agent`'s `fork_context`; `SetCacheKey` gives a session another prompt cache key (every subagent uses its root session's) | embedded |
+| `Scoper` | `SetScope` narrows one session from its next run (`embedded/scope.go`): the tools it is offered, actions approved in advance (a role's `tools` and `approve`), and `NeverAsk`, which declines every action that would ask, before the auto-reviewer, for `/review`'s reviewer | embedded |
 
 The engine's own events join the run's stream: `CompactionStarted`, `Compacted`, `AutoReviewed`, `AgentUpdated`, `AgentActivity` (a child's tool events, for the parent's view), `PatchApplied` (the diff of an applied `apply_patch` call, `patch.go`), `Rewound` (the session went back to before a message), `Reconnecting` and `ReconnectEnded` (a model request's retries, below), `TextDelta`, `ReasoningDelta`, and `StreamReset` (the answer as it arrives, below), and `WebSearch` (a hosted web search, below). The embedded engine's `Subagents()` returns its `Subagents`, so a session can follow one child's whole stream (`session.WatchAgent`).
 <!-- /memoria:section -->

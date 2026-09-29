@@ -36,7 +36,10 @@ type Config struct {
 	// Model and Effort are the configured defaults for children.
 	Model  string
 	Effort string
-	Roles  []Role
+	// ReviewModel is /review's model, Codex's review_model ("": the
+	// session's).
+	ReviewModel string
+	Roles       []Role
 	// Validate refuses a model spawn_agent may not use, as Codex checks
 	// the model against its catalog (internal/models.Validate); nil
 	// accepts any.

@@ -37,7 +37,7 @@ The loop tracks where the session is in a run:
 `Open` shows `Options.Notices` after `SessionOpened`, such as configuration warnings, and reads `Engine.Priority` once for `Session.Priority`, which the TUI's `/fast` reads. The session never checks the engine's name.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="messages" files="dispatch.go runs.go inject.go history.go shell.go" -->
+<!-- memoria:section id="messages" files="dispatch.go runs.go inject.go history.go shell.go review.go" -->
 ## Messages: queue, steer, interrupt
 
 Every message gets an ID and is reported as `InputQueued`, then `InputSent` when it goes to the runner, and `InputDelivered` when the runner echoes it as a `UserMessage`. Messages that never reached the runner are reported as `InputFailed`.
@@ -60,6 +60,8 @@ A message may carry images pasted in the TUI as tag lines at its end (`internal/
 `Inject` gives the agent a message without a turn of its own, as Codex's `inject_no_new_turn`: it is held and goes out before the next run's messages, and it never starts a run. It is not sent into a live run, because the runner cancels its model request when a message arrives, which would throw away a paid request. It skips the queue and the hooks. A subagent's `<subagent_notification>` reaches its parent this way (`engine.Options.Inject`).
 
 `RunShell(ctx, command)` runs a command the user typed (the TUI's `!` shell mode) with `Options.Shell`, a `usershell.Runner` that `internal/app` builds, outside the engine. It runs at once, in any state, also while a run is live, as Codex's user shell commands do. `ShellStarted`, `ShellOutput`, and `ShellFinished` report it. The session's interrupt stops it, and so does `Close`. Its record, Codex's `<user_shell_command>` message with the command, exit code, duration, and output cut to 40,000 characters, is held as `Inject` holds a message, with the command's ID: it goes before the next run's messages and never starts a run. A failed, stopped, or refused command is recorded too. By default the command runs outside the sandbox and the command rules, as in Codex; `user_shell_sandbox = true` runs it in the sandbox of the current permission mode and lets a `forbidden` rule refuse it. The [shell mode design](../../docs/design/shell-mode.md) has the research and the decisions.
+
+`Review(ctx, target)` runs the TUI's `/review` as Codex runs its review thread. It builds Codex's prompt for the target (`internal/codereview`) and hands it to the engine's `Reviewer`, `agents.Manager`, which runs a fresh read-only session beside this one and returns the reviewer's last message (see [internal/agents](../agents/README.md)). One review runs at a time, in any state; the session's interrupt stops it, and so does `Close`. `ReviewStarted`, `ReviewActivity` (the reviewer's tool events), and `ReviewFinished` (the parsed findings, or interrupted, or the error) report it. Codex's hand-over message, a `<user_action>` with the findings or the interrupted form, is held as `Inject` holds a message: it goes before the next run's messages and never starts a run. An engine without subagents returns `ErrNoReview`. The [review design](../../docs/design/review.md) has the research and the decisions.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="settings" files="settings.go dispatch.go compact.go saved.go rewind.go" -->
@@ -127,7 +129,7 @@ The runner's session files and uagent's run records are the source of truth; the
 Listing and search go through the rebuildable SQLite index in [internal/store](../store/README.md), which falls back to `Sessions` when the index cannot be used.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="events" files="events.go approvals.go shell.go session.go runs.go" -->
+<!-- memoria:section id="events" files="events.go approvals.go shell.go session.go runs.go review.go" -->
 ## Events
 
 `Events()` carries the runner's events (from uagent's `core`), the engine's events, and these session events:
@@ -142,6 +144,7 @@ Listing and search go through the rebuildable SQLite index in [internal/store](.
 | `HookRan` | A hook's outcome, command, and duration |
 | `Notice` | Text for the user, with a level |
 | `ShellStarted`, `ShellOutput`, `ShellFinished` | A command the user typed (`RunShell`): its start, its output as it arrives, and its result with the record the agent gets |
+| `ReviewStarted`, `ReviewActivity`, `ReviewFinished` | A `/review` (`Review`): what it looks at, the reviewer's tool events, and its findings or how it ended |
 | `Idle` | The session has nothing to do |
 
 `uah exec --json` writes them as JSONL, and the TUI reduces them into its state.

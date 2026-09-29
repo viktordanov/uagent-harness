@@ -124,6 +124,8 @@ type Session struct {
 	// shell runs the user's commands; shells stops each running one by ID.
 	shell  *usershell.Runner
 	shells map[string]context.CancelFunc
+	// reviewStop stops the running /review (Review), nil when none runs.
+	reviewStop context.CancelFunc
 	// firstPromptPending is a new session whose sidecar has no first
 	// message yet; the first run records it.
 	firstPromptPending bool

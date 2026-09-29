@@ -18,6 +18,7 @@ Adapted in uah:
 | `internal/sandbox/denied.go` | `codex-rs/sandboxing/src/denial.rs` |
 | `internal/review/review.go` | The auto-review (guardian) prompt, `codex-rs/prompts/templates/guardian` |
 | `internal/compaction/compaction.go` | The compaction prompt and summary prefix, `codex-rs/prompts/templates/compact` |
+| `internal/codereview/prompts/rubric.md`, `exit_success.xml`, `exit_interrupted.xml`, `internal/codereview/codereview.go`, `output.go` | `/review`: the review rubric and the hand-over messages, verbatim (`codex-rs/prompts/templates/review`), the target prompts and hints (`codex-rs/prompts/src/review_request.rs`), and the findings format (`codex-rs/protocol/src/review_format.rs`) |
 | `internal/agents/prompt.go` | The multi-agent tool descriptions and schemas, `codex-rs/core/src/tools/handlers/multi_agents_spec.rs` |
 | `internal/instructions/codex_prompt.md`, `codex.go` | Codex's base instructions for gpt-6-sol, verbatim (`model_messages.instructions_template` in `codex-rs/models-manager/models.json`) |
 | `internal/instructions/default_prompt.md`, `default_prompt.diff`, `codex.go` | Codex's base instructions for gpt-6-sol, **modified** by uah: the identity, the tool names (`Bash`, `SkillUse`), questions asked in the final message, Codex's terminal wording for visuals, and the Apps and Plugins sections removed. `default_prompt.diff` is the complete change |

@@ -1,0 +1,24 @@
+
+╭────────────────────────────────────────────────╮
+│ λ uah                                          │
+│                                                │
+│ model:     gpt-6-sol high   /model to change   │
+│ directory: /workspace/proj                     │
+╰────────────────────────────────────────────────╯
+
+
+  REVIEW changes against 'main'  2 findings · patch is incorrect · 1m 12s
+    The loader hides a failure.
+
+    P1     Return the parse error
+           internal/config/load.go:41-44
+           parse drops the error, so a bad file loads as empty.
+
+    P3     Name the timeout
+           /elsewhere/x.go:7
+           A named constant would say what 30 is.
+
+
+λ
+
+ gpt-6-sol high · workspace mode · /workspace/proj                      ctrl+t details · / commands

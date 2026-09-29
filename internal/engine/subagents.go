@@ -78,6 +78,10 @@ type Scope struct {
 	// patterns. They answer what would otherwise ask, so a forbid rule, the
 	// approval policy never, and a read-only sandbox still hold.
 	Approve []string
+	// NeverAsk declines every action that would ask for approval, before
+	// the auto-reviewer, as Codex's approval_policy = never does for its
+	// /review thread.
+	NeverAsk bool
 }
 
 // AgentParent is a parent session's live run.

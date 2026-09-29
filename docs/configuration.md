@@ -140,6 +140,12 @@ The permission modes:
 | `timeout` | duration | `90s` | override | The limit for one review; a review that times out denies |
 | `policy_file` | path | Codex's review policy | override | A file whose text replaces the review policy, as Codex's `[auto_review] policy` does inline. The fixed framing and the answer format stay. An absolute path or one under `~/`; a missing or empty file stops the session from starting |
 
+`review_model` is a top-level key, Codex's, for the TUI's `/review` (a code review by a read-only subagent), not for the auto-reviewer above:
+
+| Key | Type | Default | Merge | Meaning |
+| --- | --- | --- | --- | --- |
+| `review_model` | string | the session's current model, as Codex | override | The model `/review` runs its reviewer on, on the session's provider, with the session's effort ([the review design](design/review.md)) |
+
 `uah prompts init` writes the built-in prompts to `~/.uah/prompts` as a starting point: the review policy (`review.md`), the summary prompt (`compact.md`), uah's default system prompt (`system.md`), Codex's unmodified prompt (`system-codex.md`), and the runner's short host prompt (`system-runner.md`). It prints the `policy_file`, `experimental_compact_prompt_file`, and `model_instructions_file` lines that use them, with the lines for `system-codex.md` and `system-runner.md` commented out, and it overwrites only with `--force`. `uah prompts show <name>` prints one: `compact`, `system`, `system-codex`, `system-runner`, or `review`.
 
 ### Compaction
@@ -425,6 +431,7 @@ model_context_window = 272000      # tokens; overrides the model catalog
 # model_auto_compact_token_limit = 200000   # compact sooner than 90% of the window
 # compact_model = "gpt-6-luna"              # a cheaper summary model; default: the session's
 # compact_effort = "medium"
+# review_model = "gpt-6-sol"                # /review's model; default: the session's
 # compact_prompt = "Summarize for a handoff: decisions, open work, file paths."
 # experimental_compact_prompt_file = "~/.uah/compact.md"
 # compact_user_message_max_tokens = 20000  # default: 20000, at most a quarter of the window

@@ -80,6 +80,6 @@ func newAgents(r Resolved, cfg config.Config, workspace string, opts *session.Op
 
 	return agents.New(agents.Config{
 		MaxThreads: r.Agents.MaxThreads, MaxDepth: depth, Model: r.Agents.Model, Effort: r.Agents.Effort,
-		Roles: roles, Validate: validate,
+		ReviewModel: cfg.ReviewModel, Roles: roles, Validate: validate,
 	})
 }
