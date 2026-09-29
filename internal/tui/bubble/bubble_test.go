@@ -17,6 +17,7 @@ import (
 	uaharness "github.com/viktordanov/uagent/harness"
 	"github.com/viktordanov/uagent/testing/fixtures"
 
+	"github.com/viktordanov/uagent-harness/internal/approval"
 	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/internal/tui/bubble"
 	"github.com/viktordanov/uagent-harness/testing/harnesstest"
@@ -26,6 +27,13 @@ import (
 // which takes nothing live, so a change applies from the next run.
 func deps(t *testing.T, fixture string) bubble.Deps {
 	t.Helper()
+
+	return depsIn(t, fixture, "")
+}
+
+// depsIn is deps with sessions in a permission mode ("": the default).
+func depsIn(t *testing.T, fixture string, mode approval.Mode) bubble.Deps {
+	t.Helper()
 	env := harnesstest.NewEnv(t)
 	t.Setenv("FAKERUNNER_FIXTURE", fixtures.Path(fixture))
 	t.Setenv("FAKERUNNER_ECHO", "1")
@@ -33,6 +41,9 @@ func deps(t *testing.T, fixture string) bubble.Deps {
 		RunnerPath: harnesstest.FakeRunner(t), StateDir: env.StateDir, KillGrace: 300 * time.Millisecond, Getenv: env.Getenv,
 	})
 	settings := session.Settings{Provider: "openai-codex", Model: "gpt-6-sol", Effort: "high", Workspace: env.Workspace}
+	if mode != "" {
+		settings = settings.WithMode(mode)
+	}
 
 	return bubble.Deps{
 		Open: func(ctx context.Context, id string) (*session.Session, []session.LoadedRun, error) {

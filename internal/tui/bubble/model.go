@@ -85,6 +85,9 @@ type Deps struct {
 	// image says it cannot).
 	Images    *images.Store
 	Clipboard clipboard.Reader
+	// WritableRoots are the sandbox's extra writable roots, absolute; ctrl+g
+	// checks that sandboxed commands cannot write its draft file.
+	WritableRoots []string
 	// Exec runs the editor for ctrl+g with the terminal released (default
 	// tea.Exec); tests run it directly.
 	Exec func(tea.ExecCommand, tea.ExecCallback) tea.Cmd

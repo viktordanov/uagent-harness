@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/viktordanov/uagent-harness/internal/approval"
 	"github.com/viktordanov/uagent-harness/internal/engine/embedded"
 	"github.com/viktordanov/uagent-harness/internal/images"
 	"github.com/viktordanov/uagent-harness/internal/images/clipboard"
@@ -40,6 +41,14 @@ func pngBytes(t *testing.T, w, h int) []byte {
 // clipboard holding a PNG, and the image store in the state directory.
 func imageDeps(t *testing.T) (bubble.Deps, *fakellm.Server, string) {
 	t.Helper()
+
+	return imageDepsIn(t, "")
+}
+
+// imageDepsIn is imageDeps with sessions in a permission mode ("": the
+// default).
+func imageDepsIn(t *testing.T, mode approval.Mode) (bubble.Deps, *fakellm.Server, string) {
+	t.Helper()
 	env := harnesstest.NewEnv(t)
 	llm := fakellm.New(t, fakellm.Reply{Text: "an image"})
 	getenv := func(key string) string {
@@ -51,6 +60,9 @@ func imageDeps(t *testing.T) (bubble.Deps, *fakellm.Server, string) {
 	}
 	eng := embedded.New(embedded.Config{StateDir: env.StateDir, Provider: "openai", Getenv: getenv})
 	settings := session.Settings{Provider: "openai", Model: "gpt-test", Effort: "high", Workspace: env.Workspace, BaseURL: llm.URL}
+	if mode != "" {
+		settings = settings.WithMode(mode)
+	}
 
 	return bubble.Deps{
 		Open: func(ctx context.Context, id string) (*session.Session, []session.LoadedRun, error) {

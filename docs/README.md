@@ -25,7 +25,7 @@ Design:
 16. [Selecting and copying text](design/selection.md): what Codex and other terminal programs do with the mouse, and how uah selects transcript text, keeps it on its text while the transcript moves, and copies it on release.
 17. [Keeping the ChatGPT login fresh](design/codex-auth.md): when and how Codex refreshes its token in `auth.json`, and how uah does the same with Codex writing the same file.
 18. [Integration with the terminal host](design/hosting.md): what the terminal host needs from a harness, and the changes that let it run uah inside the mechanisms it keeps for every harness.
-19. [Editing the prompt in an editor](design/editor.md): what Claude Code's and Codex's ctrl+g do, and how uah runs `$VISUAL` or `$EDITOR` on the draft with the terminal released and keeps its images.
+19. [Editing the prompt in an editor](design/editor.md): what Claude Code's and Codex's ctrl+g do, and how uah runs `$VISUAL` or `$EDITOR` on a draft file the sandbox cannot reach, with the terminal released, and keeps its images.
 
 Reference:
 

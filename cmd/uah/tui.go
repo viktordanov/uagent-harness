@@ -80,6 +80,8 @@ func openTUI(ctx context.Context, cmd *cli.Command, launch tuiLaunch) error {
 		Images:      &images.Store{Dir: images.DirIn(st.StateDir)},
 		Clipboard:   clipboard.System(),
 		CopyText:    clipboard.SystemWriter().WriteText,
+		// ctrl+g refuses a draft directory these roots expose.
+		WritableRoots: st.Sandbox.WritableRoots,
 		Open: func(ctx context.Context, id string) (*session.Session, []session.LoadedRun, error) {
 			in := inputs(cmd)
 			in.SessionRef, in.NewSessionID = id, ""

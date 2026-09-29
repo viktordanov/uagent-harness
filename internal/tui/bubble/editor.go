@@ -13,10 +13,15 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"mvdan.cc/sh/v3/shell"
 
+	"github.com/viktordanov/uagent-harness/internal/home"
+	"github.com/viktordanov/uagent-harness/internal/sandbox"
 	"github.com/viktordanov/uagent-harness/internal/tui/state"
 )
 
-var errNoEditor = errors.New("the editor command is empty")
+var (
+	errNoEditor = errors.New("the editor command is empty")
+	errDraftDir = errors.New("the draft directory is not a plain directory")
+)
 
 // editDraft runs the editor on the draft with the terminal released, as
 // ctrl+g in Claude Code and Codex does: Bubble Tea leaves the alt screen,
@@ -26,7 +31,15 @@ func (m Model) editDraft(text string) tea.Cmd {
 	if err != nil {
 		return func() tea.Msg { return state.DraftEdited{Err: err} }
 	}
-	run := &editorRun{ctx: m.ctx, args: args, text: text}
+	dir := filepath.Join(home.Dir(), "editor")
+	policy := sandbox.Policy{Mode: m.st.Settings.Mode.Sandbox(), Workspace: m.st.Settings.Workspace, WritableRoots: m.deps.WritableRoots}
+	if draftDirExposed(policy, dir) {
+		err := fmt.Errorf("sandboxed commands can write %s, so the draft is not written there; "+
+			"move uah's home ($%s) out of the workspace, /tmp, $TMPDIR, and the writable roots", dir, home.Env)
+
+		return func() tea.Msg { return state.DraftEdited{Err: err} }
+	}
+	run := &editorRun{ctx: m.ctx, dir: dir, args: args, text: text}
 	start := m.deps.Exec
 	if start == nil {
 		start = tea.Exec
@@ -66,12 +79,37 @@ func editorCommand(getenv func(string) string) ([]string, error) {
 	return args, nil
 }
 
-// editorRun is one edit, a tea.ExecCommand: it writes the draft to a
-// temporary .md file (0600, in the system's temporary directory, not the
-// workspace), runs the editor on it, reads it back into saved, and removes
-// it.
+// draftDirExposed reports whether a command in the sandbox could read or
+// change the draft file in dir, as Codex's editor_directory checks: when it
+// can write dir or its parent, or a writable root lies inside dir. uah's
+// home is never writable in read-only mode, nor in workspace-write unless
+// $UAH_HOME is in a writable root under another name than .uah, which
+// stays protected there. Full access has no sandbox to keep out.
+func draftDirExposed(p sandbox.Policy, dir string) bool {
+	if p.Mode == sandbox.FullAccess {
+		return false
+	}
+	if p.CanWrite(dir) || p.CanWrite(filepath.Dir(dir)) {
+		return true
+	}
+	if resolved, err := filepath.EvalSymlinks(dir); err == nil {
+		dir = resolved
+	}
+	for _, root := range p.Writable() {
+		if rel, err := filepath.Rel(dir, root); err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// editorRun is one edit, a tea.ExecCommand: it writes the draft to a .md
+// file (0600) in dir, <uah home>/editor (0700), runs the editor on it, reads
+// it back into saved, and removes it.
 type editorRun struct {
 	ctx            context.Context //nolint:containedctx // a tea.ExecCommand's Run takes none
+	dir            string
 	args           []string
 	text           string
 	saved          string
@@ -84,7 +122,10 @@ func (r *editorRun) SetStdout(out io.Writer) { r.stdout = out }
 func (r *editorRun) SetStderr(out io.Writer) { r.stderr = out }
 
 func (r *editorRun) Run() error {
-	f, err := os.CreateTemp("", "uah-prompt-*.md") // CreateTemp makes it 0600
+	if err := draftDir(r.dir); err != nil {
+		return err
+	}
+	f, err := os.CreateTemp(r.dir, "prompt-*.md") // CreateTemp makes it 0600
 	if err != nil {
 		return fmt.Errorf("failed to create the file to edit: %w", err)
 	}
@@ -108,6 +149,26 @@ func (r *editorRun) Run() error {
 		return fmt.Errorf("failed to read the edited file: %w", err)
 	}
 	r.saved = string(saved)
+
+	return nil
+}
+
+// draftDir makes the draft directory, 0700, and refuses a symbolic link or
+// a file in its place, which could lead the draft elsewhere.
+func draftDir(dir string) error {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return fmt.Errorf("failed to create the draft directory: %w", err)
+	}
+	info, err := os.Lstat(dir)
+	if err != nil {
+		return fmt.Errorf("failed to read the draft directory: %w", err)
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("%s: %w", dir, errDraftDir)
+	}
+	if err := os.Chmod(dir, 0o700); err != nil {
+		return fmt.Errorf("failed to make the draft directory private: %w", err)
+	}
 
 	return nil
 }

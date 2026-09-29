@@ -38,6 +38,9 @@ type Result struct {
 	// Usage reads the subscription's usage for the session's provider; it
 	// sends nothing until asked.
 	Usage planusage.Reader
+	// Sandbox is the policy the session's commands run under, with
+	// absolute paths.
+	Sandbox sandbox.Policy
 }
 
 // Setup resolves the inputs against the resumed session (in.SessionRef) and
@@ -118,7 +121,7 @@ func Setup(ctx context.Context, in Inputs, logOutput io.Writer) (Result, error) 
 	subagents.Bind(eng, opts) // children open exactly as this session does
 	opts.Shell = userShell(r, cfg, runDir, approver)
 
-	return Result{StateDir: stateDir, Engine: eng, Options: opts, Config: cfg, Models: catalog, Usage: NewUsage(r.Settings, os.Getenv)}, nil
+	return Result{StateDir: stateDir, Engine: eng, Options: opts, Config: cfg, Models: catalog, Usage: NewUsage(r.Settings, os.Getenv), Sandbox: r.Sandbox}, nil
 }
 
 // loadHooks builds the hook runner for the configured hooks (nil when there
