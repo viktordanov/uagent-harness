@@ -71,7 +71,7 @@ const (
 		`"agent_type":{"type":"string","description":"Agent type override for the new agent. Omit to inherit the parent agent type with a full-history fork; otherwise, ` + "`default`" + ` is used. The types are listed in the tool description."},` +
 		`"fork_context":{"type":"boolean","description":"True forks the current thread history into the new agent; false or omitted starts with only the initial prompt."},` +
 		`"model":{"type":"string","description":"Model override for the new agent. Omit unless an explicit override is needed."},` +
-		`"reasoning_effort":{"type":"string","enum":["low","medium","high","xhigh","max"],"description":"Reasoning effort override for the new agent. Omit to inherit the parent effort."}` +
+		`"reasoning_effort":{"type":"string","enum":["low","medium","high","xhigh","max","ultra"],"description":"Reasoning effort override for the new agent. Omit to inherit the parent effort."}` +
 		`},"required":["message"],"additionalProperties":false}`
 	sendSchema = `{"type":"object","properties":{` +
 		`"target":{"type":"string","description":"Agent id to message (from spawn_agent)."},` +

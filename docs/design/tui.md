@@ -122,7 +122,7 @@ One registry holds each command's name, aliases, arguments, whether it is availa
 | Command | Effect | Process engine | Embedded engine |
 | --- | --- | --- | --- |
 | `/model [id]` | Change the model; no argument opens the dialog | Next run | Next model request |
-| `/effort <level>` | `low`, `medium`, `high`, `xhigh`, `max` | Next run | Next model request |
+| `/effort <level>` | `low`, `medium`, `high`, `xhigh`, `max`, `ultra` | Next run | Next model request |
 | `/fast [on\|off]` | Priority service tier | Unavailable (upstream request b) | Next model request |
 | `/resume [id]` | Open the picker or resume a session | Yes (idle) | Yes (idle) |
 | `/new` (`/clear`) | Start a new session | Yes (idle) | Yes (idle) |

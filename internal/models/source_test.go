@@ -81,7 +81,7 @@ func TestSources(t *testing.T) {
 			provider: models.ProviderOpenAI, path: "/v1/models", baseSuffix: "/v1", vars: map[string]string{"OPENAI_API_KEY": "sk-test"},
 			body: `{"object":"list","data":[{"id":"whisper-1","object":"model"},{"id":"gpt-5.5","object":"model"}]}`,
 			want: []models.Model{
-				{ID: "gpt-5.5", DisplayName: "GPT-5.5", ContextWindow: 272000, DefaultEffort: "medium", Priority: 12},
+				{ID: "gpt-5.5", DisplayName: "GPT-5.5", ContextWindow: 272000, DefaultEffort: "medium", Priority: 13},
 				{ID: "whisper-1"},
 			},
 			headers: map[string]string{"Authorization": "Bearer sk-test"},

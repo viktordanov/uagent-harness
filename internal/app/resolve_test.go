@@ -88,9 +88,20 @@ func TestResolve(t *testing.T) {
 			},
 		},
 		{
-			name: "another provider has no default model",
+			name: "openai falls back to the runner's default model until its list is seen",
 			cfg:  config.Config{Provider: "openai"},
-			want: func(r *app.Resolved) { r.Settings.Provider, r.Settings.Model = "openai", "" },
+			want: func(r *app.Resolved) {
+				r.Settings.Provider, r.Settings.Model = "openai", "gpt-6-astra"
+				r.Review.Model = "gpt-6-astra"
+			},
+		},
+		{
+			name: "another provider has no default model",
+			cfg:  config.Config{Provider: "openrouter"},
+			want: func(r *app.Resolved) {
+				r.Settings.Provider, r.Settings.Model = "openrouter", ""
+				r.Review.Model = ""
+			},
 		},
 		{
 			name:    "the resumed workspace when no flag is given",
@@ -203,8 +214,8 @@ func TestResolve(t *testing.T) {
 			in:      func(in *app.Inputs) { in.Provider = "openai" },
 			resumed: session.Info{Provider: app.CodexProvider, Fast: new(true)},
 			want: func(r *app.Resolved) {
-				r.Settings.Provider, r.Settings.Model = "openai", ""
-				r.Review.Model = ""
+				r.Settings.Provider, r.Settings.Model = "openai", "gpt-6-astra"
+				r.Review.Model = "gpt-6-astra"
 			},
 		},
 		{
@@ -309,7 +320,7 @@ func TestResolve(t *testing.T) {
 			}
 			want := app.Resolved{
 				Settings: session.Settings{
-					Provider: app.CodexProvider, Model: app.DefaultCodexModel, Effort: app.DefaultEffort,
+					Provider: app.CodexProvider, Model: app.FallbackCodexModel, Effort: app.DefaultEffort,
 					Workspace: "/ws", Mode: approval.ModeWorkspace, Sandbox: string(sandbox.WorkspaceWrite),
 					MaxAttempts: engine.DefaultMaxAttempts,
 				},
@@ -321,6 +332,8 @@ func TestResolve(t *testing.T) {
 				WebSearch:         app.WebSearchLive,
 			}
 			tt.want(&want)
+			// No test names a fallback model itself.
+			want.DefaultModel = want.Settings.Model == app.FallbackCodexModel || want.Settings.Model == "gpt-6-astra"
 			want.Sandbox.Workspace = want.Settings.Workspace
 			if want.Review.Model == review.CodexModel && want.Settings.Provider != app.CodexProvider {
 				want.Review.Model = want.Settings.Model // off openai-codex, the session model reviews

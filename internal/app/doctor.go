@@ -110,7 +110,7 @@ func Doctor(ctx context.Context, in Inputs, opts DoctorOptions) []Check {
 	if opts.Models == nil {
 		opts.Models = NewModels(stateDir, r.Settings, opts.Getenv)
 	}
-	checks = append(checks, checkModels(ctx, opts.Models, r.Settings.Model))
+	checks = append(checks, checkModels(ctx, opts.Models, &r))
 	if opts.Usage == nil {
 		opts.Usage = NewUsage(r.Settings, opts.Getenv)
 	}

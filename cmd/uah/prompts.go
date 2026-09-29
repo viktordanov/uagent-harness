@@ -49,7 +49,7 @@ var builtinPrompts = []builtinPrompt{
 	{name: "system", text: func() string { return instructions.DefaultPrompt }, key: keySystemPrompt},
 	{
 		name: "system-codex", text: func() string { return instructions.CodexPrompt }, key: keySystemPrompt,
-		alternative: "Or Codex's own prompt, unmodified (gpt-6-sol's; it names Codex's tools, see docs/configuration.md):",
+		alternative: "Or Codex's own prompt, unmodified (gpt-6.1-sol's; it names Codex's tools, see docs/configuration.md):",
 	},
 	{
 		name: "system-runner", text: func() string { return instructions.RunnerHostPrompt }, key: keySystemPrompt,

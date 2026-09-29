@@ -2,11 +2,12 @@ package instructions
 
 import _ "embed" // CodexPrompt and DefaultPrompt
 
-// CodexPrompt is Codex's base instructions for gpt-6-sol, verbatim: the
+// CodexPrompt is Codex's base instructions for gpt-6.1-sol, verbatim: the
 // model's model_messages.instructions_template in
-// codex-rs/models-manager/models.json at rust-v0.156.1 (Apache-2.0,
+// codex-rs/models-manager/models.json at rust-v0.159.1 (Apache-2.0,
 // Copyright 2025 OpenAI). Codex sends each catalog model its own template;
-// gpt-6-sol is uah's default model on openai-codex. `uah prompts init` writes it as
+// gpt-6.1-sol is uah's default model on openai-codex, and a login still on
+// gpt-6-sol gets the same text. `uah prompts init` writes it as
 // system-codex.md, which model_instructions_file can name instead of
 // system.md. It names Codex's tools, not all of which uah has.
 //
@@ -26,7 +27,7 @@ var CodexPrompt string
 var DefaultPrompt string
 
 // SubagentNote follows a subagent's base instructions: two lines of
-// Codex's multi_agent.role.subagent text (models.json at rust-v0.156.1).
+// Codex's multi_agent.role.subagent text (gpt-6.1-sol's, models.json at rust-v0.159.1).
 // The rest of that text names Codex's v2 agent tools, which uah does not
 // offer.
 const SubagentNote = "When you provide a response in the final channel, that content is immediately delivered back to your parent agent.\n" +

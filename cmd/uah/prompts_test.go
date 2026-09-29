@@ -30,7 +30,7 @@ func TestPrompts(t *testing.T) {
 	assert.Equal(t, "Wrote "+compact+"\nWrote "+system+"\nWrote "+codex+"\nWrote "+runner+"\nWrote "+review+"\n\nTo use them, add to "+user+":\n\n"+
 		"experimental_compact_prompt_file = \""+compact+"\"\n\n"+
 		"model_instructions_file = \""+system+"\"\n"+
-		"# Or Codex's own prompt, unmodified (gpt-6-sol's; it names Codex's tools, see docs/configuration.md):\n"+
+		"# Or Codex's own prompt, unmodified (gpt-6.1-sol's; it names Codex's tools, see docs/configuration.md):\n"+
 		"# model_instructions_file = \""+codex+"\"\n"+
 		"# Or the runner's short host prompt, uah's default before the Codex-based one:\n"+
 		"# model_instructions_file = \""+runner+"\"\n\n"+

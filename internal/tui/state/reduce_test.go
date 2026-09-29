@@ -246,8 +246,8 @@ func TestReduce_Keys(t *testing.T) {
 		_, effects := apply(opened(), state.StepEffort{Delta: 1})
 		require.Len(t, effects, 1)
 		assert.Equal(t, "xhigh", effects[0].(state.EffSetSettings).Settings.Effort)
-		max, _ := apply(opened(), session.SettingsChanged{Settings: session.Settings{Effort: "max"}})
-		_, effects = apply(max, state.StepEffort{Delta: 1})
+		top, _ := apply(opened(), session.SettingsChanged{Settings: session.Settings{Effort: "ultra"}})
+		_, effects = apply(top, state.StepEffort{Delta: 1})
 		assert.Empty(t, effects)
 	})
 }

@@ -73,7 +73,7 @@ func TestExplainSources(t *testing.T) {
 			want: map[string]string{
 				"provider": "env", "sandbox_mode": "flag", "approval_policy": "flag", "effort": "flag", "workspace": "flag",
 			},
-			vals: map[string]string{"workspace": "/cwd/rel", "model": `""`},
+			vals: map[string]string{"workspace": "/cwd/rel", "model": "gpt-6-astra"},
 		},
 		{
 			name: "the resumed session beats the files",

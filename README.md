@@ -149,6 +149,7 @@ To remove an image, delete its placeholder: one backspace at its end removes it 
 
 ### Model and effort
 
+- By default: gpt-6.1-sol on openai-codex when your login's model list has it, else gpt-6-sol (OpenAI rolls new models out by account); on openai, gpt-6.1-sol when listed, else gpt-6-astra. Effort `high`; the levels are low, medium, high, xhigh, max, and ultra, where the model accepts them.
 - For this session: `/model gpt-6-luna` or `/effort low` in the TUI, or alt+, and alt+. to lower or raise the effort. It applies from the next model request, even mid-run.
 - At start: `uah -m gpt-6-luna -e medium`, and `--fast` for priority processing.
 - For every session: `model` and `effort` in the [configuration](#configuration).
@@ -302,7 +303,7 @@ uah prompts init           # writes compact.md, system.md, system-codex.md, syst
 uah prompts show system    # prints a built-in prompt: compact, system, system-codex, system-runner, or review
 ```
 
-`uah prompts init` starts from the built-in compaction prompt, uah's default system prompt (`system.md`), and the auto-review policy. It prints the lines to add to your user file: `experimental_compact_prompt_file`, `model_instructions_file`, and `[review] policy_file`. The default system prompt is Codex's prompt for gpt-6-sol with uah's tool names ([the changes](docs/configuration.md#codexs-prompt)). The command also writes Codex's unmodified prompt as `system-codex.md` and the runner's short host prompt as `system-runner.md`, and prints their `model_instructions_file` lines commented out, so each is used only when you choose it. AGENTS.md files and the [environment context](docs/configuration.md#the-environment-context) still follow the system prompt. Edit the files; each new session reads them. It overwrites existing files only with `--force`.
+`uah prompts init` starts from the built-in compaction prompt, uah's default system prompt (`system.md`), and the auto-review policy. It prints the lines to add to your user file: `experimental_compact_prompt_file`, `model_instructions_file`, and `[review] policy_file`. The default system prompt is Codex's prompt for gpt-6.1-sol with uah's tool names ([the changes](docs/configuration.md#codexs-prompt)). The command also writes Codex's unmodified prompt as `system-codex.md` and the runner's short host prompt as `system-runner.md`, and prints their `model_instructions_file` lines commented out, so each is used only when you choose it. AGENTS.md files and the [environment context](docs/configuration.md#the-environment-context) still follow the system prompt. Edit the files; each new session reads them. It overwrites existing files only with `--force`.
 
 ### Hook setup
 

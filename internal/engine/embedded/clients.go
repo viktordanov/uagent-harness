@@ -69,17 +69,21 @@ func codexHTTPClient(login *codexauth.Login) (*http.Client, error) {
 	}, nil
 }
 
-// newClient builds a Responses client over hc with the attempt limit and,
-// for priority processing, service_tier "priority".
+// newClient builds a Responses client over hc with the attempt limit, for
+// priority processing service_tier "priority", and for effort ultra the
+// reasoning field as the runner's encoder writes it for the other efforts.
 func newClient(hc *http.Client, c ClientConfig, config responsesapi.Config) (remoteAdapter, error) {
 	remote := primitives.NewRemoteClientWithHTTPClient(hc)
 	config.MaxAttempts = &c.MaxAttempts
+	config.Extensions = maps.Clone(config.Extensions)
+	if config.Extensions == nil {
+		config.Extensions = map[string]jsontext.Value{}
+	}
 	if c.Priority {
-		config.Extensions = maps.Clone(config.Extensions)
-		if config.Extensions == nil {
-			config.Extensions = map[string]jsontext.Value{}
-		}
 		config.Extensions["service_tier"] = jsontext.Value(`"priority"`)
+	}
+	if c.Ultra {
+		config.Extensions["reasoning"] = jsontext.Value(`{"effort":"ultra","summary":"auto"}`)
 	}
 	adapter, err := responsesapi.NewAdapter(remote, config)
 	if err != nil {

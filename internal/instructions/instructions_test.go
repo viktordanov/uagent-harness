@@ -157,9 +157,9 @@ func TestHostPrompt(t *testing.T) {
 }
 
 // TestCodexPrompt pins the embedded copy of Codex's prompt: its opening
-// line and its size at rust-v0.156.1.
+// line and its size at rust-v0.159.1 (gpt-6.1-sol's template).
 func TestCodexPrompt(t *testing.T) {
 	assert.True(t, strings.HasPrefix(instructions.CodexPrompt, "You are Codex, an agent based on GPT-6."))
-	assert.Len(t, instructions.CodexPrompt, 18998)
+	assert.Len(t, instructions.CodexPrompt, 21779)
 	assert.NotContains(t, instructions.CodexPrompt, "\n"+instructions.ProjectHeader, "/context can tell it from the instructions")
 }

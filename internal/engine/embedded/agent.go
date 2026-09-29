@@ -90,6 +90,10 @@ func controlInput(msg inbox.ControlMessage) (inbox.Input, error) {
 }
 
 func (a *agent) SetEffort(effort string) error {
+	if err := a.llm.setUltra(effort == effortUltra); err != nil {
+		return err
+	}
+
 	return a.control(inbox.ControlMessage{Mode: inbox.UpdateSettings, Parameters: inbox.Settings{ReasoningEffort: reasoningEffort(effort)}})
 }
 
@@ -148,7 +152,12 @@ func (a *agent) submit(in inbox.Input) error {
 	return nil
 }
 
-// reasoningEffort maps a thinking level as the runner does: unknown levels are high.
+// effortUltra is the effort above max, which the runner does not know; the
+// runner runs at max and the switcher sends ultra.
+const effortUltra = "ultra"
+
+// reasoningEffort maps a thinking level as the runner does: unknown levels
+// are high, and ultra is max for the runner.
 func reasoningEffort(level string) llm.ReasoningEffort {
 	switch level {
 	case "low":
@@ -157,7 +166,7 @@ func reasoningEffort(level string) llm.ReasoningEffort {
 		return llm.ReasoningEffortMedium
 	case "xhigh":
 		return llm.ReasoningEffortXHigh
-	case "max":
+	case "max", effortUltra:
 		return llm.ReasoningEffortMax
 	default:
 		return llm.ReasoningEffortHigh

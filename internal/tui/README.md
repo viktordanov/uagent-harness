@@ -144,7 +144,7 @@ In the `/config` panel, ↑/↓ choose a setting, enter or space changes it, ←
 | Command | Does | While busy |
 | --- | --- | --- |
 | `/model <id>` | Use another model | Yes |
-| `/effort <level>` | Set the thinking level: low, medium, high, xhigh, max | Yes |
+| `/effort <level>` | Set the thinking level: low, medium, high, xhigh, max, ultra (only those the model lists, once `/model` has loaded the list) | Yes |
 | `/fast` | Toggle priority processing; needs the embedded engine and the openai or openai-codex provider | Yes |
 | `/resume [id]` | Open the picker, or resume a session by ID prefix | No |
 | `/new` | Start a new session | No |

@@ -315,21 +315,6 @@ func (s *State) onIntent(ev any) (State, []Effect) { //nolint:gocyclo // a dispa
 	return *s, nil
 }
 
-func (s *State) stepEffort(delta int) (State, []Effect) {
-	i := slices.Index(session.Efforts, s.Settings.Effort)
-	if i < 0 {
-		i = slices.Index(session.Efforts, "high")
-	}
-	j := min(max(i+delta, 0), len(session.Efforts)-1)
-	if j == i {
-		return *s, nil
-	}
-	next := s.Settings
-	next.Effort = session.Efforts[j]
-
-	return *s, []Effect{EffSetSettings{Settings: next}}
-}
-
 func (s *State) expireConfirmations() {
 	if !s.escArmed.IsZero() && s.Now.Sub(s.escArmed) >= confirmWindow {
 		s.escArmed, s.Status = time.Time{}, ""

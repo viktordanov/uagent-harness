@@ -13,14 +13,15 @@ import (
 
 // switcher is the llm.Adapter the coordinator calls. It applies the live
 // model to each request and routes to the priority client when the tier asks
-// for it, so /model and /fast apply from the next model request.
+// for it, and to the ultra client at effort ultra, so /model, /fast, and
+// /effort apply from the next model request.
 type switcher struct {
-	build func(priority bool) (Client, error)
+	build func(variant) (Client, error)
 
-	mu       sync.Mutex
-	model    string
-	priority bool
-	clients  map[bool]Client
+	mu      sync.Mutex
+	model   string
+	variant variant
+	clients map[variant]Client
 	// seen, when set, sees each request sent and the usage reported for it.
 	seen func(llm.Request, llm.Usage)
 	// cacheKey, when set, replaces the session's ID as the prompt cache key.
@@ -41,9 +42,14 @@ type switcher struct {
 	searches *searchLog
 }
 
-func newSwitcher(model string, priority bool, build func(bool) (Client, error)) (*switcher, error) {
-	s := &switcher{build: build, model: model, clients: map[bool]Client{}}
-	if err := s.setPriority(priority); err != nil {
+// variant is what a client is built for: priority processing, and effort
+// ultra, which the runner cannot carry (llm.ReasoningEffort stops at max),
+// so the ultra client sends the reasoning field itself.
+type variant struct{ priority, ultra bool }
+
+func newSwitcher(model string, v variant, build func(variant) (Client, error)) (*switcher, error) {
+	s := &switcher{build: build, model: model, clients: map[variant]Client{}}
+	if err := s.use(v); err != nil {
 		return nil, err
 	}
 
@@ -52,10 +58,13 @@ func newSwitcher(model string, priority bool, build func(bool) (Client, error)) 
 
 func (s *switcher) Respond(ctx context.Context, req llm.Request, opts llm.RequestOptions) (llm.Response, error) {
 	s.mu.Lock()
-	client, model := s.clients[s.priority], s.model
+	client, model, ultra := s.clients[s.variant], s.model, s.variant.ultra
 	s.mu.Unlock()
 	if model != "" {
 		req.Model.ID = model
+	}
+	if ultra {
+		req.Model.ReasoningEffort = "" // the client's extension sends ultra
 	}
 	if s.tools != nil {
 		req.Tools = s.tools(req.Tools)
@@ -82,24 +91,56 @@ func (s *switcher) setModel(model string) {
 	s.model = model
 }
 
-// setPriority builds the client for the tier on first use.
+// setPriority switches priority processing on or off.
 func (s *switcher) setPriority(priority bool) error {
+	v := s.current()
+	v.priority = priority
+
+	return s.use(v)
+}
+
+// setUltra switches effort ultra on or off.
+func (s *switcher) setUltra(ultra bool) error {
+	v := s.current()
+	v.ultra = ultra
+
+	return s.use(v)
+}
+
+func (s *switcher) current() variant {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if _, ok := s.clients[priority]; !ok {
-		c, err := s.build(priority)
-		if err != nil {
-			if priority {
-				return fmt.Errorf("failed to enable priority processing: %w", err)
-			}
 
-			return err
-		}
-		s.clients[priority] = c
+	return s.variant
+}
+
+// use switches to the variant, building its client on first use.
+func (s *switcher) use(v variant) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, err := s.clientLocked(v); err != nil {
+		return err
 	}
-	s.priority = priority
+	s.variant = v
 
 	return nil
+}
+
+func (s *switcher) clientLocked(v variant) (Client, error) {
+	if c, ok := s.clients[v]; ok {
+		return c, nil
+	}
+	c, err := s.build(v)
+	if err != nil {
+		if v.priority {
+			return nil, fmt.Errorf("failed to enable priority processing: %w", err)
+		}
+
+		return nil, err
+	}
+	s.clients[v] = c
+
+	return c, nil
 }
 
 func (s *switcher) Close() error {
@@ -126,8 +167,19 @@ func (s *switcher) currentModel() string {
 func (s *switcher) direct() llm.Adapter {
 	return adapterFunc(func(ctx context.Context, req llm.Request, opts llm.RequestOptions) (llm.Response, error) {
 		s.mu.Lock()
-		client, model := s.clients[s.priority], s.model
+		v, model := s.variant, s.model
+		// At ultra the runner's effort is max: a call that kept it goes at
+		// ultra, one that picked its own effort does not, unless it picked
+		// ultra (compact_effort).
+		v.ultra = req.Model.ReasoningEffort == effortUltra || v.ultra && req.Model.ReasoningEffort == llm.ReasoningEffortMax
+		client, err := s.clientLocked(v)
 		s.mu.Unlock()
+		if err != nil {
+			return llm.Response{}, err
+		}
+		if v.ultra {
+			req.Model.ReasoningEffort = ""
+		}
 		if req.Model.ID == "" {
 			req.Model.ID = model
 		}

@@ -6,6 +6,75 @@
       "description": "Frontier intelligence for the most demanding work.",
       "visibility": "list",
       "supported_in_api": true,
+      "priority": 2,
+      "context_window": 272000,
+      "max_context_window": 872000,
+      "default_reasoning_level": "low",
+      "supported_reasoning_levels": [
+        {
+          "effort": "low"
+        },
+        {
+          "effort": "medium"
+        },
+        {
+          "effort": "high"
+        },
+        {
+          "effort": "xhigh"
+        },
+        {
+          "effort": "max"
+        },
+        {
+          "effort": "ultra"
+        }
+      ],
+      "additional_speed_tiers": [
+        "fast"
+      ],
+      "service_tiers": [
+        {
+          "id": "priority",
+          "name": "Fast"
+        }
+      ],
+      "available_in_plans": [
+        "business",
+        "edu",
+        "edu_plus",
+        "edu_pro",
+        "education",
+        "ent26",
+        "enterprise",
+        "enterprise_cbp_automation",
+        "enterprise_cbp_trial",
+        "enterprise_cbp_usage_based",
+        "finserv",
+        "free",
+        "free_workspace",
+        "go",
+        "hc",
+        "k12",
+        "plus",
+        "pro",
+        "prolite",
+        "promax",
+        "quorum",
+        "sci",
+        "self_serve_business_prolite",
+        "self_serve_business_usage_based",
+        "team"
+      ],
+      "minimal_client_version": "0.153.0",
+      "apply_patch_tool_type": "freeform"
+    },
+    {
+      "slug": "gpt-6.1-sol",
+      "display_name": "GPT-6.1-Sol",
+      "description": "Latest workhorse model for coding and everyday work.",
+      "visibility": "list",
+      "supported_in_api": true,
       "priority": 1,
       "context_window": 272000,
       "max_context_window": 872000,
@@ -45,6 +114,7 @@
         "edu_plus",
         "edu_pro",
         "education",
+        "ent26",
         "enterprise",
         "enterprise_cbp_automation",
         "enterprise_cbp_trial",
@@ -55,9 +125,11 @@
         "go",
         "hc",
         "k12",
+        "law",
         "plus",
         "pro",
         "prolite",
+        "promax",
         "quorum",
         "sci",
         "self_serve_business_prolite",
@@ -70,10 +142,10 @@
     {
       "slug": "gpt-6-sol",
       "display_name": "GPT-6-Sol",
-      "description": "Workhorse model for coding and everyday work.",
+      "description": "Previous generation workhorse model.",
       "visibility": "list",
       "supported_in_api": true,
-      "priority": 2,
+      "priority": 3,
       "context_window": 272000,
       "max_context_window": 872000,
       "default_reasoning_level": "medium",
@@ -142,7 +214,7 @@
       "description": "Fast and affordable model for easier tasks.",
       "visibility": "list",
       "supported_in_api": true,
-      "priority": 3,
+      "priority": 4,
       "context_window": 272000,
       "max_context_window": 872000,
       "default_reasoning_level": "medium",
@@ -205,10 +277,10 @@
     {
       "slug": "gpt-5.6-sol",
       "display_name": "GPT-5.6-Sol",
-      "description": "Older coding model for complex work.",
+      "description": "Older generation workhorse model.",
       "visibility": "list",
       "supported_in_api": true,
-      "priority": 6,
+      "priority": 5,
       "context_window": 272000,
       "max_context_window": 872000,
       "default_reasoning_level": "low",
@@ -239,10 +311,6 @@
         {
           "id": "priority",
           "name": "Fast"
-        },
-        {
-          "id": "ultrafast",
-          "name": "Ultrafast"
         }
       ],
       "available_in_plans": [
@@ -251,8 +319,10 @@
         "edu_plus",
         "edu_pro",
         "education",
+        "ent26",
         "enterprise",
         "enterprise_cbp_automation",
+        "enterprise_cbp_trial",
         "enterprise_cbp_usage_based",
         "finserv",
         "free",
@@ -263,6 +333,7 @@
         "plus",
         "pro",
         "prolite",
+        "promax",
         "quorum",
         "sci",
         "self_serve_business_prolite",
@@ -278,7 +349,7 @@
       "description": "Older balanced model for straightforward work.",
       "visibility": "list",
       "supported_in_api": true,
-      "priority": 7,
+      "priority": 8,
       "context_window": 272000,
       "max_context_window": 872000,
       "default_reasoning_level": "medium",
@@ -317,8 +388,10 @@
         "edu_plus",
         "edu_pro",
         "education",
+        "ent26",
         "enterprise",
         "enterprise_cbp_automation",
+        "enterprise_cbp_trial",
         "enterprise_cbp_usage_based",
         "finserv",
         "free",
@@ -329,6 +402,7 @@
         "plus",
         "pro",
         "prolite",
+        "promax",
         "quorum",
         "sci",
         "self_serve_business_prolite",
@@ -344,7 +418,7 @@
       "description": "Older fast and efficient model.",
       "visibility": "list",
       "supported_in_api": true,
-      "priority": 8,
+      "priority": 9,
       "context_window": 272000,
       "max_context_window": 872000,
       "default_reasoning_level": "medium",
@@ -380,8 +454,10 @@
         "edu_plus",
         "edu_pro",
         "education",
+        "ent26",
         "enterprise",
         "enterprise_cbp_automation",
+        "enterprise_cbp_trial",
         "enterprise_cbp_usage_based",
         "finserv",
         "free",
@@ -392,6 +468,7 @@
         "plus",
         "pro",
         "prolite",
+        "promax",
         "quorum",
         "sci",
         "self_serve_business_prolite",
@@ -407,7 +484,7 @@
       "description": "Latest frontier agentic coding model for broad defensive cybersecurity work.",
       "visibility": "hide",
       "supported_in_api": true,
-      "priority": 10,
+      "priority": 11,
       "context_window": 272000,
       "max_context_window": 872000,
       "default_reasoning_level": "low",
@@ -466,7 +543,7 @@
       "description": "Cyber-permissive variant of our latest frontier agentic coding model for advanced, authorized cybersecurity research.",
       "visibility": "hide",
       "supported_in_api": true,
-      "priority": 11,
+      "priority": 12,
       "context_window": 372000,
       "max_context_window": 372000,
       "default_reasoning_level": "medium",
@@ -525,7 +602,7 @@
       "description": "Legacy coding model.",
       "visibility": "list",
       "supported_in_api": true,
-      "priority": 12,
+      "priority": 13,
       "context_window": 272000,
       "max_context_window": 272000,
       "default_reasoning_level": "medium",
@@ -558,8 +635,10 @@
         "edu_plus",
         "edu_pro",
         "education",
+        "ent26",
         "enterprise",
         "enterprise_cbp_automation",
+        "enterprise_cbp_trial",
         "enterprise_cbp_usage_based",
         "finserv",
         "free",
@@ -570,6 +649,7 @@
         "plus",
         "pro",
         "prolite",
+        "promax",
         "quorum",
         "sci",
         "self_serve_business_prolite",
@@ -577,63 +657,6 @@
         "team"
       ],
       "minimal_client_version": "0.124.0",
-      "apply_patch_tool_type": "freeform"
-    },
-    {
-      "slug": "gpt-5.4",
-      "display_name": "GPT-5.4",
-      "description": "Strong model for everyday coding.",
-      "visibility": "hide",
-      "supported_in_api": true,
-      "priority": 16,
-      "context_window": 272000,
-      "max_context_window": 1000000,
-      "default_reasoning_level": "medium",
-      "supported_reasoning_levels": [
-        {
-          "effort": "low"
-        },
-        {
-          "effort": "medium"
-        },
-        {
-          "effort": "high"
-        },
-        {
-          "effort": "xhigh"
-        }
-      ],
-      "additional_speed_tiers": [
-        "fast"
-      ],
-      "service_tiers": [
-        {
-          "id": "priority",
-          "name": "Fast"
-        }
-      ],
-      "available_in_plans": [
-        "business",
-        "edu",
-        "edu_plus",
-        "edu_pro",
-        "education",
-        "enterprise",
-        "enterprise_cbp_automation",
-        "enterprise_cbp_usage_based",
-        "finserv",
-        "go",
-        "hc",
-        "plus",
-        "pro",
-        "prolite",
-        "quorum",
-        "sci",
-        "self_serve_business_prolite",
-        "self_serve_business_usage_based",
-        "team"
-      ],
-      "minimal_client_version": "0.98.0",
       "apply_patch_tool_type": "freeform"
     },
     {
@@ -678,8 +701,10 @@
         "edu_plus",
         "edu_pro",
         "education",
+        "ent26",
         "enterprise",
         "enterprise_cbp_automation",
+        "enterprise_cbp_trial",
         "enterprise_cbp_usage_based",
         "finserv",
         "go",
@@ -687,6 +712,7 @@
         "plus",
         "pro",
         "prolite",
+        "promax",
         "quorum",
         "sci",
         "self_serve_business_prolite",

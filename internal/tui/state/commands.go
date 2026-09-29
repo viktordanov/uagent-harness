@@ -119,6 +119,11 @@ func cmdEffort(s *State, args string) []Effect {
 
 		return nil
 	}
+	if err := s.checkEffort(args); err != nil {
+		s.notice(session.LevelError, err.Error())
+
+		return nil
+	}
 	next := s.Settings
 	next.Effort = args
 

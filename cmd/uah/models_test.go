@@ -45,7 +45,7 @@ func TestModels(t *testing.T) {
 	res := uahWith(t, env, "", "models", "-C", e.Workspace)
 	require.Equal(t, 0, res.code, res.stderr)
 	assert.Equal(t, "2 models from openai-codex (live list)\n"+
-		"gpt-6-sol · 272k context · effort low (low, high) · fast\n"+
+		"gpt-6-sol · 272k context · effort low (low, high) · fast · default\n"+
 		"gpt-6-luna · 400k context\n", res.stdout)
 
 	res = uahWith(t, env, "", "models", "--json", "--all", "-C", e.Workspace)
@@ -75,4 +75,22 @@ func TestModelsCompletionBundled(t *testing.T) {
 	assert.Contains(t, strings.Fields(res.stdout), "gpt-6-sol", "no cache: the bundled list")
 	res = uahWith(t, env, "", "--provider", "ollama", "-m", "--generate-shell-completion")
 	assert.Empty(t, strings.TrimSpace(res.stdout), "no list for ollama without a cache")
+}
+
+// TestModelsMarksNewDefault: with gpt-6.1-sol in the login's list, it is
+// the default a session would use (TestModels has the list without it).
+func TestModelsMarksNewDefault(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"models":[{"slug":"gpt-6.1-sol","visibility":"list","priority":1},{"slug":"gpt-6-sol","visibility":"list","priority":3}]}`))
+	}))
+	t.Cleanup(srv.Close)
+	e, env := fakeEnv(t)
+	env = append(env, "UNREAL_HARNESS_LLM_BASE_URL="+srv.URL)
+
+	res := uahWith(t, env, "", "models", "-C", e.Workspace)
+
+	require.Equal(t, 0, res.code, res.stderr)
+	assert.Equal(t, "2 models from openai-codex (live list)\n"+
+		"gpt-6.1-sol · 272k context · effort low (low, medium, high, xhigh, max, ultra) · fast · default\n"+
+		"gpt-6-sol · 272k context · effort medium (low, medium, high, xhigh, max, ultra) · fast\n", res.stdout, "the bundled catalog fills in what the list leaves out")
 }

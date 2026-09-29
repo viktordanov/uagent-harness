@@ -20,7 +20,8 @@ import (
 )
 
 // setupEnv isolates the configuration directory and CODEX_HOME, and returns
-// inputs for a new session in a fresh workspace.
+// inputs for a new session in a fresh workspace. The base URL refuses
+// connections, so settling the default model never reaches the network.
 func setupEnv(t *testing.T) (*harnesstest.Env, app.Inputs) {
 	t.Helper()
 	e := harnesstest.NewEnv(t)
@@ -34,8 +35,12 @@ func setupEnv(t *testing.T) (*harnesstest.Env, app.Inputs) {
 		Workspace:  e.Workspace,
 		LogLevel:   "warn",
 		MaxDisk:    "5G",
+		BaseURL:    closedURL,
 	}
 }
+
+// closedURL is a loopback address nothing listens on.
+const closedURL = "http://127.0.0.1:1"
 
 func TestSetup(t *testing.T) {
 	e, in := setupEnv(t)

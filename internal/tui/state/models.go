@@ -2,9 +2,11 @@ package state
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/viktordanov/uagent-harness/internal/models"
+	"github.com/viktordanov/uagent-harness/internal/session"
 )
 
 type (
@@ -88,4 +90,47 @@ func (s State) checkModel(id string) error {
 	}
 
 	return c.Check(id)
+}
+
+// efforts are the levels the current model accepts: the loaded list's, else
+// every level uah knows.
+func (s State) efforts() []string {
+	c, ok := s.catalog()
+	if !ok {
+		return session.Efforts
+	}
+	m, ok := c.Metadata(s.Settings.Model)
+	if !ok || len(m.ReasoningLevels) == 0 {
+		return session.Efforts
+	}
+
+	return m.ReasoningLevels
+}
+
+// checkEffort rejects a level the model's catalog entry does not list, such
+// as ultra on gpt-6-luna.
+func (s State) checkEffort(level string) error {
+	if levels := s.efforts(); !slices.Contains(levels, level) {
+		return fmt.Errorf("%s does not accept effort %s (%s)", s.Settings.Model, level, strings.Join(levels, ", "))
+	}
+
+	return nil
+}
+
+// stepEffort moves the effort by delta among the model's levels (alt+, and
+// alt+.).
+func (s *State) stepEffort(delta int) (State, []Effect) {
+	levels := s.efforts()
+	i := slices.Index(levels, s.Settings.Effort)
+	if i < 0 {
+		i = max(slices.Index(levels, "high"), 0)
+	}
+	j := min(max(i+delta, 0), len(levels)-1)
+	if j == i && levels[i] == s.Settings.Effort {
+		return *s, nil
+	}
+	next := s.Settings
+	next.Effort = levels[j]
+
+	return *s, []Effect{EffSetSettings{Settings: next}}
 }

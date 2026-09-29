@@ -24,9 +24,8 @@ import (
 // Defaults when neither a flag, the resumed session, nor the configuration
 // sets a value.
 const (
-	CodexProvider     = "openai-codex"
-	DefaultCodexModel = "gpt-6-sol"
-	DefaultEffort     = "high"
+	CodexProvider = "openai-codex"
+	DefaultEffort = "high"
 )
 
 // LogLevels are the names --log-level accepts.
@@ -99,6 +98,10 @@ type Resolved struct {
 	// WebSearch is live or disabled; the engine offers live search only
 	// on a provider that has it.
 	WebSearch string
+	// DefaultModel reports that no flag, resumed session, or file named the
+	// model on openai-codex or openai: Settings.Model is then the provider's
+	// fallback until SettleModel sees the provider's list.
+	DefaultModel bool
 }
 
 // UsageError is an error in what the user asked for, such as an invalid
@@ -122,7 +125,11 @@ func Resolve(in Inputs, resumed session.Info, cfg config.Config) (Resolved, erro
 		BaseURL:     in.BaseURL,
 		AllowDotenv: in.AllowDotenv,
 	}
-	s.Model = pickModel(in, resumed, cfg, s.Provider)
+	s.Model = pickModel(in, resumed, cfg)
+	defaulted := s.Model == "" && fallbackModels[s.Provider] != ""
+	if defaulted {
+		s.Model = fallbackModels[s.Provider]
+	}
 	var err error
 	if s.MaxAttempts, err = pickMaxAttempts(in, cfg); err != nil {
 		return Resolved{}, err
@@ -174,7 +181,7 @@ func Resolve(in Inputs, resumed session.Info, cfg config.Config) (Resolved, erro
 	return Resolved{
 		Settings: s, MaxDisk: maxDisk, Instructions: !in.NoInstructions && cfg.InstructionsEnabled(),
 		Sandbox: policy, Env: envPolicy, Compaction: compact, CompactPromptFile: promptFile, Approval: approvalPolicy, Rules: configured,
-		ApprovalsReviewer: reviewer, Review: reviewCfg, Agents: agentSettings, WebSearch: webSearch,
+		ApprovalsReviewer: reviewer, Review: reviewCfg, Agents: agentSettings, WebSearch: webSearch, DefaultModel: defaulted,
 	}, nil
 }
 
@@ -192,19 +199,15 @@ func pickEnv(c config.ShellEnvironmentPolicy) (sandbox.EnvPolicy, error) {
 	}, nil
 }
 
-// pickModel is the model for provider. A provider flag that changes the
-// provider drops the resumed and configured models, which belong to the
-// other provider.
-func pickModel(in Inputs, resumed session.Info, cfg config.Config, provider string) string {
-	fallback := ""
-	if provider == CodexProvider {
-		fallback = DefaultCodexModel
-	}
+// pickModel is the named model, empty when nothing names one. A
+// provider flag that changes the provider drops the resumed and configured
+// models, which belong to the other provider.
+func pickModel(in Inputs, resumed session.Info, cfg config.Config) string {
 	if !providerChanged(in, resumed, cfg) {
-		return first(in.Model, resumed.Model, cfg.Model, fallback)
+		return first(in.Model, resumed.Model, cfg.Model)
 	}
 
-	return first(in.Model, fallback)
+	return in.Model
 }
 
 // providerChanged reports whether the provider flag picks another provider

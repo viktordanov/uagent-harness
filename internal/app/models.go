@@ -17,11 +17,13 @@ func NewModels(stateDir string, s session.Settings, getenv func(string) string) 
 	})
 }
 
-// checkModels asks the provider for its list, as a session would, and
-// checks that the configured model is in it. An unknown model is a warning:
-// the provider decides.
-func checkModels(ctx context.Context, m *models.Manager, model string) Check {
+// checkModels asks the provider for its list, as a session would, settles
+// the default model from it, and checks that the model is in it. An
+// unknown model is a warning: the provider decides.
+func checkModels(ctx context.Context, m *models.Manager, r *Resolved) Check {
 	c := m.Catalog(ctx, m.Provider(), models.Online)
+	r.SettleModel(c)
+	model := r.Settings.Model
 	if c.Err != nil {
 		return warn("models", fmt.Sprintf("%s did not list its models (%v); using the %s list of %d", c.Provider, c.Err, c.Origin, len(c.Models)),
 			"check the credentials and the network; unknown models are passed through")
@@ -61,17 +63,20 @@ func ModelLine(m models.Model) string {
 
 // ListModels resolves the provider as a session with these inputs would
 // and returns its catalog: the cache while fresh, else the provider's list,
-// or with refresh always the provider's.
-func ListModels(ctx context.Context, in Inputs, refresh bool, getenv func(string) string) (models.Catalog, error) {
+// or with refresh always the provider's. The model is the one such a
+// session would use, the default settled from the list.
+func ListModels(ctx context.Context, in Inputs, refresh bool, getenv func(string) string) (models.Catalog, string, error) {
 	stateDir, r, err := resolveOnly(in)
 	if err != nil {
-		return models.Catalog{}, err
+		return models.Catalog{}, "", err
 	}
 	strategy := models.OnlineIfUncached
 	if refresh {
 		strategy = models.Online
 	}
 	m := NewModels(stateDir, r.Settings, getenv)
+	c := m.Catalog(ctx, m.Provider(), strategy)
+	r.SettleModel(c)
 
-	return m.Catalog(ctx, m.Provider(), strategy), nil
+	return c, r.Settings.Model, nil
 }

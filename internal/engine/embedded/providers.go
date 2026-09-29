@@ -22,7 +22,9 @@ type ClientConfig struct {
 	MaxAttempts int
 	// Priority asks for priority processing (service_tier "priority").
 	Priority bool
-	Getenv   func(string) string
+	// Ultra sends reasoning effort ultra (see variant).
+	Ultra  bool
+	Getenv func(string) string
 }
 
 // Provider mirrors unreal-agent-runner v0.1.1's provider table

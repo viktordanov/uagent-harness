@@ -101,9 +101,18 @@ func Setup(ctx context.Context, in Inputs, logOutput io.Writer) (Result, error) 
 	// session sends the same system message and hits the prompt cache.
 	env := instructions.LocalEnvironment(in.Workspace, RealShell(), time.Now(), os.Getenv)
 	r.Settings.SystemPrompt = instructions.HostPrompt(base, text, env.String())
-	opts.Settings = r.Settings
 	catalog := NewModels(stateDir, r.Settings, os.Getenv)
-	catalog.Catalog(ctx, catalog.Provider(), models.Offline) // the cache only, no network
+	if r.DefaultModel {
+		// As Codex picks its default: the provider's list, cached for five
+		// minutes, with the refresh bounded to five seconds.
+		r.SettleModel(catalog.Catalog(ctx, catalog.Provider(), models.OnlineIfUncached))
+	} else {
+		catalog.Catalog(ctx, catalog.Provider(), models.Offline) // the cache only, no network
+	}
+	opts.Settings = r.Settings
+	if notice := effortNotice(catalog.Cached(r.Settings.Provider), r.Settings); notice != "" {
+		opts.Notices = append(opts.Notices, notice)
+	}
 	// The session's own files go to runDir; the model cache stays shared.
 	runDir := cmp.Or(in.RunStateDir, stateDir)
 	opts.SessionsDir = filepath.Join(runDir, "sessions")

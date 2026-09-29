@@ -85,6 +85,9 @@ type Origins struct {
 	Layers  config.Layers
 	// Dir is the current directory, the default workspace.
 	Dir string
+	// Catalog is the provider's model list the default model is settled
+	// from (nil: none, so the default is FallbackCodexModel).
+	Catalog func(provider string) models.Catalog
 }
 
 // Inspect loads what Setup loads, the resumed session and the configuration
@@ -110,6 +113,10 @@ func Inspect(ctx context.Context, in Inputs) (Report, error) {
 	if o.Layers, err = config.LoadLayers(in.ConfigPath, workspaceIn(in, o)); err != nil {
 		return Report{}, usage(err)
 	}
+	if stateDir, err := filepath.Abs(in.StateDir); err == nil {
+		// The cached list at any age: `uah config` makes no request.
+		o.Catalog = models.New(models.Options{Dir: models.CacheDir(stateDir)}).Cached
+	}
 	rep, err := Explain(in, o)
 	rep.Home = home.Dir()
 
@@ -125,6 +132,9 @@ func Explain(in Inputs, o Origins) (Report, error) {
 	r, err := Resolve(in, o.Resumed, cfg)
 	if err != nil {
 		return Report{}, err
+	}
+	if o.Catalog != nil {
+		r.SettleModel(o.Catalog(r.Settings.Provider))
 	}
 	rep := Report{Workspace: in.Workspace, WorkspaceSource: wsSource, UserFile: File{Path: in.ConfigPath, State: fileRead}, ProjectFile: File{Path: config.ProjectFile(in.Workspace), State: fileRead}}
 	if o.Layers.UserFile == "" {

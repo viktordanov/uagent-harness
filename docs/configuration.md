@@ -50,7 +50,7 @@ Each value comes from the first of these that sets it:
 
 The exceptions, as the code applies them:
 
-- A `--provider` flag that changes the provider, compared with the resumed session's, else the configured one, else openai-codex, drops the resumed and configured models. The model is then `--model`, or the provider's default: `gpt-6-sol` for openai-codex and none for the others.
+- A `--provider` flag that changes the provider, compared with the resumed session's, else the configured one, else openai-codex, drops the resumed and configured models. The model is then `--model`, or the provider's default (see `model` below).
 - The workspace comes from `-C`, the resumed session, or the current directory; no file sets it.
 - `--max-disk` (5G) has a default, but the default counts only when the flag is not given: the files come first.
 - `--fast` given, even as `--fast=false`, wins. Otherwise the resumed session's fast mode wins, unless a `--provider` flag changes the provider. Otherwise `fast` is on when any file turns it on.
@@ -77,8 +77,8 @@ Every key may be set in the user file, in a layer, and in a trusted project file
 | Key | Type | Default | Flag, env | Merge | Meaning |
 | --- | --- | --- | --- | --- | --- |
 | `provider` | string | `openai-codex` | `--provider`, `UNREAL_HARNESS_LLM_PROVIDER` | override | The LLM provider: openai, openai-codex, openrouter, fireworks, or ollama |
-| `model` | string | `gpt-6-sol` on openai-codex, else none | `-m`, `--model`, `UNREAL_HARNESS_LLM_MODEL` | override | The model ID |
-| `effort` | string | `high` | `-e`, `--effort` | override | The thinking level: low, medium, high, xhigh, or max |
+| `model` | string | `gpt-6.1-sol` on openai-codex and openai when the login's model list has it; else `gpt-6-sol` on openai-codex, `gpt-6-astra` on openai, and none for the others | `-m`, `--model`, `UNREAL_HARNESS_LLM_MODEL` | override | The model ID. Codex rust-v0.159.1 ranks gpt-6.1-sol first, but OpenAI rolls it out by account, so without a named model uah asks the provider for its list (cached for five minutes) when the session opens. A list uah could not get counts as without it. `uah models` marks the default, and `uah config` settles it from the cached list |
+| `effort` | string | `high` | `-e`, `--effort` | override | The thinking level: low, medium, high, xhigh, max, or ultra. Not every model takes every level (`uah models` lists each model's); a session warns when it opens with a level its model does not list, and `/effort` refuses one |
 | `request_max_attempts` | integer | 10 | `--max-attempts`, `UNREAL_HARNESS_LLM_MAX_ATTEMPTS` | override | How many times a model request is sent before the run fails. A lost connection, a timeout, a 429, or most 5xx statuses are retried after 2 s, then 4, 8, and 16 s, and then every 30 s (less up to a fifth of jitter, or the server's `Retry-After` up to 30 s): 10 attempts wait about 3 minutes in all. The runner's own default is 5 |
 | `max_disk` | size | `5G` | `--max-disk` | override | Stop a run when tool output exceeds this size (`500M`, `5G`, bytes without a suffix); `0` disables it |
 | `fast` | bool | false | `--fast` | OR | Priority processing (`service_tier = "priority"`); needs the openai or openai-codex provider, and any other provider refuses it before the session starts |
@@ -156,7 +156,7 @@ The permission modes:
 | `model_context_window` | integer | the model catalog (the provider's list, else Codex's bundled one), else 272,000 | override | The context window in tokens, for compaction and the context meter |
 | `model_auto_compact_token_limit` | integer | none | override | Codex's key: compact once the context in use reaches this many tokens, when that comes before `auto_compact_percent` of the window. It only lowers the limit, as in Codex; `auto_compact_percent = 0` still turns automatic compaction off. `/context` shows the rest of the window as the buffer |
 | `compact_model` | string | the session's current model, as Codex | override | The model that writes the summary, on the session's provider. A model with a smaller window gets the history trimmed from the oldest item to fit |
-| `compact_effort` | string | the session's current effort | override | The summary call's effort: low, medium, high, xhigh, or max |
+| `compact_effort` | string | the session's current effort | override | The summary call's effort: low, medium, high, xhigh, max, or ultra |
 | `compact_prompt` | string | Codex's summary prompt | override | Codex's key: the prompt the summary call ends with. Surrounding whitespace is trimmed; empty means the default |
 | `experimental_compact_prompt_file` | path | none | override | Codex's key: a file whose text is the summary prompt, when `compact_prompt` is not set. An absolute path or one under `~/`; a missing or empty file stops the session from starting |
 | `compact_user_message_max_tokens` | integer | 20000, at most a quarter of the window | override | The cap on user messages a compaction keeps word for word, newest first; the one that crosses it is shortened in the middle. Codex fixes it at 20,000 (`COMPACT_USER_MESSAGE_MAX_TOKENS`); uah's default is at most a quarter of the window, so a small model's compacted context is not mostly old messages. A compaction saves the cap it used, so changing it affects later compactions only |
@@ -193,7 +193,7 @@ Codex's inline `instructions` string is not supported, because uah's `[instructi
 
 #### Codex's prompt
 
-uah's default system prompt is Codex's base instructions for gpt-6-sol with nine small changes (`internal/instructions/default_prompt.md`). At rust-v0.156.1, Codex keeps a separate prompt for each model in the catalog (`model_messages.instructions_template` in `codex-rs/models-manager/models.json`) and sends it as literal text. The Markdown prompts in `codex-rs/core` (`gpt_5_codex_prompt.md`, `gpt_5_2_prompt.md`, `gpt-5.2-codex_prompt.md`, and others) are no longer read. A model that is not in the catalog gets `codex-rs/models-manager/prompt.md`. uah starts from the template of gpt-6-sol, because gpt-6-sol is uah's default model on openai-codex. The templates of the other GPT-6 and GPT-5.x models differ from it in places, such as the personality section.
+uah's default system prompt is Codex's base instructions for gpt-6.1-sol with nine small changes (`internal/instructions/default_prompt.md`). At rust-v0.159.1, Codex keeps a separate prompt for each model in the catalog (`model_messages.instructions_template` in `codex-rs/models-manager/models.json`) and sends it as literal text. The Markdown prompts in `codex-rs/core` (`gpt_5_codex_prompt.md`, `gpt_5_2_prompt.md`, `gpt-5.2-codex_prompt.md`, and others) are no longer read. A model that is not in the catalog gets `codex-rs/models-manager/prompt.md`. uah starts from the template of gpt-6.1-sol, because gpt-6.1-sol is uah's default model on openai-codex; a login that runs gpt-6-sol until gpt-6.1-sol reaches it gets the same prompt. The templates of the other GPT-6 and GPT-5.x models differ from it in places, such as the personality and writing style sections.
 
 The changes fit the prompt to uah's tools; the [system prompt record](design/system-prompt.md) lists each one with its reason:
 
@@ -322,7 +322,7 @@ Kinds of subagents (roles) are files in `~/.uah/agents/` and, for a trusted work
 | the body | `developer_instructions` | string | Added to the agent's system prompt. Required |
 | `nickname_candidates` | `nickname_candidates` | list of strings | Names for its agents instead of uah's list |
 | `model` | `model` | string | The agent's model, on the parent's provider. `inherit`, and Claude Code's aliases (`sonnet`, `opus`, `haiku`, `fable`, with a notice), mean the parent's |
-| `effort` or `model_reasoning_effort` | `model_reasoning_effort` | string | The agent's effort: `low`, `medium`, `high`, `xhigh`, or `max` |
+| `effort` or `model_reasoning_effort` | `model_reasoning_effort` | string | The agent's effort: `low`, `medium`, `high`, `xhigh`, `max`, or `ultra` |
 | `fast` or `service_tier` | `service_tier` | bool or string | `true` or `"priority"` (or `"fast"`) runs its agents with priority processing (fast mode), when the provider offers it; `false` or `"default"` runs them without it; absent follows the parent |
 | `tools` | `tools` | comma-separated string or list | The tools its agents are offered; absent offers every tool |
 | `approve` | `approve` | list of strings | Commands and MCP tools its agents run without asking, within the permission mode |

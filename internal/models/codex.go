@@ -9,7 +9,7 @@ import (
 )
 
 // bundledJSON is the offline fallback: the fields uah uses from Codex's
-// codex-rs/models-manager/models.json at rust-v0.156.1, in Codex's shape so
+// codex-rs/models-manager/models.json at rust-v0.159.1, in Codex's shape so
 // the ChatGPT backend's response and this file share one parser.
 //
 //go:embed bundled.json
@@ -18,7 +18,7 @@ var bundledJSON []byte
 // CodexClientVersion is the client_version uah sends to the ChatGPT backend's
 // models endpoint: the Codex release the bundled catalog came from. Codex
 // sends its own version (client_version_to_whole in models-manager/src/lib.rs).
-const CodexClientVersion = "0.156.1"
+const CodexClientVersion = "0.159.1"
 
 // codexModels is Codex's ModelsResponse (codex-rs/protocol/src/openai_models.rs).
 type codexModels struct {

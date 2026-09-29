@@ -207,7 +207,7 @@ func TestValidate(t *testing.T) {
 
 	many := modelstest.Manager(t, models.ProviderCodex, modelstest.Source{Models: models.Bundled(models.ProviderCodex).Models})
 	require.EqualError(t, many.Validate(ctx, models.ProviderCodex, "gpt-luna-6"),
-		"Unknown model `gpt-luna-6` for spawn_agent. Available models: gpt-6-astra, gpt-6-sol, gpt-6-luna, gpt-5.6-sol, gpt-5.6-terra. Did you mean `gpt-6-luna`?",
+		"Unknown model `gpt-luna-6` for spawn_agent. Available models: gpt-6.1-sol, gpt-6-astra, gpt-6-sol, gpt-6-luna, gpt-5.6-sol. Did you mean `gpt-6-luna`?",
 		"Codex's message and its five listed models, as agents.CodexModels gives today")
 
 	down := modelstest.Manager(t, models.ProviderCodex, modelstest.Source{Err: errors.New("offline")})

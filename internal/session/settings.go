@@ -13,7 +13,7 @@ import (
 )
 
 // Efforts are the thinking levels the runner accepts.
-var Efforts = []string{"low", "medium", "high", "xhigh", "max"}
+var Efforts = []string{"low", "medium", "high", "xhigh", "max", "ultra"}
 
 // Providers are the backends the runner supports.
 var Providers = []string{"openai", "openai-codex", "openrouter", "fireworks", "ollama"}

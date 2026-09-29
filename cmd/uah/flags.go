@@ -30,7 +30,7 @@ func sessionFlags() []cli.Flag {
 		},
 		&cli.StringFlag{
 			Name: "model", Aliases: []string{"m"}, Usage: "model ID",
-			DefaultText: app.DefaultCodexModel + " for openai-codex, or the resumed session's", Sources: cli.EnvVars(app.EnvModel),
+			DefaultText: app.DefaultCodexModel + " on openai-codex and openai when your login lists it, else " + app.FallbackCodexModel + " (openai: gpt-6-astra); or the resumed session's", Sources: cli.EnvVars(app.EnvModel),
 		},
 		&cli.StringFlag{
 			Name: "effort", Aliases: []string{"e"}, Usage: "thinking level: " + strings.Join(session.Efforts, ", "),
