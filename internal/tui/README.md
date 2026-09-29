@@ -23,7 +23,7 @@ The layout, screens, and framework choice are recorded in the [TUI design](../..
 12. [Tests](#tests)
 <!-- /memoria:section -->
 
-<!-- memoria:section id="packages" files="state/state.go state/reduce.go state/effects.go render/screen.go render/items.go bubble/model.go bubble/effects.go bubble/keys.go" -->
+<!-- memoria:section id="packages" files="state/state.go state/reduce.go state/effects.go render/screen.go render/items.go bubble/model.go bubble/effects.go bubble/keys.go bubble/exit.go" -->
 ## Packages
 
 | Package | Does | Must not |
@@ -32,7 +32,7 @@ The layout, screens, and framework choice are recorded in the [TUI design](../..
 | `render` | Draws `State` into lines with lipgloss: `Screen(state, cache, frame)` returns the frame and the composer's row | Import Bubble Tea. It gets the composer's rendered view in `Frame` |
 | `bubble` | The Bubble Tea `Model`: maps keys to intents, runs effects as `tea.Cmd`s, batches session events, owns the composer textarea, and draws frames with `render` | Hold UI state of its own beyond the composer, the window size, and the open session |
 
-When the program ends, `bubble.Run` returns an `Exit` (the open session and its token totals), and `cmd/uah` prints Codex's exit summary from it: the token usage and "To continue this session, run:" with `uah resume <id>` on its own line, only for a session that ran. On a terminal it uses the TUI's theme: labels dim and the command in the accent; otherwise, or with `NO_COLOR`, plain text. Because `state` and `render` have no framework code, a different terminal library would replace only `bubble`. `cmd/uah/tui.go` builds `bubble.Deps` (how to open a session, list sessions, count activity, store pasted images, read the clipboard and copy text to it, and read the plan's usage) and calls `bubble.Run`.
+When the program ends, `bubble.Run` returns an `Exit` (the open session, its token totals, and the theme; `bubble/exit.go`), and `cmd/uah` prints Codex's exit summary from it: the token usage and "To continue this session, run:" with `uah resume <id>` on its own line, only for a session that ran. On a terminal it uses the TUI's theme: labels dim and the command in the accent; otherwise, or with `NO_COLOR`, plain text. Because `state` and `render` have no framework code, a different terminal library would replace only `bubble`. `cmd/uah/tui.go` builds `bubble.Deps` (how to open a session, list sessions, count activity, store pasted images, read the clipboard and copy text to it, and read the plan's usage) and calls `bubble.Run`.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="flow" files="bubble/model.go bubble/effects.go bubble/keys.go state/reduce.go state/effects.go render/screen.go render/items.go" -->

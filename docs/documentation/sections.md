@@ -33,4 +33,4 @@ Explain the contract.
 <!-- /memoria:section -->
 ```
 
-Paths are literal, relative to the owning README, and must name files that README owns. Do not use globs.
+Paths are literal, relative to the README, and must name files that the README covers: not another README and not a file in a folder handed off to one. Do not use globs.
