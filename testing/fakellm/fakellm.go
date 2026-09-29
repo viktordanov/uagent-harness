@@ -63,6 +63,10 @@ type Reply struct {
 	// Searches are hosted web searches, streamed and listed before the
 	// other output items, as the provider runs them.
 	Searches []Search
+	// Compaction, when set, answers with one compaction item with this
+	// encrypted content and nothing else, as the Responses API answers a
+	// request that ends with a compaction_trigger item.
+	Compaction string
 }
 
 // Search is a web_search_call item: Action is search (the default),
@@ -269,6 +273,8 @@ type (
 		Content   []contentPart `json:"content,omitempty"`
 		Summary   []contentPart `json:"summary,omitempty"`
 		Action    *searchAction `json:"action,omitempty"`
+		// EncryptedContent is a compaction item's.
+		EncryptedContent string `json:"encrypted_content,omitempty"`
 	}
 	searchAction struct {
 		Type    string `json:"type"`
@@ -292,6 +298,12 @@ type (
 const completed = "completed"
 
 func response(n int, reply Reply) responseBody {
+	if reply.Compaction != "" {
+		return responseBody{
+			ID: fmt.Sprintf("resp-%d", n), Object: "response", Status: completed, Usage: replyUsage(n, reply),
+			Output: []outputItem{{ID: fmt.Sprintf("cmp-%d", n), Type: "compaction", EncryptedContent: reply.Compaction}},
+		}
+	}
 	output := []outputItem{}
 	for i := range reply.Searches {
 		output = append(output, searchItem(n, i, reply.Searches[i]))
@@ -333,17 +345,21 @@ func response(n int, reply Reply) responseBody {
 		})
 	}
 
+	return responseBody{ID: fmt.Sprintf("resp-%d", n), Object: "response", Status: completed, Output: output, Usage: replyUsage(n, reply)}
+}
+
+// replyUsage is the usage a reply reports: InputTokens, else 100 per
+// request so far, and 10 output tokens; nil with NoUsage.
+func replyUsage(n int, reply Reply) *usage {
+	if reply.NoUsage {
+		return nil
+	}
 	input := 100 * n
 	if reply.InputTokens > 0 {
 		input = reply.InputTokens
 	}
 
-	body := responseBody{ID: fmt.Sprintf("resp-%d", n), Object: "response", Status: completed, Output: output}
-	if !reply.NoUsage {
-		body.Usage = &usage{InputTokens: input, OutputTokens: 10, TotalTokens: input + 10}
-	}
-
-	return body
+	return &usage{InputTokens: input, OutputTokens: 10, TotalTokens: input + 10}
 }
 
 // failWith answers with the reply's HTTP status and a Responses API error.

@@ -87,6 +87,11 @@ func (c *compactor) compact(ctx context.Context, req llm.Request, opts llm.Reque
 			return rec, err
 		}
 	}
+	if c.usesRemote(ask) {
+		if rec, ok, err := c.tryRemote(ctx, req, opts, ask, start); ok {
+			return rec, err
+		}
+	}
 	covered := c.coverage(req.Input)
 	if covered == 0 {
 		return compaction.Record{}, errNothingToCompact
@@ -105,13 +110,7 @@ func (c *compactor) compact(ctx context.Context, req llm.Request, opts llm.Reque
 	}
 	window := compaction.ContextWindow(c.next.currentModel(), c.window, c.windows)
 	rec.Keep, rec.Focus = c.settings.KeepFor(window), strings.TrimSpace(ask.focus)
-	// What a /clear dropped stays dropped.
-	c.mu.Lock()
-	if c.record != nil && !c.stale {
-		rec.Floor = min(c.record.Floor, rec.Covered)
-		rec.Elided = compaction.StillElided(req.Input[1+rec.Covered:], c.record.Elided)
-	}
-	c.mu.Unlock()
+	c.carry(&rec, req.Input)
 	rec.Ledger = compaction.Ledger(req.Input[1+rec.Floor:1+rec.Covered], rec.Focus)
 	stats := c.measure(req.Input, rec, ask, start, compaction.StrategyLocal)
 	stats.SummaryTokens, stats.Call = int64(compaction.ApproxTokens(summary.Text)), compaction.UsageOf(summary.Usage)

@@ -31,6 +31,7 @@ experimental_compact_prompt_file                  ""                            
 compact_user_message_max_tokens                   20000                         default
 compact_elide_after_calls                         10                            default
 compact_keep_recent_calls                         5                             default
+remote_compaction                                 true                          default
 model_instructions_file                           uah's default prompt          default
 instructions.max_bytes                            32768                         default
 project_doc_max_bytes                             32768                         default

@@ -165,6 +165,8 @@ The permission modes:
 
 | `compact_keep_recent_calls` | integer | 5 | override | A summary leaves the last this many tool calls, with their outputs and the model's output around them, word for word after it; when they take more than a quarter of the window, the summary covers them too. 0 summarizes everything, as Codex does |
 
+| `remote_compaction` | boolean | true | override | On openai and openai-codex, compact as Codex does: the provider turns the history into an encrypted item that later requests send in its place, after the kept user messages (up to 64,000 tokens) and before uah's ledger. A failed remote compaction, a `/compact` with focus instructions, and every other provider use the summary. Codex has no key for it (its `remote_compaction_v2` feature is removed and always on) |
+
 `/compact <instructions>` adds focus instructions to the prompt for that one summary, as in Claude Code: `/compact keep the failing test names`.
 
 ### Instructions and skills

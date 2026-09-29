@@ -117,12 +117,20 @@ type watchTransport struct{ base http.RoundTripper }
 
 func (t watchTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	req, err := withRecordedSearches(req)
+	if err == nil {
+		req, err = withRemoteCompaction(req)
+	}
 	if err != nil {
 		return nil, err
 	}
 	a, _ := req.Context().Value(attemptsKey{}).(*attempts)
 	if a == nil {
-		return t.base.RoundTrip(req) //nolint:wrapcheck // a transport returns its base's errors unchanged
+		resp, err := t.base.RoundTrip(req)
+		if err == nil && resp.StatusCode == http.StatusOK {
+			resp.Body = takeCompaction(req.Context(), resp.Body)
+		}
+
+		return resp, err //nolint:wrapcheck // a transport returns its base's errors unchanged
 	}
 	n := a.start()
 	resp, err := t.base.RoundTrip(req)
@@ -133,7 +141,7 @@ func (t watchTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		a.failed(n, resp.Status, false, resp.Header)
 	case resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices:
 		a.end(true)
-		resp.Body = &watchedBody{ReadCloser: teed(req.Context(), resp.Body), a: a, n: n}
+		resp.Body = &watchedBody{ReadCloser: teed(req.Context(), takeCompaction(req.Context(), resp.Body)), a: a, n: n}
 	}
 
 	return resp, err //nolint:wrapcheck // a transport returns its base's errors unchanged

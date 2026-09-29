@@ -14,6 +14,7 @@ import (
 	"crypto/sha256"
 	_ "embed"
 	"encoding/hex"
+	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
 	"fmt"
@@ -92,6 +93,10 @@ type Record struct {
 	// Elided are the calls whose outputs the model sees as stubs (Elide),
 	// from this record's elision pass and the ones before it.
 	Elided []string `json:"elided,omitempty"`
+	// Remote is the provider's encrypted compaction item, for a remote
+	// compaction (StrategyRemote): later requests send it where the summary
+	// would be.
+	Remote jsontext.Value `json:"remote,omitempty"`
 	// Ledger is the state ledger uah generated from the covered items
 	// (Ledger), sent after the summary.
 	Ledger string `json:"ledger,omitempty"`
@@ -174,10 +179,35 @@ func Apply(input []llm.Item, rec Record) ([]llm.Item, error) {
 	out = append(out, input[0])
 	out = append(out, kept...)
 	if rec.Floor < rec.Covered {
-		out = append(out, SummaryMessage(rec.SummaryText()))
+		out = append(out, rec.summaryItems()...)
 	}
 
 	return append(out, detachOrphans(Elide(tail, rec.Elided))...), nil
+}
+
+// summaryItems are what replaces the covered items after the kept user
+// messages: the summary message; or for a remote compaction the item's
+// placeholder, which the transport swaps for the item, then the ledger.
+func (r Record) summaryItems() []llm.Item {
+	if len(r.Remote) == 0 {
+		return []llm.Item{SummaryMessage(r.SummaryText())}
+	}
+	out := []llm.Item{{Type: llm.ItemMessage, Data: llm.Message{Role: llm.RoleUser, Text: RemotePlaceholder(r)}}}
+	if r.Ledger != "" {
+		out = append(out, llm.Item{Type: llm.ItemMessage, Data: llm.Message{Role: llm.RoleUser, Text: r.Ledger}})
+	}
+
+	return out
+}
+
+// RemoteMarker identifies a remote compaction's placeholder in a request
+// body. It needs no escaping in JSON.
+func RemoteMarker(r Record) string { return "uah-remote-compaction:" + r.Hash[:min(16, len(r.Hash))] }
+
+// RemotePlaceholder is the message that stands for a remote compaction's
+// item. A provider that cannot take the item reads it as is.
+func RemotePlaceholder(r Record) string {
+	return "[" + RemoteMarker(r) + "] The earlier conversation was compacted by the provider into an encrypted item that this model cannot read."
 }
 
 // SummaryText is what the summary message carries after the prefix: the

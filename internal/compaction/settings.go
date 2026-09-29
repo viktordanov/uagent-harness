@@ -36,6 +36,9 @@ type Settings struct {
 	// summary (compact_keep_recent_calls); 0 summarizes everything, as
 	// Codex does.
 	KeepCalls int
+	// Remote compacts on a provider that can into its encrypted item, as
+	// Codex does on OpenAI providers (remote_compaction).
+	Remote bool
 }
 
 // DefaultKeepCalls is how many recent tool calls a summary leaves verbatim:
@@ -78,6 +81,24 @@ func (s Settings) KeepTokens() int {
 	}
 
 	return UserMessageMaxTokens
+}
+
+// RemoteKeepTokens is Codex's cap on the user messages a remote compaction
+// keeps (RETAINED_MESSAGE_TOKEN_BUDGET, rust-v0.159.1).
+const RemoteKeepTokens = 64_000
+
+// RemoteKeepFor is the cap a remote compaction uses in a window: the
+// configured one, or Codex's 64,000 tokens but at most a quarter of the
+// window.
+func (s Settings) RemoteKeepFor(window int64) int {
+	switch {
+	case s.UserMessageMaxTokens > 0:
+		return s.UserMessageMaxTokens
+	case window <= 0:
+		return RemoteKeepTokens
+	}
+
+	return int(max(min(int64(RemoteKeepTokens), window/4), 1))
 }
 
 // KeepFor is the cap a compaction uses in a window: the configured one, or

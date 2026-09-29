@@ -213,9 +213,17 @@ func (w *wiring) compactor(ctx context.Context, s runStore, sw *switcher, first 
 	}
 
 	return &compactor{
-		ctx: ctx, next: sw, log: log, emit: emit, logger: cfg.Logger, before: before, window: cfg.ContextWindow, windows: w.e.models.Window, settings: cfg.Compaction,
+		ctx: ctx, next: sw, log: log, emit: emit, logger: cfg.Logger, before: before, remote: w.remoteCompaction(), window: cfg.ContextWindow, windows: w.e.models.Window, settings: cfg.Compaction,
 		record: rec, older: records, cuts: cuts, pending: first, focus: focus, used: used,
 	}, nil
+}
+
+// remoteCompaction reports whether the run's compactions go to the
+// provider: remote_compaction is on and the provider can.
+func (w *wiring) remoteCompaction() bool {
+	p, err := w.e.provider(w.l.Request.Provider)
+
+	return err == nil && p.RemoteCompaction && w.e.cfg.Compaction.Remote
 }
 
 // newAgent opens the inbox and submits the initial settings and messages.

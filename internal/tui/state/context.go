@@ -110,6 +110,11 @@ func (s *State) onCompacted(e engine.Compacted) {
 
 		return
 	}
+	if e.Stats != nil && e.Stats.Strategy == compaction.StrategyRemote {
+		s.notice(session.LevelInfo, "Context compacted by the provider; your messages stay as written")
+
+		return
+	}
 	s.notice(session.LevelInfo, "Context compacted; your messages stay as written")
 	if e.Warning != "" {
 		s.notice(session.LevelWarning, e.Warning)

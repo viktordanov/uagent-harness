@@ -41,6 +41,8 @@ type compactor struct {
 	emit func(core.Event)
 	// logger gets a line per compaction with its stats (nil: none).
 	logger *slog.Logger
+	// remote compacts into the provider's encrypted item (compactremote.go).
+	remote bool
 	// summarize is the summary call; compaction.Summarize over the
 	// switcher's current client when nil. A remote strategy plugs in here.
 	summarize compaction.Summarizer
@@ -130,7 +132,7 @@ func (c *compactor) Respond(ctx context.Context, req llm.Request, opts llm.Reque
 		}
 	}
 	req.Input = c.apply(req.Input)
-	resp, err := c.next.Respond(ctx, req, opts)
+	resp, err := c.next.Respond(c.withItem(ctx), req, opts)
 	if err == nil {
 		c.mu.Lock()
 		c.used = resp.Usage.InputTokens + resp.Usage.OutputTokens

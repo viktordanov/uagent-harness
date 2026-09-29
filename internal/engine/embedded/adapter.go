@@ -78,7 +78,7 @@ func (s *switcher) Respond(ctx context.Context, req llm.Request, opts llm.Reques
 	ctx, done := s.streaming(ctx)
 	resp, err := client.Respond(ctx, req, opts)
 	done(err)
-	if err == nil && s.seen != nil {
+	if _, compacting := ctx.Value(remoteCallKey{}).(*remoteCall); err == nil && s.seen != nil && !compacting {
 		s.seen(req, resp.Usage)
 	}
 

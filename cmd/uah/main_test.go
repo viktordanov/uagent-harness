@@ -348,7 +348,7 @@ func TestRunEmbeddedCompaction(t *testing.T) {
 	llm := fakellm.New(t, fakellm.Reply{Commands: []string{"echo hi"}, InputTokens: 250_000}, fakellm.Reply{Text: "THE SUMMARY"}, fakellm.Reply{Text: "answer"})
 	configHome := filepath.Join(e.StateDir, "..", "config")
 	require.NoError(t, os.MkdirAll(configHome, 0o700))
-	require.NoError(t, os.WriteFile(filepath.Join(configHome, "config.toml"), []byte("auto_compact_percent = 90\n"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(configHome, "config.toml"), []byte("auto_compact_percent = 90\nremote_compaction = false\n"), 0o600))
 	env := []string{
 		"UAH_STATE_DIR=" + e.StateDir, "OPENAI_API_KEY=test-key",
 		"UNREAL_HARNESS_LLM_PROVIDER=", "UNREAL_HARNESS_LLM_MODEL=", "UAH_HOME=" + configHome,

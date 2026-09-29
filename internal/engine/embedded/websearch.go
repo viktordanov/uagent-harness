@@ -125,7 +125,7 @@ func (s *stream) output(ev streamEvent) {
 		return
 	}
 	var item json.RawMessage
-	if ev.Type == "response.output_item.done" && ev.Item.Type == webSearchCall {
+	if ev.Type == eventItemDone && ev.Item.Type == webSearchCall {
 		item = searchItem(ev)
 	}
 	s.mu.Lock()
@@ -203,7 +203,7 @@ func (s *stream) search(ev streamEvent) {
 	switch ev.Type {
 	case "response.output_item.added":
 		e = engine.WebSearch{At: time.Now(), ItemID: ev.Item.ID}
-	case "response.output_item.done":
+	case eventItemDone:
 		a := ev.Item.Action
 		e = engine.WebSearch{At: time.Now(), ItemID: ev.Item.ID, Done: true, Action: a.Type, Query: a.query(), URL: a.URL, Pattern: a.Pattern}
 	default:

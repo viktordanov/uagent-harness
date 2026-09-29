@@ -35,6 +35,7 @@ func pickCompaction(cfg config.Config, s *session.Settings) (compaction.Settings
 	if n := cfg.CompactKeepRecentCalls; n != nil {
 		c.KeepCalls = *n
 	}
+	c.Remote = cfg.RemoteCompaction == nil || *cfg.RemoteCompaction
 	var err error
 	switch {
 	case c.Percent < 0 || c.Percent > 100:
@@ -144,5 +145,6 @@ func compactionSettings(l config.Layers, r Resolved, cfg config.Config) []Settin
 		overridden(l, "compact_user_message_max_tokens", c.KeepTokens(), func(c config.Config) any { return c.CompactUserMessageMaxTokens }),
 		overridden(l, "compact_elide_after_calls", c.Elision.AfterCalls, func(c config.Config) any { return c.CompactElideAfterCalls }),
 		overridden(l, "compact_keep_recent_calls", c.KeepCalls, func(c config.Config) any { return c.CompactKeepRecentCalls }),
+		overridden(l, "remote_compaction", c.Remote, func(c config.Config) any { return c.RemoteCompaction }),
 	}
 }

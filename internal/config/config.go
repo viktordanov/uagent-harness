@@ -77,6 +77,9 @@ type Config struct {
 	// CompactKeepRecentCalls leaves the last tool calls verbatim after a
 	// summary (5 by default; 0 summarizes everything, as Codex).
 	CompactKeepRecentCalls *int `toml:"compact_keep_recent_calls"`
+	// RemoteCompaction compacts on openai and openai-codex into the
+	// provider's encrypted item, as Codex does (true by default).
+	RemoteCompaction *bool `toml:"remote_compaction"`
 	// ReviewModel is /review's model, as Codex's key (the session's by
 	// default).
 	ReviewModel string `toml:"review_model"`
