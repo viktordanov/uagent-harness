@@ -25,12 +25,12 @@ type Config struct {
 	RequestMaxAttempts int `toml:"request_max_attempts"`
 	// Fast asks for priority processing.
 	Fast bool `toml:"fast"`
-	// SandboxMode is read-only, workspace-write (the default), or
-	// danger-full-access; the names match Codex's.
+	// SandboxMode is read-only or workspace-write (the default); the names
+	// match Codex's. Codex's danger-full-access is yolo mode, which only
+	// --yolo gives.
 	SandboxMode string `toml:"sandbox_mode"`
-	// PermissionMode is read-only, workspace, auto, or full-access: a
-	// sandbox mode and who decides what needs approval. It overrides
-	// sandbox_mode when set.
+	// PermissionMode is read-only, workspace, or auto: a sandbox mode and
+	// who decides what needs approval. It overrides sandbox_mode when set.
 	PermissionMode        string                `toml:"permission_mode"`
 	SandboxWorkspaceWrite SandboxWorkspaceWrite `toml:"sandbox_workspace_write"`
 	// ShellEnvironmentPolicy is which environment variables commands get.

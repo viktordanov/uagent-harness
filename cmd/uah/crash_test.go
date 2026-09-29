@@ -38,7 +38,7 @@ func TestCrashRecovery(t *testing.T) {
 		"UNREAL_HARNESS_LLM_PROVIDER=", "UNREAL_HARNESS_LLM_MODEL=",
 	}
 	// No sandbox: under bwrap's PID namespace, $$ would not be the host's PID.
-	args := []string{"run", "-q", "--provider", "openai", "--model", "gpt-test", "--base-url", llm.URL, "-C", e.Workspace, "--sandbox", "danger-full-access"}
+	args := []string{"run", "-q", "--provider", "openai", "--model", "gpt-test", "--base-url", llm.URL, "-C", e.Workspace, "--yolo"}
 
 	first := exec.Command(uahBin, append(args, "start a long command")...)
 	first.Env = append(os.Environ(), env...)

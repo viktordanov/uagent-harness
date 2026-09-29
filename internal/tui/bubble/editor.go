@@ -84,7 +84,7 @@ func editorCommand(getenv func(string) string) ([]string, error) {
 // can write dir or its parent, or a writable root lies inside dir. uah's
 // home is never writable in read-only mode, nor in workspace-write unless
 // $UAH_HOME is in a writable root under another name than .uah, which
-// stays protected there. Full access has no sandbox to keep out.
+// stays protected there. Yolo mode has no sandbox to keep out.
 func draftDirExposed(p sandbox.Policy, dir string) bool {
 	if p.Mode == sandbox.FullAccess {
 		return false

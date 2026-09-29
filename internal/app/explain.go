@@ -216,12 +216,16 @@ func fastSources(in Inputs, o Origins, cfg config.Config) []Source {
 }
 
 // modeSource is the permission mode's source, and the sandbox mode's that
-// follows from it: --sandbox, the resumed session, permission_mode, or
-// sandbox_mode, as pickMode decides.
+// follows from it: --yolo, --sandbox, the resumed session, permission_mode,
+// or sandbox_mode, as pickMode decides.
 func modeSource(in Inputs, o Origins) Source {
 	l := o.Layers
+	resumed := o.Resumed.Mode
+	if resumed.AsksNoOne() {
+		resumed = "" // only --yolo gives yolo
+	}
 
-	return pick(input(in.Sandbox, EnvSandbox, o.Env), sessionValue(string(o.Resumed.Mode)),
+	return pick(given(in.Yolo), input(in.Sandbox, EnvSandbox, o.Env), sessionValue(string(resumed)),
 		overrides(l, func(c config.Config) any { return c.PermissionMode }),
 		overrides(l, func(c config.Config) any { return c.SandboxMode }), FromDefault)
 }

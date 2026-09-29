@@ -98,7 +98,7 @@ func (w *wiring) sandboxedBash(req core.Request, opsDir, realShell string) (tool
 func (b sandboxedBash) available() bool { return len(b.boxes) > 0 }
 
 // current is the sandbox mode the next command runs in and its
-// translator: the unsandboxed one in full access or without a sandbox.
+// translator: the unsandboxed one in yolo mode or without a sandbox.
 func (b sandboxedBash) current() (sandbox.Mode, sandboxShell) {
 	mode := b.mode.get().Sandbox()
 	if box, ok := b.boxes[mode]; ok {
@@ -124,7 +124,7 @@ func (b sandboxedBash) Translate(ctx tool.Context, call llm.ToolCall) tool.CallS
 	d := b.approver.Decide(b.ctx, approval.Request{
 		Command: args.Command, Cwd: b.cwd, Justification: args.Justification, PrefixRule: args.PrefixRule,
 		Escalated: args.Permissions == permEscalated && sandboxed,
-		NoSandbox: !sandboxed && mode != sandbox.FullAccess,
+		NoSandbox: !sandboxed && mode != sandbox.FullAccess, Bypass: b.mode.get().AsksNoOne(),
 	}, b.ask)
 	if d.Run != approval.Deny && d.Reason != "" {
 		_, _ = fmt.Fprintf(b.warn, "embedded: %s\n", d.Reason)

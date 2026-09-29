@@ -126,7 +126,7 @@ func (d *driver) draft() string { return d.m.(bubble.Model).Draft() }
 func TestTUI_EditTheDraftInTheEditor(t *testing.T) {
 	// Full access: the test's home is in the temporary directory, which the
 	// sandbox writes (TestTUI_EditorRefusesAnExposedDraftDir).
-	d, llm, workspace := imageDepsIn(t, approval.ModeFullAccess)
+	d, llm, workspace := imageDepsIn(t, approval.ModeYolo)
 	fe := useFakeEditor(t, &d, "edit")
 	dr := start(t, d)
 	dr.until("the session is open", func() bool { return dr.m.(bubble.Model).Exit().SessionID != "" })
@@ -167,7 +167,7 @@ func TestTUI_EditTheDraftInTheEditor(t *testing.T) {
 // TestTUI_EditorRoundTripsAMultiLinePaste: a pasted multi-line draft saved
 // unchanged comes back unchanged.
 func TestTUI_EditorRoundTripsAMultiLinePaste(t *testing.T) {
-	d := depsIn(t, "simple.jsonl", approval.ModeFullAccess)
+	d := depsIn(t, "simple.jsonl", approval.ModeYolo)
 	fe := useFakeEditor(t, &d, "keep")
 	dr := start(t, d)
 	dr.until("the session is open", func() bool { return dr.m.(bubble.Model).Exit().SessionID != "" })
@@ -187,7 +187,7 @@ func TestTUI_EditorRoundTripsAMultiLinePaste(t *testing.T) {
 func TestTUI_EditorFailsOrEmpties(t *testing.T) {
 	for _, action := range []string{"fail", "empty"} {
 		t.Run(action, func(t *testing.T) {
-			d := depsIn(t, "simple.jsonl", approval.ModeFullAccess)
+			d := depsIn(t, "simple.jsonl", approval.ModeYolo)
 			fe := useFakeEditor(t, &d, action)
 			dr := start(t, d)
 			dr.until("the session is open", func() bool { return dr.m.(bubble.Model).Exit().SessionID != "" })

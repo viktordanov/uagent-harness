@@ -47,7 +47,7 @@ func depsIn(t *testing.T, fixture string, mode approval.Mode) bubble.Deps {
 
 	return bubble.Deps{
 		Open: func(ctx context.Context, id string) (*session.Session, []session.LoadedRun, error) {
-			s, err := session.Open(ctx, eng, session.Options{ID: id, Resumed: id != "", Settings: settings})
+			s, err := session.Open(ctx, eng, session.Options{ID: id, Resumed: id != "", Settings: settings, Yolo: mode == approval.ModeYolo})
 			if err != nil || id == "" {
 				return s, nil, err
 			}

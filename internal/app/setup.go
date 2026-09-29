@@ -109,7 +109,7 @@ func Setup(ctx context.Context, in Inputs, logOutput io.Writer) (Result, error) 
 	} else {
 		catalog.Catalog(ctx, catalog.Provider(), models.Offline) // the cache only, no network
 	}
-	opts.Settings = r.Settings
+	opts.Settings, opts.Yolo = r.Settings, in.Yolo
 	if notice := effortNotice(catalog.Cached(r.Settings.Provider), r.Settings); notice != "" {
 		opts.Notices = append(opts.Notices, notice)
 	}

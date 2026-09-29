@@ -59,6 +59,8 @@ type mcpGate struct {
 	// approved, when set, reports the tools the session's scope approved
 	// in advance: they run as with approval_mode approve.
 	approved func(name string) bool
+	// yolo, when set, reports yolo mode, where every tool runs unasked.
+	yolo func() bool
 }
 
 // withMCP adds the tools the request does not disallow.
@@ -138,7 +140,7 @@ func (g mcpGate) check(t mcp.Tool, args string) string {
 	if g.approved != nil && g.approved(t.Name) {
 		t.Approval = mcp.ApprovalApprove
 	}
-	if !t.NeedsApproval() {
+	if !t.NeedsApproval() || g.yolo != nil && g.yolo() {
 		return ""
 	}
 	why := fmt.Sprintf("the MCP tool %s needs the user's approval (approval_mode %q)", t.Name, t.Approval)

@@ -136,7 +136,7 @@ func TestRun_Sandboxed(t *testing.T) {
 		require.NoError(t, os.WriteFile(keep, []byte("x"), 0o600))
 		boxed := *r
 		boxed.Sandboxed = true
-		res := boxed.Run(t.Context(), usershell.Request{Command: "rm keep.txt", Mode: approval.ModeFullAccess})
+		res := boxed.Run(t.Context(), usershell.Request{Command: "rm keep.txt", Mode: approval.ModeYolo})
 
 		assert.Equal(t, "not run: a rule forbids this command.", res.Refused)
 		assert.Equal(t, res.Refused, res.Output, "the agent hears why")

@@ -10,9 +10,7 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/viktordanov/uagent-harness/internal/approval"
 	"github.com/viktordanov/uagent-harness/internal/images"
-	"github.com/viktordanov/uagent-harness/internal/sandbox"
 	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/internal/tui/state"
 )
@@ -159,7 +157,7 @@ func (st *Styles) headerLine(s state.State, w int) string {
 		gap = max(w-ansi.StringWidth(left)-ansi.StringWidth(right), 0)
 	}
 
-	return st.header.Render(left + strings.Repeat(" ", gap) + right)
+	return markYolo(left+strings.Repeat(" ", gap)+right, st.header, st.yoloChip)
 }
 
 // panelLines shows a pending approval, the /config panel, the suggestion
@@ -278,7 +276,7 @@ func (st *Styles) footerLine(s state.State, w int) string {
 			left += strings.Repeat(" ", room-ansi.StringWidth(left)) + hint
 		}
 
-		return st.dim.Render(ansi.Truncate(left, w, ""))
+		return markYolo(ansi.Truncate(left, w, ""), st.dim, st.warn)
 	}
 	if s.Status != "" {
 		return st.warn.Render(ansi.Truncate(" "+s.Status, w, "…"))
@@ -314,20 +312,6 @@ func (st *Styles) footerLine(s state.State, w int) string {
 
 // shellHint replaces the footer's hint in shell mode.
 const shellHint = "! shell mode · enter runs the command · esc leaves "
-
-// modeText is the permission mode, which shift+tab changes, as the footer
-// and the detailed header show it ("" without one).
-func modeText(s state.State) string {
-	m := s.Settings.Mode
-	if m == "" && s.Settings.Sandbox != "" {
-		m = approval.ModeFor(sandbox.Mode(s.Settings.Sandbox))
-	}
-	if m == "" {
-		return ""
-	}
-
-	return m.Label() + " mode"
-}
 
 func (st *Styles) picker(s state.State, f Frame) string {
 	scope := "this directory · tab: all"

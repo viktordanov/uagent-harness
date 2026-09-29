@@ -108,9 +108,9 @@ func TestDoctor_Problems(t *testing.T) {
 		},
 		"no sandbox": {
 			prepare: func(_ *testing.T, _ *harnesstest.Env, in *app.Inputs, _ *app.DoctorOptions) {
-				in.Sandbox = "danger-full-access"
+				in.Yolo = true
 			},
-			check: "sandbox", status: app.CheckWarn, detail: "without a sandbox",
+			check: "sandbox", status: app.CheckWarn, detail: "yolo mode (--yolo): commands run without a sandbox",
 		},
 		"an unwritable state dir": {
 			prepare: func(t *testing.T, e *harnesstest.Env, in *app.Inputs, _ *app.DoctorOptions) {

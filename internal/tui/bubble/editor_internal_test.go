@@ -56,7 +56,7 @@ func TestEditorCommand(t *testing.T) {
 // TestDraftDirExposed: uah's home is out of the sandbox's reach in every
 // permission mode, also with the user's home as the workspace, since .uah
 // stays protected in a writable root; a home the sandbox writes under
-// another name is refused, except in full access, which has no sandbox.
+// another name is refused, except in yolo mode, which has no sandbox.
 func TestDraftDirExposed(t *testing.T) {
 	t.Setenv("TMPDIR", "") // the sandbox's writable roots are the ones below and /tmp
 	userHome := "/uah-test/home"

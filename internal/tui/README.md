@@ -96,7 +96,7 @@ The answer streams on the embedded engine (`state/stream.go`, the [streaming des
 | `!` on an empty composer | Shell mode (see below) |
 | ↑ on an empty composer | Take the last queued message back to edit it |
 | alt+, / alt+. | Lower or raise the effort |
-| shift+tab | Next permission mode: read only, workspace, auto, and back to read only; from full access, read only. The footer shows the mode, and the session applies it from the next command, even mid-run; `state/mode.go` |
+| shift+tab | Next permission mode: read only, workspace, auto, then yolo in a session started with `--yolo` (`State.Yolo`), and back to read only. The footer shows the mode, and the session applies it from the next command, even mid-run; `state/mode.go` |
 | ctrl+s | Session picker |
 | ctrl+n | New session |
 | `/`, `@` | Open the menu: commands and their values after `/`, workspace files (fuzzy) after `@`. Tab fills in the selection, enter runs a command, esc closes the menu |
@@ -186,7 +186,7 @@ In the `/config` panel, ↑/↓ choose a setting, enter or space changes it, ←
 | Model | `model` | Cycles the provider's models, or type one when there is no list | This session too, as `/model` |
 | Effort | `effort` | Cycles low to max | This session too, as `/effort` |
 | Fast mode | `fast` | Toggles | This session too, as `/fast`, where the engine has it |
-| Permission mode | `permission_mode` | Cycles read only, workspace, auto, as shift+tab; full access stays a value for the file | This session too, as shift+tab |
+| Permission mode | `permission_mode` | Cycles read only, workspace, auto, as shift+tab does without `--yolo`; yolo is never saved | This session too, as shift+tab |
 | Web search | `web_search` | Cycles live and disabled | New sessions |
 | Details view | `[tui] details` | Toggles | At once |
 | Mouse | `[tui] mouse` | Toggles | At once |
@@ -233,7 +233,7 @@ The compact view is shaped like Codex's, in amber. The choices came from the sty
 | Going back | The selected message as `▶ … ↵ edit from here` on the band, the label on the accent; the rest of the transcript faded to the dim color, keeping only backgrounds | `transcriptLines`, `fade` in `render/backtrack.go` |
 | Selected text | The cells on the theme's selection background, in the terminal's own text color | `highlight` in `render/selection.go` |
 | Notices | Plain dim text; warnings start with `!` and errors with `✗` | `itemLines` |
-| Footer | Model and effort, fast, the permission mode (`read only mode`, `workspace mode`, `auto mode`, or `full access mode`), directory, the plan's tightest window (`weekly 78% left`, hidden without usage), context left, hints. The detailed view's header shows the mode too | `footerLine`, `modeText` |
+| Footer | Model and effort, fast, the permission mode (`read only mode`, `workspace mode`, `auto mode`, or `yolo mode` in the theme's warning color, also in the detailed header), directory, the plan's tightest window (`weekly 78% left`, hidden without usage), context left, hints. The detailed view's header shows the mode too | `footerLine`, `modeText` |
 | `/context` | One dot per percent of the window in its category's color, `·` for free space, `○` for the auto-compaction buffer | `contextLines` |
 | `/config` | A title in the accent, a row per setting with the selected one in the accent band, and the keys dim at the bottom | `configLines` |
 | Terminal title | `uah · <workspace name>` when idle, `uah · working · <workspace name>` while the session is busy, `uah · approve? · <workspace name>` while an approval waits, and `uah` before a session opens. It sends no progress bar (OSC 9;4): the title says enough. Bubble Tea clears the title when the program ends. `[tui] title = false` (`Deps.Title`) sets no title | `State.WindowTitle` in `state/title.go`, used by `Model.View` |

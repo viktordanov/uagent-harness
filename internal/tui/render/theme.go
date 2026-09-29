@@ -91,6 +91,9 @@ func ThemeFor(bg color.Color) Theme {
 // has its own theme and nothing is shared between them.
 type Styles struct {
 	dim, bold, accent, bad, warn, italic, header, selected lipgloss.Style
+	// yoloChip is yolo mode in the header: the warning color on the band,
+	// since the header's background is the accent.
+	yoloChip lipgloss.Style
 	// tool is the accent without bold; ok is Good; codeSpan is `code`.
 	tool, ok, codeSpan lipgloss.Style
 	quoteBar           string
@@ -122,6 +125,7 @@ func NewStyles(t Theme) *Styles {
 	st.warn = lipgloss.NewStyle().Foreground(t.Warn)
 	st.italic = lipgloss.NewStyle().Foreground(t.Dim).Italic(true)
 	st.header = lipgloss.NewStyle().Foreground(t.Band).Background(t.Accent)
+	st.yoloChip = lipgloss.NewStyle().Foreground(t.Warn).Background(t.Band).Bold(true)
 	st.selected = st.header
 	st.tool = lipgloss.NewStyle().Foreground(t.Accent)
 	st.ok = lipgloss.NewStyle().Foreground(t.Good)

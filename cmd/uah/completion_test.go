@@ -19,7 +19,7 @@ func TestCompletionScripts(t *testing.T) {
 func TestCompletionValues(t *testing.T) {
 	for args, want := range map[string][]string{
 		"--effort":           {"low", "medium", "high", "xhigh", "max", "ultra"},
-		"run --sandbox":      {"read-only", "workspace-write", "danger-full-access"},
+		"run --sandbox":      {"read-only", "workspace-write"},
 		"run --ask":          {"on-request", "never"},
 		"--provider":         {"openai", "openai-codex", "openrouter", "fireworks", "ollama"},
 		"config --log-level": {"debug", "error", "info", "warn"},

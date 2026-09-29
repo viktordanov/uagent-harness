@@ -65,6 +65,10 @@ func TestDecide(t *testing.T) {
 		{name: "headless denies an escalation", req: approval.Request{Command: "curl x", Escalated: true}, want: approval.Deny, reason: "headless"},
 		{name: "never denies an escalation", policy: approval.Never, req: approval.Request{Command: "curl x", Escalated: true}, user: approval.Approve, want: approval.Deny, reason: "approval policy is never"},
 		{name: "never denies a prompt rule", policy: approval.Never, req: approval.Request{Command: "git push"}, user: approval.Approve, want: approval.Deny, reason: "never"},
+		{name: "yolo runs a prompt rule unasked", req: approval.Request{Command: "git push", Bypass: true}, user: approval.Decline, want: approval.Unsandboxed},
+		{name: "yolo runs an escalation unasked, also headless", req: approval.Request{Command: "curl x", Escalated: true, Bypass: true}, want: approval.Unsandboxed},
+		{name: "yolo runs past the never policy", policy: approval.Never, req: approval.Request{Command: "curl x", Escalated: true, Bypass: true}, want: approval.Unsandboxed},
+		{name: "a forbid rule refuses in yolo too", req: approval.Request{Command: "rm -rf /", Bypass: true}, user: approval.Approve, want: approval.Deny, reason: "use trash instead"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			a := approval.New(approval.Config{Policy: tc.policy, Rules: parsed})

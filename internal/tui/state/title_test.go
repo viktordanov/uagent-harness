@@ -29,6 +29,10 @@ func TestWindowTitle(t *testing.T) {
 	s, _ = apply(s, session.ApprovalResolved{At: t0, ID: "a1", Decision: approval.Approve}, session.Idle{At: t0})
 	assert.Equal(t, "uah · workspace", s.WindowTitle())
 
+	s, _ = apply(s, session.SettingsChanged{At: t0, Settings: settings().WithMode(approval.ModeYolo)})
+	assert.Equal(t, "uah · yolo · workspace", s.WindowTitle(), "yolo mode shows in the title")
+	s, _ = apply(s, session.SettingsChanged{At: t0, Settings: settings()})
+
 	s.Title = false
 	s, _ = apply(s, session.InputQueued{At: t0, Input: core.UserInput{ID: "i2", Text: "again"}})
 	assert.Empty(t, s.WindowTitle(), "off: uah leaves the title alone")

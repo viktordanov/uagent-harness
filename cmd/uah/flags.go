@@ -48,8 +48,13 @@ func sessionFlags() []cli.Flag {
 		},
 		&cli.BoolFlag{Name: "fast", Usage: "priority processing (service_tier priority; openai and openai-codex)"},
 		&cli.StringFlag{
-			Name: "sandbox", Usage: "where commands may write: read-only, workspace-write, or danger-full-access (no sandbox)",
+			Name: "sandbox", Usage: "where commands may write: read-only or workspace-write (no sandbox is --yolo)",
 			DefaultText: "workspace-write", Sources: cli.EnvVars(app.EnvSandbox), Validator: oneOf("sandbox", sandboxModes()),
+		},
+		&cli.BoolFlag{
+			Name: flagYolo, Aliases: []string{"dangerously-bypass-approvals-and-sandbox"},
+			Usage: "yolo mode: no sandbox and no approvals, so every command runs unasked (forbid rules still refuse); " +
+				"shift+tab then cycles through yolo too. DANGEROUS: for machines sandboxed from outside",
 		},
 		&cli.StringFlag{
 			Name: "ask", Usage: "approval policy: on-request (ask before running a command outside the sandbox) or never (deny such commands)",
@@ -90,6 +95,9 @@ func sessionFlags() []cli.Flag {
 
 // flagSessionID is --session-id, the ID of a new session.
 const flagSessionID = "session-id"
+
+// flagYolo is --yolo, Codex's --dangerously-bypass-approvals-and-sandbox.
+const flagYolo = "yolo"
 
 // setupFor sets up a session for ref ("" starts a new one) from the flags,
 // mapping usage errors to exitUsage.
@@ -139,6 +147,7 @@ func inputs(cmd *cli.Command) app.Inputs {
 		FastSet:        cmd.IsSet("fast"),
 		Sandbox:        cmd.String("sandbox"),
 		Ask:            cmd.String("ask"),
+		Yolo:           cmd.Bool(flagYolo),
 		AllowDotenv:    cmd.Bool("allow-dotenv"),
 		NoInstructions: cmd.Bool("no-instructions"),
 	}
@@ -167,10 +176,13 @@ func oneOfMap[V any](flag string, allowed map[string]V) func(string) error {
 
 func defaultStateDir() string { return home.Dir() }
 
+// sandboxModes are the --sandbox values; no sandbox is --yolo.
 func sandboxModes() []string {
 	out := make([]string, 0, len(sandbox.Modes))
 	for _, m := range sandbox.Modes {
-		out = append(out, string(m))
+		if m != sandbox.FullAccess {
+			out = append(out, string(m))
+		}
 	}
 
 	return out

@@ -93,7 +93,7 @@ func TestExplainSources(t *testing.T) {
 		{
 			name: "permission_mode in a file sets the sandbox mode",
 			in:   func(in *app.Inputs) { in.Workspace = "/ws" },
-			o:    app.Origins{Layers: trusted(config.Config{SandboxMode: "danger-full-access"}, config.Config{PermissionMode: "read-only"})},
+			o:    app.Origins{Layers: trusted(config.Config{SandboxMode: "workspace-write"}, config.Config{PermissionMode: "read-only"})},
 			want: map[string]string{"permission_mode": "project file", "sandbox_mode": "project file"},
 			vals: map[string]string{"permission_mode": "read-only", "sandbox_mode": "read-only"},
 		},

@@ -79,6 +79,9 @@ type State struct {
 	// Priority is whether the session's provider offers priority
 	// processing, which /fast turns on (session.Session.Priority).
 	Priority bool
+	// Yolo is whether the session started with --yolo, which puts yolo
+	// mode in the shift+tab cycle (session.Session.Yolo).
+	Yolo     bool
 	Settings session.Settings
 	Files    []string // instruction files in the prompt
 

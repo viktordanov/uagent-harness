@@ -172,10 +172,34 @@ func TestResolve(t *testing.T) {
 		},
 		{
 			name: "--sandbox beats the config file",
-			in:   func(in *app.Inputs) { in.Sandbox = "danger-full-access" },
-			cfg:  config.Config{SandboxMode: "read-only"},
+			in:   func(in *app.Inputs) { in.Sandbox = "read-only" },
+			cfg:  config.Config{PermissionMode: "auto"},
 			want: func(r *app.Resolved) {
-				r.Settings = r.Settings.WithMode(approval.ModeFullAccess)
+				r.Settings = r.Settings.WithMode(approval.ModeReadOnly)
+				r.Sandbox.Mode = sandbox.ReadOnly
+			},
+		},
+		{
+			name: "--yolo is yolo mode with no sandbox",
+			in:   func(in *app.Inputs) { in.Yolo = true },
+			cfg:  config.Config{PermissionMode: "read-only"},
+			want: func(r *app.Resolved) {
+				r.Settings = r.Settings.WithMode(approval.ModeYolo)
+				r.Sandbox.Mode = sandbox.FullAccess
+			},
+		},
+		{
+			name:    "a session resumed from yolo mode without --yolo takes the next mode",
+			resumed: session.Info{Mode: approval.ModeYolo},
+			cfg:     config.Config{PermissionMode: "auto"},
+			want:    func(r *app.Resolved) { r.Settings = r.Settings.WithMode(approval.ModeAuto) },
+		},
+		{
+			name:    "--yolo keeps a resumed session in yolo mode",
+			in:      func(in *app.Inputs) { in.Yolo = true },
+			resumed: session.Info{Mode: approval.ModeYolo},
+			want: func(r *app.Resolved) {
+				r.Settings = r.Settings.WithMode(approval.ModeYolo)
 				r.Sandbox.Mode = sandbox.FullAccess
 			},
 		},
@@ -376,7 +400,11 @@ func TestResolveUsageErrors(t *testing.T) {
 		{name: "invalid agents.max_depth", cfg: config.Config{Agents: config.Agents{MaxDepth: new(-1)}}, want: "invalid agents.max_depth -1"},
 		{name: "invalid agents effort", cfg: config.Config{Agents: config.Agents{DefaultSubagentReasoningEffort: "huge"}}, want: `invalid agents.default_subagent_reasoning_effort "huge"`},
 		{name: "invalid sandbox mode", cfg: config.Config{SandboxMode: "yolo"}, want: `invalid sandbox mode "yolo"`},
-		{name: "invalid permission mode", cfg: config.Config{PermissionMode: "yolo"}, want: `invalid permission mode "yolo"`},
+		{name: "invalid permission mode", cfg: config.Config{PermissionMode: "full-access"}, want: `invalid permission mode "full-access"`},
+		{name: "yolo from a file", cfg: config.Config{PermissionMode: "yolo"}, want: "needs --yolo each time"},
+		{name: "no sandbox from a file", cfg: config.Config{SandboxMode: "danger-full-access"}, want: "needs --yolo each time"},
+		{name: "no sandbox from the flag", in: func(in *app.Inputs) { in.Sandbox = "danger-full-access" }, want: "needs --yolo each time"},
+		{name: "yolo with --ask", in: func(in *app.Inputs) { in.Yolo, in.Ask = true, "never" }, want: "takes no --sandbox or --ask"},
 		{name: "invalid approval policy", in: func(in *app.Inputs) { in.Ask = "untrusted" }, want: `invalid approval policy "untrusted"`},
 		{name: "invalid approval prefix", cfg: config.Config{Approvals: config.Approvals{Allow: []string{"echo $HOME"}}}, want: "not a simple command prefix"},
 		{

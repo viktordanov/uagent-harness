@@ -25,7 +25,7 @@ The mode comes from `--sandbox`, `UAH_SANDBOX`, or `sandbox_mode`. The names are
 | --- | --- |
 | `workspace-write` (default) | Read any file. Write the workspace, `/tmp`, `$TMPDIR`, and `writable_roots`, except the protected paths. No network unless `network_access = true` |
 | `read-only` | Read any file; write nothing; no network |
-| `danger-full-access` | Anything the user can: no sandbox |
+| `danger-full-access` | Anything the user can: no sandbox. Only yolo mode (`--yolo`) runs in it; `sandbox_mode` and `--sandbox` refuse the name |
 
 `Policy.Writable` returns the writable roots with symlinks resolved. `Protected` returns the paths that stay read-only inside each root: `.git`, `.uah`, `.agents`, and `.codex` (and `.uagent`, the old project directory, until it is moved), and the directory a worktree's `.git` file points to. They are protected because a sandboxed command could otherwise plant code that runs later outside the sandbox, such as a git hook. So `git commit` needs an escalation.
 <!-- /memoria:section -->

@@ -165,7 +165,10 @@ func cmdStatus(s *State, _ string) []Effect {
 	if len(s.Files) > 0 {
 		files = strings.Join(s.Files, ", ")
 	}
-	s.notice(session.LevelInfo, fmt.Sprintf("session %s · %s engine · %s/%s · effort %s · %s", s.SessionID, s.Engine, s.Settings.Provider, s.Settings.Model, s.Settings.Effort, s.Settings.Workspace))
+	s.notice(session.LevelInfo, fmt.Sprintf("session %s · %s engine · %s/%s · effort %s · %s mode · %s", s.SessionID, s.Engine, s.Settings.Provider, s.Settings.Model, s.Settings.Effort, s.Settings.Mode.Label(), s.Settings.Workspace))
+	if s.Settings.Mode.AsksNoOne() {
+		s.notice(session.LevelWarning, "yolo mode (--yolo): no sandbox, and nothing asks before a command, a patch, or an MCP tool runs; only forbid rules refuse")
+	}
 	s.notice(session.LevelInfo, fmt.Sprintf("%d runs · %d turns · %d tool calls (max %d parallel) · %d in / %d out tokens · tools overlapped the model %s", t.Runs, t.Turns, t.ToolCalls, t.MaxParallel, t.Tokens.InputTokens, t.Tokens.OutputTokens, t.Overlap.Round(100_000_000)))
 	s.notice(session.LevelInfo, "instructions: "+files)
 
@@ -197,12 +200,15 @@ func cmdSandbox(s *State, _ string) []Effect {
 		text = "sandbox workspace-write: commands can read any file, write the workspace and temporary directories " +
 			"(.git, .uah, .agents, and .codex stay read-only), without network"
 	case "danger-full-access", "":
-		text = "no sandbox: commands can do anything your user can"
+		text = "no sandbox: commands can do anything your user can, and nothing asks first"
 	default:
 		text = "sandbox " + s.Settings.Sandbox
 	}
-	s.notice(session.LevelInfo, s.Settings.Mode.Label()+" mode, "+text+
-		". shift+tab cycles read only, workspace, and auto; full access needs --sandbox or sandbox_mode.")
+	cycle := "read only, workspace, and auto; yolo needs --yolo"
+	if s.Yolo {
+		cycle = "read only, workspace, auto, and yolo"
+	}
+	s.notice(session.LevelInfo, s.Settings.Mode.Label()+" mode, "+text+". shift+tab cycles "+cycle+".")
 
 	return nil
 }

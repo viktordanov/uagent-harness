@@ -109,7 +109,7 @@ func workspaceCheck(findings []core.Finding, workspace string, allowDotenv bool)
 // checkSandbox runs `true` under the policy, as commands would run.
 func checkSandbox(ctx context.Context, p sandbox.Policy) Check {
 	if p.Mode == sandbox.FullAccess {
-		return warn("sandbox", "danger-full-access: commands run without a sandbox", "use --sandbox workspace-write (or sandbox_mode) to sandbox them")
+		return warn("sandbox", "yolo mode (--yolo): commands run without a sandbox, and nothing asks for approval", "leave out --yolo to sandbox them")
 	}
 	bin, err := exec.LookPath("true")
 	if err != nil {

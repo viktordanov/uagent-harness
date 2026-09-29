@@ -81,7 +81,7 @@ var configKeys = []struct {
 var autoPercents = []int{0, 50, 60, 70, 80, 85, 90, 95}
 
 // cycledModes are the permission modes /config steps through, as
-// shift+tab does; full access stays a value to type into the file.
+// shift+tab does without --yolo; yolo is never saved.
 var cycledModes = []string{string(approval.ModeReadOnly), string(approval.ModeWorkspace), string(approval.ModeAuto)}
 
 // webSearchModes are web_search's values (docs/design/web-search.md).

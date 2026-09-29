@@ -8,14 +8,14 @@ import (
 )
 
 // CycleMode is shift+tab: the next permission mode, read only, workspace,
-// and auto in turn; full access moves to read only.
+// and auto in turn, then yolo when the session started with --yolo.
 type CycleMode struct{}
 
 func (s *State) cycleMode() (State, []Effect) {
 	if s.SessionID == "" {
 		return *s, nil // the settings come with the session
 	}
-	next := s.Settings.WithMode(s.Settings.Mode.Next())
+	next := s.Settings.WithMode(s.Settings.Mode.Next(s.Yolo))
 
 	return *s, []Effect{EffSetSettings{Settings: next}}
 }
@@ -27,8 +27,8 @@ func modeHelp(m approval.Mode) string {
 		return "commands read but write nothing; you approve anything more"
 	case approval.ModeAuto:
 		return "commands write the workspace; the auto-reviewer approves or declines the rest without asking you"
-	case approval.ModeFullAccess:
-		return "no sandbox: commands can do anything your user can"
+	case approval.ModeYolo:
+		return "no sandbox and no approvals: commands can do anything your user can, and nothing asks first"
 	case approval.ModeWorkspace:
 	}
 

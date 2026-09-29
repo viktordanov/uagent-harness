@@ -128,7 +128,7 @@ func TestConfig_CyclesThePermissionModeAsShiftTab(t *testing.T) {
 		state.EffSetSettings{Settings: settings().WithMode(approval.ModeAuto)},
 	}, effects)
 	_, effects = apply(s, state.ConfigChange{Delta: 1})
-	assert.Equal(t, state.EffSaveConfig{Key: "permission_mode", Value: "read-only"}, effects[0], "full access is not in the cycle")
+	assert.Equal(t, state.EffSaveConfig{Key: "permission_mode", Value: "read-only"}, effects[0], "yolo is not in the cycle")
 }
 
 func TestConfig_CyclesAutoCompactAndTheCompactionModel(t *testing.T) {

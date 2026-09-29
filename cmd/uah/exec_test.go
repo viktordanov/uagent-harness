@@ -95,3 +95,36 @@ func TestExecJSONIsStream(t *testing.T) {
 		assert.Equal(t, "session_opened", first.Type, args)
 	}
 }
+
+// TestExecYolo: a command outside the workspace that workspace mode would
+// escalate, and a headless run then refuses, runs under --yolo without
+// anyone approving it; --yolo takes no --sandbox or --ask.
+func TestExecYolo(t *testing.T) {
+	cache, err := os.UserCacheDir()
+	require.NoError(t, err)
+	require.NoError(t, os.MkdirAll(cache, 0o700))
+	outside, err := os.MkdirTemp(cache, "uah-yolo-test-")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = os.RemoveAll(outside) })
+	target := filepath.Join(outside, "x.txt")
+	touch := []fakellm.Reply{{Escalated: []string{"touch " + target}}, {Text: "done"}}
+
+	llm := fakellm.New(t, touch...)
+	e, env := modelEnv(t, llm)
+	res := uahWith(t, env, "", "exec", "-C", e.Workspace, "touch it")
+	require.Equal(t, 0, res.code, res.stderr)
+	assert.NoFileExists(t, target, "workspace mode: no one approves the escalation")
+	assert.Contains(t, lastRequest(t, llm).ToolOutputs[0], "not run")
+
+	llm = fakellm.New(t, touch...)
+	e, env = modelEnv(t, llm)
+	res = uahWith(t, env, "", "exec", "--yolo", "-C", e.Workspace, "touch it")
+	require.Equal(t, 0, res.code, res.stderr)
+	assert.FileExists(t, target, "yolo: it runs, unasked")
+
+	for _, extra := range [][]string{{"--sandbox", "read-only"}, {"--ask", "never"}} {
+		res := uahWith(t, env, "", append([]string{"exec", "--dangerously-bypass-approvals-and-sandbox", "-C", e.Workspace}, append(extra, "hi")...)...)
+		assert.Equal(t, 2, res.code, extra)
+		assert.Contains(t, res.stderr, "takes no --sandbox or --ask")
+	}
+}

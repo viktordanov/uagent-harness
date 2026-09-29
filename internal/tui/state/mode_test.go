@@ -15,19 +15,22 @@ func TestReduce_ShiftTabCyclesThePermissionMode(t *testing.T) {
 	tests := []struct {
 		from, want approval.Mode
 		sandbox    string
+		yolo       bool
 	}{
 		{from: approval.ModeWorkspace, want: approval.ModeAuto, sandbox: "workspace-write"},
 		{from: approval.ModeAuto, want: approval.ModeReadOnly, sandbox: "read-only"},
 		{from: approval.ModeReadOnly, want: approval.ModeWorkspace, sandbox: "workspace-write"},
-		{from: approval.ModeFullAccess, want: approval.ModeReadOnly, sandbox: "read-only"},
 		{from: "", want: approval.ModeAuto, sandbox: "workspace-write"},
+		{from: approval.ModeAuto, want: approval.ModeYolo, sandbox: "danger-full-access", yolo: true},
+		{from: approval.ModeYolo, want: approval.ModeReadOnly, sandbox: "read-only", yolo: true},
 	}
 	for _, tt := range tests {
-		t.Run(string(tt.from), func(t *testing.T) {
+		t.Run(string(tt.from)+map[bool]string{true: " with --yolo"}[tt.yolo], func(t *testing.T) {
 			s, _ := apply(opened(), session.SettingsChanged{Settings: settings().WithMode(tt.from)})
 			if tt.from == "" {
 				s = opened()
 			}
+			s.Yolo = tt.yolo
 
 			_, effects := apply(s, state.CycleMode{})
 

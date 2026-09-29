@@ -54,7 +54,7 @@ The exceptions, as the code applies them:
 - The workspace comes from `-C`, the resumed session, or the current directory; no file sets it.
 - `--max-disk` (5G) has a default, but the default counts only when the flag is not given: the files come first.
 - `--fast` given, even as `--fast=false`, wins. Otherwise the resumed session's fast mode wins, unless a `--provider` flag changes the provider. Otherwise `fast` is on when any file turns it on.
-- The permission mode is `--sandbox` (or `UAH_SANDBOX`) as a mode, else the resumed session's, else `permission_mode`, else `sandbox_mode` as a mode, else `workspace`. `sandbox_mode` follows from the mode. A project file's `sandbox_mode` does not override a user file's `permission_mode`, because `permission_mode` from any file comes first.
+- The permission mode is yolo with `--yolo`, else `--sandbox` (or `UAH_SANDBOX`) as a mode, else the resumed session's unless it was yolo, else `permission_mode`, else `sandbox_mode` as a mode, else `workspace`. `sandbox_mode` follows from the mode. A project file's `sandbox_mode` does not override a user file's `permission_mode`, because `permission_mode` from any file comes first.
 - `--no-instructions` turns instructions off whatever the files say; no flag turns them on over `enabled = false`.
 - `project_doc_max_bytes`, from any file, wins over `[instructions] max_bytes` from any file.
 - Keys without a flag come only from the files and the defaults.
@@ -88,8 +88,8 @@ Every key may be set in the user file, in a layer, and in a trusted project file
 
 | Key | Type | Default | Flag, env | Merge | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| `permission_mode` | string | `workspace` | `--sandbox`, `UAH_SANDBOX` (as a mode) | override | The permission mode: `read-only`, `workspace`, `auto`, or `full-access`. It sets the sandbox and who decides what needs approval (table below), and it wins over `sandbox_mode`. shift+tab in the TUI cycles `read-only`, `workspace`, and `auto` |
-| `sandbox_mode` | string | `workspace-write` | `--sandbox`, `UAH_SANDBOX` | override | `read-only`, `workspace-write`, or `danger-full-access` (no sandbox), as Codex names them. Without `permission_mode`, it picks the mode of the same sandbox: `read-only`, `workspace`, or `full-access` |
+| `permission_mode` | string | `workspace` | `--sandbox`, `UAH_SANDBOX` (as a mode); `--yolo` | override | The permission mode: `read-only`, `workspace`, or `auto`. It sets the sandbox and who decides what needs approval (table below), and it wins over `sandbox_mode`. shift+tab in the TUI cycles `read-only`, `workspace`, and `auto`, and `yolo` after them with `--yolo`. `yolo` is not a value for a file: only `--yolo` starts it, each time |
+| `sandbox_mode` | string | `workspace-write` | `--sandbox`, `UAH_SANDBOX` | override | `read-only` or `workspace-write`, as Codex names them. Without `permission_mode`, it picks the mode of the same sandbox: `read-only` or `workspace`. Codex's `danger-full-access` (no sandbox) is refused: no sandbox is yolo mode, which only `--yolo` gives |
 | `approval_policy` | string | `on-request` | `--ask`, `UAH_ASK` | override | Who answers an escalation or a `prompt` rule: `on-request` asks the user (headless runs deny), `never` denies. In a file, Codex's `on-failure` means `on-request` |
 | `approvals_reviewer` | string | `user` | none | override | Who answers an escalation in the read-only and workspace modes: `user` asks you; `auto_review` lets the auto-reviewer judge first and asks you only when it leaves the decision to you. Auto mode always uses the auto-reviewer |
 | `user_shell_sandbox` | bool | false | none | OR | Run the commands you type in the TUI's shell mode (`!`) like the agent's: in the permission mode's sandbox, refused by `forbidden` rules, and outside the sandbox for `allow` rules. Off, they run as your own commands, outside the sandbox and the rules, as in Codex and Claude Code ([shell mode](design/shell-mode.md)) |
@@ -101,9 +101,9 @@ The permission modes:
 | `read-only` | `read-only` | Ask you (the auto-reviewer first only with `approvals_reviewer = "auto_review"`) |
 | `workspace` (default) | `workspace-write` | Ask you (the auto-reviewer first only with `approvals_reviewer = "auto_review"`) |
 | `auto` | `workspace-write` | The auto-reviewer decides, also with `approvals_reviewer = "user"`. The user is not asked; a decline reaches the model with the reviewer's reason |
-| `full-access` | none (`danger-full-access`) | No escalations; `prompt` rules ask as in `workspace`. Only a flag or a file sets it; shift+tab moves from it to `read-only` |
+| `yolo` | none | Nothing asks: escalations, `prompt` rules, patches, and MCP tools with an approval mode all run, without the auto-reviewer or PermissionRequest hooks; `forbid` rules still refuse. Only `--yolo` (alias `--dangerously-bypass-approvals-and-sandbox`, Codex's name) starts it, with no `--sandbox` or `--ask`. It adds `yolo` after `auto` in the shift+tab cycle, and a resumed session stays in it only when `--yolo` is given again |
 
-`approval_policy = "never"` still denies whatever needs approval, in every mode. A mode change reaches a live run from its next command and model request.
+`approval_policy = "never"` still denies whatever needs approval, in every mode but yolo. A mode change reaches a live run from its next command and model request.
 
 `[sandbox_workspace_write]` configures the `workspace-write` mode:
 
@@ -421,8 +421,8 @@ max_disk = "5G"                    # tool output per run; "0" disables
 request_max_attempts = 10          # per model request; a lost connection is retried with backoff
 fast = false                       # priority processing
 web_search = "live"                # or disabled: the provider's hosted web search
-sandbox_mode = "workspace-write"   # read-only, workspace-write, danger-full-access
-# permission_mode = "workspace"    # read-only, workspace, auto, full-access; wins over sandbox_mode
+sandbox_mode = "workspace-write"   # read-only, workspace-write; no sandbox is --yolo
+# permission_mode = "workspace"    # read-only, workspace, auto; wins over sandbox_mode
 approval_policy = "on-request"     # or never
 approvals_reviewer = "user" # or auto_review: the auto-reviewer answers first in read-only and workspace
 user_shell_sandbox = false         # true: `!` commands run in the sandbox, as the agent's

@@ -312,6 +312,7 @@ func (m Model) onOpened(msg openedMsg) (tea.Model, tea.Cmd) {
 	m.stopWatch()
 	m.sess = msg.sess
 	m.st.Priority = msg.sess.Priority()
+	m.st.Yolo = msg.sess.Yolo()
 	if len(msg.history) > 0 {
 		m.st, _ = state.Reduce(m.st, state.HistoryLoaded{SessionID: msg.sess.ID(), Runs: msg.history})
 	}

@@ -431,6 +431,26 @@ func TestSession_SetSettings(t *testing.T) {
 
 		require.Error(t, err)
 	})
+
+	t.Run("yolo mode needs --yolo", func(t *testing.T) {
+		h := newHarness(t, fakeCaps{})
+		assert.False(t, h.s.Yolo())
+
+		_, err := h.s.SetSettings(settings().WithMode(approval.ModeYolo))
+
+		require.ErrorContains(t, err, "needs --yolo")
+		_, err = session.Open(context.Background(), h.eng, session.Options{Settings: settings().WithMode(approval.ModeYolo)})
+		require.ErrorContains(t, err, "needs --yolo")
+
+		s, err := session.Open(context.Background(), h.eng, session.Options{Settings: settings().WithMode(approval.ModeYolo), Yolo: true})
+		require.NoError(t, err)
+		t.Cleanup(func() { _ = s.Close() })
+		assert.True(t, s.Yolo())
+		_, err = s.SetSettings(settings().WithMode(approval.ModeReadOnly))
+		require.NoError(t, err)
+		_, err = s.SetSettings(settings().WithMode(approval.ModeYolo))
+		require.NoError(t, err, "back to yolo with --yolo")
+	})
 }
 
 func TestSession_CloseInterruptsTheLiveRun(t *testing.T) {

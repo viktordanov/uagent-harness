@@ -39,7 +39,7 @@ func (p *printer) print(event core.Event) { //nolint:gocyclo // a dispatch switc
 			fast = " · fast"
 		}
 		fmt.Fprintf(p.w, "uah · session %s%s · %s/%s · effort %s%s · %s engine · sandbox %s · %s\n",
-			short(e.ID), resumed, e.Settings.Provider, modelLabel(e.Settings.Model), e.Settings.Effort, fast, e.Engine, sandboxLabel(e.Settings.Sandbox), e.Settings.Workspace)
+			short(e.ID), resumed, e.Settings.Provider, modelLabel(e.Settings.Model), e.Settings.Effort, fast, e.Engine, sandboxLabel(e.Settings), e.Settings.Workspace)
 	case session.InstructionsLoaded:
 		note := ""
 		if e.Truncated {
@@ -176,10 +176,14 @@ func commas(n int64) string {
 	return b.String()
 }
 
-func sandboxLabel(mode string) string {
-	if mode == "" {
+// sandboxLabel names the sandbox in the session line, and yolo mode.
+func sandboxLabel(s session.Settings) string {
+	switch {
+	case s.Mode.AsksNoOne():
+		return "none (yolo mode: nothing asks)"
+	case s.Sandbox == "":
 		return "none"
 	}
 
-	return mode
+	return s.Sandbox
 }

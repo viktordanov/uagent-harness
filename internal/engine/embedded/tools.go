@@ -126,7 +126,9 @@ func (w *wiring) translators(req core.Request, sessionID session.ID) (tool.Stati
 func (w *wiring) mcpGate(ctx context.Context, never bool) mcpGate {
 	warn := func(msg string) { _, _ = fmt.Fprintf(w.l.Stderr, "mcp> %s\n", msg) }
 
-	return mcpGate{ctx: ctx, ask: w.ask, never: never, m: w.e.cfg.MCP, warn: warn}
+	mode := w.mode
+
+	return mcpGate{ctx: ctx, ask: w.ask, never: never, m: w.e.cfg.MCP, warn: warn, yolo: func() bool { return mode.get().AsksNoOne() }}
 }
 
 // mcpTools starts the MCP servers on the first run and returns their

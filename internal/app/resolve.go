@@ -58,6 +58,8 @@ type Inputs struct {
 	Sandbox string
 	// Ask is the --ask approval policy.
 	Ask string
+	// Yolo is --yolo: yolo mode, and yolo in the shift+tab cycle.
+	Yolo bool
 
 	AllowDotenv    bool
 	NoInstructions bool

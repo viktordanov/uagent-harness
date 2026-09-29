@@ -52,6 +52,9 @@ type Request struct {
 	// NoSandbox means no sandbox is available: every command that no rule
 	// allows needs approval to run.
 	NoSandbox bool
+	// Bypass is yolo mode: what would need approval runs unsandboxed
+	// without asking anyone; a forbid rule still refuses.
+	Bypass bool
 	// Tool and Input name a tool call other than Bash that needs approval,
 	// such as apply_patch, and its input for PermissionRequest hooks and
 	// the auto-reviewer; Command then describes it for the rules and the
@@ -171,6 +174,9 @@ func (a *Approver) Decide(ctx context.Context, req Request, ask Ask) Decision {
 	rule, matched := a.policy().Check(commands)
 	if d, done := byRule(req, rule, matched); done {
 		return d
+	}
+	if req.Bypass {
+		return Decision{Run: Unsandboxed}
 	}
 	if reason := a.cannotAsk(ask); reason != "" {
 		return Decision{Run: Deny, Reason: reason}

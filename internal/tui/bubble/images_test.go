@@ -66,7 +66,7 @@ func imageDepsIn(t *testing.T, mode approval.Mode) (bubble.Deps, *fakellm.Server
 
 	return bubble.Deps{
 		Open: func(ctx context.Context, id string) (*session.Session, []session.LoadedRun, error) {
-			s, err := session.Open(ctx, eng, session.Options{ID: id, Settings: settings, Interactive: true})
+			s, err := session.Open(ctx, eng, session.Options{ID: id, Settings: settings, Interactive: true, Yolo: mode == approval.ModeYolo})
 
 			return s, nil, err
 		},

@@ -204,11 +204,12 @@ Press shift+tab in the TUI. It cycles three modes, and the footer shows the curr
 | read only | Read files, write nothing | You |
 | workspace (default) | Write the workspace | You |
 | auto | Write the workspace | The auto-reviewer decides; you are not asked |
+| yolo (only with `--yolo`) | Anything your user can: no sandbox | Nothing: every command, patch, and MCP tool runs unasked; only `forbid` rules refuse |
 
 - A change applies from the next command, even mid-run.
-- A resumed session keeps its mode, with its model, effort, and fast mode.
+- A resumed session keeps its mode, with its model, effort, and fast mode. Yolo mode is kept only when you give `--yolo` again; without it the session opens in the configured mode.
 - To start in a mode, set `permission_mode` in the [configuration](#configuration). `--sandbox read-only` or `--sandbox workspace-write` also picks a mode for one session.
-- Full access (no sandbox) is not in the cycle. Set it with `--sandbox danger-full-access` or `permission_mode = "full-access"`; shift+tab then moves to read only.
+- `--yolo` (Codex's `--dangerously-bypass-approvals-and-sandbox`, which uah also accepts) starts the TUI or `uah exec` in yolo mode, and adds yolo after auto in the shift+tab cycle. Without the flag, yolo is not offered, and no file can set it. It takes no `--sandbox` or `--ask`. Use it only where something outside uah sandboxes the machine. The footer shows `yolo mode` in the warning color, and the terminal title says `yolo`. Subagents run in their parent's mode.
 
 ### Shell mode
 
@@ -366,7 +367,7 @@ A short user file:
 ```toml
 model = "gpt-6-sol"
 effort = "high"
-sandbox_mode = "workspace-write"                 # read-only, workspace-write, danger-full-access
+sandbox_mode = "workspace-write"                 # read-only, workspace-write; no sandbox is --yolo
 project_doc_fallback_filenames = ["CLAUDE.md"]   # also read CLAUDE.md
 
 [approvals]
@@ -451,7 +452,7 @@ Read more: [sandbox](internal/sandbox/README.md).
 ### Approvals, rules, and auto-review
 
 <!-- memoria:import src="internal/approval/README.md#summary" -->
-Each command runs in the sandbox unless a rule or an approval says otherwise: a command rule can allow, forbid, or ask; the model can ask to run a command outside the sandbox; and an escalation goes to PermissionRequest hooks, then you. The permission mode, which shift+tab cycles, picks the sandbox and who answers: you in read-only and workspace, the auto-reviewer alone in auto. The defaults are Codex's: workspace-write, on-request, and the user as reviewer (Codex's "Ask for approval").
+Each command runs in the sandbox unless a rule or an approval says otherwise: a command rule can allow, forbid, or ask; the model can ask to run a command outside the sandbox; and an escalation goes to PermissionRequest hooks, then you. The permission mode, which shift+tab cycles, picks the sandbox and who answers: you in read-only and workspace, the auto-reviewer alone in auto, and no one in yolo, which only `--yolo` starts. The defaults are Codex's: workspace-write, on-request, and the user as reviewer (Codex's "Ask for approval").
 <!-- /memoria:import -->
 
 Read more: [approvals](internal/approval/README.md), [rules](internal/rules/README.md), and [auto-review](internal/review/README.md).

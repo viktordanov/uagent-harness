@@ -74,6 +74,9 @@ type Options struct {
 	// FirstPrompt is a resumed session's first message, from its runs, for
 	// a sidecar from before uah kept it.
 	FirstPrompt string
+	// Yolo allows yolo mode (--yolo): without it, SetSettings refuses the
+	// mode.
+	Yolo bool
 }
 
 // Session is safe to use from any goroutine. All state lives on one internal
@@ -83,11 +86,13 @@ type Session struct {
 	eng engine.Engine
 	// priority is Engine.Priority, read once when the session opens.
 	priority bool
-	in       chan any
-	out      chan core.Event
-	ctx      context.Context
-	stop     context.CancelFunc
-	done     chan struct{}
+	// yolo is Options.Yolo.
+	yolo bool
+	in   chan any
+	out  chan core.Event
+	ctx  context.Context
+	stop context.CancelFunc
+	done chan struct{}
 
 	// Owned by the loop goroutine.
 	settings Settings
@@ -136,13 +141,16 @@ func Open(ctx context.Context, eng engine.Engine, opts Options) (*Session, error
 	if err := opts.Settings.Validate(); err != nil {
 		return nil, fmt.Errorf("failed to open session: %w", err)
 	}
+	if opts.Settings.Mode.AsksNoOne() && !opts.Yolo {
+		return nil, errors.New("failed to open session: yolo mode needs --yolo")
+	}
 	id := opts.ID
 	if id == "" {
 		id = uuid.NewString()
 	}
 	runCtx, stop := context.WithCancel(ctx)
 	s := &Session{
-		id: id, eng: eng, priority: eng.Priority(),
+		id: id, eng: eng, priority: eng.Priority(), yolo: opts.Yolo,
 		in: make(chan any, eventBuffer), out: make(chan core.Event, eventBuffer),
 		ctx: runCtx, stop: stop, done: make(chan struct{}),
 		settings: opts.Settings, state: StateIdle, sent: map[string]bool{},
@@ -183,6 +191,10 @@ func (s *Session) ID() string { return s.id }
 // processing, so /fast can turn it on (engine.Engine.Priority).
 func (s *Session) Priority() bool { return s.priority }
 
+// Yolo reports whether the session may run in yolo mode: it started with
+// --yolo.
+func (s *Session) Yolo() bool { return s.yolo }
+
 // Events is the ordered stream of run and session events. It is closed after Close.
 func (s *Session) Events() <-chan core.Event { return s.out }
 
@@ -222,6 +234,9 @@ func (s *Session) Withdraw(id string) (bool, error) {
 func (s *Session) SetSettings(settings Settings) (Applied, error) {
 	if err := settings.Validate(); err != nil {
 		return "", err
+	}
+	if settings.Mode.AsksNoOne() && !s.yolo {
+		return "", errors.New("yolo mode needs --yolo when the session starts")
 	}
 
 	return call[Applied](s, cmdSettings{settings: settings})
