@@ -11,6 +11,7 @@ import (
 	"github.com/viktordanov/uagent-harness/internal/approval"
 	"github.com/viktordanov/uagent-harness/internal/codereview"
 	"github.com/viktordanov/uagent-harness/internal/engine"
+	"github.com/viktordanov/uagent-harness/internal/instructions"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
 
@@ -23,9 +24,9 @@ var reviewTools = []string{"Bash", "ViewImage"}
 
 // Review runs one /review as Codex runs its review thread: a fresh
 // session beside the parent with no history, Codex's rubric in place of
-// the base instructions, the parent's settings in read only mode, the
-// configured review model (the parent's by default), and approvals never
-// asked. It sends the prompt, waits for the answer, and closes the
+// the base instructions and the project's, then the parent's environment
+// context; the parent's settings in read only mode, the configured review
+// model (the parent's by default), and approvals never asked. It sends the prompt, waits for the answer, and closes the
 // session. The session is a child of the parent (its sidecar says so, and
 // `uah sessions` lists it), but not one of the parent's agents: the agent
 // tools and /agents never see it.
@@ -43,7 +44,8 @@ func (m *Manager) Review(ctx context.Context, req session.ReviewRequest) (string
 	opts.Ask = func(context.Context, approval.Prompt) approval.Answer { return approval.Decline }
 	opts.Instructions, opts.Notices = nil, nil
 	s := req.Settings.WithMode(approval.ModeReadOnly)
-	s.SystemPrompt, s.Model = codereview.Instructions(), first(m.cfg.ReviewModel, s.Model)
+	s.SystemPrompt = instructions.HostPrompt(codereview.Instructions(), "", environment(req.Settings.SystemPrompt))
+	s.Model = first(m.cfg.ReviewModel, s.Model)
 	opts.Settings = s
 	if ce, ok := eng.(childEngine); ok {
 		if sc, ok := ce.Engine.(engine.Scoper); ok {
@@ -68,6 +70,17 @@ func (m *Manager) Review(ctx context.Context, req session.ReviewRequest) (string
 	}
 
 	return awaitReview(ctx, rs, req.Activity)
+}
+
+// environment is the <environment_context> block that ends the parent's
+// system prompt, or "": Codex's review thread gets the environment context
+// and the prompt, and none of the parent's instructions.
+func environment(prompt string) string {
+	if i := strings.Index(prompt, instructions.EnvironmentOpen); i >= 0 {
+		return prompt[i:]
+	}
+
+	return ""
 }
 
 // awaitReview follows the reviewer's session until its run ends and

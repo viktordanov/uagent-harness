@@ -151,7 +151,7 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 	a.compactor, a.mode = comp, w.mode
 
 	builder := newContextBuilder(registry, model, req)
-	for _, t := range w.hostedTools(req.Provider) {
+	for _, t := range w.hostedTools(req.Provider, req.SessionID) {
 		builder.AddTool(t)
 	}
 	obs := &observer{sessionID: s.id, out: io.MultiWriter(s.log, w.l.Stdout), cancel: cancel, emit: w.emit}

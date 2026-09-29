@@ -2,6 +2,7 @@ package agents_test
 
 import (
 	"context"
+	"encoding/json"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -16,6 +17,7 @@ import (
 	"github.com/viktordanov/uagent-harness/internal/codereview"
 	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/engine/embedded"
+	"github.com/viktordanov/uagent-harness/internal/instructions"
 	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/testing/fakellm"
 )
@@ -54,6 +56,11 @@ func TestReview_ReadOnlySubagent(t *testing.T) {
 		fakellm.Reply{Text: reviewAnswer},
 	)
 	s, ev := e.open(t, true, e.sandboxed(t))
+	const env = "<environment_context>\n  <cwd>/w</cwd>\n</environment_context>"
+	withPrompt := e.settings()
+	withPrompt.SystemPrompt = instructions.HostPrompt("", "Always use tabs.", env)
+	_, err := s.SetSettings(withPrompt)
+	require.NoError(t, err)
 
 	require.NoError(t, s.Review(context.Background(), codereview.Target{Kind: codereview.Uncommitted}))
 	fin := ev.reviewFinished()
@@ -81,8 +88,10 @@ func TestReview_ReadOnlySubagent(t *testing.T) {
 	reqs := reviewerRequests(e)
 	require.NotEmpty(t, reqs)
 	for _, r := range reqs {
-		assert.True(t, strings.HasSuffix(strings.TrimSpace(r.System), strings.TrimSpace(codereview.Instructions())), "Codex's rubric replaces the host prompt")
-		assert.NotContains(t, r.System, "apply_patch", "none of the main agent's instructions")
+		assert.True(t, strings.HasSuffix(strings.TrimSpace(r.System), strings.TrimRight(codereview.Instructions(), "\n")+"\n\n"+env), "Codex's rubric, then the environment context")
+		assert.NotContains(t, r.System, "Always use tabs.", "none of the project's instructions")
+		assert.NotContains(t, r.System, strings.TrimSpace(instructions.DefaultPrompt[:200]), "none of the main agent's base instructions")
+		assert.NotContains(t, r.System, instructions.SubagentNote, "its answer goes to the user, not to a parent agent")
 		assert.Equal(t, "gpt-review", r.Model)
 		assert.Equal(t, []string{"Bash", "ViewImage"}, r.ToolNames, "no apply_patch, MCP, or agent tools")
 	}
@@ -94,7 +103,7 @@ func TestReview_ReadOnlySubagent(t *testing.T) {
 	assert.NoFileExists(t, filepath.Join(e.Workspace, "escalated.txt"), "an escalation is declined")
 	assert.Len(t, e.llm.Requests(), len(reqs), "the main agent was not asked")
 
-	_, err := s.Submit("fix the finding")
+	_, err = s.Submit("fix the finding")
 	require.NoError(t, err)
 	assert.Equal(t, "I will fix it", ev.finished().Answer)
 	main := e.llm.Requests()[len(e.llm.Requests())-1]
@@ -154,4 +163,47 @@ func TestReview_OneAtATime(t *testing.T) {
 
 	bare, _ := e.open(t, false, func(c *embedded.Config) { c.Subagents = nil })
 	require.ErrorIs(t, bare.Review(context.Background(), codereview.Target{Kind: codereview.Uncommitted}), session.ErrNoReview)
+}
+
+// hasWebSearch reports whether a request offered the hosted web search
+// tool, and whether its input carries a recorded search.
+func hasWebSearch(r fakellm.Request) (offered, inserted bool) {
+	offered = slices.ContainsFunc(r.ToolDefs, func(d json.RawMessage) bool { return strings.Contains(string(d), `"web_search"`) })
+	inserted = slices.ContainsFunc(r.Input, func(item json.RawMessage) bool { return strings.Contains(string(item), `"web_search_call"`) })
+
+	return offered, inserted
+}
+
+// TestReview_NoWebSearch leaves the hosted web search out of the
+// reviewer's requests, as Codex turns search off for a review, while the
+// parent keeps it; the reviewer's own searches are not put back into its
+// later requests either.
+func TestReview_NoWebSearch(t *testing.T) {
+	e := newEnv(t, agents.Config{}, fakellm.Reply{Text: "Go 1.27", Searches: []fakellm.Search{{Query: "latest Go release"}}}, fakellm.Reply{Text: "ok"})
+	e.llm.Route(uncommitted,
+		fakellm.Reply{Commands: []string{"echo looked"}, Searches: []fakellm.Search{{Query: "reviewer search"}}},
+		fakellm.Reply{Text: reviewAnswer},
+	)
+	s, ev := e.open(t, false, func(c *embedded.Config) { c.WebSearch = true })
+
+	_, err := s.Submit("look it up")
+	require.NoError(t, err)
+	ev.finished()
+	require.NoError(t, s.Review(context.Background(), codereview.Target{Kind: codereview.Uncommitted}))
+	require.Len(t, ev.reviewFinished().Output.Findings, 1)
+	_, err = s.Submit("and now")
+	require.NoError(t, err)
+	ev.finished()
+
+	reqs := reviewerRequests(e)
+	require.Len(t, reqs, 2)
+	for _, r := range reqs {
+		offered, inserted := hasWebSearch(r)
+		assert.False(t, offered, "the reviewer is not offered web search")
+		assert.False(t, inserted, "no recorded search goes into the reviewer's requests")
+	}
+	last := e.llm.Requests()[len(e.llm.Requests())-1]
+	offered, inserted := hasWebSearch(last)
+	assert.True(t, offered, "the parent keeps web search")
+	assert.True(t, inserted, "and its own recorded search")
 }

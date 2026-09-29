@@ -34,8 +34,8 @@ Checked against Codex rust-v0.156.1 (commit b412ff3). Paths are under `codex-rs/
 
 **The run.** `Session.Review(ctx, target)` (`internal/session/review.go`) reports `ReviewStarted`, builds Codex's prompt for the target (`codereview.Prompt`, which finds the merge base), and hands it to the engine's reviewer, `agents.Manager.Review` (`internal/agents/review.go`). The reviewer is a fresh session on the same engine:
 
-- the parent's settings now, in read only mode, with Codex's rubric as the system prompt and `review_model` (default: the session's model) as the model;
-- the tools `Bash` and `ViewImage` only, through the engine's scope: no `apply_patch`, no MCP tools, and no agent tools (it is a child, so it is never offered them);
+- the parent's settings now, in read only mode, with Codex's rubric and the parent's environment context as the system prompt and `review_model` (default: the session's model) as the model;
+- the tools `Bash` and `ViewImage` only, through the engine's scope: no `apply_patch`, no MCP tools, no hosted web search (Codex turns search off for a review; the hosted tool and the recorded searches honor the scope), and no agent tools (it is a child, so it is never offered them);
 - `engine.Scope.NeverAsk`: every action that would ask is declined before the auto-reviewer, as Codex's `approval_policy = never`;
 - a sidecar with the parent as its parent, so `uah sessions` lists it; it is not one of the agent's subagents, so `/agents` and the agent tools never see it.
 
@@ -54,7 +54,7 @@ The prompts in `internal/codereview/prompts` are Codex's, verbatim (Apache-2.0, 
 - **Untracked files are read in Go**, not with one `git diff --no-index` per file: the same result with one process, and the binary and size checks happen before reading a whole file.
 - **The popup is the command menu.** The menu already completes `/model` values and filters as you type; the three pickers become three argument lists. `/review branch main` and `/review commit <sha>` are also typed forms.
 - **The reviewer is read-only.** Codex keeps the parent's sandbox and relies on `approval_policy = never`; uah also sets the read-only sandbox and removes `apply_patch`, since a review never edits. Command rules still apply: an `allow` rule runs a command outside the sandbox, as it does for any session.
-- **The reviewer's system prompt is the rubric in place of the host prompt**, so the main agent's instructions and AGENTS.md are not in it, as in Codex. The runner's own lines about turns and asynchronous tool calls stay before it, since the engine adds them to every request.
+- **The reviewer's system prompt is the rubric in place of the host prompt, then the parent's `<environment_context>`**, so uah's default prompt, the subagent note, and AGENTS.md are not in it, as in Codex, whose review thread gets the rubric, the environment context, and the prompt. The runner's own lines about turns and asynchronous tool calls stay before it, since the engine adds them to every request.
 - **A finding without a priority parses.** The rubric allows it; Codex's parser does not, and falls back to the raw text.
 - **The main agent gets the user message only.** Codex also records the rendered review as an assistant message; uah can hold user messages for the next run (`Inject`) but not write an assistant turn into the runner's history, and the user message already carries the whole review.
 - **`review_model` mirrors Codex's key**, with the session's effort. It is a top-level key, apart from `[review]`, which configures the auto-reviewer.
@@ -63,4 +63,3 @@ The prompts in `internal/codereview/prompts` are Codex's, verbatim (Apache-2.0, 
 
 - Codex's app server can deliver a review detached; uah has no `uah review` command, since `/review` covers the use.
 - Codex empties git's filter drivers before `/diff`; uah passes `--no-textconv --no-ext-diff` but does not override `filter.<driver>.clean`.
-- Hosted web search (ledger item 64) must stay off for the reviewer, as Codex turns it off: the reviewer's scope offers only `Bash` and `ViewImage`, so a hosted tool that honors the scope is left out.
