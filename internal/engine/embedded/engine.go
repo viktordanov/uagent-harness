@@ -149,6 +149,16 @@ func (e *Engine) MCPServers() []mcp.ServerStatus {
 	return e.cfg.MCP.Status()
 }
 
+// StartMCP connects the MCP servers before the first run
+// (engine.MCPStarter); runs then use the same connections.
+func (e *Engine) StartMCP(ctx context.Context) []mcp.ServerStatus {
+	if e.cfg.MCP == nil {
+		return nil
+	}
+
+	return e.cfg.MCP.Started(ctx)
+}
+
 // Close stops the subagents and the MCP servers; a later run starts the
 // servers again.
 func (e *Engine) Close() error {

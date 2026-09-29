@@ -17,7 +17,7 @@ A session owns its settings, a message queue, at most one live run, pending appr
 8. [Tests](#tests)
 <!-- /memoria:section -->
 
-<!-- memoria:section id="loop" files="session.go loop.go runs.go" -->
+<!-- memoria:section id="loop" files="session.go loop.go runs.go mcp.go" -->
 ## The loop
 
 `Open` starts one goroutine, `loop`, that owns all session state. Every public method (`Submit`, `SteerNow`, `SteerQueued`, `Interrupt`, `Withdraw`, `SetSettings`, `Compact`, `Rewind`, `Resolve`) sends a command on the `in` channel and waits for the reply (`call[T]`). Engine callbacks do the same: the run's sink, `Start`'s result, `Wait`'s result, hook results, and approval requests all arrive as messages. So nothing else needs a lock, and `Events()` has exactly one writer.
@@ -35,6 +35,8 @@ The loop tracks where the session is in a run:
 `Close` interrupts a live run, waits for it to end, closes the event stream, and then closes the engine when it is an `io.Closer` (MCP servers and subagents stop with the session).
 
 `Open` shows `Options.Notices` after `SessionOpened`, such as configuration warnings, and reads `Engine.Priority` once for `Session.Priority`, which the TUI's `/fast` reads. The session never checks the engine's name.
+
+An `Options.Interactive` session connects the engine's MCP servers as it opens, when the engine is an `engine.MCPStarter` (`mcp.go`), with no message and no model request: a terminal host that waits for a server's `initialize` before it sends the first prompt can then start uah. A goroutine waits until each server has started or failed, then the loop shows a notice for each one that did not start (an error for a `required` one, whose failure fails every message) and sends `MCPStarted`. Runs, `/clear`, and subagents use these connections. `uah exec` is not interactive: its first run, which starts at once, connects them.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="messages" files="dispatch.go runs.go inject.go history.go shell.go review.go" -->
@@ -129,7 +131,7 @@ The runner's session files and uagent's run records are the source of truth; the
 Listing and search go through the rebuildable SQLite index in [internal/store](../store/README.md), which falls back to `Sessions` when the index cannot be used.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="events" files="events.go approvals.go shell.go session.go runs.go review.go" -->
+<!-- memoria:section id="events" files="events.go approvals.go shell.go session.go runs.go review.go mcp.go" -->
 ## Events
 
 `Events()` carries the runner's events (from uagent's `core`), the engine's events, and these session events:
@@ -145,6 +147,7 @@ Listing and search go through the rebuildable SQLite index in [internal/store](.
 | `Notice` | Text for the user, with a level |
 | `ShellStarted`, `ShellOutput`, `ShellFinished` | A command the user typed (`RunShell`): its start, its output as it arrives, and its result with the record the agent gets |
 | `ReviewStarted`, `ReviewActivity`, `ReviewFinished` | A `/review` (`Review`): what it looks at, the reviewer's tool events, and its findings or how it ended |
+| `MCPStarted` | An interactive session connected its MCP servers: each one's state, after the notices for those that did not start |
 | `Idle` | The session has nothing to do |
 
 `uah exec --json` writes them as JSONL, and the TUI reduces them into its state.

@@ -39,11 +39,12 @@ A model request is sent up to `core.Request.MaxAttempts` times, which the sessio
 | `Inject` | Gives the agent a message without a turn of its own (`Session.Inject`): a subagent's `<subagent_notification>` to its parent, through `AgentParent.Inject` |
 | `Stream` | Report the model's text as it arrives, for the run's own turn requests: the TUI and `uah run --stream` set it through `session.Options.Stream` |
 
-Optional interfaces are the seams the session probes with a type assertion. The embedded engine implements each of them; a subagent's session gets the parent's engine without `Rewinder`, so it cannot go back (`session.ErrNoRewind`), and tests use engines without them:
+Optional interfaces are the seams the session probes with a type assertion. The embedded engine implements each of them; a subagent's session gets the parent's engine without `Rewinder` and `MCPStarter`, so it cannot go back and connects no MCP server of its own (`session.ErrNoRewind`), and tests use engines without them:
 
 | Interface | Used for | Implemented by |
 | --- | --- | --- |
 | `MCPLister` | `/mcp`: each MCP server's state and tools | embedded |
+| `MCPStarter` | An interactive session connects the MCP servers as it opens, before any message: `StartMCP` waits until each has started or failed and reports them. A subagent's session gets the parent's engine without it | embedded |
 | `ContextReporter` | `/context`: the breakdown of the session's last model request | embedded |
 | `Forgetter` | The session calls `Forget` when it closes, so per-session state (the auto-review transcript, the last request for `/context`, a pending fork, a cache key) does not outlive it | embedded |
 | `io.Closer` | The session closes the engine with itself, stopping MCP servers and subagents | embedded |

@@ -43,7 +43,7 @@ The runner's `tool.Registry` is an interface, and the coordinator uses only `Res
 
 A call runs as a runner **remote job**, the runner's mechanism for work outside the coordinator (`RN/harness/operation/remote_job.go`). `Translate` submits a `remote_job` operation whose plan (`uah.mcp_call`, version 1) holds the server, the raw tool name, and the arguments. The embedded engine passes an MCP `RemoteJobHandler` to `operation.NewLocalOperationManager`, as the runner's own `ToolFactory` passes `RemoteJobs`. The handler calls the tool on its own goroutine and reports `awaiting`, then `completed`, `failed`, or `canceled`, so the coordinator never waits on a server. The result text goes into `TerminalResult` (bounded like other tool output); images go into `Handle`, which the runner stores untouched, because truncating an image breaks it. A job found `awaiting` after a restart fails as interrupted instead of calling the tool twice.
 
-Servers live as long as the session's engine: they start on the first run (or on `/mcp`), each bounded by its startup timeout, and stop when the session closes. A server that crashes fails its calls with an error result; it is not restarted.
+Servers live as long as the session's engine: they start when an interactive session opens (ledger item 71), on the first run in `uah exec`, or on `/mcp`, each bounded by its startup timeout, and stop when the session closes. A server that crashes fails its calls with an error result; it is not restarted.
 
 ## Packages and files
 
@@ -133,7 +133,7 @@ Each has the default taken.
 1. **Approval (resolved after the merge).** `prompt`, `writes` for tools that are not read-only, and `auto` by Codex's annotation rule (`requires_mcp_tool_approval`) now ask through the session's approval prompt, and PermissionRequest hooks can answer. Headless runs and `approval_policy = "never"` refuse with a reason.
 2. **Denying a tool.** Codex has no `deny` approval mode; `disabled_tools` hides a tool from the model and refuses calls to it. uah does the same and adds nothing.
 3. **Sandbox.** MCP servers run outside the command sandbox, as in Codex. Default taken: no sandbox for servers.
-4. **When servers start.** On the first run or `/mcp`, not at session open, because `uah` builds an engine to validate flags before the TUI opens. Default taken: lazy start.
+4. **When servers start.** On the first run or `/mcp`, not at session open, because `uah` builds an engine to validate flags before the TUI opens. Default taken: lazy start. Changed by ledger item 71: a terminal host waits for its server's `initialize` before it sends the first prompt, so the lazy start deadlocked it. An interactive session now connects the servers when it opens (`session.Open`, not `app.Setup`, so the engine that only validates flags still starts nothing); `/new` and `/resume` set up a new engine and reconnect once after the old session closed, as each Codex session has its own connection manager.
 5. **Parallel calls.** Codex serializes calls to a server unless `supports_parallel_tool_calls`; uah does the same per server.
 6. **Resources and prompts.** Not built (the ledger's Later list). The seam: `Manager.open` keeps the session; a resources or prompts feature adds a lister beside `Tools` and its own remote job plan type beside `uah.mcp_call`.
 7. **Process engine.** MCP needs the embedded engine; the process engine shows a notice when servers are configured, as it does for PreToolUse hooks.

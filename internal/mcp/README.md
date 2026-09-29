@@ -5,7 +5,7 @@
 uah runs the MCP servers in `[mcp_servers]` (Codex's format) on the embedded engine through the official Go SDK: stdio and streamable HTTP servers, their tools offered as `mcp__<server>__<tool>` and called without blocking the agent, Codex's approval modes, OAuth logins with `uah mcp login` kept in the OS keyring, and `uah mcp` to list, add, remove, and approve servers.
 <!-- /memoria:export -->
 
-This package owns everything MCP that is not engine or UI wiring: the configuration, starting and watching servers, naming and calling tools, OAuth, stored logins, and editing the configuration file for `uah mcp add` and `remove`. The embedded engine, `internal/app`, `cmd/uah`, and the TUI use it through a small surface: `Manager` (`Tools`, `Call`, `Status`, `Close`), `Login`, `Logout`, `AuthStatusOf`, `AddServer`, `RemoveServer`, and `SetApproval`.
+This package owns everything MCP that is not engine or UI wiring: the configuration, starting and watching servers, naming and calling tools, OAuth, stored logins, and editing the configuration file for `uah mcp add` and `remove`. The embedded engine, `internal/app`, `cmd/uah`, and the TUI use it through a small surface: `Manager` (`Tools`, `Started`, `Call`, `Status`, `Close`), `Login`, `Logout`, `AuthStatusOf`, `AddServer`, `RemoveServer`, and `SetApproval`.
 
 1. [Lifecycle of a server](#lifecycle-of-a-server)
 2. [How a call flows](#how-a-call-flows)
@@ -20,11 +20,13 @@ Behavior follows Codex (openai/codex rust-v0.156.1) unless the runner (unreal-ag
 <!-- memoria:section id="lifecycle" files="manager.go server.go status.go transport.go stderr.go" -->
 ## Lifecycle of a server
 
-A `Manager` holds the configured servers and starts nothing until the first run, `/mcp`, or `uah doctor` asks (`Start`, `Tools`, `Status`). Each enabled server then connects on its own goroutine within its `startup_timeout_sec` (default 30 s) and lists its tools, every page. A server is `starting`, then `ready`, `failed`, or `needs_login`; `enabled = false` makes it `disabled`. `Tools` waits until every server has started or failed and names the ready servers' allowed tools once, so the list stays the same for the session. A `required` server that did not start fails the run.
+A `Manager` holds the configured servers and starts nothing until an interactive session opens, a run, `/mcp`, or `uah doctor` asks (`Start`, `Started`, `Tools`, `Status`). Each enabled server then connects on its own goroutine within its `startup_timeout_sec` (default 30 s) and lists its tools, every page. A server is `starting`, then `ready`, `failed`, or `needs_login`; `enabled = false` makes it `disabled`. `Tools` waits until every server has started or failed and names the ready servers' allowed tools once, so the list stays the same for the session. A `required` server that did not start fails the run.
 
 A stdio server gets only Codex's basic variables (`HOME`, `PATH`, `USER`, and a few more), then `env_vars` by name, then `env`, and runs in `cwd` or the workspace. Its standard error is logged a line at a time ("MCP server stderr", with the server's name) and never reaches the screen. An HTTP server gets `http_headers`, `env_http_headers`, and the bearer token from `bearer_token_env_var`.
 
 A goroutine watches each connection. When a stdio server exits or an HTTP server goes away, the server becomes `failed` and later calls fail with the reason; it is not restarted, as in Codex. An HTTP server that forgot its session (404) gets a new session on the next call. `notifications/tools/list_changed` is logged, and the startup list stays. `Close` stops every server; the SDK closes a stdio server's standard input and waits up to 5 s before stopping it.
+
+A manager belongs to one engine, which `internal/app` builds for each session it sets up. An interactive session connects the servers as it opens: the embedded engine's `StartMCP` calls `Started`, which waits like `Tools` and reports each server with its `required` key, or nothing when the manager closed meanwhile, so a late report never starts closed servers again. Later runs, `/clear`, and subagents on that engine use the same connections. The TUI's `/new` and `/resume` close the session, and with it the engine, before they set up the next one from the configuration, which may name other servers for another workspace: the servers reconnect once, and two connections to a server are never open at once. This follows Codex, where each session has its own MCP connection manager.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="calls" files="call.go result.go names.go" -->

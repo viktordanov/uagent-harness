@@ -39,6 +39,15 @@ type MCPLister interface {
 	MCPServers() []mcp.ServerStatus
 }
 
+// MCPStarter is an engine whose MCP servers can connect before its first
+// run, so an interactive session connects them when it opens.
+type MCPStarter interface {
+	// StartMCP connects the configured servers, once per engine, waits
+	// until each has started or failed, and reports them; nil when there
+	// are none, or ctx ended or the engine closed first.
+	StartMCP(ctx context.Context) []mcp.ServerStatus
+}
+
 // ContextReporter is an engine that can break down the context of its last
 // model request, for /context.
 type ContextReporter interface {

@@ -486,7 +486,7 @@ Read more: [hooks](internal/hooks/README.md), with every event and its payload.
 uah runs the MCP servers in `[mcp_servers]` (Codex's format) on the embedded engine through the official Go SDK: stdio and streamable HTTP servers, their tools offered as `mcp__<server>__<tool>` and called without blocking the agent, Codex's approval modes, OAuth logins with `uah mcp login` kept in the OS keyring, and `uah mcp` to list, add, remove, and approve servers.
 <!-- /memoria:import -->
 
-- Servers start on the first run (or `/mcp`) and stop with the session. One that fails to start is left out, unless it has `required = true`.
+- Servers connect when a TUI session opens, before any message (`uah exec` connects them on its first run), and stop with the session; `/clear` keeps them, and `/new` and `/resume` reconnect them once. One that fails to start is shown then and left out; with `required = true`, every message fails until the server is fixed and `/new` connects it.
 - A call runs in the background, so the agent keeps working. A tool asks for approval by its `approval_mode`, as in Codex.
 - OAuth tokens are kept in the OS keyring (or a 0600 file without one) and refreshed as they expire. A server that needs a login shows "needs login" in `/mcp` and `uah doctor`.
 

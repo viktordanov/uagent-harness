@@ -131,8 +131,9 @@ func (w *wiring) mcpGate(ctx context.Context, never bool) mcpGate {
 	return mcpGate{ctx: ctx, ask: w.ask, never: never, m: w.e.cfg.MCP, warn: warn, yolo: func() bool { return mode.get().AsksNoOne() }}
 }
 
-// mcpTools starts the MCP servers on the first run and returns their
-// tools; a server that fails to start is reported and left out.
+// mcpTools returns the MCP servers' tools, starting the servers on the
+// first run unless an interactive session connected them as it opened; a
+// server that fails to start is reported and left out.
 func (w *wiring) mcpTools(ctx context.Context) ([]mcp.Tool, error) {
 	m := w.e.cfg.MCP
 	if m == nil {

@@ -5,7 +5,12 @@
 // calls it saw running at once), and add_tool (adds a tool named by the
 // text, so the server sends notifications/tools/list_changed).
 // MCPSERVER_START_DELAY (a duration) delays its start; MCPSERVER_EXTRA_TOOLS
-// (a count) adds that many tools named tool_0000 and up.
+// (a count) adds that many tools named tool_0000 and up. MCPSERVER_LOG (a
+// file) gets a line "<pid> <method>" for each request and notification the
+// server receives, before it handles it, and "<pid> closed" when its input
+// ends, so a test can count connections. MCPSERVER_LEGACY=1 refuses
+// server/discover, so a client falls back to initialize, as with a server
+// from before the 2026-07-28 protocol.
 package main
 
 import (
@@ -45,6 +50,19 @@ func main() {
 		time.Sleep(d)
 	}
 	s := sdk.NewServer(&sdk.Implementation{Name: "mcpserver", Version: "1"}, nil)
+	logTo, legacy := os.Getenv("MCPSERVER_LOG"), os.Getenv("MCPSERVER_LEGACY") == "1"
+	s.AddReceivingMiddleware(func(next sdk.MethodHandler) sdk.MethodHandler {
+		return func(ctx context.Context, method string, req sdk.Request) (sdk.Result, error) {
+			if logTo != "" {
+				logLine(logTo, method)
+			}
+			if legacy && method == "server/discover" {
+				return nil, fmt.Errorf("method %q not found", method)
+			}
+
+			return next(ctx, method, req)
+		}
+	})
 	add(s, "echo", "Echo the text.", func(a args) *sdk.CallToolResult {
 		return text("echo: " + a.Text + " env=" + os.Getenv("MCPSERVER_GREETING"))
 	})
@@ -110,10 +128,24 @@ func main() {
 	for i := range extra {
 		add(s, fmt.Sprintf("tool_%04d", i), "An extra tool.", func(args) *sdk.CallToolResult { return text("extra") })
 	}
-	if err := s.Run(context.Background(), &sdk.StdioTransport{}); err != nil {
+	err := s.Run(context.Background(), &sdk.StdioTransport{})
+	if logTo != "" {
+		logLine(logTo, "closed")
+	}
+	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
+}
+
+// logLine appends "<pid> <what>" to the file.
+func logLine(file, what string) {
+	f, err := os.OpenFile(file, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+	if err != nil {
+		return
+	}
+	_, _ = fmt.Fprintf(f, "%d %s\n", os.Getpid(), what)
+	_ = f.Close()
 }
 
 func add(s *sdk.Server, name, description string, fn func(args) *sdk.CallToolResult) {

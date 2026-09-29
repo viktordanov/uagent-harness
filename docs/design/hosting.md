@@ -208,7 +208,7 @@ This part is the terminal host's work and is listed here to show that the uah ch
 ## Not done
 
 - `--append-instructions`: the layers and `AGENTS.md` already give each kind its instructions.
-- SessionStart that stops the session: held. The executor's readiness comes from the terminal host's driver MCP `initialize` gate and `required = true`.
+- SessionStart that stops the session: held. The executor's readiness comes from the terminal host's driver MCP `initialize` gate and `required = true`. The TUI connects its MCP servers when the session opens, before any prompt, so the gate opens with no message (ledger item 71); before that, uah connected them on the first message, and a host that waited for `initialize` first never sent one.
 - A client tag: the PID walk already finds the right session.
 - An event stream and a control socket: both are a second path that only uah would have.
 - `uah transcript`: the terminal host reads the file in process.

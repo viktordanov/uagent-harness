@@ -1,6 +1,7 @@
 package mcp
 
 import (
+	"context"
 	"maps"
 	"slices"
 	"strings"
@@ -22,6 +23,9 @@ type ServerStatus struct {
 	Transport string
 	Target    string
 	Auth      AuthStatus
+	// Required is the server's required key: a run fails while it is not
+	// ready.
+	Required bool
 	// Tools are the tools offered to the model, in name order.
 	Tools []Tool
 }
@@ -50,6 +54,34 @@ func (m *Manager) Status() []ServerStatus {
 	m.Start()
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
+	return m.status()
+}
+
+// Started starts the servers if needed, waits until each has started or
+// failed, and reports them. It reports nothing when ctx ends or the manager
+// closes first, so a late caller never starts closed servers again.
+func (m *Manager) Started(ctx context.Context) []ServerStatus {
+	m.Start() //nolint:contextcheck // servers outlive the caller's context
+	m.mu.Lock()
+	done := m.done
+	m.mu.Unlock()
+	select {
+	case <-done:
+	case <-ctx.Done():
+		return nil
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.done != done {
+		return nil
+	}
+
+	return m.status()
+}
+
+// status reports each server; the caller holds m.mu.
+func (m *Manager) status() []ServerStatus {
 	tools := m.tools
 	if tools == nil {
 		tools = qualify(m.servers)
@@ -57,7 +89,9 @@ func (m *Manager) Status() []ServerStatus {
 	out := make([]ServerStatus, 0, len(m.servers))
 	for _, name := range slices.Sorted(maps.Keys(m.servers)) {
 		s := m.servers[name]
-		st := ServerStatus{Name: name, State: s.state, Transport: s.cfg.Transport(), Target: s.cfg.Target(), Auth: s.authStatus()}
+		st := ServerStatus{
+			Name: name, State: s.state, Transport: s.cfg.Transport(), Target: s.cfg.Target(), Auth: s.authStatus(), Required: s.cfg.Required,
+		}
 		if s.err != nil {
 			st.Error = s.err.Error()
 		}

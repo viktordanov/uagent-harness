@@ -59,7 +59,9 @@ type Options struct {
 	// in SessionsDir when set.
 	Source string
 	// Interactive means a user answers approvals (ApprovalRequested and
-	// Resolve). Otherwise commands that need approval are denied.
+	// Resolve). Otherwise commands that need approval are denied. An
+	// interactive session also connects the engine's MCP servers as it
+	// opens (MCPStarted).
 	Interactive bool
 	// Parent is the spawning session of a subagent, recorded in the sidecar.
 	Parent string
@@ -179,6 +181,9 @@ func Open(ctx context.Context, eng engine.Engine, opts Options) (*Session, error
 		s.out <- Notice{At: time.Now(), Level: LevelWarning, Message: n}
 	}
 	s.startHooks(opts.Resumed)
+	if opts.Interactive {
+		s.startMCP()
+	}
 	go s.loop()
 
 	return s, nil
