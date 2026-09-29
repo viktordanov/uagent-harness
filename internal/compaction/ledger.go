@@ -2,6 +2,7 @@ package compaction
 
 import (
 	"fmt"
+	"path"
 	"slices"
 	"strings"
 	"unicode/utf8"
@@ -37,9 +38,9 @@ func Ledger(covered []llm.Item, focus string) string {
 			sections = append(sections, title+": "+fit(entries, budget))
 		}
 	}
-	add("Changed files (apply_patch)", changedEntries(f.Changed), ledgerChangedBytes)
+	add("Changed files (apply_patch)", byDirectory(changedEntries(f.Changed)), ledgerChangedBytes)
 	add("Failing commands (their last run failed)", failingEntries(f.Failing), ledgerFailingBytes)
-	add("Files read", f.Read, ledgerReadBytes)
+	add("Files read", byDirectory(f.Read), ledgerReadBytes)
 	add("Skills loaded (SkillUse again for the body)", f.Skills, ledgerSkillsBytes)
 	add("Open subagents", f.Agents, ledgerAgentsBytes)
 	if focus = strings.TrimSpace(focus); focus != "" {
@@ -72,10 +73,37 @@ func failingEntries(failed []FailedCommand) []string {
 	out := make([]string, 0, len(failed))
 	for _, c := range failed {
 		entry := fmt.Sprintf("%#q exit %d", clip(oneLine(c.Command), 160), c.Exit)
-		if tail := clip(oneLine(c.Tail), ledgerTailBytes); tail != "" {
+		if tail := clipStart(oneLine(c.Tail), ledgerTailBytes); tail != "" {
 			entry += ": " + tail
 		}
 		out = append(out, entry)
+	}
+
+	return out
+}
+
+// byDirectory groups entries that are paths (with an optional note after
+// a space) by their directory, "dir/{a.go, b.go (+2 −1)}", ordered by each
+// directory's newest entry, so a long list of files takes less room.
+func byDirectory(entries []string) []string {
+	var dirs []string
+	files := map[string][]string{}
+	for _, e := range entries {
+		p, note, _ := strings.Cut(e, " ")
+		dir, file := path.Split(p)
+		if note != "" {
+			file += " " + note
+		}
+		dirs = append(slices.DeleteFunc(dirs, func(d string) bool { return d == dir }), dir)
+		files[dir] = append(files[dir], file)
+	}
+	out := make([]string, 0, len(dirs))
+	for _, dir := range dirs {
+		if f := files[dir]; len(f) == 1 {
+			out = append(out, dir+f[0])
+		} else {
+			out = append(out, dir+"{"+strings.Join(f, ", ")+"}")
+		}
 	}
 
 	return out
@@ -107,6 +135,19 @@ func fit(entries []string, budget int) string {
 // oneLine joins text's lines with " ⏎ " and trims it.
 func oneLine(text string) string {
 	return strings.Join(strings.Fields(strings.ReplaceAll(strings.TrimSpace(text), "\n", " ⏎ ")), " ")
+}
+
+// clipStart shortens text to at most n bytes from its end, with "…".
+func clipStart(text string, n int) string {
+	if len(text) <= n {
+		return text
+	}
+	cut := len(text) - n + len("…")
+	for cut < len(text) && !utf8.RuneStart(text[cut]) {
+		cut++
+	}
+
+	return "…" + text[cut:]
 }
 
 // clip shortens text to at most n bytes on a rune boundary, with "…".
