@@ -1,12 +1,15 @@
 # Compaction and the context meter: plan
 
-Status: accepted, 2026-09-24 (ledger item 4); configurable and looked at again in ledger item 24. Embedded engine only.
+Status: accepted, 2026-09-24 (ledger item 4); configurable and looked at again in ledger item 24; measured, with a ledger, elision, and kept calls, in ledger item 69 (2026-09-30); remote compaction in ledger item 70 (2026-09-30). Embedded engine only.
 
 1. [How Codex compacts](#how-codex-compacts)
 2. [What the runner supports](#what-the-runner-supports)
 3. [Design](#design)
 4. [Validation](#validation)
-5. [Open decisions](#open-decisions)
+5. [Measuring compaction](#measuring-compaction)
+6. [What a summary keeps](#what-a-summary-keeps)
+7. [Remote compaction](#remote-compaction)
+8. [Open decisions](#open-decisions)
 
 ## How Codex compacts
 
@@ -92,6 +95,55 @@ What a summary keeps: the system prompt (the base instructions, AGENTS.md, the e
 | 23 | Claude Code steers a summary with `/compact [instructions]`. | — | Adopted: `/compact <focus>` adds the focus to the prompt for that summary; the record keeps it. |
 | 24 | Claude Code's summary prompt asks for more structure (files and code, errors and fixes, all user messages), and its "Compact Instructions" in CLAUDE.md steer every summary. uah keeps the user messages themselves and Codex's shorter prompt. | — | Kept: `compact_prompt` or `experimental_compact_prompt_file` sets a longer prompt for those who want one. |
 
+## Measuring compaction
+
+Ledger item 69. The research before it (2026-09-30, 54 sessions of the owner's) found that tool outputs are about 72% of a long context (Bash 79% of them, SkillUse 19%), that uah's summaries were 173 to 521 tokens and kept 9% of the file paths read and none of the failing commands, and that the next 20 Bash calls after a compaction read again what was dropped at a rate of 0.27, against 0.18 at random points. Nothing logged what a compaction did.
+
+**Each compaction.** A record carries `Stats` (`internal/compaction/stats.go`): the strategy (local, remote, elide, clear), the phase (pre-turn when the request ends with new user messages, else mid-turn), the context in use before (Codex's measure) and the estimate of the request after, the summary's and the ledger's tokens, the stubbed outputs, the summary call's usage (input, cached, output, reasoning), and the duration. The engine logs a line with them; `uah exec`, `--json` (`stats`), and `uah sessions show` print them, for example `context compacted (manual): 145,809 → 23,147 tokens (local, pre-turn, 480-token summary, 350-token ledger, 12.3s)`.
+
+**Offline.** `internal/compaction/eval` measures a strategy on one request, with no I/O: tokens per actor (system, user, summary, assistant, reasoning, tool call, tool output), headroom in the window, the tokens after the longest prefix shared with the request before (what the first request after pays uncached), the input of the model call the strategy made, the facts of the covered history found in the request after (by the rules below, outside the system message), the user messages kept word for word, the SkillUse bodies kept, and re-fetch risk: among the next 20 Bash calls the session really made, those that name a path or repeat a command whose output the strategy dropped. `internal/compaction/evalrun` runs it on recorded sessions. The session file is append-only, so any prefix is a valid session: it copies a session up to an item into a scratch home (with its rewinds made by then and every process group zeroed, since uagent kills the groups a session file records as live), opens it on the embedded engine with a provider whose client captures the next request, and applies each strategy to that request with the compaction package's own functions. The cut points are the session's recorded compactions and the requests that first reached 50k, 100k, 150k, and 200k input tokens. Summaries come from the session's compaction log (for the default prompt), a cache keyed by the covered items' hash and the prompt, or a fixed stub, so a run never calls a model; `--summary-model` writes the missing ones with a real model and caches them.
+
+`uah compaction eval [session file or directory]` (hidden) prints the tables, numbers only. `internal/compaction/evalrun/testdata/sessions` is a synthetic session the embedded engine recorded with `fakellm` (`go test ./internal/compaction/evalrun -run TestRecordFixtures -update`), and `TestRun_Fixtures` holds each strategy to its bounds in `go test`, as the Markdown benchmarks gate the renderer. On the owner's sessions (15 sessions, 31 cases) the capture reproduced all 5 recorded compactions exactly: the covered items hash as the records do.
+
+The owner's sessions, medians over the 31 cases and pooled recall (2026-09-30; stub summaries except 5 recorded and 8 written by gpt-6.1-sol):
+
+| Strategy | Tokens after | After / before | Uncached first request | Changed files | Failing commands | Paths read | Re-fetch |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| None | 80,261 | 1.000 | 0 | 100% | 100% | 100% | 0% |
+| Codex's summary | 8,069 | 0.095 | 491 | 23% | 6% | 10% | 27% |
+| Summary and ledger | 8,518 | 0.100 | 723 | 100% | 92% | 88% | 27% |
+| Summary, ledger, last 5 calls | 23,147 | 0.332 | 15,614 | 100% | 98% | 93% | 15% |
+| Elision alone (default rules) | 38,023 | 0.515 | 27,175 | 100% | 100% | 100% | 7% |
+| uah's automatic compaction | 31,938 | 0.476 | 22,924 | 100% | 100% | 100% | 10% |
+
+The facts are checked by rules, which cannot judge a summary's goal or decisions; recall of an encrypted remote item cannot be measured at all, so the tables show it as n/a and take its size as the summary's. Estimates are bytes/4, as Codex's.
+
+## What a summary keeps
+
+**The state ledger** (`compaction.Ledger`). uah reads the covered tool calls by rules (`compaction.ExtractFacts`): the files `apply_patch` changed with their added and removed lines, the Bash commands whose last run failed with the end of their stderr, the paths the commands named and the images viewed, the skills loaded, the subagents spawned and not closed, and the `/compact` focus. It appends them to the model's summary in a `<uah_state_ledger>` block in a fixed format: paths grouped by directory, each list keeping its newest entries under a byte budget and counting the rest, at most 850 tokens. The record saves it (`Record.Ledger`), so every later request sends the same text. It costs about 350 tokens per compaction on the owner's sessions and lifted the recall of changed files from 23% to 100%, of failing commands from 6% to 92%, and of paths read from 10% to 88%.
+
+**Elision** (`compaction.Elision`). Before an automatic summary, the outputs of tool calls with ten calls after them, and outputs over 2,000 tokens with three after them, become a stub: the tool, its command, the exit code, the size, and "Run it again if you need it". SkillUse outputs never do: a skill's body is instructions. The record keeps the elided call IDs (`Record.Elided`) and a later record carries them, so every later request, and a resumed session, sends the same stubs and the prompt cache holds after the pass; a new summary keeps only those still after the covered items. When the stubs bring the context under three quarters of the automatic limit, no summary runs; otherwise the summary runs over the history as the model last saw it, which the prompt cache already holds. It reduces how often a summary is needed; it does not replace it. `compact_elide_after_calls` sets the age (0 turns it off).
+
+**The last calls** (`compaction.CoverableKeeping`). A summary covers all but the last five tool calls, cut where the model response that made the fifth-last call starts, so no call is split from its output and no reasoning from its call. It never covers less than the compaction before it, and covers everything when the kept calls would take more than a quarter of the window. Five calls halved re-fetch (27% to 15%) for about 15,000 more tokens after the compaction; ten brought it to 8% for 30,000. `compact_keep_recent_calls` sets the count; 0 is Codex's shape.
+
+**The prompt.** The default summary prompt keeps Codex's opening and asks for fixed sections: Goal, Constraints, Decisions, State, Errors, TODOs, and Next (`prompts/sections.md`; Codex's is `prompts/prompt.md`). Eight cases under 50,000 tokens were summarized by gpt-6.1-sol at medium effort with each prompt: the summary alone kept 83% of the failing commands against 67%, 50% of their errors against 8%, and 48% of the paths read against 39%, in 13% fewer tokens. With the ledger the two score the same on these rules. `compact_prompt` still replaces it.
+
+## Remote compaction
+
+Ledger item 70. Codex `rust-v0.159.1` compacts on its OpenAI providers remotely (`core/src/compact_remote_v2.rs`, `compact_remote_v2_attempt.rs`): the turn's request, with its instructions, tools, and history, plus one `{"type":"compaction_trigger"}` input item, streamed like a turn; the answer must hold exactly one output item `{"type":"compaction","encrypted_content":...}`. The new history is the retained user messages (and hook prompts) up to 64,000 tokens (`RETAINED_MESSAGE_TOKEN_BUDGET`), then that item. Codex advertises the feature in the `x-codex-beta-features` header; its `remote_compaction_v2` key is a removed feature, always on for providers with `RemoteCompactionSupport::V2`, and there is no other toggle.
+
+**The probe** (2026-09-30, openai-codex, gpt-6.1-sol, low effort). A request whose history held a tool output with a code, ending with the trigger, returned 200 with one `compaction` item (`id`, `type`, `encrypted_content` of 1,656 bytes; 124 input and 115 output tokens) in `response.output_item.done`, and a `response.completed` without output, as the ChatGPT backend always does. A second request with the user message, the item, and a question answered with the code, which only the dropped tool output held; the item counted as 117 input tokens. Both worked with and without Codex's beta header. The API-key openai provider was not probed; Codex enables it there.
+
+**In uah.** The runner's `llm.Item` (v0.1.1) has neither item type, and its parser rejects an unknown output item, so the transport carries both, as it does for web searches, and the runner stays unchanged (`internal/engine/embedded/remotecompact.go`, `compactremote.go`):
+
+1. On openai and openai-codex, with `remote_compaction` on (the default), the compactor sends the turn's model, tools, and history as the model sees it, through the switcher, with a request marker. The transport appends the trigger to the body's `input`, reads the whole answer, keeps the compaction item (from `response.output_item.done`, or from the completed response's output as the API sends it), and hands the runner the stream with an assistant message in its place.
+2. The record keeps the item (`Record.Remote`), the covered count and hash as any record, and the kept-message cap (Codex's 64,000 tokens, at most a quarter of the window). `Apply` puts a placeholder user message, `[uah-remote-compaction:<hash>] …`, after the kept user messages, then the ledger. Every turn request carries the record's item in its context, and the transport replaces the placeholder's input item with it, byte for byte. A resumed session reads the item from the log.
+3. Stats: the strategy is remote, the summary tokens are the call's output tokens, and the estimate after counts the item as that size.
+
+Through the engine (the probe test `TestProbeRemoteCompactionEndToEnd`, four requests): a command printed a code, `/compact` went to the provider (6,938 input tokens, 98% cached; 72 output tokens; 4.1 s), and the next answer gave the code.
+
+A failed remote compaction falls back to the local summary, as Codex does. A `/compact` with focus instructions uses the local summary, since only a prompt can take them. Every other provider uses the local summary and the ledger.
+
 ## Open decisions
 
 Defaults taken; the owner can change them.
@@ -108,3 +160,9 @@ Defaults taken; the owner can change them.
 | Kept-message cap | Codex's 20,000 tokens, at most a quarter of the window | `compact_user_message_max_tokens` |
 | An automatic compaction that cannot get under the limit | Warn and stop automatic compaction for the run | Compact before every request, as Codex |
 | Where the record lives | `sessions/<id>.compaction.jsonl` | The `<id>.uah.json` sidecar (metadata only today) |
+| The ledger | Always on, appended to every summary and after a remote item | A key to turn it off |
+| Elision | Before an automatic summary only, sticky, ten calls or 2,000 tokens after three | Elide on every request, which breaks the prompt cache each time |
+| Recent calls after a summary | Five | Codex's none (`compact_keep_recent_calls = 0`) |
+| The summary prompt | Codex's opening in fixed sections | Codex's prompt (`compact_prompt`) |
+| Remote compaction | On for openai and openai-codex, as Codex | `remote_compaction = false` |
+| A remote item after a model switch | Sent as saved; the provider decides | Compact again locally, as Codex's model-hash checks hint |

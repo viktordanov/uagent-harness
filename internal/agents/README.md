@@ -29,7 +29,7 @@ This README describes how the package works for someone changing it. The root RE
 `engine.Subagents` (in `internal/engine/subagents.go`) is the only contract between the engine and this package. `Manager` implements it:
 
 - `Attach` runs at the start of each of a session's runs on the embedded engine. It records the run as a parent (its request, how to ask its user, and how to add events to its stream) and returns the tools to offer, or none when the session is too deep to spawn.
-- `ToolNames` lists every name a call may use, offered or not. The engine resolves these names in every run, so a session with past calls resumes where the tools are not offered.
+- `ToolNames` lists every name a call may use, offered or not. The engine resolves these names in every run, so a session with past calls resumes where the tools are not offered. The package-level `ToolNames` gives the same list without a manager, for the compaction evaluation, which opens recorded sessions with no subagents.
 - `Call` runs one tool call (`engine.AgentCall`: the parent's ID, the model's call ID, the tool, and its JSON arguments) and returns the JSON result for the model. The engine runs each call as a remote job (`uah.agent` v1) on its own goroutine, so a long `wait_agent` never holds up the parent's coordinator. The call's context ends when the coordinator cancels the call or the run stops.
 - `Interrupt` runs when the user interrupts the parent's run.
 

@@ -131,7 +131,7 @@ uah exec --ephemeral -o answer.md "..."           # keep no session; write the f
 
 `--ephemeral` keeps nothing: the session runs in a temporary directory that uah removes at exit, so `sessions/`, `runs/`, and the index do not change and `uah sessions` does not list it. It starts a new session, so it cannot be used with `--last` or `--session`. `-o` (`--output-last-message`) writes the last run's answer to the file at exit; with no answer, it writes an empty file and warns on stderr, as Codex does.
 
-The TUI shows the answer as the model writes it, and `--json` adds `text_delta`, `reasoning_delta`, and `stream_reset` events before the final `assistant_message`. A [web search](#web-search) is a `web_search` event when it starts and when it ends, with its query or URL. Plain `uah exec` prints each answer once, when it is complete. See the [streaming design](docs/design/streaming.md).
+The TUI shows the answer as the model writes it, and `--json` adds `text_delta`, `reasoning_delta`, and `stream_reset` events before the final `assistant_message`. A [web search](#web-search) is a `web_search` event when it starts and when it ends, with its query or URL. A compaction is `compaction_started`, then `compacted` with its `stats`: the strategy, the tokens before and after, and the summary call's usage. Plain `uah exec` prints each answer once, when it is complete. See the [streaming design](docs/design/streaming.md).
 
 It exits 0 when the run succeeds, 1 when it fails, 2 on a usage error, 3 at the disk limit, and 130 on an interrupt. A run has no time limit; a script that needs one wraps it, as in `timeout 30m uah exec …` with GNU coreutils, which exits 124. Nobody can answer an approval headless, so commands that need one are declined with a reason. `uah exec --help` lists the flags.
 
@@ -305,7 +305,7 @@ To watch a subagent, type `/agents <name>` or press alt+← and alt+→: the TUI
 
 ### Compaction and `/clear`
 
-uah compacts automatically at 90% of the context window. `/compact` compacts now, and `/compact keep the failing test names` tells the summary what to focus on. `/context` shows what fills the window. The summary model, its prompt, and when compaction starts are [configurable](docs/configuration.md#compaction). `/clear` starts the agent fresh in the same session: its next request carries nothing from before, while the session keeps its history. `/new` starts a new session.
+uah compacts automatically at 90% of the context window. It first replaces old tool outputs with short stubs, and summarizes only when that does not free enough; on openai and openai-codex the provider compacts, as in Codex. Each summary ends with a ledger of the files changed, the commands still failing, the files read, and the skills loaded, and the last five tool calls stay as they were. `/compact` compacts now, and `/compact keep the failing test names` tells the summary what to focus on. `/context` shows what fills the window, and `uah sessions show` prints what each compaction freed. The summary model, its prompt, and when compaction starts are [configurable](docs/configuration.md#compaction). `/clear` starts the agent fresh in the same session: its next request carries nothing from before, while the session keeps its history. `/new` starts a new session.
 
 ### Custom prompts
 
@@ -516,7 +516,7 @@ Read more: [subagents](internal/agents/README.md), and the [design and validatio
 ### Compaction and `/context`
 
 <!-- memoria:import src="internal/compaction/README.md#summary" -->
-uah compacts a long conversation as Codex does: the earlier user messages stay verbatim and in order, up to the newest 20,000 tokens of them, and the rest is replaced by a model-written handoff summary. The summary model, effort, and prompt, when compaction starts, and the kept-message cap are configurable, with Codex's key names where Codex has them. The session file keeps the full history; only what goes to the model changes, and a compaction is saved next to the session so a resumed session keeps it.
+uah compacts a long conversation as Codex does: the earlier user messages stay verbatim, and the rest is replaced by a model-written handoff summary, or on OpenAI providers by the provider's encrypted compaction item. uah adds a state ledger read from the tool calls, keeps the last tool calls verbatim, first replaces old tool outputs with stubs when that frees enough, and measures every compaction, with an offline evaluation over recorded sessions.
 <!-- /memoria:import -->
 
 `/context` shows what fills the window, as Claude Code's does: a 10×10 grid, one cell per percent, with each category's tokens (system prompt, instruction files, skills, tools, MCP tools, your messages, agent messages, and tool calls with their results), the free space, and the auto-compact buffer, then a line per file, skill, and tool. It breaks down the last request sent, estimated at 4 bytes a token and scaled to the input tokens the provider reported (`internal/contextusage`).
@@ -546,7 +546,7 @@ The usage package reads the ChatGPT subscription's rate limits for the openai-co
 
 ---
 
-<!-- memoria:section id="development" files=".github/workflows/ci.yml .github/workflows/release.yml scripts/package-release.sh .golangci.yml testing/fakellm/fakellm.go testing/harnesstest/harnesstest.go testing/harnesstest/runner.go testing/harnesstest/home.go" -->
+<!-- memoria:section id="development" files=".github/workflows/ci.yml .github/workflows/release.yml scripts/package-release.sh .golangci.yml cmd/uah/compaction.go testing/fakellm/fakellm.go testing/harnesstest/harnesstest.go testing/harnesstest/runner.go testing/harnesstest/home.go" -->
 ## Development
 
 Tests need no model or tokens: the engine runs against `testing/fakellm`, a scripted Responses API, and session and TUI tests also run on uagent's fake runner through `harnesstest.RunnerEngine`, a test-only engine. One test drives the real `unreal-agent-runner` and the embedded engine with the same script and requires the same events; `go test -short` skips it. Tests never read your `~/.uah`: each package that could runs through `harnesstest.IsolatedMain`, which gives it a temporary home.
@@ -567,7 +567,7 @@ CI runs the build, the race tests, the Markdown renderer's benchmarks once (so t
 The configuration reference, design records for the harness, the TUI, state storage, sandboxing, compaction, MCP, subagents, pasted images, streaming, Markdown rendering, going back to an earlier message, selecting text with the mouse, editing the prompt in an editor, the system prompt, web search, `/diff` and `/review`, prompt history and the composer's height, keeping the ChatGPT login fresh, and running uah as a terminal host backend, plus the architecture rules and documentation procedure for uagent-harness.
 <!-- /memoria:import -->
 
-[`bench/tui`](bench/tui/README.md) is a separate Go module with the benchmark behind choosing Bubble Tea v2. `go test -run '^$' -bench Markdown -benchmem ./internal/tui/render` measures the Markdown renderer.
+[`bench/tui`](bench/tui/README.md) is a separate Go module with the benchmark behind choosing Bubble Tea v2. `go test -run '^$' -bench Markdown -benchmem ./internal/tui/render` measures the Markdown renderer. `uah compaction eval [session file or directory]`, a hidden command, compares the compaction strategies on recorded sessions and prints tables of numbers only; its tests hold the strategies to their bounds on a synthetic session ([internal/compaction](internal/compaction/README.md#measuring-compaction)).
 <!-- /memoria:section -->
 
 ---

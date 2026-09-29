@@ -14,7 +14,7 @@ Design:
 5. [Sandboxing and approvals: research](design/sandbox-research.md): how Codex sandboxes and approves commands, and the options for uah.
 6. [Sandboxing and approvals: plan](design/sandbox.md): the decisions (Codex's defaults), how a command runs, the packages, and the phases.
 7. [Subagents](design/subagents.md): how Codex and Claude Code run subagents, and the plan for uah.
-8. [Compaction](design/compaction.md): how Codex compacts, what the runner supports, and the design with its open decisions.
+8. [Compaction](design/compaction.md): how Codex compacts, locally and remotely, what the runner supports, the design, the offline evaluation over recorded sessions and its numbers, the state ledger, elision, the kept calls and the summary prompt, remote compaction with its probes, and the open decisions.
 9. [MCP](design/mcp.md): how Codex runs MCP servers, how their tools run as the runner's remote jobs, OAuth, the validation findings, and the open decisions.
 10. [Subscription usage (spike)](design/usage.md): how Codex reads the ChatGPT plan's rate limits, what uah can read with the same login, and the recommended design; the prototype is [internal/usage](../internal/usage/README.md), wired to nothing yet.
 11. [Pasting images](design/images.md): how Codex and Claude Code paste images, what the runner and uagent carry, and the design with its open decisions.

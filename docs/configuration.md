@@ -157,7 +157,7 @@ The permission modes:
 | `model_auto_compact_token_limit` | integer | none | override | Codex's key: compact once the context in use reaches this many tokens, when that comes before `auto_compact_percent` of the window. It only lowers the limit, as in Codex; `auto_compact_percent = 0` still turns automatic compaction off. `/context` shows the rest of the window as the buffer |
 | `compact_model` | string | the session's current model, as Codex | override | The model that writes the summary, on the session's provider. A model with a smaller window gets the history trimmed from the oldest item to fit |
 | `compact_effort` | string | the session's current effort | override | The summary call's effort: low, medium, high, xhigh, max, or ultra |
-| `compact_prompt` | string | Codex's summary prompt | override | Codex's key: the prompt the summary call ends with. Surrounding whitespace is trimmed; empty means the default |
+| `compact_prompt` | string | uah's: Codex's summary prompt in fixed sections (Goal, Constraints, Decisions, State, Errors, TODOs, Next) | override | Codex's key: the prompt the summary call ends with. Surrounding whitespace is trimmed; empty means the default |
 | `experimental_compact_prompt_file` | path | none | override | Codex's key: a file whose text is the summary prompt, when `compact_prompt` is not set. An absolute path or one under `~/`; a missing or empty file stops the session from starting |
 | `compact_user_message_max_tokens` | integer | 20000, at most a quarter of the window | override | The cap on user messages a compaction keeps word for word, newest first; the one that crosses it is shortened in the middle. Codex fixes it at 20,000 (`COMPACT_USER_MESSAGE_MAX_TOKENS`); uah's default is at most a quarter of the window, so a small model's compacted context is not mostly old messages. A compaction saves the cap it used, so changing it affects later compactions only |
 
@@ -450,6 +450,9 @@ model_context_window = 272000      # tokens; overrides the model catalog
 # compact_prompt = "Summarize for a handoff: decisions, open work, file paths."
 # experimental_compact_prompt_file = "~/.uah/compact.md"
 # compact_user_message_max_tokens = 20000  # default: 20000, at most a quarter of the window
+# compact_elide_after_calls = 10           # stub tool outputs this many calls old first; 0 turns it off
+# compact_keep_recent_calls = 5            # tool calls kept word for word after a summary; 0 is Codex's shape
+# remote_compaction = false                # summarize locally on openai and openai-codex too
 # model_instructions_file = "prompts/system.md"  # replaces uah's default prompt; relative to this file
 project_doc_fallback_filenames = ["CLAUDE.md"]   # also read Claude Code's files
 project_root_markers = [".git"]

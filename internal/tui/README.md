@@ -155,7 +155,7 @@ In the `/config` panel, ↑/↓ choose a setting, enter or space changes it, ←
 | `/clear` | Start the agent fresh in this session: the screen clears, and the next request carries nothing from before; the session keeps its history (embedded engine) | Yes |
 | `/stop` | Interrupt the run; queued messages stay | Yes |
 | `/rewind` | Select your latest message to go back to, as esc esc does while idle (see [Keys](#keys); embedded engine) | No |
-| `/compact [focus]` | Compact the context before the next model request; words after it tell the summary what to focus on, as Claude Code's `/compact [instructions]` (embedded engine) | Yes |
+| `/compact [focus]` | Compact the context before the next model request; words after it tell the summary what to focus on, as Claude Code's `/compact [instructions]` (embedded engine). The notice after it says how: a summary, the provider's compaction, or, for an automatic one, old tool outputs elided (`onCompacted`) | Yes |
 | `/diff` | The workspace's git changes, staged, unstaged, and untracked, as a transcript item; never sent to the agent | Yes |
 | `/review [target]` | A read-only reviewer looks at `uncommitted` changes, the changes against `branch <name>`, `commit <sha>`, or follows custom instructions, and lists its findings (embedded engine) | No |
 | `/context` | Break down what fills the context window | Yes |
