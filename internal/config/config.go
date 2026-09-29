@@ -71,6 +71,9 @@ type Config struct {
 	CompactModel                string `toml:"compact_model"`
 	CompactEffort               string `toml:"compact_effort"`
 	CompactUserMessageMaxTokens int    `toml:"compact_user_message_max_tokens"`
+	// CompactElideAfterCalls elides tool outputs this many calls old before
+	// an automatic summary (10 by default; 0 turns it off).
+	CompactElideAfterCalls *int `toml:"compact_elide_after_calls"`
 	// ReviewModel is /review's model, as Codex's key (the session's by
 	// default).
 	ReviewModel string `toml:"review_model"`

@@ -152,4 +152,7 @@ func mergeCompaction(base *Config, over Config) {
 	if over.CompactUserMessageMaxTokens != 0 {
 		base.CompactUserMessageMaxTokens = over.CompactUserMessageMaxTokens
 	}
+	if over.CompactElideAfterCalls != nil {
+		base.CompactElideAfterCalls = over.CompactElideAfterCalls
+	}
 }

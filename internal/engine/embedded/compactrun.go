@@ -82,6 +82,11 @@ func (c *compactor) compact(ctx context.Context, req llm.Request, opts llm.Reque
 			return compaction.Record{}, fmt.Errorf("compaction was stopped: %w", err)
 		}
 	}
+	if ask.trigger == compaction.TriggerAuto {
+		if rec, ok, err := c.elide(req.Input, ask, start); ok || err != nil {
+			return rec, err
+		}
+	}
 	covered := compaction.Coverable(req.Input)
 	if covered == 0 {
 		return compaction.Record{}, errNothingToCompact
@@ -104,18 +109,58 @@ func (c *compactor) compact(ctx context.Context, req llm.Request, opts llm.Reque
 	c.mu.Lock()
 	if c.record != nil && !c.stale {
 		rec.Floor = min(c.record.Floor, rec.Covered)
+		rec.Elided = compaction.StillElided(req.Input[1+rec.Covered:], c.record.Elided)
 	}
 	c.mu.Unlock()
 	rec.Ledger = compaction.Ledger(req.Input[1+rec.Floor:1+rec.Covered], rec.Focus)
 	stats := c.measure(req.Input, rec, ask, start, compaction.StrategyLocal)
 	stats.SummaryTokens, stats.Call = int64(compaction.ApproxTokens(summary.Text)), compaction.UsageOf(summary.Usage)
-	stats.LedgerTokens = int64(compaction.ApproxTokens(rec.Ledger))
+	stats.LedgerTokens, stats.Elided = int64(compaction.ApproxTokens(rec.Ledger)), len(rec.Elided)
 	rec.Stats = &stats
 	if err := c.log.Append(rec); err != nil {
 		return compaction.Record{}, err
 	}
 
 	return rec, nil
+}
+
+// elideEnough is how far under the automatic limit an elision pass must
+// bring the context to replace a summary, in quarters: otherwise the next
+// few requests would compact again.
+const elideEnough = 3
+
+// elide tries the cheaper step first: the old tool outputs the elision
+// rules pick become stubs, on top of the latest compaction. ok is false
+// when elision is off, picks nothing, or would leave the context above
+// three quarters of the automatic limit; the summary runs then.
+func (c *compactor) elide(input []llm.Item, ask compactionAsk, start time.Time) (compaction.Record, bool, error) {
+	c.mu.Lock()
+	var base compaction.Record
+	if c.record != nil && !c.stale {
+		base = *c.record
+	}
+	c.mu.Unlock()
+	view, err := compaction.Apply(input, base)
+	if err != nil {
+		return compaction.Record{}, false, nil //nolint:nilerr // the summary handles a mismatch
+	}
+	ids := c.settings.Elision.Elidable(view, base.Elided)
+	if len(ids) == 0 {
+		return compaction.Record{}, false, nil
+	}
+	rec := base.WithElided(ids)
+	rec.Trigger, rec.At, rec.Stats = compaction.TriggerAuto, time.Now().UTC(), nil
+	stats := c.measure(input, rec, ask, start, compaction.StrategyElide)
+	if stats.After > c.autoLimit()*elideEnough/4 {
+		return compaction.Record{}, false, nil
+	}
+	stats.Elided = len(rec.Elided)
+	rec.Stats = &stats
+	if err := c.log.Append(rec); err != nil {
+		return compaction.Record{}, false, err
+	}
+
+	return rec, true, nil
 }
 
 // measure is a compaction's stats before its summary's: the context in use

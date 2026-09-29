@@ -214,3 +214,45 @@ func TestEmbedded_TheSummaryCarriesTheStateLedger(t *testing.T) {
 	require.Len(t, done, 1)
 	assert.Positive(t, done[0].Stats.LedgerTokens)
 }
+
+func TestEmbedded_AutoCompactionElidesOldOutputsFirst(t *testing.T) {
+	big := "head -c 8000 /dev/zero | tr '\\0' x"
+	e := newEnv(t,
+		fakellm.Reply{Commands: []string{big}},
+		fakellm.Reply{Commands: []string{big}},
+		fakellm.Reply{Commands: []string{big}},
+		fakellm.Reply{Commands: []string{big}, InputTokens: 17_000},
+		fakellm.Reply{Text: "done"},
+		fakellm.Reply{Text: "again"},
+	)
+	settings := compaction.Settings{Percent: 90, Elision: compaction.Elision{AfterCalls: 2}}
+	eng := embedded.New(embedded.Config{StateDir: e.StateDir, Provider: "openai", Getenv: e.getenv, Compaction: settings, ContextWindow: 20_000})
+	s, ev := e.open(t, eng, "")
+	ask(t, s, ev, "first")
+
+	reqs := e.llm.Requests()
+	require.Len(t, reqs, 5, "the stubs freed enough: no summary call")
+	outs := reqs[4].ToolOutputs
+	require.Len(t, outs, 4)
+	for i, want := range []bool{true, true, false, false} {
+		assert.Equal(t, want, strings.HasPrefix(outs[i], "[uah elided this output to save context: Bash "), "output %d", i)
+	}
+	assert.Contains(t, outs[0], "2,00", "the stub gives the size")
+	_, done := compactions(ev.all)
+	require.Len(t, done, 1)
+	require.NotNil(t, done[0].Stats)
+	assert.Equal(t, compaction.StrategyElide, done[0].Stats.Strategy)
+	assert.Equal(t, 2, done[0].Stats.Elided)
+	assert.Greater(t, done[0].Stats.Before, done[0].Stats.After)
+
+	// Sticky: the next request, and a resumed session, send the same stubs.
+	ask(t, s, ev, "second")
+	id := s.ID()
+	require.NoError(t, s.Close())
+	s2, ev2 := e.open(t, eng, id)
+	ask(t, s2, ev2, "third")
+	reqs = e.llm.Requests()
+	require.Len(t, reqs, 7)
+	assert.Equal(t, outs, reqs[5].ToolOutputs[:4])
+	assert.Equal(t, outs, reqs[6].ToolOutputs[:4])
+}

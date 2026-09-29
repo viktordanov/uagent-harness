@@ -30,7 +30,7 @@ func (l Log) Path() string { return l.path }
 // write cut short by a crash, an edit) is skipped and counted in corrupt,
 // so one bad line does not stop the session from resuming.
 func (l Log) Records() (records []Record, corrupt int, err error) {
-	return readLines(l.path, "compaction", func(rec Record) bool { return rec.Covered > 0 && rec.Hash != "" })
+	return readLines(l.path, "compaction", func(rec Record) bool { return rec.Covered > 0 && rec.Hash != "" || len(rec.Elided) > 0 })
 }
 
 // readLines reads the JSON-lines file at path, skipping and counting the

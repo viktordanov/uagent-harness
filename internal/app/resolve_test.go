@@ -310,9 +310,14 @@ func TestResolve(t *testing.T) {
 			want: func(r *app.Resolved) {
 				r.Compaction = compaction.Settings{
 					Percent: 90, TokenLimit: 200_000, Model: "gpt-small", Effort: llm.ReasoningEffortLow,
-					Prompt: "Summarize briefly.", UserMessageMaxTokens: 5000,
+					Prompt: "Summarize briefly.", UserMessageMaxTokens: 5000, Elision: compaction.DefaultElision,
 				}
 			},
+		},
+		{
+			name: "compact_elide_after_calls",
+			cfg:  config.Config{CompactElideAfterCalls: new(0)},
+			want: func(r *app.Resolved) { r.Compaction.Elision.AfterCalls = 0 },
 		},
 		{
 			name: "request_max_attempts beats the default",
@@ -349,7 +354,7 @@ func TestResolve(t *testing.T) {
 					MaxAttempts: engine.DefaultMaxAttempts,
 				},
 				MaxDisk: 5 << 30, Instructions: true,
-				Sandbox: sandbox.Policy{Mode: sandbox.WorkspaceWrite}, Compaction: compaction.Settings{Percent: 90}, Approval: approval.OnRequest,
+				Sandbox: sandbox.Policy{Mode: sandbox.WorkspaceWrite}, Compaction: compaction.Settings{Percent: 90, Elision: compaction.DefaultElision}, Approval: approval.OnRequest,
 				ApprovalsReviewer: review.ReviewerUser,
 				Review:            review.Config{Model: review.CodexModel, Effort: llm.ReasoningEffortLow, Timeout: review.DefaultTimeout},
 				Agents:            app.Agents{Enabled: true, MaxThreads: 4, MaxDepth: 1},

@@ -42,27 +42,7 @@ func (s *State) onEngineEvent(ev core.Event) bool {
 		}
 		s.notice(session.LevelInfo, text)
 	case engine.Compacted:
-		if e.Interrupted {
-			s.notice(session.LevelInfo, "Compaction interrupted")
-
-			return true
-		}
-		if e.Err != "" {
-			s.notice(session.LevelWarning, e.Trigger.Verb()+" failed: "+e.Err)
-
-			return true
-		}
-		s.ContextUsed = 0
-		if e.Trigger == compaction.TriggerClear {
-			s.notice(LevelDebug, "context cleared")
-
-			return true
-		}
-		s.notice(session.LevelInfo, "Context compacted; your messages stay as written")
-		if e.Warning != "" {
-			s.notice(session.LevelWarning, e.Warning)
-		}
-		s.notice(LevelDebug, "summary: "+e.Summary)
+		s.onCompacted(e)
 	case engine.Reconnecting:
 		if s.Live != nil {
 			s.Live.Reconnect = &Reconnect{Attempt: e.Attempt, MaxAttempts: e.MaxAttempts, Retry: e.At.Add(e.Delay), Reason: e.Reason}
@@ -105,4 +85,34 @@ func cmdClear(s *State, _ string) []Effect {
 // as Claude Code's /compact [instructions].
 func cmdCompact(_ *State, args string) []Effect {
 	return []Effect{EffCompact{Focus: args}}
+}
+
+// onCompacted reports a compaction that ended.
+func (s *State) onCompacted(e engine.Compacted) {
+	if e.Interrupted {
+		s.notice(session.LevelInfo, "Compaction interrupted")
+
+		return
+	}
+	if e.Err != "" {
+		s.notice(session.LevelWarning, e.Trigger.Verb()+" failed: "+e.Err)
+
+		return
+	}
+	s.ContextUsed = 0
+	if e.Stats != nil && e.Stats.Strategy == compaction.StrategyElide {
+		s.notice(session.LevelInfo, fmt.Sprintf("Old tool outputs elided to save context (%d in all)", e.Stats.Elided))
+
+		return
+	}
+	if e.Trigger == compaction.TriggerClear {
+		s.notice(LevelDebug, "context cleared")
+
+		return
+	}
+	s.notice(session.LevelInfo, "Context compacted; your messages stay as written")
+	if e.Warning != "" {
+		s.notice(session.LevelWarning, e.Warning)
+	}
+	s.notice(LevelDebug, "summary: "+e.Summary)
 }

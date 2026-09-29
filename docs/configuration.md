@@ -161,6 +161,8 @@ The permission modes:
 | `experimental_compact_prompt_file` | path | none | override | Codex's key: a file whose text is the summary prompt, when `compact_prompt` is not set. An absolute path or one under `~/`; a missing or empty file stops the session from starting |
 | `compact_user_message_max_tokens` | integer | 20000, at most a quarter of the window | override | The cap on user messages a compaction keeps word for word, newest first; the one that crosses it is shortened in the middle. Codex fixes it at 20,000 (`COMPACT_USER_MESSAGE_MAX_TOKENS`); uah's default is at most a quarter of the window, so a small model's compacted context is not mostly old messages. A compaction saves the cap it used, so changing it affects later compactions only |
 
+| `compact_elide_after_calls` | integer | 10 | override | Before an automatic summary, replace the tool outputs this many calls old, and outputs over 2,000 tokens three calls old, with a short stub (tool, command, exit code, size); when that frees enough, no summary runs. SkillUse outputs stay. 0 turns it off |
+
 `/compact <instructions>` adds focus instructions to the prompt for that one summary, as in Claude Code: `/compact keep the failing test names`.
 
 ### Instructions and skills

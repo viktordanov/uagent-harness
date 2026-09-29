@@ -79,6 +79,9 @@ type Record struct {
 	// Focus is what the user asked the summary to focus on (/compact
 	// <instructions>).
 	Focus string `json:"focus,omitempty"`
+	// Elided are the calls whose outputs the model sees as stubs (Elide),
+	// from this record's elision pass and the ones before it.
+	Elided []string `json:"elided,omitempty"`
 	// Ledger is the state ledger uah generated from the covered items
 	// (Ledger), sent after the summary.
 	Ledger string `json:"ledger,omitempty"`
@@ -132,11 +135,13 @@ func NewRecord(input []llm.Item, summary string, trigger Trigger, model string, 
 
 // Apply rewrites input, whose first item is the system message, with the
 // record: the system message, the covered user messages that Kept keeps (up
-// to the record's cap), the summary, and the items after the covered ones. A tool result whose
-// call was covered becomes a user-role note, so no output lacks its call.
+// to the record's cap), the summary, and the items after the covered ones,
+// with the elided outputs as stubs. A tool result whose call was covered
+// becomes a user-role note, so no output lacks its call. A record that
+// covers nothing only elides.
 func Apply(input []llm.Item, rec Record) ([]llm.Item, error) {
 	if rec.Covered <= 0 || len(input) == 0 {
-		return input, nil
+		return Elide(input, rec.Elided), nil
 	}
 	if len(input) < 1+rec.Covered {
 		return nil, fmt.Errorf("%w: it covers %d items, the history has %d", ErrMismatch, rec.Covered, len(input)-1)
@@ -157,7 +162,7 @@ func Apply(input []llm.Item, rec Record) ([]llm.Item, error) {
 		out = append(out, SummaryMessage(rec.SummaryText()))
 	}
 
-	return append(out, detachOrphans(tail)...), nil
+	return append(out, detachOrphans(Elide(tail, rec.Elided))...), nil
 }
 
 // SummaryText is what the summary message carries after the prefix: the

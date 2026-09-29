@@ -29,6 +29,9 @@ type Settings struct {
 	// verbatim (compact_user_message_max_tokens); 0 is Codex's 20,000, at
 	// most a quarter of the window (KeepFor).
 	UserMessageMaxTokens int
+	// Elision picks the old tool outputs an automatic compaction first
+	// replaces with stubs; the zero value never elides.
+	Elision Elision
 }
 
 // Limit is the tokens in use at which automatic compaction starts for a
