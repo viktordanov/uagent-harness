@@ -256,3 +256,28 @@ func TestEmbedded_AutoCompactionElidesOldOutputsFirst(t *testing.T) {
 	assert.Equal(t, outs, reqs[5].ToolOutputs[:4])
 	assert.Equal(t, outs, reqs[6].ToolOutputs[:4])
 }
+
+func TestEmbedded_ASummaryKeepsTheLastCallsVerbatim(t *testing.T) {
+	e := newEnv(t,
+		fakellm.Reply{Commands: []string{"echo one"}},
+		fakellm.Reply{Commands: []string{"echo two"}},
+		fakellm.Reply{Commands: []string{"echo three"}},
+		fakellm.Reply{Text: "answer"},
+		fakellm.Reply{Text: "SUMMARY"},
+		fakellm.Reply{Text: "after"},
+	)
+	settings := compaction.Settings{KeepCalls: 1}
+	s, ev := e.open(t, embedded.New(embedded.Config{StateDir: e.StateDir, Provider: "openai", Getenv: e.getenv, Compaction: settings}), "")
+	ask(t, s, ev, "first")
+	require.NoError(t, s.Compact())
+	ask(t, s, ev, "second")
+
+	reqs := e.llm.Requests()
+	require.Len(t, reqs, 6)
+	assert.Equal(t, []string{"call-1-0", "call-2-0"}, reqs[4].CallIDs, "the summary covers all but the last call")
+	next := reqs[5]
+	assert.Equal(t, []string{"first", summaryText("SUMMARY"), "second"}, next.UserTexts)
+	assert.Equal(t, []string{"call-3-0"}, next.CallIDs, "the last call stays, with its output")
+	require.Len(t, next.ToolOutputs, 1)
+	assert.Contains(t, next.ToolOutputs[0], "three")
+}

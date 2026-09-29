@@ -163,6 +163,8 @@ The permission modes:
 
 | `compact_elide_after_calls` | integer | 10 | override | Before an automatic summary, replace the tool outputs this many calls old, and outputs over 2,000 tokens three calls old, with a short stub (tool, command, exit code, size); when that frees enough, no summary runs. SkillUse outputs stay. 0 turns it off |
 
+| `compact_keep_recent_calls` | integer | 5 | override | A summary leaves the last this many tool calls, with their outputs and the model's output around them, word for word after it; when they take more than a quarter of the window, the summary covers them too. 0 summarizes everything, as Codex does |
+
 `/compact <instructions>` adds focus instructions to the prompt for that one summary, as in Claude Code: `/compact keep the failing test names`.
 
 ### Instructions and skills

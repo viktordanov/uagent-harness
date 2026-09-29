@@ -155,4 +155,7 @@ func mergeCompaction(base *Config, over Config) {
 	if over.CompactElideAfterCalls != nil {
 		base.CompactElideAfterCalls = over.CompactElideAfterCalls
 	}
+	if over.CompactKeepRecentCalls != nil {
+		base.CompactKeepRecentCalls = over.CompactKeepRecentCalls
+	}
 }

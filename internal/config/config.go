@@ -74,6 +74,9 @@ type Config struct {
 	// CompactElideAfterCalls elides tool outputs this many calls old before
 	// an automatic summary (10 by default; 0 turns it off).
 	CompactElideAfterCalls *int `toml:"compact_elide_after_calls"`
+	// CompactKeepRecentCalls leaves the last tool calls verbatim after a
+	// summary (5 by default; 0 summarizes everything, as Codex).
+	CompactKeepRecentCalls *int `toml:"compact_keep_recent_calls"`
 	// ReviewModel is /review's model, as Codex's key (the session's by
 	// default).
 	ReviewModel string `toml:"review_model"`

@@ -28,9 +28,12 @@ func pickCompaction(cfg config.Config, s *session.Settings) (compaction.Settings
 	if cfg.AutoCompactPercent != nil {
 		c.Percent = *cfg.AutoCompactPercent
 	}
-	c.Elision = compaction.DefaultElision
+	c.Elision, c.KeepCalls = compaction.DefaultElision, compaction.DefaultKeepCalls
 	if n := cfg.CompactElideAfterCalls; n != nil {
 		c.Elision.AfterCalls = *n
+	}
+	if n := cfg.CompactKeepRecentCalls; n != nil {
+		c.KeepCalls = *n
 	}
 	var err error
 	switch {
@@ -40,6 +43,8 @@ func pickCompaction(cfg config.Config, s *session.Settings) (compaction.Settings
 		err = fmt.Errorf("invalid model_context_window %d", cfg.ModelContextWindow)
 	case c.TokenLimit < 0:
 		err = fmt.Errorf("invalid model_auto_compact_token_limit %d", c.TokenLimit)
+	case c.KeepCalls < 0:
+		err = fmt.Errorf("invalid compact_keep_recent_calls %d", c.KeepCalls)
 	case c.Elision.AfterCalls < 0:
 		err = fmt.Errorf("invalid compact_elide_after_calls %d", c.Elision.AfterCalls)
 	case c.UserMessageMaxTokens < 0:
@@ -138,5 +143,6 @@ func compactionSettings(l config.Layers, r Resolved, cfg config.Config) []Settin
 		overridden(l, "experimental_compact_prompt_file", cfg.ExperimentalCompactPromptFile, func(c config.Config) any { return c.ExperimentalCompactPromptFile }),
 		overridden(l, "compact_user_message_max_tokens", c.KeepTokens(), func(c config.Config) any { return c.CompactUserMessageMaxTokens }),
 		overridden(l, "compact_elide_after_calls", c.Elision.AfterCalls, func(c config.Config) any { return c.CompactElideAfterCalls }),
+		overridden(l, "compact_keep_recent_calls", c.KeepCalls, func(c config.Config) any { return c.CompactKeepRecentCalls }),
 	}
 }

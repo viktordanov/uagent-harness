@@ -32,7 +32,16 @@ type Settings struct {
 	// Elision picks the old tool outputs an automatic compaction first
 	// replaces with stubs; the zero value never elides.
 	Elision Elision
+	// KeepCalls leaves the last this many tool calls verbatim after a
+	// summary (compact_keep_recent_calls); 0 summarizes everything, as
+	// Codex does.
+	KeepCalls int
 }
+
+// DefaultKeepCalls is how many recent tool calls a summary leaves verbatim:
+// on the owner's sessions, five halved the later calls that read again what
+// the summary dropped (27% to 15%) for about 15,000 more tokens after it.
+const DefaultKeepCalls = 5
 
 // Limit is the tokens in use at which automatic compaction starts for a
 // window; 0 means never. Percent 0 turns it off; a token limit only lowers

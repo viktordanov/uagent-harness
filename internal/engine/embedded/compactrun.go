@@ -87,7 +87,7 @@ func (c *compactor) compact(ctx context.Context, req llm.Request, opts llm.Reque
 			return rec, err
 		}
 	}
-	covered := compaction.Coverable(req.Input)
+	covered := c.coverage(req.Input)
 	if covered == 0 {
 		return compaction.Record{}, errNothingToCompact
 	}
@@ -99,7 +99,7 @@ func (c *compactor) compact(ctx context.Context, req llm.Request, opts llm.Reque
 	if err != nil {
 		return compaction.Record{}, err
 	}
-	rec, err := compaction.NewRecord(req.Input, summary.Text, ask.trigger, c.summaryModel(), time.Now().UTC())
+	rec, err := compaction.NewRecordCovering(req.Input, covered, summary.Text, ask.trigger, c.summaryModel(), time.Now().UTC())
 	if err != nil {
 		return compaction.Record{}, err
 	}
@@ -122,6 +122,26 @@ func (c *compactor) compact(ctx context.Context, req llm.Request, opts llm.Reque
 	}
 
 	return rec, nil
+}
+
+// coverage is how many items a summary covers: all but the new messages
+// and the last compact_keep_recent_calls tool calls, which stay verbatim;
+// never less than the latest compaction covers, and everything when the
+// kept calls would take more than a quarter of the window.
+func (c *compactor) coverage(input []llm.Item) int {
+	all := compaction.Coverable(input)
+	covered := compaction.CoverableKeeping(input, c.settings.KeepCalls)
+	c.mu.Lock()
+	if c.record != nil && !c.stale {
+		covered = max(covered, c.record.Covered)
+	}
+	c.mu.Unlock()
+	window := compaction.ContextWindow(c.next.currentModel(), c.window, c.windows)
+	if covered == 0 || compaction.EstimateTokens(input[1+covered:]) > window/4 {
+		return all
+	}
+
+	return min(covered, all)
 }
 
 // elideEnough is how far under the automatic limit an elision pass must

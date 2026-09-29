@@ -36,7 +36,7 @@ func Strategies() []Strategy {
 		{Name: "summary + ledger + last 10 calls", Apply: summarized(10, true)},
 		{Name: "elide (10 calls)", Apply: elided(compaction.Elision{AfterCalls: 10})},
 		{Name: "elide (10 calls, big after 3)", Apply: elided(compaction.DefaultElision)},
-		{Name: "uah automatic", Apply: automatic(compaction.DefaultElision, 0)},
+		{Name: "uah automatic", Apply: automatic(compaction.DefaultElision, compaction.DefaultKeepCalls)},
 		{Name: "codex remote (item ≈ summary)", Opaque: true, Apply: remote},
 	}
 }
