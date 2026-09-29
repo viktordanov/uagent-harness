@@ -94,7 +94,7 @@ uah resume --last       # this directory's most recent session
 uah --session 3f2a      # a session by ID or unique prefix
 ```
 
-To choose a new session's ID, as Claude Code's `--session-id` does, run `uah --session-id <uuid>` or `uah exec --session-id <uuid>`. The ID must be a UUID that no session has; `--session-id` never resumes. A new session in the TUI (ctrl+n or `/new`) still gets a fresh ID.
+To choose a new session's ID, as Claude Code's `--session-id` does, run `uah --session-id <uuid>` or `uah exec --session-id <uuid>`. The ID must be a UUID that no session has used; `--session-id` never resumes. A session that opened and never ran, such as a launch stopped before its first message, has no history, so `--session-id` takes its ID again and `uah resume <id>` resumes it. A new session in the TUI (ctrl+n or `/new`) still gets a fresh ID.
 
 When you quit the TUI, it prints the session's token usage and the command that continues it, `uah resume <id>` on its own line, as Codex does; on a terminal it uses the TUI's colors. In the TUI, ctrl+s opens the picker and ctrl+n starts a new session. The picker hides sessions from `uah exec` and subagents, as Codex hides `codex exec` sessions.
 
@@ -147,7 +147,7 @@ uah sessions rm 3f2a                   # delete a session with its runs and suba
 
 `uah sessions rm` removes the session's files, its tool output, its run records, its rows in the index, and the same for each subagent it started. It refuses while a run holds the session's lock; `--force` removes the session anyway.
 
-Each session's sidecar, `~/.uah/sessions/<id>.uah.json`, also has its `workspace`, its `first_prompt` (200 characters), its `last_activity`, and its `last_sequence`, so a program can find a session and see that it changed from that file alone. `last_sequence` is the `Sequence` of the last item in the [session file](internal/sessionfile/README.md) when the last turn ended.
+Each session's sidecar, `~/.uah/sessions/<id>.uah.json`, also has its `workspace`, its `first_prompt` (200 characters), its `last_activity`, and its `last_sequence`, so a program can find a session and see that it changed from that file alone. `last_sequence` is the `Sequence` of the last item in the [session file](internal/sessionfile/README.md) when the last turn ended. A session that never ran has a sidecar and no session file: `uah sessions` lists it with 0 runs and no first prompt, and it resumes under its ID ([a session that never ran](internal/sessionfile/README.md#a-session-that-never-ran)).
 
 ### Images
 

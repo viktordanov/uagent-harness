@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -18,7 +17,8 @@ import (
 
 // TestSetup_NewSessionID starts a session with the ID --session-id gives,
 // as Claude Code's flag, runs it on the embedded engine, and refuses the ID
-// once it exists, an ID that is not a UUID, and resuming at the same time.
+// once it has history, an ID that is not a UUID, and resuming at the same
+// time. TestSetup_NeverUsedSession covers an ID with a sidecar only.
 func TestSetup_NewSessionID(t *testing.T) {
 	_, in := setupEnv(t)
 	t.Setenv("OPENAI_API_KEY", "test-key")
@@ -45,10 +45,6 @@ func TestSetup_NewSessionID(t *testing.T) {
 
 	for name, change := range map[string]func(*app.Inputs){
 		"an ID that exists": func(*app.Inputs) {},
-		"an ID with a sidecar only": func(in *app.Inputs) {
-			in.NewSessionID = "1b5e8c7a-3f1d-4b2e-9c6a-7d8e9f0a1b2c"
-			require.NoError(t, os.WriteFile(filepath.Join(in.StateDir, "sessions", in.NewSessionID+".uah.json"), []byte("{}\n"), 0o600))
-		},
 		"not a UUID":       func(in *app.Inputs) { in.NewSessionID = "session-1" },
 		"a UUID in braces": func(in *app.Inputs) { in.NewSessionID = "{" + id + "}" },
 		"resuming at once": func(in *app.Inputs) { in.NewSessionID, in.SessionRef = "2b5e8c7a-3f1d-4b2e-9c6a-7d8e9f0a1b2c", id },

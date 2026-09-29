@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -63,6 +64,9 @@ func listSessions(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("failed to resolve state dir: %w", err)
 	}
 	infos, err := store.List(ctx, stateDir)
+	if err == nil {
+		infos, err = session.WithUnused(stateDir, infos)
+	}
 	if q := cmd.String("search"); q != "" {
 		infos, err = store.SearchIn(ctx, stateDir, q)
 	}
@@ -109,15 +113,12 @@ func listSessions(ctx context.Context, cmd *cli.Command) error {
 		if showAll {
 			dir = homeShort(in.Workspace) + "\t"
 		}
-		from := in.Source
-		if from == "" {
-			from = "-"
-		}
+		from, status := cmp.Or(in.Source, "-"), cmp.Or(string(in.Status), "-") // "-": no sidecar, or never ran
 		id := short(in.ID)
 		if in.Depth > 0 {
 			id = strings.Repeat("  ", in.Depth-1) + "└ " + id
 		}
-		fmt.Fprintf(tw, "%s\t%s\t%d\t%s\t%s\t%s\t%s%s\n", id, ago(in.LastActivity), in.Runs, in.Status, modelLabel(in.Model), from, dir, oneLine(in.FirstPrompt, 60))
+		fmt.Fprintf(tw, "%s\t%s\t%d\t%s\t%s\t%s\t%s%s\n", id, ago(in.LastActivity), in.Runs, status, modelLabel(in.Model), from, dir, oneLine(in.FirstPrompt, 60))
 	}
 
 	return tw.Flush()

@@ -78,7 +78,7 @@ func RemoveSidecar(sessionsDir, id string) error {
 }
 
 func sidecarPath(sessionsDir, id string) string {
-	return filepath.Join(sessionsDir, id+".uah.json")
+	return filepath.Join(sessionsDir, id+sidecarSuffix)
 }
 
 // ReadSidecar returns the session's sidecar, or found=false when it has none.

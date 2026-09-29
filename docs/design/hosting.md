@@ -69,6 +69,8 @@ The terminal host depends on Claude Code and Codex, and it keeps one set of mech
 
 `uah --session-id <uuid>` starts a new session with that ID. An ID that already exists is a usage error, so `--session-id` never resumes; `uah resume <id>` does. The ID must be a UUID. Claude Code has the same flag.
 
+A launch that is stopped before its first message leaves the sidecar and no session file. Ledger item 72 makes that ID usable again: "exists" means the session has history (an item in the session file, or a run record), so `--session-id` takes an ID with a sidecar alone, and `uah resume <id>` resumes it with an empty history. A session with history is never replaced. The rules are in [the session file README](../../internal/sessionfile/README.md#a-session-that-never-ran).
+
 Today a new session always gets a fresh `uuid.NewString()` (`internal/session/session.go`), and the terminal host learns it only from the first Stop or SessionStart hook. Until then the terminal host cannot resume the session, and its discovery can bind the wrong file.
 
 With the flag, the terminal host sets its `ExternalID` before the launch. The hooks still arrive and carry the same ID, so the terminal host's binding code finds a match and does nothing. There is no new path in the terminal host.

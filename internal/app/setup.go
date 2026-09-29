@@ -245,6 +245,9 @@ func HookTrustFile() string { return filepath.Join(config.Dir(), "trusted-hooks.
 // FindSession finds a session by exact ID or unique prefix.
 func FindSession(ctx context.Context, stateDir, ref string) (session.Info, error) {
 	infos, err := store.List(ctx, stateDir)
+	if err == nil {
+		infos, err = session.WithUnused(stateDir, infos) // a session that never ran resumes under its ID
+	}
 	if err != nil {
 		return session.Info{}, err
 	}

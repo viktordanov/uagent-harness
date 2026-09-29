@@ -12,9 +12,10 @@ The rules were checked against unreal-agent-runner v0.1.1, the version in `go.mo
 1. [The file](#the-file)
 2. [Items](#items)
 3. [Paging with Sequence](#paging-with-sequence)
-4. [Files beside the session file](#files-beside-the-session-file)
-5. [Reading it from Go](#reading-it-from-go)
-6. [Tests](#tests)
+4. [A session that never ran](#a-session-that-never-ran)
+5. [Files beside the session file](#files-beside-the-session-file)
+6. [Reading it from Go](#reading-it-from-go)
+7. [Tests](#tests)
 <!-- /memoria:section -->
 
 <!-- memoria:section id="format" files="sessionfile.go data.go" -->
@@ -57,6 +58,12 @@ A message with images that the user pasted in the TUI has a tag line at its end 
 `Sequence` is the cursor. To read in pages, keep the `Sequence` of the last item you read, and next time read only the items with a higher `Sequence`. This is how the runner's own `Items` call pages: the cursor before the first item is 0. Because the runner only appends, a page never changes after you read it.
 
 To find out whether a session changed, compare the last `Sequence`. uah also writes it to the sidecar, `sessions/<id>.uah.json`, as `last_sequence` at the end of each turn, so a reader can check it without opening the session file. It does not change while a turn runs; to see a turn that is still running, read the session file.
+
+## A session that never ran
+
+The runner creates the session file when the session's first run starts. uah writes the sidecar, `sessions/<id>.uah.json`, earlier, when the session opens. So a session that opened and never ran, such as a launch that was stopped before its first message, has a sidecar and no session file. A reader treats a missing session file, or one with a header and no item, as an empty history: no first prompt, and `last_sequence` 0 or absent.
+
+uah keeps the ID of such a session usable. `uah resume <id>` and `--session <id>` resume it, and its history then starts with the first message. `--session-id <id>` starts a new session under the ID again, because nothing is recorded under it. When the session has history, meaning an item in the session file or a run record, `--session-id` refuses the ID. No command of uah removes or replaces a session file with items, except `uah sessions rm`. `uah sessions` and `uah sessions --json` list a session that never ran, with 0 runs, no first prompt, and its creation time as its last activity. The resume picker and `--last` skip it.
 
 ## Files beside the session file
 

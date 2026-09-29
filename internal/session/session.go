@@ -159,7 +159,8 @@ func Open(ctx context.Context, eng engine.Engine, opts Options) (*Session, error
 		hooks:       hookState{runner: opts.Hooks, resumed: opts.Resumed, tools: map[string]core.ToolCalled{}},
 		interactive: opts.Interactive, stream: opts.Stream, approvals: map[string]pending{}, askOverride: opts.Ask,
 		sessionsDir: opts.SessionsDir, shell: opts.Shell, shells: map[string]context.CancelFunc{},
-		firstPromptPending: !opts.Resumed,
+		// A resumed session that never ran has no first message yet.
+		firstPromptPending: !opts.Resumed || opts.FirstPrompt == "",
 	}
 	s.out <- SessionOpened{At: time.Now(), ID: id, Resumed: opts.Resumed, Engine: eng.Name(), Settings: opts.Settings}
 	if opts.Instructions != nil {
