@@ -26,7 +26,7 @@ auto_compact_percent                              80                            
 model_auto_compact_token_limit                    0                             default
 compact_model                                     gpt-6-luna                    default
 compact_effort                                    medium                        default
-compact_prompt                                    Codex's                       default
+compact_prompt                                    uah's (Codex's, in sections)  default
 experimental_compact_prompt_file                  ""                            default
 compact_user_message_max_tokens                   20000                         default
 compact_elide_after_calls                         10                            default

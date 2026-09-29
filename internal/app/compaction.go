@@ -126,7 +126,7 @@ func expandHome(path string) (string, error) {
 // effort show the session's when they are not set.
 func compactionSettings(l config.Layers, r Resolved, cfg config.Config) []Setting {
 	c := r.Compaction
-	prompt := "Codex's"
+	prompt := "uah's (Codex's, in sections)"
 	switch {
 	case c.Prompt != "":
 		prompt = fmt.Sprintf("%d characters", len(c.Prompt))

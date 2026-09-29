@@ -40,14 +40,14 @@ func longHistory(n int) []llm.Item {
 func TestSummarize_TrimsAHistoryLargerThanTheWindow(t *testing.T) {
 	srv := fakellm.New(t, fakellm.Reply{Text: "S"})
 	got, err := compaction.Summarize(context.Background(), compaction.SummaryCall{
-		Adapter: client(t, srv), Model: "gpt-test", Window: 1_000,
+		Adapter: client(t, srv), Model: "gpt-test", Window: 1_000, Prompt: compaction.CodexPrompt,
 	}, longHistory(20))
 	require.NoError(t, err)
 	assert.Equal(t, "S", got.Text)
 	req := srv.Requests()[0]
-	require.Len(t, req.UserTexts, 1+8, "about 850 tokens of history fit next to the prompt")
+	require.Len(t, req.UserTexts, 1+8, "about 850 tokens of history fit next to Codex's prompt")
 	assert.True(t, strings.HasPrefix(req.UserTexts[0], "012"), "the oldest messages go first")
-	assert.Equal(t, compaction.Prompt, req.UserTexts[len(req.UserTexts)-1])
+	assert.Equal(t, compaction.CodexPrompt, req.UserTexts[len(req.UserTexts)-1])
 }
 
 func TestSummarize_RetriesWithLessOnAnOverflow(t *testing.T) {
