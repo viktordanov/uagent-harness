@@ -337,7 +337,7 @@ developer_instructions = "Review the diff you are given. List only real bugs, ea
 | --- | --- | --- | --- | --- |
 | `details` | bool | false | OR | Start in the detailed view; ctrl+t toggles it |
 | `mouse` | bool | true | override, can unset | Report the mouse to the TUI: the wheel scrolls the transcript, and a drag, a double click, or a triple click selects its text and copies it to the clipboard (OSC 52 and pbcopy, wl-copy, or xclip); the terminal's own selection then needs Option (iTerm2, Terminal) or Shift held. `false` leaves the mouse to the terminal: it selects text as usual and its wheel sends ↑ and ↓, which scroll the transcript while the composer is empty. See the [selection design](design/selection.md) |
-| `title` | bool | true | override, can unset | Show the session's state in the terminal's title: `uah · <workspace name>` when idle, `uah · working · <workspace name>` while the agent works, and `uah · approve? · <workspace name>` while an approval waits. While the agent works, uah also sends OSC 9;4 indeterminate progress, and clears it when idle and on exit; terminals without it ignore the sequence. `false` turns both off: uah sets no title and sends no progress |
+| `title` | bool | true | override, can unset | Show the session's state in the terminal's title: `uah · <workspace name>` when idle, `uah · working · <workspace name>` while the agent works, and `uah · approve? · <workspace name>` while an approval waits. `false` turns it off: uah sets no title |
 
 ### Projects
 

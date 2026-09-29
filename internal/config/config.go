@@ -218,8 +218,8 @@ type TUI struct {
 	// wheel scrolls the transcript and a drag selects and copies its text.
 	// Off, the terminal selects text and turns the wheel into ↑ and ↓.
 	Mouse *bool `toml:"mouse"`
-	// Title shows the session's state in the terminal's title, with OSC
-	// 9;4 progress while the agent works (on when unset, TitleOn).
+	// Title shows the session's state in the terminal's title (on when
+	// unset, TitleOn).
 	Title *bool `toml:"title"`
 }
 

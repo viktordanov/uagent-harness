@@ -1,6 +1,10 @@
 package bubble
 
-import "github.com/viktordanov/uagent/core"
+import (
+	"github.com/viktordanov/uagent/core"
+
+	"github.com/viktordanov/uagent-harness/internal/tui/render"
+)
 
 // Exit is what the TUI leaves behind when it quits: the session that was
 // open and its token totals, for the summary uah prints once the screen is
@@ -11,6 +15,8 @@ type Exit struct {
 	// brings something back; an empty new session is not worth naming.
 	Resumable bool
 	Tokens    core.Tokens
+	// Theme is the TUI's theme, so the summary uses its colors.
+	Theme render.Theme
 }
 
 // Exit is the model's exit summary.
@@ -19,5 +25,6 @@ func (m Model) Exit() Exit {
 		SessionID: m.st.SessionID,
 		Resumable: m.st.SessionID != "" && (m.st.Totals.Runs > 0 || m.st.Live != nil),
 		Tokens:    m.st.Totals.Tokens,
+		Theme:     m.theme,
 	}
 }

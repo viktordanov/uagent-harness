@@ -60,8 +60,7 @@ type Deps struct {
 	// ↑ and ↓.
 	Mouse bool
 	// Title shows idle, working, or waiting for an approval in the
-	// terminal's title, with OSC 9;4 progress while the agent works; off,
-	// uah leaves the title and progress alone.
+	// terminal's title; off, uah leaves the title alone.
 	Title bool
 	// CopyText writes text to the system clipboard with its own tool, next
 	// to OSC 52 (optional; internal/images/clipboard.WriteText).
@@ -90,10 +89,12 @@ type Deps struct {
 
 // Model is the Bubble Tea model.
 type Model struct {
-	ctx      context.Context
-	deps     Deps
-	st       state.State
-	cache    *render.Cache
+	ctx   context.Context
+	deps  Deps
+	st    state.State
+	cache *render.Cache
+	// theme is the cache's theme, for what uah prints after the TUI.
+	theme    render.Theme
 	composer textarea.Model
 	w, h     int
 
@@ -137,7 +138,7 @@ func New(ctx context.Context, deps Deps) Model {
 
 	return Model{
 		ctx: ctx, deps: deps, st: st,
-		cache: render.NewCache(render.Amber), composer: newComposer(render.NewStyles(render.Amber)),
+		cache: render.NewCache(render.Amber), theme: render.Amber, composer: newComposer(render.NewStyles(render.Amber)),
 	}
 }
 
@@ -188,7 +189,8 @@ func (m *Model) syncShell(was bool) {
 
 // onBackground picks the theme for the terminal's background.
 func (m Model) onBackground(msg tea.BackgroundColorMsg) Model {
-	m.cache = render.NewCache(render.ThemeFor(msg.Color))
+	m.theme = render.ThemeFor(msg.Color)
+	m.cache = render.NewCache(m.theme)
 	m.composer.SetStyles(composerStyles(m.cache.Styles()))
 
 	return m
@@ -401,11 +403,8 @@ func (m Model) View() tea.View {
 	if m.st.Mouse {
 		v.MouseMode = tea.MouseModeCellMotion
 	}
-	// Bubble Tea clears both when the program ends.
+	// Bubble Tea clears the title when the program ends.
 	v.WindowTitle = m.st.WindowTitle()
-	if m.st.Working() {
-		v.ProgressBar = tea.NewProgressBar(tea.ProgressBarIndeterminate, 0)
-	}
 	if c := m.composer.Cursor(); c != nil && composerRow >= 0 {
 		c.Y += composerRow
 		v.Cursor = c

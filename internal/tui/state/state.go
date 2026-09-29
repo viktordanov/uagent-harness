@@ -124,8 +124,7 @@ type State struct {
 	// Mouse reports the mouse to the TUI, so the wheel scrolls and a drag
 	// selects transcript text.
 	Mouse bool
-	// Title shows the session's state in the terminal's title, with OSC
-	// 9;4 progress while the agent works (title.go).
+	// Title shows the session's state in the terminal's title (title.go).
 	Title bool
 	// Shell is shell mode: enter runs the composer's line as a command
 	// (shell.go).

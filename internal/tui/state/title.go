@@ -22,7 +22,3 @@ func (s State) WindowTitle() string {
 
 	return title + " · " + filepath.Base(s.Settings.Workspace)
 }
-
-// Working reports whether the terminal shows progress (OSC 9;4): while the
-// agent works, also while it waits for an approval, and only with Title on.
-func (s State) Working() bool { return s.Title && s.Busy }

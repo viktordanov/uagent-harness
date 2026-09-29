@@ -19,22 +19,17 @@ func TestWindowTitle(t *testing.T) {
 
 	s, _ = apply(s, session.SessionOpened{At: t0, ID: "s1", Settings: settings()})
 	assert.Equal(t, "uah · workspace", s.WindowTitle())
-	assert.False(t, s.Working())
 
 	s, _ = apply(s, session.InputQueued{At: t0, Input: core.UserInput{ID: "i1", Text: "hi"}})
 	assert.Equal(t, "uah · working · workspace", s.WindowTitle())
-	assert.True(t, s.Working())
 
 	s, _ = apply(s, session.ApprovalRequested{At: t0, ID: "a1", Command: "git push"})
 	assert.Equal(t, "uah · approve? · workspace", s.WindowTitle())
-	assert.True(t, s.Working(), "the run is still in progress")
 
 	s, _ = apply(s, session.ApprovalResolved{At: t0, ID: "a1", Decision: approval.Approve}, session.Idle{At: t0})
 	assert.Equal(t, "uah · workspace", s.WindowTitle())
-	assert.False(t, s.Working())
 
 	s.Title = false
 	s, _ = apply(s, session.InputQueued{At: t0, Input: core.UserInput{ID: "i2", Text: "again"}})
 	assert.Empty(t, s.WindowTitle(), "off: uah leaves the title alone")
-	assert.False(t, s.Working(), "and sends no progress")
 }

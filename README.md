@@ -101,7 +101,7 @@ Press esc twice on an empty prompt while the agent is idle, or type `/rewind`: y
 
 Drag over the transcript to select text; double click selects a word and triple click a line. Letting go copies the selection to the clipboard, and the footer says how many lines. Dragging to the top row scrolls, and the wheel keeps scrolling during a drag. Esc or a click clears the selection. The copy leaves out the `λ` and `•` columns and the padding around code, so a code block pastes as code. uah copies with OSC 52, which also works over ssh, and with `pbcopy`, `wl-copy`, or `xclip`. To use the terminal's own selection, hold Option (iTerm2, Terminal) or Shift (most others), or set `[tui] mouse = false`. See the [selection design](docs/design/selection.md).
 
-The terminal's title shows the session's state and its workspace: `uah · api` when idle, `uah · working · api` while the agent works, and `uah · approve? · api` while an approval waits, which helps to find a pane among many. While the agent works, uah also sends OSC 9;4 progress, which a terminal that supports it shows as a busy mark; others ignore it. `[tui] title = false` turns both off.
+The terminal's title shows the session's state and its workspace: `uah · api` when idle, `uah · working · api` while the agent works, and `uah · approve? · api` while an approval waits, which helps to find a pane among many. `[tui] title = false` turns it off.
 
 ### Headless mode
 

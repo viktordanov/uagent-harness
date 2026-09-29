@@ -7,7 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// title is the terminal title and whether OSC 9;4 progress is shown.
+// title is the terminal title and whether a progress bar (OSC 9;4) is
+// shown; uah shows none, as the title says enough.
 func (d *driver) title() (string, bool) {
 	v := d.m.View()
 
@@ -32,7 +33,7 @@ func TestTUI_TitleFollowsAnApproval(t *testing.T) {
 	d.waitFor("Run outside the sandbox?")
 	title, progress := d.title()
 	assert.Equal(t, "uah · approve? · workspace", title)
-	assert.True(t, progress)
+	assert.False(t, progress, "no progress bar")
 
 	d.typeText("y")
 	d.waitFor("done")
@@ -50,7 +51,7 @@ func TestTUI_TitleWhileWorking(t *testing.T) {
 	d.waitFor("sleep 300")
 	title, progress := d.title()
 	assert.Equal(t, "uah · working · workspace", title)
-	assert.True(t, progress)
+	assert.False(t, progress, "no progress bar")
 
 	d.key(tea.KeyEscape, 0)
 	d.key(tea.KeyEscape, 0)
@@ -67,5 +68,5 @@ func TestTUI_TitleOff(t *testing.T) {
 	d.waitFor("• hello")
 	title, progress := d.title()
 	assert.Empty(t, title, "uah leaves the title alone")
-	assert.False(t, progress, "and sends no OSC 9;4")
+	assert.False(t, progress, "and no progress bar")
 }
