@@ -21,10 +21,10 @@ import (
 
 // TestSetup_ModelInstructionsFile sets model_instructions_file to a path
 // relative to the user file, as Codex resolves it: a missing or empty file
-// stops the session, and the file's text replaces the runner's host prompt
+// stops the session, and the file's text replaces the default base instructions
 // in the model request, after the runner's preamble and before AGENTS.md. A subagent's request
-// carries the same system prompt, and /context counts the file as the
-// system prompt.
+// carries the same system prompt with Codex's subagent note, and /context
+// counts the file as the system prompt.
 func TestSetup_ModelInstructionsFile(t *testing.T) {
 	e, in := setupEnv(t)
 	t.Setenv("OPENAI_API_KEY", "test-key")
@@ -67,12 +67,13 @@ func TestSetup_ModelInstructionsFile(t *testing.T) {
 	root := reqs[0]
 	assert.Contains(t, root.System, "\n\n"+want, "the file follows the runner's preamble, and the instructions follow it")
 	assert.Contains(t, root.System, "Use tabs in Go files.")
-	assert.NotContains(t, root.System, "isolated sandbox container", "the runner's host prompt is replaced")
+	assert.NotContains(t, root.System, "You are uah", "the default base instructions are replaced")
 	child := slices.IndexFunc(reqs, func(r fakellm.Request) bool {
 		return slices.ContainsFunc(r.UserTexts, func(u string) bool { return strings.HasPrefix(u, "CHILD-S") })
 	})
 	require.GreaterOrEqual(t, child, 0)
-	assert.Equal(t, root.System, reqs[child].System, "a subagent gets the same system prompt")
+	assert.Equal(t, strings.TrimRight(root.System, "\n")+"\n\n"+instructions.SubagentNote, reqs[child].System,
+		"a subagent gets the same system prompt and Codex's subagent note")
 
 	u, ok := s.ContextUsage()
 	require.True(t, ok)
@@ -91,7 +92,10 @@ func TestSetup_ModelInstructionsFile(t *testing.T) {
 		res, err := app.Setup(context.Background(), in, io.Discard)
 
 		require.NoError(t, err)
-		assert.Equal(t, "# Project instructions\n\nBASE-PROMPT: answer briefly.\n", res.Options.Settings.SystemPrompt)
+		prompt, env, ok := strings.Cut(res.Options.Settings.SystemPrompt, "\n"+instructions.EnvironmentOpen)
+		require.True(t, ok, "the environment follows the base")
+		assert.Equal(t, "# Project instructions\n\nBASE-PROMPT: answer briefly.\n", prompt)
+		assert.Contains(t, env, "<cwd>"+e.Workspace+"</cwd>")
 	})
 }
 
@@ -109,5 +113,5 @@ func TestSetup_ModelInstructionsFileFromTheProject(t *testing.T) {
 	res, err := app.Setup(context.Background(), in, io.Discard)
 
 	require.NoError(t, err)
-	assert.Equal(t, "PROJECT-PROMPT\n", res.Options.Settings.SystemPrompt)
+	assert.True(t, strings.HasPrefix(res.Options.Settings.SystemPrompt, "PROJECT-PROMPT\n\n"+instructions.EnvironmentOpen), res.Options.Settings.SystemPrompt)
 }

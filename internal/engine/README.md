@@ -107,7 +107,7 @@ The embedded engine is a uagent `harness.Backend`. uagent still owns the run: th
 3. The tool registry (`tools.go`, below).
 4. The operation manager with the remote job handlers.
 5. The inbox, with the initial effort, the messages, and "stop when idle" (`agent.go`).
-6. The context builder with the host prompt, the skills, and the tools.
+6. The context builder with the host prompt (uah's default prompt when the request has none), the skills, and the tools.
 7. The coordinator, on its own goroutine. A panic in runner code becomes an error, so it cannot take down the TUI.
 
 Every opened resource adds a closer; a failed start closes them in reverse, and after a successful start the coordinator's goroutine closes them when it returns.

@@ -31,7 +31,8 @@ type Settings struct {
 	// MaxAttempts is how many times a model request is sent before the
 	// run fails (0: the engine's default).
 	MaxAttempts int
-	// SystemPrompt replaces the runner's host prompt when set.
+	// SystemPrompt replaces the runner's host prompt when set; empty,
+	// the engine uses uah's default prompt.
 	SystemPrompt string
 	// Mode is the permission mode: the sandbox commands run in and who
 	// decides what needs approval ("": the engine's configured sandbox).

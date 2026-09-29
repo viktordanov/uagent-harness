@@ -20,6 +20,9 @@ Adapted in uah:
 | `internal/compaction/compaction.go` | The compaction prompt and summary prefix, `codex-rs/prompts/templates/compact` |
 | `internal/agents/prompt.go` | The multi-agent tool descriptions and schemas, `codex-rs/core/src/tools/handlers/multi_agents_spec.rs` |
 | `internal/instructions/codex_prompt.md`, `codex.go` | Codex's base instructions for gpt-6-sol, verbatim (`model_messages.instructions_template` in `codex-rs/models-manager/models.json`) |
+| `internal/instructions/default_prompt.md`, `default_prompt.diff`, `codex.go` | Codex's base instructions for gpt-6-sol, **modified** by uah: the identity, the tool names (`Bash`, `SkillUse`), questions asked in the final message, Codex's terminal wording for visuals, and the Apps and Plugins sections removed. `default_prompt.diff` is the complete change |
+| `internal/instructions/codex.go` (`SubagentNote`) | Two lines of the subagent role text, `model_messages.multi_agent.role.subagent` in `codex-rs/models-manager/models.json` |
+| `internal/instructions/environment.go` | The `<environment_context>` format (`codex-rs/core/src/context/world_state/environment.rs`, `core/src/context/environment_context.rs`) |
 | `internal/tui/render/markdown/table.go` | Table layout: padding, gaps, rules, fitting columns to the width, and the key/value records (`codex-rs/tui/src/markdown_render.rs`, `markdown_render/table_key_value.rs`) |
 | `internal/models/bundled.json` | The bundled model catalog, `codex-rs/models-manager/models.json` (a subset of its fields) |
 | `internal/engine/codexauth/refresh.go` | The ChatGPT token refresh: the request, the client ID and endpoint, and how a refusal is classified (`codex-rs/login/src/auth/manager.rs`, `login/src/oauth/client.rs`, `login/src/oauth/error.rs`) |

@@ -12,9 +12,10 @@ import (
 )
 
 // TestPrompts writes the built-in prompts beside the configuration file,
-// the runner's host prompt and Codex's among them, refuses to overwrite
-// them without --force, prints the keys that use them (Codex's prompt
-// commented out), and prints one prompt; the written keys load.
+// uah's default system prompt, Codex's, and the runner's among them,
+// refuses to overwrite them without --force, prints the keys that use them
+// (the alternatives commented out), and prints one prompt; the written
+// keys load.
 func TestPrompts(t *testing.T) {
 	user, env := mcpEnv(t)
 	dir := filepath.Join(filepath.Dir(user), "prompts")
@@ -24,12 +25,15 @@ func TestPrompts(t *testing.T) {
 	compact := filepath.Join(dir, "compact.md")
 	system := filepath.Join(dir, "system.md")
 	codex := filepath.Join(dir, "system-codex.md")
+	runner := filepath.Join(dir, "system-runner.md")
 	review := filepath.Join(dir, "review.md")
-	assert.Equal(t, "Wrote "+compact+"\nWrote "+system+"\nWrote "+codex+"\nWrote "+review+"\n\nTo use them, add to "+user+":\n\n"+
+	assert.Equal(t, "Wrote "+compact+"\nWrote "+system+"\nWrote "+codex+"\nWrote "+runner+"\nWrote "+review+"\n\nTo use them, add to "+user+":\n\n"+
 		"experimental_compact_prompt_file = \""+compact+"\"\n\n"+
 		"model_instructions_file = \""+system+"\"\n"+
-		"# Or Codex's own prompt (gpt-6-sol's; it names Codex's tools, see docs/configuration.md):\n"+
-		"# model_instructions_file = \""+codex+"\"\n\n"+
+		"# Or Codex's own prompt, unmodified (gpt-6-sol's; it names Codex's tools, see docs/configuration.md):\n"+
+		"# model_instructions_file = \""+codex+"\"\n"+
+		"# Or the runner's short host prompt, uah's default before the Codex-based one:\n"+
+		"# model_instructions_file = \""+runner+"\"\n\n"+
 		"[review]\npolicy_file = \""+review+"\"\n", res.stdout)
 	data, err := os.ReadFile(review)
 	require.NoError(t, err)
@@ -39,7 +43,9 @@ func TestPrompts(t *testing.T) {
 	assert.Contains(t, shown.stdout, "risk")
 	shown = uahWith(t, env, "", "prompts", "show", "compact")
 	assert.Contains(t, shown.stdout, "CONTEXT CHECKPOINT COMPACTION")
-	for name, want := range map[string]string{"system": instructions.RunnerHostPrompt, "system-codex": instructions.CodexPrompt} {
+	for name, want := range map[string]string{
+		"system": instructions.DefaultPrompt, "system-codex": instructions.CodexPrompt, "system-runner": instructions.RunnerHostPrompt,
+	} {
 		data, err := os.ReadFile(filepath.Join(dir, name+".md"))
 		require.NoError(t, err)
 		assert.Equal(t, want, string(data), "%s.md is the prompt verbatim", name)
@@ -70,5 +76,5 @@ func TestPrompts(t *testing.T) {
 
 	res = uahWith(t, env, "", "prompts", "show", "other")
 	assert.Equal(t, 2, res.code)
-	assert.Contains(t, res.stderr, "compact, system, system-codex, review")
+	assert.Contains(t, res.stderr, "compact, system, system-codex, system-runner, review")
 }

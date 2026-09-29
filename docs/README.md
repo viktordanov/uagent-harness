@@ -1,8 +1,8 @@
-<!-- memoria:section id="overview" files="design/harness.md design/tui.md design/implementation.md design/state.md design/sandbox-research.md design/sandbox.md design/subagents.md design/compaction.md design/mcp.md design/usage.md design/images.md configuration.md ledger.md documentation/architecture.md documentation/memoria.md design/shell-mode.md design/streaming.md design/markdown.md design/rewind.md design/selection.md design/codex-auth.md design/hosting.md design/editor.md" -->
+<!-- memoria:section id="overview" files="design/harness.md design/tui.md design/implementation.md design/state.md design/sandbox-research.md design/sandbox.md design/subagents.md design/compaction.md design/mcp.md design/usage.md design/images.md configuration.md ledger.md documentation/architecture.md documentation/memoria.md design/shell-mode.md design/streaming.md design/markdown.md design/rewind.md design/selection.md design/codex-auth.md design/hosting.md design/editor.md design/system-prompt.md" -->
 # Documentation
 
 <!-- memoria:export id="summary" -->
-The configuration reference, design records for the harness, the TUI, state storage, sandboxing, compaction, MCP, subagents, pasted images, streaming, Markdown rendering, going back to an earlier message, selecting text with the mouse, editing the prompt in an editor, keeping the ChatGPT login fresh, and running uah as a terminal host backend, plus the architecture rules and documentation procedure for uagent-harness.
+The configuration reference, design records for the harness, the TUI, state storage, sandboxing, compaction, MCP, subagents, pasted images, streaming, Markdown rendering, going back to an earlier message, selecting text with the mouse, editing the prompt in an editor, the system prompt, keeping the ChatGPT login fresh, and running uah as a terminal host backend, plus the architecture rules and documentation procedure for uagent-harness.
 <!-- /memoria:export -->
 
 Design:
@@ -26,6 +26,7 @@ Design:
 17. [Keeping the ChatGPT login fresh](design/codex-auth.md): when and how Codex refreshes its token in `auth.json`, and how uah does the same with Codex writing the same file.
 18. [Integration with the terminal host](design/hosting.md): what the terminal host needs from a harness, and the changes that let it run uah inside the mechanisms it keeps for every harness.
 19. [Editing the prompt in an editor](design/editor.md): what Claude Code's and Codex's ctrl+g do, and how uah runs `$VISUAL` or `$EDITOR` on a draft file the sandbox cannot reach, with the terminal released, and keeps its images.
+20. [The system prompt](design/system-prompt.md): Codex's prompt for gpt-6-sol with the nine changes uah needs, each with its reason, and Codex's `<environment_context>` at the end of the system message.
 
 Reference:
 

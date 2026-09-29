@@ -237,13 +237,13 @@ func newAgent(ctx context.Context, cancel context.CancelFunc, sw *switcher, rest
 }
 
 // newContextBuilder returns the builder with the model, the system prompt
-// (the runner's host prompt by default), and the registry's skills and tools.
+// (uah's default base instructions when the request has none), and the registry's skills and tools.
 func newContextBuilder(registry tool.Registry, model string, req core.Request) contextbuilder.Builder {
 	builder := contextbuilder.NewBuilder(registry.Skills()...)
 	builder.SetModel(llm.Model{ID: model, ReasoningEffort: reasoningEffort(req.Effort)})
 	prompt := req.SystemPrompt
 	if prompt == "" {
-		prompt = instructions.RunnerHostPrompt
+		prompt = instructions.DefaultPrompt
 	}
 	builder.SetSystemPrompt(prompt)
 	for _, d := range registry.StaticDefinitions() {

@@ -46,12 +46,13 @@ The only differences:
 2. the spawn tools, never offered to a child, except to a forked child, which keeps its parent's tools and whose spawns are refused;
 3. approvals, asked through the parent session;
 4. the model, effort, service tier, and instructions a role, the spawn call, or `[agents]` defaults set, and a role's tools and pre-approvals;
-5. a hook runner of its own with the same hooks, so hook results stay with the child's session, which fires the subagent hooks only (see [Events and hooks](#events-and-hooks));
-6. its engine handle, which does not close the shared engine when the child closes;
-7. its prompt cache key, the root session's ID, as Codex keys every agent of a tree;
-8. no streaming: `Stream` is off, since neither the parent nor the agent view shows a child's text as it arrives.
+5. Codex's note that its final answer goes back to the parent agent (`instructions.SubagentNote`, from Codex's subagent role text), after the parent's system prompt and before a role's instructions, once in a tree and never in a fork;
+6. a hook runner of its own with the same hooks, so hook results stay with the child's session, which fires the subagent hooks only (see [Events and hooks](#events-and-hooks));
+7. its engine handle, which does not close the shared engine when the child closes;
+8. its prompt cache key, the root session's ID, as Codex keys every agent of a tree;
+9. no streaming: `Stream` is off, since neither the parent nor the agent view shows a child's text as it arrives.
 
-`TestSetup_SubagentParity` (in `internal/app`) and `TestParity_ChildOptions` pin this: a child's model request has the root's system prompt, model, effort, service tier, and tools with the same schemas, less the spawn tools, and its options equal the root's but for the differences above. A capability added to the root session reaches children without a change here.
+`TestSetup_SubagentParity` (in `internal/app`) and `TestParity_ChildOptions` pin this: a child's model request has the root's system prompt with the note, model, effort, service tier, and tools with the same schemas, less the spawn tools, and its options equal the root's but for the differences above. A capability added to the root session reaches children without a change here.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="lifecycle" files="child.go ops.go status.go cause.go" -->
@@ -128,7 +129,7 @@ Hooks come from `Config.Hooks`, the session's runner:
 2. **Unfinished work.** A copied tool call whose operation had not ended is recorded as canceled for the child, so the child never runs the parent's work again.
 3. **Compaction.** The parent's compactions recorded before that response are copied to `sessions/<child>.compaction.jsonl`, so the child's request is compacted as the parent's was.
 4. **The first run.** The engine puts the child's first messages and its effort in the store before the coordinator restores the session, because restoring counts the copied inputs as undelivered and asks the model at once. The inbox then drops the messages as already seen.
-5. **The same prefix.** The child's system prompt is the parent's (a fork has no role instructions of its own), and its tools are the parent's in the same order: a forked child is offered the spawn tools even at the depth limit, and its spawn and resume calls are refused there, as Codex refuses them. Every child uses the root session's ID as its prompt cache key (the `prompt_cache_key` field, and the `session-id` header on openai-codex), as Codex keys all agents of a tree by the root session.
+5. **The same prefix.** The child's system prompt is the parent's, byte for byte (a fork has no role instructions of its own and gets no subagent note), and its tools are the parent's in the same order: a forked child is offered the spawn tools even at the depth limit, and its spawn and resume calls are refused there, as Codex refuses them. Every child uses the root session's ID as its prompt cache key (the `prompt_cache_key` field, and the `session-id` header on openai-codex), as Codex keys all agents of a tree by the root session.
 
 `TestFork_ChildStartsWithTheParentsRequest` and `TestFork_KeepsTheParentsCompaction` check with fakellm that the child's first request has the parent's system prompt, tools, and cache key, and starts with every input item of the parent's request, tool calls and results included, followed by the child's message.
 <!-- /memoria:section -->

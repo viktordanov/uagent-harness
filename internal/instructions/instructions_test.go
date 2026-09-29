@@ -138,16 +138,22 @@ func TestAssemble(t *testing.T) {
 }
 
 func TestHostPrompt(t *testing.T) {
-	assert.Empty(t, instructions.HostPrompt("", " \n"), "no instructions leave the runner's prompt untouched")
-	prompt := instructions.HostPrompt("", "## AGENTS.md\n\nuse tabs\n")
-	assert.Equal(t, instructions.RunnerHostPrompt+"\n"+instructions.ProjectHeader+"\n## AGENTS.md\n\nuse tabs\n", prompt,
-		"the runner's default text comes first")
+	assert.Equal(t, instructions.DefaultPrompt, instructions.HostPrompt("", " \n", ""), "uah's default base instructions alone")
+	prompt := instructions.HostPrompt("", "## AGENTS.md\n\nuse tabs\n", "")
+	assert.Equal(t, instructions.DefaultPrompt+"\n"+instructions.ProjectHeader+"\n## AGENTS.md\n\nuse tabs\n", prompt,
+		"the default base instructions come first")
 
-	assert.Equal(t, "Be brief.\n", instructions.HostPrompt("Be brief.", ""), "a base prompt alone replaces the runner's")
-	prompt = instructions.HostPrompt("Be brief.", "## AGENTS.md\n\nuse tabs\n")
+	assert.Equal(t, "Be brief.\n", instructions.HostPrompt("Be brief.", "", ""), "a base prompt alone replaces the default")
+	prompt = instructions.HostPrompt("Be brief.", "## AGENTS.md\n\nuse tabs\n", "")
 	assert.Equal(t, "Be brief.\n\n"+instructions.ProjectHeader+"\n## AGENTS.md\n\nuse tabs\n", prompt, "instructions follow a base prompt")
-	assert.Equal(t, instructions.RunnerHostPrompt, instructions.HostPrompt(strings.TrimSpace(instructions.RunnerHostPrompt), ""),
-		"system.md, trimmed as Codex reads it, gives back the runner's text")
+	assert.Equal(t, instructions.RunnerHostPrompt, instructions.HostPrompt(strings.TrimSpace(instructions.RunnerHostPrompt), "", ""),
+		"system-runner.md, trimmed as Codex reads it, gives back the runner's text")
+
+	env := "<environment_context>\n  <cwd>/w</cwd>\n</environment_context>"
+	prompt = instructions.HostPrompt("Be brief.", "## AGENTS.md\n\nuse tabs\n", env)
+	assert.Equal(t, "Be brief.\n\n"+instructions.ProjectHeader+"\n## AGENTS.md\n\nuse tabs\n\n"+env+"\n", prompt,
+		"the environment follows the instructions, as Codex sends it after AGENTS.md")
+	assert.Equal(t, "Be brief.\n\n"+env+"\n", instructions.HostPrompt("Be brief.", "", env), "and follows the base without them")
 }
 
 // TestCodexPrompt pins the embedded copy of Codex's prompt: its opening

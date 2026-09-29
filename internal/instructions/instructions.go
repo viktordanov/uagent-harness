@@ -1,8 +1,9 @@
 // Package instructions finds instruction files (AGENTS.md, as Codex does) and
 // builds the host prompt for the runner. The runner reads no
 // instruction files itself, and setting its system prompt replaces its own
-// host prompt, so the base instructions (the runner's default text, or a
-// model_instructions_file) are kept in front.
+// host prompt, so the base instructions (uah's DefaultPrompt, or a
+// model_instructions_file) are kept in front, and Codex's
+// <environment_context> follows the instruction files.
 package instructions
 
 import (
@@ -19,7 +20,8 @@ import (
 const DefaultMaxBytes = 32 * 1024
 
 // RunnerHostPrompt is unreal-agent-runner v0.1.1's default host prompt
-// (cmd/internal/agentrunner/run.go), kept verbatim.
+// (cmd/internal/agentrunner/run.go), kept verbatim. uah's default before
+// DefaultPrompt; `uah prompts init` writes it as system-runner.md.
 const RunnerHostPrompt = `You are an AI agent running inside an isolated sandbox container.
 
 ## Guidelines
@@ -188,21 +190,20 @@ func Assemble(files []File, maxBytes int) (text string, used []File, truncated b
 const ProjectHeader = "# Project instructions\n\nFollow these instructions from the project and the user. Later files are more specific and take precedence.\n"
 
 // HostPrompt builds the runner's system prompt: the base instructions
-// (model_instructions_file's text, or RunnerHostPrompt when base is "")
-// followed by the instructions. With neither it returns "", which leaves the
-// runner's own prompt untouched.
-func HostPrompt(base, instructions string) string {
-	hasInstructions := strings.TrimSpace(instructions) != ""
+// (model_instructions_file's text, or DefaultPrompt when base is ""), the
+// instructions under ProjectHeader when there are any, and environment
+// (an <environment_context> block, or "") last.
+func HostPrompt(base, instructions, environment string) string {
 	if base == "" {
-		if !hasInstructions {
-			return ""
-		}
-		base = RunnerHostPrompt
+		base = DefaultPrompt
 	}
-	base = strings.TrimRight(base, "\n") + "\n"
-	if !hasInstructions {
-		return base
+	prompt := strings.TrimRight(base, "\n") + "\n"
+	if strings.TrimSpace(instructions) != "" {
+		prompt += "\n" + ProjectHeader + "\n" + strings.TrimRight(instructions, "\n") + "\n"
+	}
+	if environment != "" {
+		prompt += "\n" + strings.TrimRight(environment, "\n") + "\n"
 	}
 
-	return base + "\n" + ProjectHeader + "\n" + instructions
+	return prompt
 }

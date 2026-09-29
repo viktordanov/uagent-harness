@@ -248,6 +248,9 @@ func (m *Manager) role(name string) (Role, error) {
 // through the parent, the parent run's permission mode as it is now, and
 // the model, effort, and instructions the spawn
 // call, the role, and the configured defaults override, in that order.
+// Its system prompt is the parent's, then Codex's note that its final
+// answer reaches the parent (once, and not in a fork), then the role's
+// instructions.
 // Hooks are the same, in a runner of its own. It holds m.mu.
 func (m *Manager) childOptions(p engine.AgentParent, c *child, role Role, rec record, resumed bool) session.Options {
 	opts := m.tmpl
@@ -266,8 +269,14 @@ func (m *Manager) childOptions(p engine.AgentParent, c *child, role Role, rec re
 	}
 	s.Model = first(rec.Model, role.Model, m.cfg.Model, s.Model)
 	s.Effort = first(rec.Effort, role.Effort, m.cfg.Effort, s.Effort)
+	s.SystemPrompt = first(s.SystemPrompt, instructions.DefaultPrompt)
+	// A fork keeps its parent's prompt byte for byte, for the cache; a
+	// grandchild's parent has the note already.
+	if !rec.Fork && !strings.Contains(s.SystemPrompt, instructions.SubagentNote) {
+		s.SystemPrompt = strings.TrimRight(s.SystemPrompt, "\n") + "\n\n" + instructions.SubagentNote
+	}
 	if role.DeveloperInstructions != "" {
-		s.SystemPrompt = first(s.SystemPrompt, instructions.RunnerHostPrompt) + "\n\n" + strings.TrimSpace(role.DeveloperInstructions)
+		s.SystemPrompt += "\n\n" + strings.TrimSpace(role.DeveloperInstructions)
 	}
 	opts.Settings = s
 

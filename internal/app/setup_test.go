@@ -6,13 +6,16 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/viktordanov/uagent-harness/internal/app"
 	"github.com/viktordanov/uagent-harness/internal/config"
+	"github.com/viktordanov/uagent-harness/internal/instructions"
 	"github.com/viktordanov/uagent-harness/testing/harnesstest"
 )
 
@@ -48,7 +51,7 @@ func TestSetup(t *testing.T) {
 	assert.Equal(t, app.CodexProvider, res.Options.Settings.Provider)
 	require.NotNil(t, res.Options.Instructions)
 	assert.Equal(t, []string{filepath.Join(e.Workspace, "AGENTS.md")}, res.Options.Instructions.Files)
-	assert.Contains(t, res.Options.Settings.SystemPrompt, "Use tabs in Go files.")
+	assertHostPrompt(t, res.Options.Settings.SystemPrompt, e.Workspace, "Use tabs in Go files.")
 	assert.Nil(t, res.Options.Hooks)
 
 	t.Run("without instructions", func(t *testing.T) {
@@ -59,8 +62,31 @@ func TestSetup(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Nil(t, res.Options.Instructions)
-		assert.Empty(t, res.Options.Settings.SystemPrompt)
+		assertHostPrompt(t, res.Options.Settings.SystemPrompt, e.Workspace, "")
 	})
+}
+
+// assertHostPrompt checks a session's system prompt without
+// model_instructions_file: uah's default base instructions, the
+// instruction files when there are any, and then Codex's
+// <environment_context> with the workspace, the user's shell, today's
+// date, and the time zone.
+func assertHostPrompt(t *testing.T, prompt, workspace, instructionsText string) {
+	t.Helper()
+	require.True(t, strings.HasPrefix(prompt, instructions.DefaultPrompt), "the default base instructions first")
+	rest := strings.TrimPrefix(prompt, instructions.DefaultPrompt)
+	files, env, ok := strings.Cut(rest, "\n"+instructions.EnvironmentOpen+"\n")
+	require.True(t, ok, "an environment block: %q", rest)
+	if instructionsText == "" {
+		assert.Empty(t, files)
+	} else {
+		assert.Contains(t, files, instructionsText, "the instructions come before the environment")
+	}
+	local := instructions.LocalEnvironment(workspace, app.RealShell(), time.Now(), os.Getenv)
+	assert.Equal(t, local.String()+"\n", instructions.EnvironmentOpen+"\n"+env)
+	assert.NotEmpty(t, local.CurrentDate)
+	assert.NotEmpty(t, local.Timezone)
+	assert.Equal(t, filepath.Base(app.RealShell()), local.Shell)
 }
 
 func TestSetupUsageErrors(t *testing.T) {

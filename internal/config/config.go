@@ -70,7 +70,7 @@ type Config struct {
 	CompactUserMessageMaxTokens int    `toml:"compact_user_message_max_tokens"`
 
 	// ModelInstructionsFile is a file whose text replaces the base
-	// instructions, the runner's host prompt, as Codex's key does. A
+	// instructions, uah's default prompt, as Codex's key does. A
 	// relative path is relative to the file that sets it (Load resolves it).
 	ModelInstructionsFile string `toml:"model_instructions_file"`
 

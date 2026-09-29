@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/viktordanov/uagent-harness/internal/agents"
 	"github.com/viktordanov/uagent-harness/internal/approval"
@@ -96,7 +97,10 @@ func Setup(ctx context.Context, in Inputs, logOutput io.Writer) (Result, error) 
 			return Result{}, err
 		}
 	}
-	r.Settings.SystemPrompt = instructions.HostPrompt(base, text)
+	// The date is fixed when the session opens, so every request of the
+	// session sends the same system message and hits the prompt cache.
+	env := instructions.LocalEnvironment(in.Workspace, RealShell(), time.Now(), os.Getenv)
+	r.Settings.SystemPrompt = instructions.HostPrompt(base, text, env.String())
 	opts.Settings = r.Settings
 	catalog := NewModels(stateDir, r.Settings, os.Getenv)
 	catalog.Catalog(ctx, catalog.Provider(), models.Offline) // the cache only, no network
@@ -255,7 +259,7 @@ func FindSession(ctx context.Context, stateDir, ref string) (session.Info, error
 }
 
 // readModelInstructions reads model_instructions_file, the base
-// instructions in place of the runner's host prompt, or returns "" when it
+// instructions in place of uah's default prompt, or returns "" when it
 // is not set. As in Codex, a missing or empty file is an error.
 func readModelInstructions(cfg config.Config) (string, error) {
 	if cfg.ModelInstructionsFile == "" {

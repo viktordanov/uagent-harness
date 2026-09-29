@@ -139,7 +139,7 @@ The permission modes:
 | `timeout` | duration | `90s` | override | The limit for one review; a review that times out denies |
 | `policy_file` | path | Codex's review policy | override | A file whose text replaces the review policy, as Codex's `[auto_review] policy` does inline. The fixed framing and the answer format stay. An absolute path or one under `~/`; a missing or empty file stops the session from starting |
 
-`uah prompts init` writes the built-in prompts to `~/.uah/prompts` as a starting point: the review policy (`review.md`), the summary prompt (`compact.md`), the runner's host prompt (`system.md`), and Codex's prompt (`system-codex.md`). It prints the `policy_file`, `experimental_compact_prompt_file`, and `model_instructions_file` lines that use them, with the line for `system-codex.md` commented out, and it overwrites only with `--force`. `uah prompts show <name>` prints one: `compact`, `system`, `system-codex`, or `review`.
+`uah prompts init` writes the built-in prompts to `~/.uah/prompts` as a starting point: the review policy (`review.md`), the summary prompt (`compact.md`), uah's default system prompt (`system.md`), Codex's unmodified prompt (`system-codex.md`), and the runner's short host prompt (`system-runner.md`). It prints the `policy_file`, `experimental_compact_prompt_file`, and `model_instructions_file` lines that use them, with the lines for `system-codex.md` and `system-runner.md` commented out, and it overwrites only with `--force`. `uah prompts show <name>` prints one: `compact`, `system`, `system-codex`, `system-runner`, or `review`.
 
 ### Compaction
 
@@ -160,7 +160,7 @@ The permission modes:
 
 | Key | Type | Default | Flag | Merge | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| `model_instructions_file` | path | the runner's host prompt | none | override | Codex's key: a file whose text replaces the base instructions. AGENTS.md files still follow it. A relative path is relative to the file that sets it; a missing or empty file stops the session from starting |
+| `model_instructions_file` | path | uah's default prompt | none | override | Codex's key: a file whose text replaces the base instructions. AGENTS.md files still follow it. A relative path is relative to the file that sets it; a missing or empty file stops the session from starting |
 | `project_doc_fallback_filenames` | list of strings | `[]` | none | override, can unset | File names to read in a directory without `AGENTS.override.md` or `AGENTS.md`; `["CLAUDE.md"]` reads Claude Code's files |
 | `project_root_markers` | list of strings | `[".git"]` | none | override, can unset | Names that mark the project root, where discovery starts; `[]` reads the workspace only |
 | `project_doc_max_bytes` | integer | 32768 | none | override | The size cap for all instruction files together; wins over `[instructions] max_bytes` |
@@ -178,7 +178,7 @@ Discovery order and the skill folders are in the README's [Instructions and skil
 
 `model_instructions_file` follows Codex rust-v0.156.1:
 
-- **Replaces the base instructions.** Codex reads the file into `base_instructions`. The file wins over the inline `instructions` key and loses only to a session's own override (`codex-rs/core/src/config/mod.rs` lines 3917–3929). The key's comment says that the text overrides the model's built-in instructions (`codex-rs/config/src/config_toml.rs` lines 257–261). In uah, the text replaces the runner's host prompt, `system.md`. The context builder of unreal-agent v0.1.1 still puts its own preamble (turns and asynchronous tool calls) and the skill list before it (`harness/contextbuilder/builder.go`). uah does not change the runner, so this preamble stays. The AGENTS.md instructions follow the file, as they follow the host prompt without it. Subagents get the same text. `/context` counts the file as the system prompt.
+- **Replaces the base instructions.** Codex reads the file into `base_instructions`. The file wins over the inline `instructions` key and loses only to a session's own override (`codex-rs/core/src/config/mod.rs` lines 3917–3929). The key's comment says that the text overrides the model's built-in instructions (`codex-rs/config/src/config_toml.rs` lines 257–261). In uah, the text replaces uah's default prompt, `system.md`. The context builder of unreal-agent v0.1.1 still puts its own preamble (turns and asynchronous tool calls) and the skill list before it (`harness/contextbuilder/builder.go`). uah does not change the runner, so this preamble stays. The AGENTS.md instructions and the `<environment_context>` block follow the file, as they follow the default prompt without it. Subagents get the same text. `/context` counts the file as the system prompt.
 - **Resolves a path like the other paths in a config file.** The key is an `AbsolutePathBuf`. `~` and `~/` expand to the home directory. A relative path is resolved against the directory of the config file that sets it (`codex-rs/utils/absolute-path/src/lib.rs` lines 27–56 and 392–401, and the base directory in `codex-rs/config/src/loader/layer_io.rs` lines 197–203). A trusted project's `.uah/config.toml` resolves against `.uah`, and its value wins over the user file's.
 - **Fails on a missing or empty file.** Codex trims the text and stops with an error when the file cannot be read or is empty (`try_read_non_empty_file`, `codex-rs/core/src/config/mod.rs` lines 4461–4490). uah does the same when a session starts, and `uah doctor` reports the error as `system prompt`.
 
@@ -186,19 +186,43 @@ Codex's inline `instructions` string is not supported, because uah's `[instructi
 
 #### Codex's prompt
 
-`uah prompts init` also writes `system-codex.md`, Codex's own base instructions. Nothing uses the file until `model_instructions_file` names it. At rust-v0.156.1, Codex keeps a separate prompt for each model in the catalog (`model_messages.instructions_template` in `codex-rs/models-manager/models.json`) and sends it as literal text. The Markdown prompts in `codex-rs/core` (`gpt_5_codex_prompt.md`, `gpt_5_2_prompt.md`, `gpt-5.2-codex_prompt.md`, and others) are no longer read. A model that is not in the catalog gets `codex-rs/models-manager/prompt.md`. uah copies the template of gpt-6-sol, word for word, because gpt-6-sol is uah's default model on openai-codex. The templates of the other GPT-6 and GPT-5.x models differ from it in places, such as the personality section, so the file is written for gpt-6-sol.
+uah's default system prompt is Codex's base instructions for gpt-6-sol with nine small changes (`internal/instructions/default_prompt.md`). At rust-v0.156.1, Codex keeps a separate prompt for each model in the catalog (`model_messages.instructions_template` in `codex-rs/models-manager/models.json`) and sends it as literal text. The Markdown prompts in `codex-rs/core` (`gpt_5_codex_prompt.md`, `gpt_5_2_prompt.md`, `gpt-5.2-codex_prompt.md`, and others) are no longer read. A model that is not in the catalog gets `codex-rs/models-manager/prompt.md`. uah starts from the template of gpt-6-sol, because gpt-6-sol is uah's default model on openai-codex. The templates of the other GPT-6 and GPT-5.x models differ from it in places, such as the personality section.
 
-The prompt describes Codex's tools and harness, and uah's tools are different:
+The changes fit the prompt to uah's tools; the [system prompt record](design/system-prompt.md) lists each one with its reason:
 
-| Codex's prompt says | In uah |
+| Codex's prompt says | uah's default prompt says |
 | --- | --- |
+| "You are Codex, an agent based on GPT-6" | "You are uah, a coding agent in the user's terminal" |
 | `exec_command` with a `cmd` argument, the shell | `Bash` with a `command` argument |
-| `functions.exec` with `Promise.allSettled` to batch calls | Parallel tool calls in one turn (the runner's preamble explains this) |
-| `functions.request_user_input_async` | None: the agent asks in its answer |
-| The `commentary` and `final` channels | Plain text: the runner's turns end when no tool calls are running |
-| Skills listed under `## Skills`, read from the file system or through `skills.list` and `skills.read` | The runner's skill list and `SkillUse` |
-| Apps in the `codex_apps` MCP server, `tool_search`, plugins | None; MCP tools are `mcp__<server>__<tool>`, which the prompt also names |
-| Not mentioned | `apply_patch` (the same tool as Codex's), `ViewImage`, and the subagent tools `spawn_agent`, `send_input`, `wait_agent`, `close_agent`, `resume_agent` |
+| `functions.exec` with `Promise.allSettled` to batch calls | Parallel tool calls in one response |
+| `functions.request_user_input_async` | Ask in the `final` channel, which ends the turn |
+| Interactive visuals, Mermaid, inline visualizations | Codex's own terminal wording: ASCII diagrams, trees, and tables |
+| Skills listed under `## Skills`, read through `skills.list` and `skills.read` | The runner's `<available_skills>` list and `SkillUse` |
+| Apps in the `codex_apps` MCP server, `tool_search`, plugins | Removed; MCP tools keep their `mcp__<server>__<tool>` names |
+| `$CODEX_HOME` | `$UAH_HOME` and `$CODEX_HOME` |
+
+The `commentary` and `final` channels stay, because the runner keeps each message's Responses `phase` (`final_answer` marks the answer) and sends it back with the history. The prompt does not mention `apply_patch`, `ViewImage`, or the subagent tools; the model sees them in the tool list.
+
+`uah prompts init` also writes `system-codex.md`, Codex's template word for word, and `system-runner.md`, unreal-agent-runner v0.1.1's short host prompt that uah used by default before. Nothing uses either file until `model_instructions_file` names it.
+
+#### The environment context
+
+uah ends the system prompt with Codex's `<environment_context>` block, in the format of `codex-rs/core/src/context/world_state/environment.rs` at rust-v0.156.1:
+
+```xml
+<environment_context>
+  <cwd>/Users/me/code/proj</cwd>
+  <shell>zsh</shell>
+  <current_date>2026-09-29</current_date>
+  <timezone>Europe/Berlin</timezone>
+</environment_context>
+```
+
+- `cwd` is the session's workspace, and `shell` is the base name of the shell that `Bash` runs (`$SHELL`, else `/bin/sh`).
+- `current_date` is the local date, and `timezone` is the IANA name from `$TZ` or the `/etc/localtime` link. As in Codex, an unknown zone gives `Etc/UTC` and the UTC date.
+- The block follows `model_instructions_file` too, and it does not depend on `[instructions] enabled`.
+
+Codex sends the block as a user message after the AGENTS.md message and sends an update when a value changes, such as the date at midnight. uah has one system message, so the block goes at its end, after the AGENTS.md files: the order is the same as Codex's. The values are fixed when the session opens. Every request of the session then sends the same system message and hits the prompt cache; a session that runs past midnight keeps the date it opened with. A resume on a later day sends the new date, which costs one cache miss. Codex also sends the sandbox's file system and network profile in the block; uah leaves those out, because the `Bash` tool's description already names the sandbox mode.
 
 ### Hooks
 
@@ -402,7 +426,7 @@ model_context_window = 272000      # tokens; overrides the model catalog
 # compact_prompt = "Summarize for a handoff: decisions, open work, file paths."
 # experimental_compact_prompt_file = "~/.uah/compact.md"
 # compact_user_message_max_tokens = 20000  # default: 20000, at most a quarter of the window
-# model_instructions_file = "prompts/system.md"  # replaces the runner's host prompt; relative to this file
+# model_instructions_file = "prompts/system.md"  # replaces uah's default prompt; relative to this file
 project_doc_fallback_filenames = ["CLAUDE.md"]   # also read Claude Code's files
 project_root_markers = [".git"]
 project_doc_max_bytes = 32768

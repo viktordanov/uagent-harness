@@ -38,14 +38,22 @@ type builtinPrompt struct {
 	alternative string
 }
 
+// keySystemPrompt is the key of the system prompts: uah's default and its
+// alternatives.
+const keySystemPrompt = "model_instructions_file"
+
 // builtinPrompts are in the order their keys can be written: top-level
 // keys before any table.
 var builtinPrompts = []builtinPrompt{
 	{name: "compact", text: func() string { return compaction.Prompt + "\n" }, key: "experimental_compact_prompt_file"},
-	{name: "system", text: func() string { return instructions.RunnerHostPrompt }, key: "model_instructions_file"},
+	{name: "system", text: func() string { return instructions.DefaultPrompt }, key: keySystemPrompt},
 	{
-		name: "system-codex", text: func() string { return instructions.CodexPrompt }, key: "model_instructions_file",
-		alternative: "Or Codex's own prompt (gpt-6-sol's; it names Codex's tools, see docs/configuration.md):",
+		name: "system-codex", text: func() string { return instructions.CodexPrompt }, key: keySystemPrompt,
+		alternative: "Or Codex's own prompt, unmodified (gpt-6-sol's; it names Codex's tools, see docs/configuration.md):",
+	},
+	{
+		name: "system-runner", text: func() string { return instructions.RunnerHostPrompt }, key: keySystemPrompt,
+		alternative: "Or the runner's short host prompt, uah's default before the Codex-based one:",
 	},
 	{name: "review", text: review.DefaultPolicy, table: "review", key: "policy_file"},
 }
@@ -58,7 +66,7 @@ func promptsCommand() *cli.Command {
 		Usage: "write the built-in prompts into the config folder to customize them, or print one",
 		Commands: []*cli.Command{
 			{
-				Name: "init", Usage: "write compact.md, system.md, system-codex.md, and review.md into <config dir>/prompts and print the keys that use them",
+				Name: "init", Usage: "write compact.md, system.md, system-codex.md, system-runner.md, and review.md into <config dir>/prompts and print the keys that use them",
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: flagConfig, Usage: usageConfig + "; the prompts go into its folder", Value: config.UserFile(), Sources: cli.EnvVars(home.EnvConfig), TakesFile: true},
 					&cli.BoolFlag{Name: "force", Usage: "overwrite prompt files that exist"},

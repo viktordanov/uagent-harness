@@ -1,6 +1,7 @@
 package agents_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/viktordanov/uagent-harness/internal/agents"
 	"github.com/viktordanov/uagent-harness/internal/hooks"
+	"github.com/viktordanov/uagent-harness/internal/instructions"
 	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/testing/fakellm"
 )
@@ -15,7 +17,8 @@ import (
 // TestParity_ChildOptions pins that a child opens with the options the
 // root session opened with, differing only in its ID, its sidecar's source
 // and parent, approvals through the parent, a hook runner of its own with
-// the same hooks, and no streaming. The settings are the parent run's.
+// the same hooks, and no streaming. The settings are the parent run's,
+// with Codex's subagent note after the default base instructions.
 func TestParity_ChildOptions(t *testing.T) {
 	runner, err := hooks.New([]hooks.Hook{{Event: hooks.Stop, Command: "true", Source: hooks.SourceUser}}, nil, "")
 	require.NoError(t, err)
@@ -38,6 +41,8 @@ func TestParity_ChildOptions(t *testing.T) {
 	assert.NotSame(t, runner, child.Hooks, "a runner of its own, so its results stay its own")
 	assert.Equal(t, runner.Hooks(), child.Hooks.Hooks())
 	assert.False(t, child.Stream, "a child's text does not stream")
+	assert.Equal(t, strings.TrimRight(instructions.DefaultPrompt, "\n")+"\n\n"+instructions.SubagentNote, child.Settings.SystemPrompt)
+	root.Settings.SystemPrompt = child.Settings.SystemPrompt
 	child.ID, child.Source, child.Parent, child.Ask, child.Hooks, child.Stream = root.ID, root.Source, root.Parent, root.Ask, root.Hooks, root.Stream
 	assert.Equal(t, root, child)
 }

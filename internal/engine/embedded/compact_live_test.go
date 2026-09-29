@@ -1,6 +1,7 @@
 package embedded_test
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"slices"
@@ -36,8 +37,13 @@ func TestEmbedded_AutoCompactionCountsOutputAfterTheLastResponse(t *testing.T) {
 		fakellm.Reply{Text: "BIG"},
 		fakellm.Reply{Text: "done"},
 	)
-	s, ev := e.open(t, e.compactingIn(12_000, 80), "")
-	ask(t, s, ev, "first")
+	// A short system prompt keeps the window's arithmetic about the output.
+	settings := e.settings()
+	settings.SystemPrompt = "Be brief."
+	s, err := session.Open(context.Background(), e.compactingIn(12_000, 80), session.Options{Settings: settings})
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = s.Close() })
+	ask(t, s, &events{t: t, s: s}, "first")
 
 	reqs := e.llm.Requests()
 	require.Len(t, reqs, 3, "the last response used 110 tokens, but the tool output after it fills the window")

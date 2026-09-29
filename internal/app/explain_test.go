@@ -171,9 +171,9 @@ func TestExplainSources(t *testing.T) {
 			vals: map[string]string{"model_instructions_file": "/ws/.uah/system.md"},
 		},
 		{
-			name: "no model_instructions_file keeps the runner's host prompt",
+			name: "no model_instructions_file keeps uah's default prompt",
 			want: map[string]string{"model_instructions_file": "default"},
-			vals: map[string]string{"model_instructions_file": "the runner's host prompt"},
+			vals: map[string]string{"model_instructions_file": "uah's default prompt"},
 		},
 		{
 			name: "project_doc_max_bytes falls back to [instructions] max_bytes",

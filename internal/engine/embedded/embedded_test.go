@@ -20,6 +20,7 @@ import (
 	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/engine/embedded"
 	"github.com/viktordanov/uagent-harness/internal/hooks"
+	"github.com/viktordanov/uagent-harness/internal/instructions"
 	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/testing/fakellm"
 	"github.com/viktordanov/uagent-harness/testing/harnesstest"
@@ -142,7 +143,7 @@ func TestEmbedded_RunsToolsAndAnswers(t *testing.T) {
 	assert.Equal(t, "gpt-test", reqs[0].Model)
 	assert.Equal(t, "high", reqs[0].Effort)
 	assert.Equal(t, []string{"say hello"}, reqs[0].UserTexts)
-	assert.Contains(t, reqs[0].System, "You are an AI agent", "the runner's host prompt")
+	assert.Contains(t, reqs[0].System, strings.TrimSpace(instructions.DefaultPrompt), "uah's default base instructions when the request has none")
 
 	runDir := filepath.Join(e.StateDir, "runs", result.Request.RunID)
 	for _, f := range []string{uaharness.RequestFile, uaharness.EventsFile, uaharness.SummaryFile} {

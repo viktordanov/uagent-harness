@@ -69,6 +69,7 @@ func (u Usage) Free() int64 { return max(u.Window-u.Used-u.Buffer, 0) }
 const (
 	skillsMarker       = "The following skills provide specialized instructions"
 	instructionsMarker = "\n" + instructions.ProjectHeader
+	environmentMarker  = "\n" + instructions.EnvironmentOpen + "\n"
 )
 
 var skillTag = regexp.MustCompile(`(?s)<skill><name>(.*?)</name>.*?</skill>`)
@@ -149,8 +150,15 @@ func addItem(add func(cat, item, text string), it llm.Item, files []string) {
 // splitSystem splits the system message into the host prompt, the skills
 // block (one item per skill), and the instruction files (one item each,
 // found by the "## <path>" headers uah wrote, so a file's own headings do not
-// split it).
+// split it). The <environment_context> block after the files counts as the
+// system prompt.
 func splitSystem(add func(cat, item, text string), text string, files []string) {
+	if i := strings.LastIndex(text, environmentMarker); i >= 0 {
+		// The environment block and what follows it (a subagent's note
+		// and role) are part of the system prompt.
+		add(SystemPrompt, "", text[i:])
+		text = text[:i]
+	}
 	host, instructions, _ := strings.Cut(text, instructionsMarker)
 	if i := strings.Index(host, skillsMarker); i >= 0 {
 		skills := host[i:]

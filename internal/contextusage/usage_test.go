@@ -20,7 +20,8 @@ func TestAnalyze(t *testing.T) {
 	system := "You run on Unreal Agent Harness.\n\nThe following skills provide specialized instructions for specific tasks.\n" +
 		"<available_skills><skill><name>release</name><description>Cut a release</description><location>/s/release/SKILL.md</location></skill></available_skills>\n\n" +
 		instructions.HostPrompt("You are an AI agent.\n# Project instructions\nA base prompt's own heading.",
-			"## /repo/AGENTS.md\n\nUse tabs.\n## A heading inside the file\nMore.\n\n## /repo/svc/AGENTS.md\n\nService rules.\n")
+			"## /repo/AGENTS.md\n\nUse tabs.\n## A heading inside the file\nMore.\n\n## /repo/svc/AGENTS.md\n\nService rules.\n",
+			instructions.Environment{Cwd: "/repo", Shell: "zsh", CurrentDate: "2026-09-29", Timezone: "Europe/Berlin"}.String())
 	req := llm.Request{
 		Model: llm.Model{ID: "gpt-test"},
 		Input: []llm.Item{
@@ -45,6 +46,9 @@ func TestAnalyze(t *testing.T) {
 	files := names[contextusage.Instructions].Items
 	require.Len(t, files, 2, "a heading inside a file does not split it, nor one in the base prompt start the files")
 	assert.ElementsMatch(t, []string{"/repo/AGENTS.md", "/repo/svc/AGENTS.md"}, []string{files[0].Name, files[1].Name})
+	for _, f := range files {
+		assert.Less(t, f.Tokens, int64(20), "%s: the environment block after the last file is not part of it", f.Name)
+	}
 	assert.Equal(t, "release", names[contextusage.Skills].Items[0].Name)
 	assert.Equal(t, "mcp__docs__search", names[contextusage.MCPTools].Items[0].Name)
 	assert.Equal(t, "Bash", names[contextusage.Tools].Items[0].Name)

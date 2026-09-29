@@ -75,7 +75,7 @@ func TestEmbedded_CompactKeepsUserMessagesAndResumes(t *testing.T) {
 	assert.Equal(t, []string{"first", "second", compaction.Prompt}, summary.UserTexts, "the summary covers the history before the new message")
 	assert.Equal(t, []string{"call-1-0", "call-3-0"}, summary.CallIDs)
 	assert.Empty(t, summary.Tools)
-	assert.Contains(t, summary.System, "You are an AI agent")
+	assert.Contains(t, summary.System, "You are uah")
 
 	next := reqs[5]
 	assert.Equal(t, []string{"first", "second", summaryText("SUMMARY"), "third"}, next.UserTexts)

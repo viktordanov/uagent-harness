@@ -149,7 +149,8 @@ func TestInstructionsAndConfig(t *testing.T) {
 	assert.Contains(t, res.stdout, `"type":"instructions_loaded"`)
 	req := lastRequest(t, llm)
 	assert.Equal(t, "low", req.Effort, "the config file sets the default effort")
-	assert.Contains(t, req.System, "You are an AI agent running inside an isolated sandbox container.", "the runner's own host prompt is kept")
+	assert.Contains(t, req.System, "You are uah, a coding agent in the user's terminal.", "uah's default base instructions")
+	assert.Less(t, strings.Index(req.System, "Use tabs"), strings.Index(req.System, "<cwd>"+e.Workspace+"</cwd>"), "the environment follows the instructions")
 	assert.Less(t, strings.Index(req.System, "haiku"), strings.Index(req.System, "Use tabs"), "user file first, then the workspace")
 
 	t.Run("flags win over the config file, and instructions can be turned off", func(t *testing.T) {
@@ -158,7 +159,7 @@ func TestInstructionsAndConfig(t *testing.T) {
 		require.Equal(t, 0, res.code, res.stderr)
 		req := lastRequest(t, llm)
 		assert.Equal(t, "max", req.Effort)
-		assert.Contains(t, req.System, "You are an AI agent running inside an isolated sandbox container.")
+		assert.Contains(t, req.System, "You are uah, a coding agent in the user's terminal.")
 		assert.NotContains(t, req.System, "haiku")
 	})
 
@@ -170,8 +171,8 @@ func TestInstructionsAndConfig(t *testing.T) {
 
 		require.Equal(t, 0, res.code, res.stderr)
 		system := lastRequest(t, llm).System
-		assert.True(t, strings.HasSuffix(system, "\n\nBASE-PROMPT"), "after the runner's preamble: %s", system)
-		assert.NotContains(t, system, "isolated sandbox container", "the runner's host prompt is replaced")
+		assert.Contains(t, system, "\n\nBASE-PROMPT\n\n<environment_context>\n", "after the runner's preamble, before the environment: %s", system)
+		assert.NotContains(t, system, "You are uah", "the default base instructions are replaced")
 	})
 
 	t.Run("a config typo is a usage error", func(t *testing.T) {

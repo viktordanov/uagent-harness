@@ -17,6 +17,7 @@ import (
 	"github.com/viktordanov/uagent/core"
 
 	"github.com/viktordanov/uagent-harness/internal/app"
+	"github.com/viktordanov/uagent-harness/internal/instructions"
 	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/testing/fakellm"
 	"github.com/viktordanov/uagent-harness/testing/harnesstest"
@@ -87,7 +88,10 @@ command = "grep -o '\"session_id\":\"[^\"]*\"' >> `+stops+`"
 	require.NotNil(t, root)
 	require.NotNil(t, child)
 	assert.Contains(t, root.System, "Use tabs in Go files.")
-	assert.Equal(t, root.System, child.System)
+	assert.Contains(t, root.System, instructions.DefaultPrompt, "uah's default base instructions reach the model")
+	assert.Contains(t, root.System, "<cwd>"+e.Workspace+"</cwd>", "and so does the environment")
+	assert.Equal(t, strings.TrimRight(root.System, "\n")+"\n\n"+instructions.SubagentNote, child.System,
+		"the parent's system prompt, then Codex's note that the final answer reaches the parent")
 	assert.Equal(t, [3]string{root.Model, root.Effort, root.ServiceTier}, [3]string{child.Model, child.Effort, child.ServiceTier})
 	assert.Equal(t, "priority", child.ServiceTier)
 	rootTools := maps.Clone(root.Tools)

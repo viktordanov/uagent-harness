@@ -135,7 +135,7 @@ func checkSandbox(ctx context.Context, p sandbox.Policy) Check {
 // checkSystemPrompt reads model_instructions_file as a session would.
 func checkSystemPrompt(cfg config.Config) Check {
 	if cfg.ModelInstructionsFile == "" {
-		return ok("system prompt", "the runner's host prompt")
+		return ok("system prompt", "uah's default prompt")
 	}
 	text, err := readModelInstructions(cfg)
 	if err != nil {
