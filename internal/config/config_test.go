@@ -276,3 +276,23 @@ func TestTitle(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, cfg.TUI.TitleOn(), "the project file wins")
 }
+
+// TestHistory: [history] takes Codex's keys, and a later file overrides
+// each one it sets.
+func TestHistory(t *testing.T) {
+	root := t.TempDir()
+	ws := filepath.Join(root, "ws")
+	user := filepath.Join(root, "config.toml")
+	cfg, _, err := config.Load(user, ws)
+	require.NoError(t, err)
+	assert.Empty(t, cfg.History.Persistence)
+	assert.Nil(t, cfg.History.MaxBytes)
+
+	write(t, user, "[history]\npersistence = \"none\"\nmax_bytes = 4096\n[projects.\""+ws+"\"]\ntrusted = true\n")
+	write(t, config.ProjectFile(ws), "[history]\nmax_bytes = 0\n")
+	cfg, _, err = config.Load(user, ws)
+	require.NoError(t, err)
+	assert.Equal(t, "none", cfg.History.Persistence)
+	require.NotNil(t, cfg.History.MaxBytes)
+	assert.Equal(t, int64(0), *cfg.History.MaxBytes, "the project file wins")
+}

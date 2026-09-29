@@ -5,18 +5,16 @@ package bubble
 
 import (
 	"context"
-	"math"
 	"strings"
 	"time"
 
-	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
 
 	"github.com/viktordanov/uagent/core"
 
 	"github.com/viktordanov/uagent-harness/internal/compaction"
+	"github.com/viktordanov/uagent-harness/internal/history"
 	"github.com/viktordanov/uagent-harness/internal/images"
 	"github.com/viktordanov/uagent-harness/internal/images/clipboard"
 	"github.com/viktordanov/uagent-harness/internal/models"
@@ -91,6 +89,9 @@ type Deps struct {
 	// Exec runs the editor for ctrl+g with the terminal released (default
 	// tea.Exec); tests run it directly.
 	Exec func(tea.ExecCommand, tea.ExecCallback) tea.Cmd
+	// History is the prompt history file for ↑ and ctrl+r (nil: this
+	// process's prompts only).
+	History *history.File
 }
 
 // Model is the Bubble Tea model.
@@ -114,6 +115,8 @@ type Model struct {
 	// once it ends.
 	watch    *session.AgentWatch
 	watchGen int
+	// prompts appends to the history file in order (nil without one).
+	prompts *history.Recorder
 }
 
 // Messages from goroutines and commands.
@@ -142,55 +145,15 @@ func New(ctx context.Context, deps Deps) Model {
 	st := state.New(deps.Now())
 	st.Details, st.Mouse, st.Title, st.Windows = deps.Details, deps.Mouse, deps.Title, deps.Windows
 
-	return Model{
+	m := Model{
 		ctx: ctx, deps: deps, st: st,
 		cache: render.NewCache(render.Amber), theme: render.Amber, composer: newComposer(render.NewStyles(render.Amber)),
 	}
-}
-
-func newComposer(theme *render.Styles) textarea.Model {
-	ta := textarea.New()
-	ta.Placeholder = "Ask uah to do anything · / for commands"
-	ta.ShowLineNumbers = false
-	// The λ marks the composer's first row only; the rows below it line up
-	// under the text, as Codex's composer does.
-	ta.SetPromptFunc(2, firstRowPrompt("λ "))
-	// The composer grows to 8 rows and then scrolls to keep the cursor in
-	// view. MaxHeight alone would also refuse new lines once the draft has
-	// 8, so after a long paste shift+enter did nothing; the content's only
-	// limit is the textarea's own 10,000 lines.
-	ta.DynamicHeight = true
-	ta.MinHeight = 1
-	ta.MaxHeight = 8
-	ta.MaxContentHeight = math.MaxInt
-	ta.KeyMap.InsertNewline = key.NewBinding(key.WithKeys("shift+enter", "ctrl+j"))
-	ta.SetStyles(composerStyles(theme))
-	ta.SetVirtualCursor(false)
-	ta.Focus()
-
-	return ta
-}
-
-// firstRowPrompt marks the composer's first row only: λ, or ! in shell
-// mode (render.ShellPrompt).
-func firstRowPrompt(mark string) func(textarea.PromptInfo) string {
-	return func(p textarea.PromptInfo) string {
-		if p.LineNumber == 0 {
-			return mark
-		}
-
-		return "  "
+	if deps.History != nil {
+		m.prompts = history.NewRecorder(*deps.History)
 	}
-}
 
-// syncShell draws the composer for shell mode after it changed: its mark
-// and placeholder come from the state, through render.
-func (m *Model) syncShell(was bool) {
-	if m.st.Shell == was {
-		return
-	}
-	m.composer.SetPromptFunc(2, firstRowPrompt(render.ShellPrompt(m.st)))
-	m.composer.Placeholder = render.ShellPlaceholder(m.st)
+	return m
 }
 
 // onBackground picks the theme for the terminal's background.
@@ -200,21 +163,6 @@ func (m Model) onBackground(msg tea.BackgroundColorMsg) Model {
 	m.composer.SetStyles(composerStyles(m.cache.Styles()))
 
 	return m
-}
-
-// composerStyles draw the composer in the theme: the λ in the accent, and
-// no backgrounds of its own, since the screen puts it on the band.
-func composerStyles(theme *render.Styles) textarea.Styles {
-	styles := textarea.DefaultStyles(true)
-	for _, st := range []*textarea.StyleState{&styles.Focused, &styles.Blurred} {
-		st.Base = lipgloss.NewStyle()
-		st.Text = lipgloss.NewStyle()
-		st.CursorLine = lipgloss.NewStyle()
-		st.Prompt = theme.Accent()
-		st.Placeholder = theme.Dim()
-	}
-
-	return styles
 }
 
 // Run starts the program and blocks until it exits.
@@ -235,17 +183,17 @@ func Run(ctx context.Context, deps Deps, opts ...tea.ProgramOption) (Exit, error
 func (m Model) Init() tea.Cmd {
 	// The theme follows the terminal's background once it answers.
 	if m.deps.Picker {
-		return tea.Batch(tea.RequestBackgroundColor, m.run(state.EffLoadSessions{}))
+		return tea.Batch(tea.RequestBackgroundColor, m.run(state.EffLoadPrompts{}), m.run(state.EffLoadSessions{}))
 	}
 
-	return tea.Batch(tea.RequestBackgroundColor, m.open(m.deps.SessionID))
+	return tea.Batch(tea.RequestBackgroundColor, m.run(state.EffLoadPrompts{}), m.open(m.deps.SessionID))
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.w, m.h = msg.Width, msg.Height
-		m.composer.SetWidth(msg.Width)
+		m.resizeComposer()
 
 		return m, nil
 	case tea.BackgroundColorMsg:
@@ -298,7 +246,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case state.Failed, state.SessionsLoaded, state.ActivityLoaded, state.FilesLoaded, state.MCPListed, state.ContextShown,
 		state.ModelsLoaded, state.ConfigLoaded, state.ConfigSaved, state.ImageAttached, state.ImageFailed, state.DraftEdited:
 		return m.dispatch(msg)
-	case state.UsageLoaded, state.Copied, state.DiffShown, state.ReviewTargetsLoaded:
+	case state.UsageLoaded, state.Copied, state.DiffShown, state.ReviewTargetsLoaded, state.PromptsLoaded:
 		return m.dispatch(msg)
 	}
 	var cmd tea.Cmd
@@ -415,46 +363,10 @@ func (m Model) View() tea.View {
 	if c := m.composer.Cursor(); c != nil && composerRow >= 0 {
 		c.Y += composerRow
 		v.Cursor = c
+		m.searchCursor(c, composerRow)
 	}
 
 	return v
-}
-
-// next waits for the next batch of a session's events. Update re-arms it
-// after each batch, so exactly one waits at a time and order is kept.
-func next(gen int, batches <-chan []core.Event) tea.Cmd {
-	return func() tea.Msg {
-		events, ok := <-batches
-		if !ok {
-			return sessionClosedMsg{gen: gen}
-		}
-
-		return eventsMsg{gen: gen, events: events, batches: batches}
-	}
-}
-
-// batch groups session events into 16 ms batches, so a burst costs one
-// update and one frame. It closes out when the session's events end.
-func batch(events <-chan core.Event, out chan<- []core.Event) {
-	defer close(out)
-	for first := range events {
-		batchOut := []core.Event{first}
-		timer := time.NewTimer(batchWindow)
-	collect:
-		for {
-			select {
-			case e, ok := <-events:
-				if !ok {
-					break collect
-				}
-				batchOut = append(batchOut, e)
-			case <-timer.C:
-				break collect
-			}
-		}
-		timer.Stop()
-		out <- batchOut
-	}
 }
 
 func trimmed(s string) string { return strings.TrimSpace(s) }

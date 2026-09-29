@@ -140,6 +140,8 @@ type State struct {
 	// Backtrack, when set, is the earlier message selected to go back to
 	// (backtrack.go).
 	Backtrack *Backtrack
+	// History is the prompt history ↑ and ctrl+r recall (history.go).
+	History PromptHistory
 	// Selection, when set, is transcript text selected with the mouse
 	// (selection.go); click counts double and triple clicks.
 	Selection *Selection
@@ -173,8 +175,6 @@ type (
 	Quit struct{}
 	// EditLastQueued is Up on an empty composer.
 	EditLastQueued struct{}
-	// ToggleReasoning shows or hides reasoning summaries.
-	ToggleReasoning struct{}
 	// ToggleDetails switches between the compact and the detailed view.
 	ToggleDetails struct{}
 	// ScrollBy scrolls the transcript; positive is up.

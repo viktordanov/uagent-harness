@@ -61,7 +61,7 @@ type (
 
 // Suggestions returns the menu for a draft, or nothing when it is closed.
 func (s State) Suggestions(draft string) []Suggestion {
-	if draft == "" || draft == s.Menu.Closed || s.Shell {
+	if draft == "" || draft == s.Menu.Closed || s.Shell || s.showsRecalled(draft) {
 		return nil
 	}
 	if at, ok := mentionAt(draft); ok {

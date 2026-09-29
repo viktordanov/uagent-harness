@@ -33,6 +33,7 @@ Everything lives under uagent's state directory (`~/.local/state/unreal-agent`),
 | `sessions/<id>.compaction.jsonl` | uah (embedded engine) | One line per compaction: the builder items it covers, their SHA-256, and the summary | Replays compaction on resume; see [compaction](compaction.md) |
 | `sessions/<id>.websearch.jsonl` | uah (embedded engine) | One line per hosted web search the runner dropped: the item and the output item it came before | Puts the search back into later requests; see [web search](web-search.md) |
 | `logs/uah-tui.log` | uah | TUI diagnostics | Diagnostics |
+| `history.jsonl` (in the home, also with `--state-dir`) | uah (TUI) | One line per prompt sent, in Codex's format, private (0600) and capped by `[history] max_bytes` | ↑ and ctrl+r recall it; see [prompt history](prompt-history.md) |
 
 There is no database. Listing sessions reads every `summary.json` and the first `request.json` of each session: the cost grows with the number of runs, and there is no search.
 

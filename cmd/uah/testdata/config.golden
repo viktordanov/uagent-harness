@@ -46,6 +46,8 @@ shell_environment_policy.set                      {}                            
 tui.details                                       false                         default
 tui.mouse                                         true                          default
 tui.title                                         true                          default
+history.persistence                               save-all                      default
+history.max_bytes                                 8388608                       default
 hooks.Stop                                        [notify]                      user file
 mcp_servers.docs                                  https://docs.example.com/mcp  project file
 projects.<workspace>.trusted                      true                          user file

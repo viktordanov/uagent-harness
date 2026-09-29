@@ -17,3 +17,9 @@ func (m Model) Attached() []string {
 
 	return labels
 }
+
+// Prompts is how many prompts ↑ can recall.
+func (m Model) Prompts() int { return m.st.History.Len() }
+
+// ComposerRows is how tall the composer grows on a terminal h rows high.
+func ComposerRows(h int) int { return composerRows(h) }

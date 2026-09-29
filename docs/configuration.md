@@ -366,8 +366,17 @@ developer_instructions = "Review the diff you are given. List only real bugs, ea
 | Key | Type | Default | Merge | Meaning |
 | --- | --- | --- | --- | --- |
 | `details` | bool | false | OR | Start in the detailed view; ctrl+t toggles it |
-| `mouse` | bool | true | override, can unset | Report the mouse to the TUI: the wheel scrolls the transcript, and a drag, a double click, or a triple click selects its text and copies it to the clipboard (OSC 52 and pbcopy, wl-copy, or xclip); the terminal's own selection then needs Option (iTerm2, Terminal) or Shift held. `false` leaves the mouse to the terminal: it selects text as usual and its wheel sends ↑ and ↓, which scroll the transcript while the composer is empty. See the [selection design](design/selection.md) |
+| `mouse` | bool | true | override, can unset | Report the mouse to the TUI: the wheel scrolls the transcript, and a drag, a double click, or a triple click selects its text and copies it to the clipboard (OSC 52 and pbcopy, wl-copy, or xclip); the terminal's own selection then needs Option (iTerm2, Terminal) or Shift held. `false` leaves the mouse to the terminal: it selects text as usual and its wheel sends ↑ and ↓, which recall earlier prompts on an empty composer and scroll the transcript on a draft of your own; shift+↑/↓ and pgup/pgdn always scroll. See the [selection design](design/selection.md) |
 | `title` | bool | true | override, can unset | Show the session's state in the terminal's title: `uah · <workspace name>` when idle, `uah · working · <workspace name>` while the agent works, and `uah · approve? · <workspace name>` while an approval waits. `false` turns it off: uah sets no title |
+
+### History
+
+`[history]`, with Codex's keys, for `<home>/history.jsonl`: the prompts ↑ and ctrl+r recall in the TUI, from every workspace and session. Each prompt is one line, `{"session_id":…,"ts":…,"text":…}`, as in Codex's `~/.codex/history.jsonl`; the file is private (0600). Messages and `!` commands go in, as typed, with images as their `[Image #N]` placeholders; slash commands do not. See the [prompt history design](design/prompt-history.md).
+
+| Key | Type | Default | Merge | Meaning |
+| --- | --- | --- | --- | --- |
+| `persistence` | string | `save-all` | override | `save-all` writes every prompt; `none` writes nothing, and ↑ still recalls what the file has, as in Codex. Any other value stops the TUI with an error |
+| `max_bytes` | int | 8388608 (8 MiB) | override | The file's cap. Past it, the oldest prompts go until the file is at most 80% of the cap, as Codex trims; the newest prompt always stays. 0 means no cap, Codex's default |
 
 ### Projects
 
@@ -468,6 +477,10 @@ timeout = "90s"
 details = false
 mouse = true                       # false: the terminal selects text
 title = true                       # false: no state in the terminal title
+
+[history]
+persistence = "save-all"           # or none: write no prompts to ~/.uah/history.jsonl
+max_bytes = 8388608                # the oldest prompts go past it; 0: no cap
 
 [[hooks.PreToolUse]]
 matcher = "Bash"                   # the whole tool name, as a regular expression

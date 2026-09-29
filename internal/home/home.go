@@ -1,7 +1,7 @@
 // Package home is uah's one home, as Codex has ~/.codex and Claude Code has
 // ~/.claude: the configuration, the instructions, hook trust, MCP
 // credentials, sessions, run records, the index, images, the model cache,
-// and logs all live in ~/.uah, or in $UAH_HOME when it is set.
+// the prompt history, and logs all live in ~/.uah, or in $UAH_HOME when it is set.
 package home
 
 import (

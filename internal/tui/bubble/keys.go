@@ -42,6 +42,9 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) { //nolint:gocycl
 
 		return next, tea.Batch(cancel, cmd)
 	}
+	if m.st.History.Search != nil {
+		return m.onSearchKey(msg)
+	}
 	draft := m.composer.Value()
 	if intent := menuIntent(m.st, msg.String(), draft); intent != nil {
 		return m.dispatch(intent)
@@ -67,13 +70,16 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) { //nolint:gocycl
 		if draft != "" {
 			m.composer.Reset()
 
-			return m.dispatch(state.DraftChanged{}) // drops the draft's images
+			return m.dispatch(state.DraftCleared{Draft: draft}) // ↑ brings it back; drops its images
 		}
 
 		return m.dispatch(state.Quit{})
 	case "up":
 		if draft == "" && len(m.st.Queue) > 0 {
 			return m.dispatch(state.EditLastQueued{})
+		}
+		if m.st.Recalls(draft, m.atEdge(), false) {
+			return m.dispatch(state.RecallOlder{})
 		}
 		// The terminal's wheel arrives as ↑ and ↓ when the mouse is not
 		// reported: ↑ on the composer's first row scrolls the transcript,
@@ -82,6 +88,9 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) { //nolint:gocycl
 			return m.scroll(1)
 		}
 	case keyDown:
+		if m.st.Recalls(draft, m.atEdge(), true) {
+			return m.dispatch(state.RecallNewer{})
+		}
 		if m.onLastRow() {
 			return m.scroll(-1)
 		}
@@ -138,7 +147,7 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) { //nolint:gocycl
 	case "ctrl+g":
 		return m.dispatch(state.EditDraft{Draft: draft})
 	case "ctrl+r":
-		return m.dispatch(state.ToggleReasoning{})
+		return m.dispatch(state.SearchOpen{Draft: draft})
 	case "ctrl+t":
 		return m.dispatch(state.ToggleDetails{})
 	}

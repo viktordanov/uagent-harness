@@ -241,6 +241,9 @@ func (st *Styles) statusLine(s state.State, w int) string {
 }
 
 func (st *Styles) footerLine(s state.State, w int) string {
+	if s.History.Search != nil {
+		return st.searchLine(s.History.Search, w)
+	}
 	if !s.Details {
 		var parts []string
 		fast := ""

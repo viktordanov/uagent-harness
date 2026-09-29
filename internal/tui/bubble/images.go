@@ -79,6 +79,9 @@ func (m Model) pasteImage() tea.Cmd {
 // onPaste attaches a pasted or dropped image path; any other paste goes to
 // the composer as text.
 func (m Model) onPaste(msg tea.PasteMsg) (tea.Model, tea.Cmd) {
+	if m.st.History.Search != nil {
+		return m.dispatch(state.SearchType{Text: msg.Content}) // a paste goes into the query
+	}
 	if m.st.Mode == state.ModeChat && m.st.Config == nil {
 		home, _ := os.UserHomeDir()
 		if path, ok := images.PastedPath(msg.Content, home); ok {

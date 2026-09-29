@@ -21,6 +21,16 @@ const (
 // Reduce applies an event or intent. It takes ownership of s: callers keep
 // only the returned state, which lets items update in place.
 func Reduce(s State, ev any) (State, []Effect) {
+	recorded := s.remember(ev) // before shell mode or the images change
+	if _, ok := ev.(DraftCleared); ok {
+		ev = DraftChanged{}
+	}
+	s, effects := reduce(s, ev)
+
+	return s, append(effects, recorded...)
+}
+
+func reduce(s State, ev any) (State, []Effect) {
 	if s.index == nil {
 		s.index = map[string]int{}
 	}
@@ -78,7 +88,7 @@ func Reduce(s State, ev any) (State, []Effect) {
 	if s.onUsage(ev) {
 		return s, nil
 	}
-	for _, on := range []func(*State, any) ([]Effect, bool){(*State).onImages, (*State).onEditor, (*State).onConfig, (*State).onMenu} {
+	for _, on := range []func(*State, any) ([]Effect, bool){(*State).onImages, (*State).onEditor, (*State).onConfig, (*State).onMenu, (*State).onHistory} {
 		if effects, ok := on(&s, ev); ok {
 			return s, effects
 		}
@@ -253,8 +263,6 @@ func (s *State) onIntent(ev any) (State, []Effect) { //nolint:gocyclo // a dispa
 		last := s.Queue[len(s.Queue)-1]
 
 		return *s, []Effect{EffWithdraw(last)}
-	case ToggleReasoning:
-		s.ShowReasoning = !s.ShowReasoning
 	case ToggleDetails:
 		s.Details = !s.Details
 	case ScrollBy:

@@ -166,7 +166,7 @@ func (s *State) onAgentView(ev any) ([]Effect, bool) {
 
 			return []Effect{EffAgentSend{ID: v.ID, Text: s.withImages(text), Now: steer}}, true
 		}
-	case ScrollBy, ScrollToBottom, ToggleDetails, ToggleReasoning:
+	case ScrollBy, ScrollToBottom, ToggleDetails:
 		*v.St, _ = Reduce(*v.St, ev)
 	default:
 		return nil, false

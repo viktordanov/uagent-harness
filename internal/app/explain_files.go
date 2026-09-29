@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/viktordanov/uagent-harness/internal/config"
+	"github.com/viktordanov/uagent-harness/internal/history"
 	"github.com/viktordanov/uagent-harness/internal/hooks"
 	"github.com/viktordanov/uagent-harness/internal/instructions"
 	"github.com/viktordanov/uagent-harness/internal/mcp"
@@ -60,11 +61,22 @@ func fileSettings(workspace string, l config.Layers, r Resolved, cfg config.Conf
 		added(l, "tui.details", cfg.TUI.Details, func(c config.Config) any { return c.TUI.Details }),
 		overridden(l, "tui.mouse", cfg.TUI.MouseOn(), func(c config.Config) any { return c.TUI.Mouse }),
 		overridden(l, "tui.title", cfg.TUI.TitleOn(), func(c config.Config) any { return c.TUI.Title }),
+		overridden(l, "history.persistence", first(cfg.History.Persistence, string(history.SaveAll)), func(c config.Config) any { return c.History.Persistence }),
+		overridden(l, "history.max_bytes", historyMaxBytes(cfg.History), func(c config.Config) any { return c.History.MaxBytes }),
 	}...)
 	out = append(out, hookSettings(l, cfg)...)
 	out = append(out, mcpSettings(l, cfg)...)
 
 	return append(out, one("projects.<workspace>.trusted", l.Trusted, trusted))
+}
+
+// historyMaxBytes is the history file's cap: the key, else the default.
+func historyMaxBytes(h config.History) int64 {
+	if h.MaxBytes != nil {
+		return *h.MaxBytes
+	}
+
+	return history.DefaultMaxBytes
 }
 
 // hookSettings are the commands per hook event, in the order they run.

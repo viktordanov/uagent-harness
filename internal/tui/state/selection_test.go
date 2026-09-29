@@ -132,7 +132,7 @@ func TestSelection_Clears(t *testing.T) {
 
 	for name, ev := range map[string]any{
 		"esc": state.Esc{Empty: true}, "a click elsewhere": state.ClearSelection{}, "typing": state.DraftChanged{Draft: "x"},
-		"sending": state.Submit{Text: "go"}, "details": state.ToggleDetails{}, "reasoning": state.ToggleReasoning{},
+		"sending": state.Submit{Text: "go"}, "details": state.ToggleDetails{},
 	} {
 		got, _ := apply(selected, ev)
 		assert.Nil(t, got.Selection, name)

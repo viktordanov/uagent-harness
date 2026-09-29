@@ -26,6 +26,10 @@ func merge(base, over Config) Config {
 	if over.TUI.Title != nil {
 		base.TUI.Title = over.TUI.Title
 	}
+	set(&base.History.Persistence, over.History.Persistence)
+	if over.History.MaxBytes != nil {
+		base.History.MaxBytes = over.History.MaxBytes
+	}
 	if over.AutoCompactPercent != nil {
 		base.AutoCompactPercent = over.AutoCompactPercent
 	}

@@ -73,7 +73,7 @@ The process engine runs the runner as a subprocess and sees only its output, so 
 ## Out of scope
 
 - Codex's newline-gated commits and smooth line-by-line animation: uah redraws the whole streamed item, which a 16 ms batch already bounds.
-- Reasoning headings in the working line, as Codex's status header does: streamed summaries show only in the transcript when reasoning is shown (ctrl+r).
+- Reasoning headings in the working line, as Codex's status header does: streamed summaries show only in the transcript when reasoning is shown (`/reasoning`).
 - Streaming tool-call arguments, such as an `apply_patch` as it is written.
 - Streaming on the process engine, which would need the runner to print deltas.
 - A configuration key to turn streaming off: nothing needed one.

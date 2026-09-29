@@ -88,6 +88,8 @@ type Config struct {
 	ProjectRootMarkers          *[]string `toml:"project_root_markers"`
 	ProjectDocMaxBytes          int       `toml:"project_doc_max_bytes"`
 	TUI                         TUI       `toml:"tui"`
+	// History is the prompt history file, with Codex's [history] keys.
+	History History `toml:"history"`
 	// Hooks are keyed by event name: [[hooks.PreToolUse]].
 	Hooks map[string][]Hook `toml:"hooks"`
 	// MCPServers are keyed by server name, in Codex's format.
@@ -226,6 +228,15 @@ type TUI struct {
 	// Title shows the session's state in the terminal's title (on when
 	// unset, TitleOn).
 	Title *bool `toml:"title"`
+}
+
+// History configures <home>/history.jsonl, the prompts ↑ and ctrl+r
+// recall, with Codex's [history] keys: persistence ("save-all", the
+// default, or "none", which stops writing but still reads the file) and
+// max_bytes (the cap; the oldest prompts go first; 0 is no cap).
+type History struct {
+	Persistence string `toml:"persistence"`
+	MaxBytes    *int64 `toml:"max_bytes"`
 }
 
 // MouseOn reports whether the TUI reports the mouse: on unless set false.

@@ -100,7 +100,7 @@ func (s *State) onSelection(ev any) (effects []Effect, ok bool) {
 			return nil, false
 		}
 		s.Selection = nil
-	case DraftChanged, Submit, Steer, ToggleDetails, ToggleReasoning:
+	case DraftChanged, Submit, Steer, ToggleDetails:
 		s.Selection = nil
 
 		return nil, false

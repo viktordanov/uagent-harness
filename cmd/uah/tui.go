@@ -11,6 +11,8 @@ import (
 
 	"github.com/urfave/cli/v3"
 
+	"github.com/viktordanov/uagent-harness/internal/history"
+	"github.com/viktordanov/uagent-harness/internal/home"
 	"github.com/viktordanov/uagent-harness/internal/images"
 	"github.com/viktordanov/uagent-harness/internal/images/clipboard"
 	"github.com/viktordanov/uagent-harness/internal/models"
@@ -53,6 +55,10 @@ func openTUI(ctx context.Context, cmd *cli.Command, launch tuiLaunch) error {
 	if err != nil {
 		return err
 	}
+	prompts, err := history.New(home.Dir(), st.Config.History.Persistence, st.Config.History.MaxBytes)
+	if err != nil {
+		return err
+	}
 	var once sync.Once
 	startupNotes := func() (notes []string) {
 		once.Do(func() { notes, _ = ctx.Value(startupKey{}).([]string) })
@@ -74,6 +80,7 @@ func openTUI(ctx context.Context, cmd *cli.Command, launch tuiLaunch) error {
 		Details:     st.Config.TUI.Details,
 		Mouse:       st.Config.TUI.MouseOn(),
 		Title:       st.Config.TUI.TitleOn(),
+		History:     &prompts,
 		Version:     buildVersion(),
 		Config:      tuiConfig(cmd),
 		SaveConfig:  tuiSaveConfig(ctx, cmd),

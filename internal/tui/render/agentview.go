@@ -15,7 +15,9 @@ func agentScreen(s state.State, c *Cache, f Frame) (string, int) {
 		c.view, c.viewID, c.viewGen = &Cache{styles: c.styles, entries: map[string]cacheEntry{}, maxScroll: -1}, v.ID, v.Gen
 	}
 	f.Height = max(f.Height-1, 1)
-	out, row := Screen(*v.St, c.view, f)
+	st := *v.St
+	st.History = s.History // the composer and its ctrl+r search are the session's
+	out, row := Screen(st, c.view, f)
 	c.maxScroll = c.view.maxScroll
 	header := " " + c.styles.accent.Render("agent "+v.Nickname) + c.styles.dim.Render(" · alt+← alt+→ switch agents · esc esc interrupts")
 

@@ -32,9 +32,9 @@ func (d *driver) rowOf(text string) int {
 
 // TestTUI_NewLinesAfterALongPaste (GitHub #2): after a paste taller than
 // the composer, shift+enter and ctrl+j still add lines, nothing of the
-// paste is lost, the composer stays 8 rows high with the cursor in view,
-// and ↑ and ↓ scroll the transcript only at the draft's first and last
-// lines, not at the composer's visible edges.
+// paste is lost, the composer stays 15 rows high (half the window) with
+// the cursor in view, and ↑ and ↓ scroll the transcript only at the
+// draft's first and last lines, not at the composer's visible edges.
 func TestTUI_NewLinesAfterALongPaste(t *testing.T) {
 	d, llm, _ := imageDeps(t)
 	answer := make([]string, 40)
@@ -68,15 +68,15 @@ func TestTUI_NewLinesAfterALongPaste(t *testing.T) {
 
 	screen := dr.view()
 	assert.Len(t, strings.Split(screen, "\n"), 30, "the screen keeps its height")
-	assert.Equal(t, 6, strings.Count(screen, "pasted "), "8 rows show: 6 pasted lines and the 2 typed")
+	assert.Equal(t, 13, strings.Count(screen, "pasted "), "15 rows show: 13 pasted lines and the 2 typed")
 	assert.NotContains(t, screen, "λ", "the λ scrolled away with the draft's first line")
 
 	answerRow := dr.rowOf("row 40")
 	require.GreaterOrEqual(t, answerRow, 0)
-	for range 12 { // up to "pasted 40", past the composer's top row
+	for range 22 { // up to "pasted 30", past the composer's top row
 		dr.key(tea.KeyUp, 0)
 	}
-	assert.Contains(t, dr.cursorLine(), "pasted 40")
+	assert.Contains(t, dr.cursorLine(), "pasted 30")
 	assert.Equal(t, answerRow, dr.rowOf("row 40"), "↑ inside the draft moves the cursor only")
 
 	dr.key(tea.KeyHome, tea.ModCtrl)

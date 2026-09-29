@@ -2,6 +2,7 @@ package state_test
 
 import (
 	"bytes"
+	"slices"
 	"testing"
 	"time"
 
@@ -23,12 +24,14 @@ func settings() session.Settings {
 }
 
 // apply reduces events and intents in order and returns the effects.
+// apply reduces events in order and returns every effect but the history
+// file's appends, which history_test.go checks.
 func apply(s state.State, evs ...any) (state.State, []state.Effect) {
 	var all []state.Effect
 	for _, ev := range evs {
 		var effects []state.Effect
 		s, effects = state.Reduce(s, ev)
-		all = append(all, effects...)
+		all = append(all, slices.DeleteFunc(effects, func(e state.Effect) bool { _, ok := e.(state.EffRecordPrompt); return ok })...)
 	}
 
 	return s, all

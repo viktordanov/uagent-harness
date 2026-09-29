@@ -49,7 +49,7 @@ The programs whose view is a transcript (Claude Code, opencode, zellij's panes) 
 | drag to the top row, or below the transcript | Scroll one line that way per move, and select to the edge |
 | wheel during a drag | Scroll, and move the selection's end to the text now under the mouse |
 | esc | Clear the selection, and nothing else |
-| a click, typing, sending, ctrl+t, ctrl+r | Clear the selection, and do what they do |
+| a click, typing, sending (also `/reasoning`), ctrl+t | Clear the selection, and do what they do |
 
 A plain click selects nothing. Clicks count as a double or triple click when they land on the same cell within 500 ms. The composer, the panels, the picker, and the agent view take no selection; a press there clears it.
 
@@ -98,7 +98,7 @@ The programs whose view is a transcript (Claude Code, opencode, zellij's panes) 
 | drag to the top row, or below the transcript | Scroll one line that way per move, and select to the edge |
 | wheel during a drag | Scroll, and move the selection's end to the text now under the mouse |
 | esc | Clear the selection, and nothing else |
-| a click, typing, sending, ctrl+t, ctrl+r | Clear the selection, and do what they do |
+| a click, typing, sending (also `/reasoning`), ctrl+t | Clear the selection, and do what they do |
 
 A plain click selects nothing. Clicks count as a double or triple click when they land on the same cell within 500 ms. The composer, the panels, the picker, and the agent view take no selection; a press there clears it.
 
@@ -124,7 +124,7 @@ Tool rows, the banner, and the finish line copy as drawn. It copies what the use
 - **Copy on release, not on a key.** The item asks for it, and Claude Code, opencode, and zellij do the same by default. Codex copies on ctrl+c or a right click; in uah ctrl+c already clears the composer and quits, and copying at once saves a step.
 - **Mouse on by default.** Selecting inside the TUI takes away the reason to leave the mouse to the terminal: with it on, the wheel scrolls also over a multi-line prompt, and copying still works. Claude Code's fullscreen view, opencode, zellij, helix, and lazygit capture the mouse by default too. Codex keeps it off by default because its default transcript lives in the terminal's scrollback, which uah, drawing in the alternate screen, does not use.
 - **Both OSC 52 and the native tool.** OSC 52 needs the terminal's support, which some terminals lack or put behind a setting (iTerm2 blocks it until "Applications in terminal may access clipboard" is on), and gives no acknowledgement; the native tool does not reach a local clipboard over ssh. Writing both covers both, as opencode does; Codex and Claude Code pick one by where they run.
-- **Positions in drawn lines, not source offsets.** Codex anchors in source text and freezes a snapshot. uah's items keep their keys, and the renderer's cache already holds each item's drawn lines, so a line index is stable except when the width or the view changes; ctrl+t and ctrl+r clear the selection for that reason.
+- **Positions in drawn lines, not source offsets.** Codex anchors in source text and freezes a snapshot. uah's items keep their keys, and the renderer's cache already holds each item's drawn lines, so a line index is stable except when the width or the view changes; ctrl+t and `/reasoning` (ctrl+r before the prompt history took the key) clear the selection for that reason.
 - **No selection in the composer.** The textarea keeps its own editing, and a press there clears the transcript's selection.
 
 ## Open
