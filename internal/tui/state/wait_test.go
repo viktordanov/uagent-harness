@@ -24,7 +24,7 @@ func TestCurrentWait(t *testing.T) {
 		events []any
 		want   state.Wait
 	}{
-		"a run before anything": {events: []any{core.RunStarted{At: t0, RunID: "r1"}}, want: state.Wait{What: "Working"}},
+		"a run before anything":       {events: []any{core.RunStarted{At: t0, RunID: "r1"}}, want: state.Wait{What: "Working"}},
 		"the model, without progress": {events: turn, want: state.Wait{What: "Thinking", Since: at(time.Second)}},
 		"sending": {
 			events: append(turn, engine.ModelProgress{At: at(2 * time.Second), Phase: engine.PhaseSending, Bytes: 1_234_567}),

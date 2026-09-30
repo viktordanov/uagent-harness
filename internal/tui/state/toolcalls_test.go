@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/viktordanov/uagent/core"
+	uaharness "github.com/viktordanov/uagent/harness"
 
 	"github.com/viktordanov/uagent-harness/internal/cmdparse"
 	"github.com/viktordanov/uagent-harness/internal/engine"
@@ -55,6 +56,17 @@ func TestToolCalled_Shapes(t *testing.T) {
 	assert.Equal(t, "a.go, ~/notes.md", cmdparse.Summary{Parts: c.Parts}.Text())
 	m := item(t, s, "call:m")
 	assert.Equal(t, `docs · search  query "a b", limit 5, tags ["x"]`, cmdparse.Summary{Parts: m.Parts}.Text())
+}
+
+// TestToolCalled_LoadedWorkspace: before the session opens, a loaded run's
+// commands show paths relative to that run's workspace.
+func TestToolCalled_LoadedWorkspace(t *testing.T) {
+	res := core.Result{Request: core.Request{RunID: "r1", Workspace: "/w"}}
+	s, _ := state.Reduce(state.New(t0), state.HistoryLoaded{SessionID: "s", Runs: []session.LoadedRun{{
+		Record: uaharness.RunRecord{Result: res, Complete: true},
+		Events: []core.Event{called("c", "Bash", `{"command":"cat /w/a.go"}`)},
+	}}})
+	assert.Equal(t, "a.go", cmdparse.Summary{Parts: item(t, s, "call:c").Parts}.Text())
 }
 
 // TestSkills_Join: skills loaded one after another share the first one's

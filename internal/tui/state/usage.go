@@ -101,10 +101,7 @@ func (s *State) usageAfter(ev core.Event) []Effect {
 // when the failure kept it, else after reading the usage.
 func (s *State) limitReached(text string) []Effect {
 	r, ok := usage.LimitReachedIn(text)
-	run := ""
-	if s.Live != nil {
-		run = s.Live.RunID
-	}
+	run := s.live().RunID
 	if !ok || s.Usage.limitRun == run && run != "" {
 		return nil
 	}

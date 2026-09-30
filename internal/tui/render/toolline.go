@@ -1,6 +1,7 @@
 package render
 
 import (
+	"cmp"
 	"regexp"
 	"strings"
 	"time"
@@ -40,10 +41,7 @@ func (st *Styles) compactToolLines(it state.Item, w int, now time.Time) []string
 // A live call's label and time are in the accent; a finished one's dim,
 // with fail and its exit code in the error color.
 func (st *Styles) compactTool(it state.Item, w int, now time.Time) string {
-	label := it.Verb
-	if label == "" {
-		label = toolLabel(it.Name)
-	}
+	label := cmp.Or(it.Verb, toolLabel(it.Name))
 	noMatches := noMatches(it)
 	var head, tail string
 	switch {

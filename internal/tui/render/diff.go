@@ -1,6 +1,7 @@
 package render
 
 import (
+	"cmp"
 	"fmt"
 	"strconv"
 	"strings"
@@ -64,10 +65,7 @@ func (st *Styles) diffSummary(files []patch.FileDiff) string {
 	if len(files) != 1 {
 		return st.dim.Render(fmt.Sprintf("Edited %d files ", len(files))) + st.counts(added, removed)
 	}
-	verb := map[string]string{"add": "Added", "delete": "Deleted"}[files[0].Op]
-	if verb == "" {
-		verb = "Edited"
-	}
+	verb := cmp.Or(map[string]string{"add": "Added", "delete": "Deleted"}[files[0].Op], "Edited")
 
 	return st.dim.Render(verb+" ") + diffPath(files[0]) + " " + st.counts(added, removed)
 }

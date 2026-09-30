@@ -49,22 +49,14 @@ func (s *State) agentCallLabel(label string) string {
 	if json.Unmarshal([]byte(label), &args) != nil {
 		return label
 	}
-	ids := args.Targets
-	for _, id := range []string{args.Target, args.ID} {
+	var names []string
+	for _, id := range append(args.Targets, args.Target, args.ID) {
 		if id != "" {
-			ids = append(ids, id)
+			names = append(names, s.agentName(id))
 		}
 	}
-	names := make([]string, 0, len(ids))
-	for _, id := range ids {
-		names = append(names, s.agentName(id))
-	}
-	out := strings.Join(names, ", ")
-	if args.Message != "" {
-		out += " · " + args.Message
-	}
 
-	return out
+	return joinDetail(strings.Join(names, ", "), args.Message)
 }
 
 // agentName is a subagent's nickname, else its short ID.
@@ -82,17 +74,13 @@ func (s *State) labelSpawn(e engine.AgentUpdated) {
 	if e.CallID == "" {
 		return
 	}
-	parts := []string{e.Nickname}
-	if m := strings.TrimSpace(e.Model + " " + e.Effort); m != "" {
-		parts = append(parts, m)
-	}
+	forked := ""
 	if e.Forked {
-		parts = append(parts, "forked")
+		forked = "forked"
 	}
-	if e.Task != "" {
-		parts = append(parts, e.Task)
-	}
-	s.update("call:"+e.CallID, func(it *Item) { it.Label = strings.Join(parts, " · ") })
+	s.update("call:"+e.CallID, func(it *Item) {
+		it.Label = joinDetail(e.Nickname, strings.TrimSpace(e.Model+" "+e.Effort), forked, e.Task)
+	})
 }
 
 // settle keeps how a subagent ended when it is closed afterwards: a

@@ -1,6 +1,7 @@
 package state
 
 import (
+	"cmp"
 	"encoding/json"
 	"strings"
 
@@ -40,12 +41,7 @@ func (s *State) onToolCalled(e core.ToolCalled) {
 
 // pathEnv is where the session's commands run, for their paths.
 func (s *State) pathEnv() cmdparse.Env {
-	ws := s.Settings.Workspace
-	if ws == "" {
-		ws = s.loadedWorkspace
-	}
-
-	return cmdparse.Env{Workspace: ws, Home: s.Home}
+	return cmdparse.Env{Workspace: cmp.Or(s.Settings.Workspace, s.loadedWorkspace), Home: s.Home}
 }
 
 // bashCommand is a Bash call's command from its arguments, else the

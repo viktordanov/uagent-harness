@@ -1,6 +1,7 @@
 package render
 
 import (
+	"cmp"
 	"fmt"
 	"path/filepath"
 	"regexp"
@@ -60,15 +61,10 @@ func (st *Styles) reviewLines(it state.Item, w int, now time.Time) []string {
 		return nil
 	}
 	if r.Running {
-		doing := r.Doing
-		if doing == "" {
-			doing = "thinking"
-		}
-
 		return []string{
 			"",
 			ansi.Truncate(st.accent.Render("  REVIEW ")+r.Hint+st.dim.Render("  "+elapsed(now.Sub(r.Started))), w, "…"),
-			ansi.Truncate(st.dim.Render("    └ ")+st.tool.Render(spin(now))+st.dim.Render(" "+oneLine(doing)), w, "…"),
+			ansi.Truncate(st.dim.Render("    └ ")+st.tool.Render(spin(now))+st.dim.Render(" "+oneLine(cmp.Or(r.Doing, "thinking"))), w, "…"),
 		}
 	}
 	head := st.dim.Render("  REVIEW ") + r.Hint

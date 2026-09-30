@@ -40,11 +40,11 @@ func (s *State) onRunEvent(ev core.Event) { //nolint:gocyclo // a dispatch switc
 	case core.TurnStarted:
 		l := s.live()
 		l.Turn, l.Aside = cmp.Or(l.Turn, e.At), nil
-		s.put(Item{Kind: KindTurn, Key: turnKey(s.Live, e.Turn), Turn: e.Turn, Pending: true, Started: e.At})
+		s.put(Item{Kind: KindTurn, Key: s.turnKey(e.Turn), Turn: e.Turn, Pending: true, Started: e.At})
 	case core.ModelResponded:
 		s.onProgress(engine.ModelProgress{Phase: engine.PhaseDone})
 		s.noteUsage(e)
-		s.update(turnKey(s.Live, e.Turn), func(it *Item) {
+		s.update(s.turnKey(e.Turn), func(it *Item) {
 			it.Pending, it.In, it.Out, it.Duration = false, e.Usage.InputTokens, e.Usage.OutputTokens, e.Duration
 		})
 		if e.Failure != "" {
@@ -78,11 +78,4 @@ func (s *State) onRunEvent(ev core.Event) { //nolint:gocyclo // a dispatch switc
 	}
 }
 
-func turnKey(live *Live, turn int) string {
-	run := ""
-	if live != nil {
-		run = live.RunID
-	}
-
-	return fmt.Sprintf("turn:%s:%d", run, turn)
-}
+func (s *State) turnKey(turn int) string { return fmt.Sprintf("turn:%s:%d", s.live().RunID, turn) }

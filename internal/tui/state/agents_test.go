@@ -128,6 +128,9 @@ func TestReduce_AgentCallsReadAsNames(t *testing.T) {
 	assert.Equal(t, "Ada · gpt-6-luna low · Summarize", label("call:c1"))
 	assert.Equal(t, "Ada, subagent-99999999", label("call:c2"))
 	assert.Equal(t, "Ada · and the tests", label("call:c3"))
+	forked, _ := apply(opened(), core.ToolCalled{At: t0, CallID: "c1", Name: "spawn_agent"},
+		engine.AgentUpdated{At: t0, ID: "subagent-1", Nickname: "Rex", State: engine.AgentRunning, CallID: "c1", Forked: true, Task: "Fix it"})
+	assert.Equal(t, "Rex · forked · Fix it", forked.Items[0].Label, "no model: nothing between the name and forked")
 	for _, it := range s.Items {
 		if it.Kind == state.KindAgent {
 			assert.Equal(t, engine.AgentCompleted, it.Detail, "closing a finished agent keeps done")

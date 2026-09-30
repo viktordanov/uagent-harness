@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/viktordanov/uagent/core"
 
 	"github.com/viktordanov/uagent-harness/internal/codereview"
@@ -42,6 +44,8 @@ func TestScreens_Review(t *testing.T) {
 		state.Tick{Now: t0.Add(42 * time.Second)},
 	)
 	golden(t, "review-running", screen(running, ""))
+	started := apply(base(), session.ReviewStarted{At: t0, ID: "r1", Hint: "changes against 'main'"})
+	assert.Contains(t, screen(started, ""), "└ ⠋ thinking", "before its first tool")
 
 	out := codereview.Parse(`{"findings":[
 {"title":"[P1] Return the parse error","body":"` + "`parse`" + ` drops the error, so a bad file loads as empty.","confidence_score":0.8,"priority":1,
