@@ -216,32 +216,19 @@ func (st *Styles) panelLines(s state.State, f Frame) []string {
 }
 
 // statusLine is the compact view's activity line above the composer: the
-// breathing λ and what the agent does, as Codex's "Working (12s • esc to
+// breathing λ and what the run waits on, as Codex's "Working (12s • esc to
 // interrupt)".
 func (st *Styles) statusLine(s state.State, w int) string {
+	wait, live := s.CurrentWait()
 	switch {
 	case s.Status != "":
 		return st.warn.Render(ansi.Truncate(s.Status, w, "…"))
 	case s.SessionID == "":
-		return ansi.Truncate(st.workingLine(s.Now, "Opening the session", time.Time{}), w, "…")
-	case s.Live != nil && s.Live.Reconnect != nil:
-		verb, wait := reconnectText(*s.Live.Reconnect, s.Now)
-
-		return ansi.Truncate(st.breathing(s.Now.UnixMilli())+" "+st.bold.Render(verb)+st.dim.Render(" ("+wait+" • esc to interrupt)"), w, "…")
-	// Streamed text can arrive before the runner's turn event: it is writing.
-	case s.Live != nil && (!s.Live.TurnSince.IsZero() || s.Writing()):
-		verb := "Thinking"
-		if s.Writing() {
-			verb = "Writing"
-		}
-
-		return ansi.Truncate(st.workingLine(s.Now, verb, s.Live.Started), w, "…")
-	case s.Live != nil && s.Live.Tools > 0:
-		return ansi.Truncate(st.workingLine(s.Now, "Running "+plural(s.Live.Tools, "command"), s.Live.Started), w, "…")
-	case s.Live != nil:
-		return ansi.Truncate(st.workingLine(s.Now, "Working", s.Live.Started), w, "…")
+		return ansi.Truncate(st.workingLine(s.Now, state.Wait{What: "Opening the session"}, time.Time{}), w, "…")
+	case live:
+		return ansi.Truncate(st.workingLine(s.Now, wait, s.Live.Started), w, "…")
 	case s.Busy:
-		return ansi.Truncate(st.workingLine(s.Now, "Starting", time.Time{}), w, "…")
+		return ansi.Truncate(st.workingLine(s.Now, state.Wait{What: "Starting"}, time.Time{}), w, "…")
 	}
 
 	return ""
@@ -301,10 +288,8 @@ func (st *Styles) footerLine(s state.State, w int) string {
 	if s.Status != "" {
 		return st.warn.Render(ansi.Truncate(" "+s.Status, w, "…"))
 	}
-	if s.Live != nil && s.Live.Reconnect != nil {
-		verb, wait := reconnectText(*s.Live.Reconnect, s.Now)
-
-		return st.warn.Render(ansi.Truncate(" "+verb+" ("+wait+")", w, "…"))
+	if wait, _ := s.CurrentWait(); wait.Warn {
+		return st.warn.Render(ansi.Truncate(" "+wait.What, w, "…"))
 	}
 	t := s.Totals
 	text := fmt.Sprintf(" %s in (%s cached) · %s out · %s · %s (∥%d)", tokens(t.Tokens.InputTokens), tokens(t.Tokens.CachedInputTokens),

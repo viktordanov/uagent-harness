@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/viktordanov/uagent-harness/internal/engine"
 
@@ -25,6 +26,7 @@ type Approval struct {
 	MCPTool string
 	// Answered hides the choices once the answer is on its way.
 	Answered bool
+	Since    time.Time
 }
 
 // Answer is the user's choice in the approval overlay.
@@ -50,7 +52,7 @@ func (s State) PendingApproval() (Approval, bool) {
 func (s *State) requestApproval(e session.ApprovalRequested) {
 	s.Approvals = append(s.Approvals, Approval{
 		ID: e.ID, Command: e.Command, Justification: e.Justification, Escalation: e.Escalation, Prefix: e.ProposedPrefix,
-		MCPTool: e.MCPTool,
+		MCPTool: e.MCPTool, Since: e.At,
 	})
 	s.Scroll = 0
 }

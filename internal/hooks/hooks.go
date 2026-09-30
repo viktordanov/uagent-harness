@@ -79,6 +79,8 @@ const (
 	OutcomeError   Outcome = "error"
 	// OutcomeSkipped means a project hook that is not trusted yet.
 	OutcomeSkipped Outcome = "skipped"
+	// OutcomeRunning reports a hook as it starts; its result follows.
+	OutcomeRunning Outcome = "running"
 )
 
 // Result is one hook run.
@@ -253,15 +255,11 @@ func (r *Runner) Run(ctx context.Context, in Input) Decision {
 		return d
 	}
 	for _, h := range r.matching(in.Event, in.ToolName) {
-		var res Result
-		if ok, why := r.TrustState(h); ok {
-			res = r.exec(ctx, h, in)
-		} else {
-			res = Result{Hook: h, Outcome: OutcomeSkipped, Reason: why}
-		}
+		ok, why := r.TrustState(h)
+		res := Result{Hook: h, Outcome: OutcomeSkipped, Reason: why}
 		r.mu.Lock()
 		report := r.report
-		if res.Outcome == OutcomeSkipped {
+		if !ok {
 			if r.skipped == nil {
 				r.skipped = map[string]bool{}
 			}
@@ -271,6 +269,12 @@ func (r *Runner) Run(ctx context.Context, in Input) Decision {
 			r.skipped[h.Command] = true
 		}
 		r.mu.Unlock()
+		if ok && report != nil {
+			report(Result{Hook: h, Outcome: OutcomeRunning})
+		}
+		if ok {
+			res = r.exec(ctx, h, in)
+		}
 		if report != nil {
 			report(res)
 		}

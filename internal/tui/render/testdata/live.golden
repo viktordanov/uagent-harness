@@ -14,7 +14,7 @@
   RUN    4s      go test ./... -run Bar
 • I'll patch the fixture while the suite runs.
 
-λ Thinking (8s • esc to interrupt)
+λ Thinking (3s · 8s • esc to interrupt)
   ↳ queued: also update the README
     enter sends now · ↑ edits
 

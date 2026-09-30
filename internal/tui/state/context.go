@@ -33,6 +33,7 @@ func (s *State) noteUsage(e core.ModelResponded) {
 func (s *State) onEngineEvent(ev core.Event) bool {
 	switch e := ev.(type) {
 	case engine.CompactionStarted:
+		s.live().Aside = &Wait{What: "Compacting the context", Since: e.At}
 		if e.Trigger == compaction.TriggerClear {
 			return true // /clear already said so
 		}
@@ -42,17 +43,19 @@ func (s *State) onEngineEvent(ev core.Event) bool {
 		}
 		s.notice(session.LevelInfo, text)
 	case engine.Compacted:
+		s.live().Aside = nil
 		s.onCompacted(e)
 	case engine.Reconnecting:
-		if s.Live != nil {
-			s.Live.Reconnect = &Reconnect{Attempt: e.Attempt, MaxAttempts: e.MaxAttempts, Retry: e.At.Add(e.Delay), Reason: e.Reason}
-		}
+		s.live().Retry = &e
 		s.notice(LevelDebug, fmt.Sprintf("reconnecting, attempt %d of %d: %s", e.Attempt, e.MaxAttempts, e.Reason))
 	case engine.ReconnectEnded:
-		if s.Live != nil {
-			s.Live.Reconnect = nil
-		}
+		s.live().Retry = nil
+	case engine.ModelProgress:
+		s.onProgress(e)
+	case engine.AutoReviewing:
+		s.live().Aside = &Wait{What: "Auto-reviewing the command · " + oneLine(e.Command), Since: e.At}
 	case engine.AutoReviewed:
+		s.live().Aside = nil
 		s.onAutoReviewed(e)
 	case engine.AgentUpdated:
 		s.onAgentUpdated(e)

@@ -97,7 +97,7 @@ func reduce(s State, ev any) (State, []Effect) {
 	return s.onIntent(ev)
 }
 
-func (s *State) onEvent(ev core.Event) {
+func (s *State) onEvent(ev core.Event) { //nolint:gocyclo // a dispatch switch over a closed set; see docs/documentation/architecture.md
 	switch e := ev.(type) {
 	case session.SessionOpened:
 		if e.ID != s.SessionID {
@@ -135,11 +135,14 @@ func (s *State) onEvent(ev core.Event) {
 	case session.SettingsChanged:
 		s.settingsChanged(e)
 	case session.HookRan:
+		s.live().Aside = nil
 		switch e.Outcome {
 		case "ok":
 			s.notice(LevelDebug, fmt.Sprintf("hook %s · %s · %s", e.Event, e.Command, e.Duration.Round(time.Millisecond)))
 		case "blocked":
 			s.notice(session.LevelWarning, fmt.Sprintf("%s hook blocked: %s", e.Event, e.Reason))
+		case "running":
+			s.live().Aside = &Wait{What: "Running " + e.Event + " hook · " + e.Command, Since: e.At}
 		default:
 			s.notice(session.LevelWarning, fmt.Sprintf("%s hook %s: %s", e.Event, e.Outcome, e.Reason))
 		}
@@ -240,10 +243,10 @@ func (s *State) onIntent(ev any) (State, []Effect) { //nolint:gocyclo // a dispa
 		if !s.Busy && !s.ShellRunning() && !s.ReviewRunning() {
 			return *s, nil
 		}
-		if !s.escArmed.IsZero() && s.Now.Sub(s.escArmed) < confirmWindow {
-			s.escArmed, s.Status = time.Time{}, ""
+		if (s.Live != nil && !s.Live.Stopping.IsZero()) || (!s.escArmed.IsZero() && s.Now.Sub(s.escArmed) < confirmWindow) {
+			effects := s.interrupt() // once stopping, one esc forces the stop
 
-			return *s, []Effect{EffInterrupt{}}
+			return *s, effects
 		}
 		s.escArmed, s.Status = s.Now, "press esc again to interrupt"
 

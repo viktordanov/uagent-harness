@@ -21,9 +21,29 @@ func run(t *testing.T, in hooks.Input, hs ...hooks.Hook) (hooks.Decision, []hook
 	r, err := hooks.New(hs, trust, t.TempDir())
 	require.NoError(t, err)
 	var results []hooks.Result
-	r.OnResult(func(res hooks.Result) { results = append(results, res) })
+	r.OnResult(func(res hooks.Result) {
+		if res.Outcome != hooks.OutcomeRunning { // TestRun_ReportsTheStart checks those
+			results = append(results, res)
+		}
+	})
 
 	return r.Run(context.Background(), in), results
+}
+
+// TestRun_ReportsTheStart: a hook that runs is reported as it starts and
+// again when it ends; one that is not trusted does not start.
+func TestRun_ReportsTheStart(t *testing.T) {
+	trust, err := hooks.LoadTrust(filepath.Join(t.TempDir(), "trust.json"))
+	require.NoError(t, err)
+	project := hooks.Hook{Event: hooks.PreToolUse, Command: "true", Source: hooks.SourceProject}
+	r, err := hooks.New([]hooks.Hook{user(hooks.PreToolUse, "true"), project}, trust, t.TempDir())
+	require.NoError(t, err)
+	var outcomes []hooks.Outcome
+	r.OnResult(func(res hooks.Result) { outcomes = append(outcomes, res.Outcome) })
+
+	r.Run(context.Background(), hooks.Input{Event: hooks.PreToolUse, ToolName: "Bash"})
+
+	assert.Equal(t, []hooks.Outcome{hooks.OutcomeRunning, hooks.OutcomeOK, hooks.OutcomeSkipped}, outcomes)
 }
 
 func user(event hooks.Event, command string) hooks.Hook {

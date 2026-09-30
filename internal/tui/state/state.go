@@ -11,6 +11,7 @@ import (
 	"github.com/viktordanov/uagent/core"
 
 	"github.com/viktordanov/uagent-harness/internal/compaction"
+	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/images"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
@@ -31,22 +32,15 @@ type Queued struct {
 
 // Live is the run in progress.
 type Live struct {
-	RunID     string
-	Started   time.Time
-	TurnSince time.Time // zero when the model is not generating
-	Tools     int       // tools running now
-	// Reconnect, when set, is a model request waiting to be sent again
-	// after it failed (engine.Reconnecting).
-	Reconnect *Reconnect
-}
-
-// Reconnect is a model request's next attempt.
-type Reconnect struct {
-	Attempt     int
-	MaxAttempts int
-	// Retry is when the attempt is sent; after it, the attempt is in flight.
-	Retry  time.Time
-	Reason string
+	RunID   string
+	Started time.Time
+	// What the run waits on (wait.go): the model request since Turn, its
+	// latest Progress and Retry, an auto-review, hook, or compaction
+	// aside from it, and since when the user stops the run.
+	Turn, Stopping time.Time
+	Progress       engine.ModelProgress
+	Retry          *engine.Reconnecting
+	Aside          *Wait
 }
 
 // Totals add up the session's finished runs.

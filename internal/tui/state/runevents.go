@@ -1,11 +1,12 @@
 package state
 
 import (
+	"cmp"
 	"fmt"
-	"time"
 
 	"github.com/viktordanov/uagent/core"
 
+	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/images"
 	"github.com/viktordanov/uagent-harness/internal/session"
 )
@@ -37,14 +38,11 @@ func (s *State) onRunEvent(ev core.Event) { //nolint:gocyclo // a dispatch switc
 			s.put(Item{Kind: KindUser, Key: "msg:" + e.ID, Text: images.Display(e.Text), Raw: e.Text, Input: InputDelivered})
 		}
 	case core.TurnStarted:
-		if s.Live != nil {
-			s.Live.TurnSince = e.At
-		}
+		l := s.live()
+		l.Turn, l.Aside = cmp.Or(l.Turn, e.At), nil
 		s.put(Item{Kind: KindTurn, Key: turnKey(s.Live, e.Turn), Turn: e.Turn, Pending: true, Started: e.At})
 	case core.ModelResponded:
-		if s.Live != nil {
-			s.Live.TurnSince, s.Live.Reconnect = time.Time{}, nil
-		}
+		s.onProgress(engine.ModelProgress{Phase: engine.PhaseDone})
 		s.noteUsage(e)
 		s.update(turnKey(s.Live, e.Turn), func(it *Item) {
 			it.Pending, it.In, it.Out, it.Duration = false, e.Usage.InputTokens, e.Usage.OutputTokens, e.Duration
@@ -55,14 +53,9 @@ func (s *State) onRunEvent(ev core.Event) { //nolint:gocyclo // a dispatch switc
 	case core.ToolCalled:
 		s.onToolCalled(e)
 	case core.ToolStarted:
-		if s.Live != nil {
-			s.Live.Tools++
-		}
+		s.live().Aside = nil
 		s.update("call:"+e.CallID, func(it *Item) { it.Tool, it.Started = ToolRunning, e.At })
 	case core.ToolFinished:
-		if s.Live != nil && e.OpID != "" {
-			s.Live.Tools = max(0, s.Live.Tools-1)
-		}
 		state := ToolOK
 		if !e.OK {
 			state = ToolFailed

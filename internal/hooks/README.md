@@ -57,7 +57,7 @@ A subagent fires the subagent hooks only, as in Claude Code. `SessionStart`, `Se
 1. The command runs with `/bin/sh -c` in the workspace, in its own process group, with `UAH_HOOK_EVENT` and `UAH_PROJECT_DIR` added to the environment.
 2. `Input` arrives as JSON on stdin. Its field names are Claude Code's: `hook_event_name`, `session_id`, `cwd`, `transcript_path`, `prompt`, `tool_name`, `tool_input`, `tool_response`, `stop_hook_active`, `trigger`, `source`, `reason`, and, for subagents, `agent_id`, `agent_type`, `agent_transcript_path`, `last_assistant_message`, and `parent_session_id`, plus uah's `run_id`, `model`, and `effort`.
 3. The timeout kills the whole process group. Output past 1 MiB is dropped.
-4. Every result goes to the function set with `OnResult`; the session reports it as a `HookRan` event, shown in the TUI's detailed view, while blocks and failures show in both views.
+4. Every result goes to the function set with `OnResult`, and a hook that runs is reported first with `OutcomeRunning`, so the TUI can show what it waits on; the session reports it as a `HookRan` event, shown in the TUI's detailed view, while blocks and failures show in both views.
 
 The session runs its hooks on one worker goroutine, in order, so a slow hook never blocks the session loop. PreToolUse hooks run on the coordinator's goroutine, as Claude Code's do, so a slow hook delays the agent up to its timeout.
 <!-- /memoria:section -->

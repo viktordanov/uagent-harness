@@ -31,7 +31,7 @@ func Commands() []Command {
 		{Name: "fast", Help: "priority processing (needs the embedded engine)", WhileBusy: true, run: cmdFast},
 		{Name: "resume", Args: "[id]", Help: "open the session picker, or resume a session by ID prefix", run: cmdResume},
 		{Name: "new", Help: "start a new session", run: func(*State, string) []Effect { return []Effect{EffOpenSession{}} }},
-		{Name: "stop", Help: "interrupt the live run; queued messages stay", WhileBusy: true, run: func(*State, string) []Effect { return []Effect{EffInterrupt{}} }},
+		{Name: "stop", Help: "interrupt the live run; queued messages stay", WhileBusy: true, run: func(s *State, _ string) []Effect { return s.interrupt() }},
 		{Name: "clear", Help: "start the agent fresh in this session; the session keeps its history (embedded engine)", WhileBusy: true, run: cmdClear},
 		{Name: "rewind", Help: "go back to an earlier message and edit it; what followed leaves the context (esc esc; embedded engine)", run: cmdRewind},
 		{Name: "compact", Args: "[focus]", Help: "summarize the context to free it; your messages stay as written, and words after it steer the summary (embedded engine)", WhileBusy: true, run: cmdCompact},
@@ -153,6 +153,9 @@ func cmdStatus(s *State, _ string) []Effect {
 	}
 	s.notice(session.LevelInfo, fmt.Sprintf("%d runs · %d turns · %d tool calls (max %d parallel) · %d in / %d out tokens · tools overlapped the model %s", t.Runs, t.Turns, t.ToolCalls, t.MaxParallel, t.Tokens.InputTokens, t.Tokens.OutputTokens, t.Overlap.Round(100_000_000)))
 	s.notice(session.LevelInfo, "instructions: "+files)
+	if w, ok := s.CurrentWait(); ok {
+		s.notice(session.LevelInfo, joinDetail("now: "+w.What, s.Live.Progress.Phase))
+	}
 
 	return []Effect{EffLoadActivity{}, EffLoadUsage{Reason: UsageStatus}}
 }

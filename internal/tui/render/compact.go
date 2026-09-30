@@ -1,6 +1,7 @@
 package render
 
 import (
+	"cmp"
 	"fmt"
 	"slices"
 	"strings"
@@ -223,27 +224,20 @@ func (st *Styles) banner(s state.State, version string, w int) []string {
 	return append(out, st.dim.Render("╰"+strings.Repeat("─", inner+2)+"╯"), "")
 }
 
-// workingLine is the breathing λ and "Working (12s • esc to interrupt)";
-// without a run (since is zero) only the λ and the verb.
-func (st *Styles) workingLine(now time.Time, verb string, since time.Time) string {
-	line := st.breathing(now.UnixMilli()) + " " + st.bold.Render(verb)
-	if since.IsZero() {
+// workingLine is the breathing λ, what the run waits on, and how long it
+// has waited and run: "Writing a patch · foo.go · 4.2 kB (12s · 3m 04s •
+// esc to interrupt)". Without a run (run is zero) only the λ and the words.
+func (st *Styles) workingLine(now time.Time, w state.Wait, run time.Time) string {
+	line := st.breathing(now.UnixMilli()) + " " + st.bold.Render(w.What)
+	if run.IsZero() {
 		return line
 	}
-
-	return line + st.dim.Render(fmt.Sprintf(" (%s • esc to interrupt)", elapsed(now.Sub(since))))
-}
-
-// reconnectText is a model request's retry, as "Reconnecting, attempt 3
-// of 10", and how long until it is sent, as "retrying in 8s", or
-// "connecting" once it is.
-func reconnectText(r state.Reconnect, now time.Time) (verb, wait string) {
-	verb = fmt.Sprintf("Reconnecting, attempt %d of %d", r.Attempt, r.MaxAttempts)
-	if left := r.Retry.Sub(now); left > 0 {
-		return verb, "retrying in " + elapsed((left + time.Second - 1).Truncate(time.Second)) // rounded up
+	times := elapsed(now.Sub(run))
+	if w.Since.After(run) {
+		times = elapsed(now.Sub(w.Since)) + " · " + times
 	}
 
-	return verb, "connecting"
+	return line + st.dim.Render(" ("+times+" • "+cmp.Or(w.Hint, "esc to interrupt")+")")
 }
 
 // elapsed is Codex's short duration: 12s, 1m 12s, 1h 02m.

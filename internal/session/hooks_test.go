@@ -121,7 +121,7 @@ func TestHooks_SessionStartContextAndPostToolUse(t *testing.T) {
 	h.until(func(e core.Event) bool {
 		r, ok := e.(session.HookRan)
 
-		return ok && r.Event == "PostToolUse"
+		return ok && r.Event == "PostToolUse" && r.Outcome != "running"
 	})
 	data, err := os.ReadFile(out)
 	require.NoError(t, err)
