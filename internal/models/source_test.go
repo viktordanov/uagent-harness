@@ -65,14 +65,14 @@ func TestSources(t *testing.T) {
 		"openai-codex: the ChatGPT backend, as Codex asks it": {
 			provider: models.ProviderCodex, path: "/models",
 			body: `{"models":[{"slug":"gpt-6-luna","display_name":"GPT-6-Luna","visibility":"list","priority":3,"context_window":272000,
-				"max_context_window":872000,"default_reasoning_level":"medium","supported_reasoning_levels":[{"effort":"low"},{"effort":"medium"}],
+				"max_context_window":872000,"default_reasoning_level":"medium","supported_reasoning_levels":[{"effort":"low","description":"Fast responses"},{"effort":"medium"}],
 				"service_tiers":[{"id":"priority","name":"Fast"}],"minimal_client_version":"0.155.0","available_in_plans":["plus"]},
 				{"slug":"gpt-6-sol","visibility":"hide","priority":2,"additional_speed_tiers":["fast"],"max_context_window":400000}]}`,
 			want: []models.Model{
 				{ID: "gpt-6-sol", ContextWindow: 400000, MaxContextWindow: 400000, ServiceTiers: []string{"priority"}, Priority: 2, Hidden: true},
 				{
 					ID: "gpt-6-luna", DisplayName: "GPT-6-Luna", ContextWindow: 272000, MaxContextWindow: 872000, ReasoningLevels: []string{"low", "medium"},
-					DefaultEffort: "medium", ServiceTiers: []string{"priority"}, Priority: 3, Plans: []string{"plus"}, MinClientVersion: "0.155.0",
+					ReasoningHelp: map[string]string{"low": "Fast responses"}, DefaultEffort: "medium", ServiceTiers: []string{"priority"}, Priority: 3, Plans: []string{"plus"}, MinClientVersion: "0.155.0",
 				},
 			},
 			headers: map[string]string{"Authorization": "Bearer x.", "ChatGPT-Account-ID": "acct-test", "Originator": "unreal-agent", "User-Agent": "unreal-agent"},

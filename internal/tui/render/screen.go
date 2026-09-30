@@ -160,14 +160,18 @@ func (st *Styles) headerLine(s state.State, w int) string {
 	return markYolo(left+strings.Repeat(" ", gap)+right, st.header, st.yoloChip)
 }
 
-// panelLines shows a pending approval, the /config panel, the suggestion
-// menu while typing a command or an "@" mention, or else the queue.
+// panelLines shows a pending approval, the /config panel, the /model
+// picker, the suggestion menu while typing a command or an "@" mention, or
+// else the queue.
 func (st *Styles) panelLines(s state.State, f Frame) []string {
 	if a, ok := s.PendingApproval(); ok {
 		return st.approvalLines(a, f.Width)
 	}
 	if s.Config != nil {
 		return st.configLines(s, f.Width)
+	}
+	if s.ModelPicker != nil {
+		return st.modelPickerLines(s, f.Width)
 	}
 	if items := s.Suggestions(f.Draft); len(items) > 0 {
 		var out []string

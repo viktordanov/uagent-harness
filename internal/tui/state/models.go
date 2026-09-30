@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/viktordanov/uagent-harness/internal/models"
-	"github.com/viktordanov/uagent-harness/internal/session"
 )
 
 type (
@@ -53,7 +52,7 @@ func (s State) modelSuggestions(arg string) []Suggestion {
 		if m.ID == arg {
 			continue
 		}
-		sug := Suggestion{Label: m.ID, Help: modelHelp(m), Draft: "/model " + m.ID}
+		sug := Suggestion{Label: m.ID, Help: ModelHelp(m), Draft: "/model " + m.ID}
 		switch {
 		case strings.HasPrefix(m.ID, arg):
 			first = append(first, sug)
@@ -65,8 +64,9 @@ func (s State) modelSuggestions(arg string) []Suggestion {
 	return append(first, rest...)
 }
 
-// modelHelp is a model's menu help: its name, window, and fast mode.
-func modelHelp(m models.Model) string {
+// ModelHelp is a model's help in the menu and the /model picker: its name,
+// window, and fast mode.
+func ModelHelp(m models.Model) string {
 	var parts []string
 	if m.DisplayName != "" && m.DisplayName != m.ID {
 		parts = append(parts, m.DisplayName)
@@ -95,16 +95,9 @@ func (s State) checkModel(id string) error {
 // efforts are the levels the current model accepts: the loaded list's, else
 // every level uah knows.
 func (s State) efforts() []string {
-	c, ok := s.catalog()
-	if !ok {
-		return session.Efforts
-	}
-	m, ok := c.Metadata(s.Settings.Model)
-	if !ok || len(m.ReasoningLevels) == 0 {
-		return session.Efforts
-	}
+	levels, _, _ := s.modelLevels(s.Settings.Model)
 
-	return m.ReasoningLevels
+	return levels
 }
 
 // checkEffort rejects a level the model's catalog entry does not list, such

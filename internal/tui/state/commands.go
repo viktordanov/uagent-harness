@@ -16,13 +16,17 @@ type Command struct {
 	Help    string
 	// WhileBusy allows the command while a run is live.
 	WhileBusy bool
-	run       func(s *State, args string) []Effect
+	// Bare runs the command when enter picks it from the menu with no
+	// argument typed, as /model does to open its picker; tab still adds
+	// the space for one.
+	Bare bool
+	run  func(s *State, args string) []Effect
 }
 
 // Commands lists every slash command in the order /help shows them.
 func Commands() []Command {
 	return []Command{
-		{Name: "model", Args: "<id>", Help: "use another model", WhileBusy: true, run: cmdModel},
+		{Name: "model", Args: "[id] [effort]", Help: "choose the model, then its effort; /model <id> <effort> sets both at once", WhileBusy: true, Bare: true, run: cmdModel},
 		{Name: "effort", Args: "<level>", Help: "set the thinking level: " + strings.Join(session.Efforts, ", "), WhileBusy: true, run: cmdEffort},
 		{Name: "fast", Help: "priority processing (needs the embedded engine)", WhileBusy: true, run: cmdFast},
 		{Name: "resume", Args: "[id]", Help: "open the session picker, or resume a session by ID prefix", run: cmdResume},
@@ -89,28 +93,6 @@ func (s *State) command(text string) (State, []Effect) {
 	}
 
 	return *s, cmd.run(s, args)
-}
-
-func cmdModel(s *State, args string) []Effect {
-	if args == "" {
-		s.notice(session.LevelInfo, fmt.Sprintf("model: %s/%s (change it with /model <id>)", s.Settings.Provider, s.Settings.Model))
-
-		return nil
-	}
-	next := s.Settings
-	next.Model = args
-	if err := next.Validate(); err != nil {
-		s.notice(session.LevelError, err.Error())
-
-		return nil
-	}
-	if err := s.checkModel(args); err != nil {
-		s.notice(session.LevelError, err.Error())
-
-		return nil
-	}
-
-	return []Effect{EffSetSettings{Settings: next}}
 }
 
 func cmdEffort(s *State, args string) []Effect {

@@ -36,7 +36,8 @@ type codexModel struct {
 	MaxContextWindow int64  `json:"max_context_window"`
 	DefaultReasoning string `json:"default_reasoning_level"`
 	SupportedLevels  []struct {
-		Effort string `json:"effort"`
+		Effort      string `json:"effort"`
+		Description string `json:"description"`
 	} `json:"supported_reasoning_levels"`
 	AdditionalSpeedTiers []string `json:"additional_speed_tiers"`
 	ServiceTiers         []struct {
@@ -62,6 +63,12 @@ func (c codexModel) model() Model {
 	}
 	for _, l := range c.SupportedLevels {
 		m.ReasoningLevels = append(m.ReasoningLevels, l.Effort)
+		if l.Description != "" {
+			if m.ReasoningHelp == nil {
+				m.ReasoningHelp = map[string]string{}
+			}
+			m.ReasoningHelp[l.Effort] = l.Description
+		}
 	}
 	for _, t := range c.ServiceTiers {
 		m.ServiceTiers = append(m.ServiceTiers, t.ID)

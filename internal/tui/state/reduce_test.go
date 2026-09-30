@@ -263,7 +263,7 @@ func TestReduce_Commands(t *testing.T) {
 		effects []state.Effect
 		notice  string
 	}{
-		"model":             {from: opened(), text: "/model gpt-6-astra", effects: []state.Effect{state.EffSetSettings{Settings: withModel("gpt-6-astra")}}},
+		"model and effort":  {from: opened(), text: "/model gpt-6-astra high", effects: []state.Effect{state.EffSetSettings{Settings: withModel("gpt-6-astra")}}},
 		"bad model":         {from: opened(), text: "/model -x", notice: "starts with a dash"},
 		"effort":            {from: busy, text: "/effort low", effects: []state.Effect{state.EffSetSettings{Settings: withEffort("low")}}},
 		"bad effort":        {from: opened(), text: "/effort huge", notice: "effort: high"},

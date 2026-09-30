@@ -5,7 +5,7 @@
 uah asks the provider which models the login can use, as Codex does: the list comes from the provider at runtime, is cached for five minutes with its ETag, and falls back to Codex's bundled catalog only when the provider cannot be asked. A new model therefore needs no uah release, and a mistyped model is refused before a run starts, with the nearest model names.
 <!-- /memoria:export -->
 
-This package holds the catalog types, one source per provider, the file cache, and the did-you-mean suggestions. The `/model` menu, the `/model` check, the context window, `uah doctor`, `uah models`, and `-m` completion read it. The facts about Codex were checked against Codex `rust-v0.156.1`, the bundled catalog against `rust-v0.159.1`, and the facts about the runner against unreal-agent v0.1.1.
+This package holds the catalog types, one source per provider, the file cache, and the did-you-mean suggestions. The `/model` menu and picker, the `/model` check, the context window, `uah doctor`, `uah models`, and `-m` completion read it. The facts about Codex were checked against Codex `rust-v0.156.1`, the bundled catalog against `rust-v0.159.1`, and the facts about the runner against unreal-agent v0.1.1.
 
 1. [Models and catalogs](#models-and-catalogs)
 2. [Sources](#sources)
@@ -13,7 +13,7 @@ This package holds the catalog types, one source per provider, the file cache, a
 4. [Checking a model](#checking-a-model)
 5. [Extension points](#extension-points)
 
-A `Model` keeps the Codex fields that uah uses: the ID and display name, the context window and its maximum, the reasoning levels and default effort, the service tiers (`priority` is uah's `/fast`), the priority order, whether it is hidden, the ChatGPT plans, and the minimal Codex client version. A `Catalog` is one provider's list and its `Origin`:
+A `Model` keeps the Codex fields that uah uses: the ID and display name, the context window and its maximum, the reasoning levels with their descriptions and the default effort, the service tiers (`priority` is uah's `/fast`), the priority order, whether it is hidden, the ChatGPT plans, and the minimal Codex client version. A `Catalog` is one provider's list and its `Origin`:
 
 | Origin | Meaning | Can reject a model |
 | --- | --- | --- |

@@ -124,6 +124,8 @@ type State struct {
 	View *AgentView
 	// Config, when set, is the /config panel (see config.go).
 	Config *ConfigPanel
+	// ModelPicker, when set, is the /model panel (see modelpicker.go).
+	ModelPicker *ModelPicker
 	// Mouse reports the mouse to the TUI, so the wheel scrolls and a drag
 	// selects transcript text.
 	Mouse bool

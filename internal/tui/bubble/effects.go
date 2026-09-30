@@ -6,6 +6,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/viktordanov/uagent-harness/internal/models"
 	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/internal/tui/state"
 )
@@ -107,8 +108,10 @@ func (m Model) run(e state.Effect) tea.Cmd { //nolint:gocyclo // a dispatch swit
 	case state.EffLoadUsage:
 		return m.loadUsage(e)
 	case state.EffLoadModels:
-		if m.deps.Models == nil {
-			return nil
+		if m.deps.Models == nil { // no list, so /model says so instead of loading forever
+			return func() tea.Msg {
+				return state.ModelsLoaded{Catalog: models.Catalog{Provider: e.Provider, Origin: models.OriginNone}}
+			}
 		}
 
 		return func() tea.Msg { return state.ModelsLoaded{Catalog: m.deps.Models(m.ctx, e.Provider)} }

@@ -1,0 +1,24 @@
+
+
+
+
+
+
+
+
+╭────────────────────────────────────────────────╮
+│ λ uah                                          │
+│                                                │
+│ model:     gpt-6-sol high   /model to change   │
+│ directory: /workspace/proj                     │
+╰────────────────────────────────────────────────╯
+
+ Select model · openai-codex
+ › gpt-6-sol (current)  GPT-6-Sol · 272k context · /fast
+   gpt-6-luna           400k context
+   ↑↓ choose · enter choose its effort · esc close
+
+
+λ
+
+ gpt-6-sol high · workspace mode · /workspace/proj                      ctrl+t details · / commands

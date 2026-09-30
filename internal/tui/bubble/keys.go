@@ -32,6 +32,9 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) { //nolint:gocycl
 	if m.st.Config != nil {
 		return m.onConfigKey(msg)
 	}
+	if m.st.ModelPicker != nil {
+		return m.onModelPickerKey(msg)
+	}
 	if m.st.Backtrack != nil {
 		if intent := backtrackIntent(msg.String()); intent != nil {
 			return m.dispatch(intent)
@@ -327,6 +330,23 @@ func (m Model) onConfigKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	}
 	if editing && msg.Text != "" {
 		return m.dispatch(state.ConfigType{Text: msg.Text})
+	}
+
+	return m, nil
+}
+
+// onModelPickerKey drives the /model picker: ↑↓ choose, enter picks the
+// model or applies the effort, esc goes back to the models or closes.
+func (m Model) onModelPickerKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case keyUp, keyCtrlP:
+		return m.dispatch(state.ModelPickMove{Delta: -1})
+	case keyDown, keyCtrlN:
+		return m.dispatch(state.ModelPickMove{Delta: 1})
+	case keyEnter:
+		return m.dispatch(state.ModelPickEnter{})
+	case keyEsc, keyCtrlC:
+		return m.dispatch(state.ModelPickEsc{})
 	}
 
 	return m, nil

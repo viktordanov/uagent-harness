@@ -1,6 +1,7 @@
 package state_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -66,8 +67,9 @@ func TestCommand_ModelChecksTheList(t *testing.T) {
 			s, _ := apply(opened(), state.ModelsLoaded{Catalog: codexCatalog(c.origin)})
 			s, effects := apply(s, state.Submit{Text: c.text})
 			if c.applies {
-				require.Len(t, effects, 1)
-				assert.IsType(t, state.EffSetSettings{}, effects[0])
+				assert.Empty(t, effects)
+				require.NotNil(t, s.ModelPicker, "asks for the effort")
+				assert.Equal(t, strings.Fields(c.text)[1], s.ModelPicker.Model)
 
 				return
 			}
@@ -77,6 +79,9 @@ func TestCommand_ModelChecksTheList(t *testing.T) {
 			assert.Equal(t, c.notice, last.Text)
 		})
 	}
-	_, effects := apply(opened(), state.Submit{Text: "/model gpt-luna-6"})
-	assert.Len(t, effects, 1, "no list: passes through as before")
+	s, effects := apply(opened(), state.Submit{Text: "/model gpt-luna-6"})
+	assert.Equal(t, []state.Effect{state.EffLoadModels{Provider: "openai-codex"}}, effects, "no list: loads it first")
+	s, _ = apply(s, state.ModelsLoaded{Catalog: codexCatalog(models.OriginLive)})
+	assert.Nil(t, s.ModelPicker, "then checks the model against it")
+	assert.Contains(t, s.Items[len(s.Items)-1].Text, "did you mean gpt-6-luna?")
 }

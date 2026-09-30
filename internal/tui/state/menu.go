@@ -178,6 +178,8 @@ func (s *State) onMenu(ev any) (effects []Effect, ok bool) {
 		}
 	case ModelsLoaded:
 		s.Menu.Models, s.Menu.modelsLoading = &e.Catalog, false
+
+		return s.modelsArrived(), true
 	case MenuMove:
 		if n := min(len(s.Suggestions(e.Draft)), menuSize); n > 0 {
 			s.Menu.Index = ((s.Menu.Index+e.Delta)%n + n) % n
@@ -195,22 +197,7 @@ func (s *State) onMenu(ev any) (effects []Effect, ok bool) {
 
 		return s.setDraft(picked.Draft), true
 	case MenuEnter:
-		items := s.Suggestions(e.Draft)
-		if len(items) == 0 {
-			return nil, false // an ordinary enter
-		}
-		picked := items[min(s.Menu.Index, len(items)-1)]
-		s.Menu.Index = 0
-		if effects, ok := s.acceptImage(e.Draft, picked); ok {
-			return effects, true
-		}
-		if strings.HasSuffix(picked.Draft, " ") {
-			return s.setDraft(picked.Draft), true
-		}
-		next, effects := s.command(picked.Draft)
-		*s = next
-
-		return append([]Effect{EffSetDraft{Text: ""}}, effects...), true
+		return s.menuEnter(e.Draft)
 	case MenuClose:
 		s.Menu.Closed = e.Draft
 	default:
@@ -218,6 +205,27 @@ func (s *State) onMenu(ev any) (effects []Effect, ok bool) {
 	}
 
 	return nil, true
+}
+
+// menuEnter runs the selected command, or accepts the selection when it
+// still needs an argument or is a file; ok is false with no menu.
+func (s *State) menuEnter(draft string) (effects []Effect, ok bool) {
+	items := s.Suggestions(draft)
+	if len(items) == 0 {
+		return nil, false // an ordinary enter
+	}
+	picked := items[min(s.Menu.Index, len(items)-1)]
+	s.Menu.Index = 0
+	if effects, ok := s.acceptImage(draft, picked); ok {
+		return effects, true
+	}
+	if strings.HasSuffix(picked.Draft, " ") && !bare(picked.Draft) {
+		return s.setDraft(picked.Draft), true
+	}
+	next, effects := s.command(picked.Draft)
+	*s = next
+
+	return append([]Effect{EffSetDraft{Text: ""}}, effects...), true
 }
 
 // setDraft puts an accepted suggestion in the composer and, for /model or
@@ -232,6 +240,15 @@ func (s *State) setDraft(draft string) []Effect {
 	}
 
 	return effects
+}
+
+// bare reports whether a menu entry is a command that enter runs without
+// an argument (Command.Bare).
+func bare(draft string) bool {
+	name, arg, _ := strings.Cut(strings.TrimPrefix(draft, "/"), " ")
+	cmd, ok := FindCommand(name)
+
+	return ok && cmd.Bare && arg == "" && strings.HasPrefix(draft, "/")
 }
 
 // MenuOpen reports whether the draft shows a menu, so the shell sends the

@@ -26,6 +26,8 @@ type Model struct {
 	MaxContextWindow int64 `json:"max_context_window,omitempty"`
 	// ReasoningLevels are the efforts the model accepts, lowest first.
 	ReasoningLevels []string `json:"reasoning_levels,omitempty"`
+	// ReasoningHelp describes each level, when the provider does.
+	ReasoningHelp map[string]string `json:"reasoning_help,omitempty"`
 	// DefaultEffort is the effort used when none is chosen.
 	DefaultEffort string `json:"default_effort,omitempty"`
 	// ServiceTiers are the service tier IDs the model accepts, e.g. "priority".
