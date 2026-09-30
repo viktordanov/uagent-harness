@@ -14,7 +14,7 @@ import (
 
 // printExit is what uah prints when the TUI quits, as Codex does
 // (codex-rs/tui/src/app/exit_summary.rs): the session's token usage and the
-// command that continues it. It uses the TUI's theme: labels dim, numbers
+// command that continues it, after how many queued messages it kept. It uses the TUI's theme: labels dim, numbers
 // in the text color, and the command in the accent, on its own line so it
 // copies whole. A writer that is not a terminal, or NO_COLOR, gets plain
 // text.
@@ -40,6 +40,9 @@ func printExit(w io.Writer, e bubble.Exit) {
 			line += dim.Render(" (reasoning " + thousands(t.ReasoningTokens) + ")")
 		}
 		fmt.Fprintln(out, line)
+	}
+	if e.Queued > 0 {
+		fmt.Fprintln(out, dim.Render("Queued messages kept in the session:")+" "+strconv.Itoa(e.Queued))
 	}
 	fmt.Fprintln(out, dim.Render("To continue this session, run:"))
 	fmt.Fprintln(out, accent.Render("uah resume "+e.SessionID))

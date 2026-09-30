@@ -66,6 +66,8 @@ type Sidecar struct {
 	// LastSequence is the Sequence of the last item in the session file
 	// when the last turn ended: it changes only when the session does.
 	LastSequence uint64 `json:"last_sequence,omitempty"`
+	// Queued are the unsent messages, queued again on resume (saveQueue).
+	Queued []string `json:"queued,omitempty"`
 }
 
 // RemoveSidecar deletes a session's sidecar, for a session that never ran.

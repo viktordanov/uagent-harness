@@ -6,7 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"time"
+
+	"github.com/google/uuid"
+
+	"github.com/viktordanov/uagent/core"
 
 	"github.com/viktordanov/uagent-harness/internal/approval"
 )
@@ -111,5 +116,41 @@ func (s *Session) saveSettings(settings Settings) {
 	}
 	if err := saveSettings(s.sessionsDir, s.id, settings); err != nil {
 		s.emit(Notice{At: time.Now(), Level: LevelWarning, Message: err.Error()})
+	}
+}
+
+// saveQueue keeps the unsent messages (queued, steers waiting for the run,
+// waiting for hooks) in the sidecar when they change; the loop calls it.
+func (s *Session) saveQueue() {
+	var texts []string
+	for _, in := range slices.Concat(s.queue, s.startSteers) {
+		texts = append(texts, in.Text)
+	}
+	for _, p := range s.hooks.checking {
+		texts = append(texts, p.input.Text)
+	}
+	if s.sessionsDir == "" || slices.Equal(texts, s.savedQueue) {
+		return
+	}
+	s.savedQueue = texts
+	s.warnIf(updateSidecar(s.sessionsDir, s.id, func(sc *Sidecar) bool {
+		sc.Queued = texts
+
+		return true
+	}))
+}
+
+// restoreQueue queues again the messages the session kept when it closed.
+// They wait, as after an interrupt, for the next message or SteerQueued.
+func (s *Session) restoreQueue() {
+	sc, _, err := ReadSidecar(s.sessionsDir, s.id)
+	s.warnIf(err)
+	for _, text := range sc.Queued {
+		in := core.UserInput{ID: uuid.NewString(), Text: text}
+		s.queue = append(s.queue, in)
+		s.emit(InputQueued{At: time.Now(), Input: in})
+	}
+	if s.savedQueue = sc.Queued; len(sc.Queued) > 0 {
+		s.emit(Idle{At: time.Now()})
 	}
 }

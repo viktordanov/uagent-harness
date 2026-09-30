@@ -137,8 +137,9 @@ type Session struct {
 	// message yet; the first run records it.
 	firstPromptPending bool
 	// afterTool marks the queued SendAfterTool messages; modelBusy, a model request under way.
-	afterTool map[string]bool
-	modelBusy bool
+	afterTool  map[string]bool
+	modelBusy  bool
+	savedQueue []string // what the sidecar keeps as Queued
 }
 
 // Open starts a session. Its first event is SessionOpened.
@@ -180,6 +181,7 @@ func Open(ctx context.Context, eng engine.Engine, opts Options) (*Session, error
 		}
 		s.saveSettings(opts.Settings)
 		s.noteOpened(opts.FirstPrompt)
+		s.restoreQueue()
 	}
 	for _, n := range opts.Notices {
 		s.out <- Notice{At: time.Now(), Level: LevelWarning, Message: n}

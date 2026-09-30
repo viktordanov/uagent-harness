@@ -119,9 +119,7 @@ func (s *Session) onEnded(m evEnded) bool {
 		s.emit(Notice{At: time.Now(), Level: LevelError, Message: m.err.Error()})
 	}
 	userStopped := s.state == StateStopping && !s.restartAfterStop
-	if s.closeReply == nil {
-		s.requeueUnread(userStopped)
-	}
+	s.requeueUnread(userStopped && s.closeReply == nil) // a close keeps them queued too
 	s.live, s.modelBusy = nil, false
 	clear(s.afterTool) // they go out with the next run, or stay queued
 	if len(s.sent) > 0 {

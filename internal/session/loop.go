@@ -84,6 +84,7 @@ func (s *Session) loop() {
 	if s.hooks.jobs != nil {
 		defer close(s.hooks.jobs)
 	}
+	defer s.saveQueue() // what a close left queued
 	for msg := range s.in {
 		switch m := msg.(type) {
 		case request:
@@ -131,6 +132,7 @@ func (s *Session) loop() {
 		case cmdAskGone:
 			s.answer(m.id, approval.Decline)
 		}
+		s.saveQueue()
 	}
 }
 

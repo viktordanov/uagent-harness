@@ -15,6 +15,7 @@ type Exit struct {
 	// brings something back; an empty new session is not worth naming.
 	Resumable bool
 	Tokens    core.Tokens
+	Queued    int // messages still queued, which the session keeps
 	// Theme is the TUI's theme, so the summary uses its colors.
 	Theme render.Theme
 }
@@ -25,6 +26,7 @@ func (m Model) Exit() Exit {
 		SessionID: m.st.SessionID,
 		Resumable: m.st.SessionID != "" && (m.st.Totals.Runs > 0 || m.st.Live != nil),
 		Tokens:    m.st.Totals.Tokens,
+		Queued:    len(m.st.Queue),
 		Theme:     m.theme,
 	}
 }

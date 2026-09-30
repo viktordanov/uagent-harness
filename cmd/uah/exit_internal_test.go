@@ -24,6 +24,10 @@ func TestPrintExit(t *testing.T) {
 	assert.Equal(t, "To continue this session, run:\nuah resume 3f2a\n", out.String(), "no usage line without tokens")
 
 	out.Reset()
+	printExit(&out, bubble.Exit{SessionID: "3f2a", Resumable: true, Queued: 2})
+	assert.Equal(t, "Queued messages kept in the session: 2\nTo continue this session, run:\nuah resume 3f2a\n", out.String())
+
+	out.Reset()
 	printExit(&out, bubble.Exit{SessionID: "3f2a"})
 	assert.Empty(t, out.String(), "a session that never ran is not worth resuming")
 }
