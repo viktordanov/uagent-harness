@@ -61,6 +61,9 @@ type Deps struct {
 	// Title shows idle, working, or waiting for an approval in the
 	// terminal's title; off, uah leaves the title alone.
 	Title bool
+	// SteerKey picks the send-now key ([tui] steer_key); auto follows the
+	// terminal's answer to the keyboard enhancement query.
+	SteerKey state.SteerKey
 	// CopyText writes text to the system clipboard with its own tool, next
 	// to OSC 52 (optional; internal/images/clipboard.WriteText).
 	CopyText func(ctx context.Context, text string) error
@@ -146,6 +149,7 @@ func New(ctx context.Context, deps Deps) Model {
 	st := state.New(deps.Now())
 	st.Details, st.Mouse, st.Title, st.Windows = deps.Details, deps.Mouse, deps.Title, deps.Windows
 	st.Home, _ = os.UserHomeDir()
+	st.Keys.Steer = deps.SteerKey
 
 	m := Model{
 		ctx: ctx, deps: deps, st: st,
@@ -191,6 +195,20 @@ func (m Model) Init() tea.Cmd {
 	return tea.Batch(tea.RequestBackgroundColor, m.run(state.EffLoadPrompts{}), m.open(m.deps.SessionID))
 }
 
+// onTerminalReport takes the terminal's answers to Bubble Tea's startup
+// queries: its background color, and whether it tells ctrl+enter from
+// enter (no answer at all, as from tmux, keeps the plain-key bindings).
+func (m Model) onTerminalReport(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.BackgroundColorMsg:
+		return m.onBackground(msg), nil
+	case tea.KeyboardEnhancementsMsg:
+		return m.dispatch(state.KeyboardReported{Disambiguates: msg.SupportsKeyDisambiguation()})
+	}
+
+	return m, nil
+}
+
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -198,8 +216,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.resizeComposer()
 
 		return m, nil
-	case tea.BackgroundColorMsg:
-		return m.onBackground(msg), nil
+	case tea.BackgroundColorMsg, tea.KeyboardEnhancementsMsg:
+		return m.onTerminalReport(msg)
 	case tea.MouseWheelMsg:
 		return m.onWheel(msg)
 	case tea.MouseClickMsg, tea.MouseMotionMsg, tea.MouseReleaseMsg:

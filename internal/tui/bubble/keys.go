@@ -19,9 +19,10 @@ const (
 	keyBackspace = "backspace"
 )
 
-// onKey maps keys to intents. The keys never change meaning: Enter sends
-// (queueing while the agent works), Ctrl+Enter sends now (on an empty
-// composer, the queued messages), Shift+Enter adds a line.
+// onKey maps keys to intents. Enter, tab, and ctrl+enter follow the
+// terminal (state.SendIntent): where it tells ctrl+enter from enter, enter
+// queues while the agent works and ctrl+enter sends now; elsewhere enter
+// sends now and tab queues. Shift+Enter and ctrl+j add a line.
 func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) { //nolint:gocyclo // a dispatch switch over a closed set; see docs/documentation/architecture.md
 	if m.st.Mode == state.ModePicker {
 		return m.onPickerKey(msg)
@@ -53,20 +54,18 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) { //nolint:gocycl
 		return m.dispatch(intent)
 	}
 	switch msg.String() {
-	case keyEnter:
-		if trimmed(draft) == "" {
+	case keyEnter, state.KeyCtrlEnter, state.KeyAltEnter, state.KeyTab:
+		intent := m.st.SendIntent(msg.String(), draft)
+		if intent == nil && msg.String() != state.KeyTab {
 			return m, nil
 		}
-		m.composer.Reset()
+		if intent != nil {
+			if trimmed(draft) != "" {
+				m.composer.Reset()
+			}
 
-		return m.dispatch(state.Submit{Text: draft})
-	case "ctrl+enter", "alt+enter":
-		if trimmed(draft) == "" {
-			return m.dispatch(state.Steer{}) // sends the queue now, if any
+			return m.dispatch(intent)
 		}
-		m.composer.Reset()
-
-		return m.dispatch(state.Steer{Text: draft})
 	case keyEsc:
 		return m.dispatch(state.Esc{Empty: draft == ""})
 	case keyCtrlC:

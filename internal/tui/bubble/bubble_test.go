@@ -250,6 +250,7 @@ func TestTUI_QueueInterruptAndEdit(t *testing.T) {
 	t.Setenv("FAKERUNNER_HANG", "1") // the run keeps a tool running until interrupted
 	deps.Prompt = "start the long job"
 	d := start(t, deps)
+	d.send(enhanced) // enter queues
 	d.waitFor("esc to interrupt")
 	d.waitFor("sleep 300")
 

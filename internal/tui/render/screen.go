@@ -194,7 +194,7 @@ func (st *Styles) panelLines(s state.State, f Frame) []string {
 	}
 	var out []string
 	if s.Details {
-		out = append(out, st.dim.Render(ansi.Truncate("queued · sent when the agent is ready · ctrl+enter sends now · ↑ edits the last", f.Width, "…")))
+		out = append(out, st.dim.Render(ansi.Truncate("queued · sent when the agent is ready · "+s.Keys.SendNowKey()+" sends now · ↑ edits the last", f.Width, "…")))
 	}
 	for i, q := range s.Queue {
 		if i == 3 {
@@ -209,7 +209,7 @@ func (st *Styles) panelLines(s state.State, f Frame) []string {
 		}
 	}
 	if !s.Details {
-		out = append(out, st.dim.Render("    ctrl+enter sends now · ↑ edits"))
+		out = append(out, st.dim.Render("    "+s.Keys.SendNowKey()+" sends now · ↑ edits"))
 	}
 
 	return out
@@ -247,6 +247,16 @@ func (st *Styles) statusLine(s state.State, w int) string {
 	return ""
 }
 
+// compactHint is the compact footer's key hint: while the agent works, the
+// send keys that work in this terminal.
+func compactHint(s state.State) string {
+	if s.Working() {
+		return s.Keys.SendHint(true) + " · / commands "
+	}
+
+	return "ctrl+t details · / commands "
+}
+
 func (st *Styles) footerLine(s state.State, w int) string {
 	if s.History.Search != nil {
 		return st.searchLine(s.History.Search, w)
@@ -266,7 +276,7 @@ func (st *Styles) footerLine(s state.State, w int) string {
 			parts = append(parts, plural(len(s.Queue), "queued message"))
 		}
 		left := " " + strings.Join(parts, " · ")
-		hint := "ctrl+t details · / commands "
+		hint := compactHint(s)
 		if s.Scroll > 0 {
 			hint = "scrolled up · end returns "
 		}
@@ -302,7 +312,7 @@ func (st *Styles) footerLine(s state.State, w int) string {
 	if t.ToolBusy > 0 {
 		text += fmt.Sprintf(" · overlap %d%%", int(100*t.Overlap/t.ToolBusy))
 	}
-	hint := "enter send · ctrl+enter now · / commands "
+	hint := s.Keys.SendHint(s.Working()) + " · / commands "
 	if left, ok := s.ContextLeft(); ok {
 		text += fmt.Sprintf(" · %d%% context left", left)
 		hint = "/ commands "

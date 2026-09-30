@@ -140,6 +140,9 @@ type State struct {
 	// Shell is shell mode: enter runs the composer's line as a command
 	// (shell.go).
 	Shell bool
+	// Keys is what enter, tab, and ctrl+enter do in this terminal
+	// (sendkeys.go).
+	Keys Keys
 	// Reviewing is the running /review's ID ("": none; review.go).
 	Reviewing string
 	// Attached are the images pasted into the composer, in order; each

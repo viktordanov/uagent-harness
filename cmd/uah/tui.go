@@ -19,6 +19,7 @@ import (
 	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/internal/store"
 	"github.com/viktordanov/uagent-harness/internal/tui/bubble"
+	"github.com/viktordanov/uagent-harness/internal/tui/state"
 )
 
 // tuiAction is the default action: open the terminal UI, optionally with a
@@ -55,6 +56,10 @@ func openTUI(ctx context.Context, cmd *cli.Command, launch tuiLaunch) error {
 	if err != nil {
 		return err
 	}
+	steerKey, err := state.ParseSteerKey(st.Config.TUI.SteerKey)
+	if err != nil {
+		return err
+	}
 	prompts, err := history.New(home.Dir(), st.Config.History.Persistence, st.Config.History.MaxBytes)
 	if err != nil {
 		return err
@@ -80,6 +85,7 @@ func openTUI(ctx context.Context, cmd *cli.Command, launch tuiLaunch) error {
 		Details:     st.Config.TUI.Details,
 		Mouse:       st.Config.TUI.MouseOn(),
 		Title:       st.Config.TUI.TitleOn(),
+		SteerKey:    steerKey,
 		History:     &prompts,
 		Version:     buildVersion(),
 		Config:      tuiConfig(cmd),

@@ -237,6 +237,10 @@ type TUI struct {
 	// Title shows the session's state in the terminal's title (on when
 	// unset, TitleOn).
 	Title *bool `toml:"title"`
+	// SteerKey is the key that sends a message now while the agent works:
+	// "auto" (unset: ctrl+enter where the terminal tells it from enter,
+	// else enter, with tab queueing), "ctrl+enter", or "enter".
+	SteerKey string `toml:"steer_key"`
 }
 
 // History configures <home>/history.jsonl, the prompts ↑ and ctrl+r

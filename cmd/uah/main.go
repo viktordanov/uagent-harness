@@ -46,7 +46,8 @@ func newApp() *cli.Command {
 		OnUsageError:   onUsageError,
 		ArgsUsage:      "[prompt]",
 		Description: "Without a command, uah opens the terminal UI: a live session you can steer.\n" +
-			"enter sends (queueing while the agent works), ctrl+enter sends now, esc esc interrupts,\n" +
+			"enter sends (queueing while the agent works), ctrl+enter sends now (in tmux: enter sends\n" +
+			"now and tab queues), esc esc interrupts,\n" +
 			"/help lists commands. Resume with `uah resume`, --session <id or prefix>, or ctrl+s inside.",
 		Flags:  sessionFlags(),
 		Action: tuiAction,
