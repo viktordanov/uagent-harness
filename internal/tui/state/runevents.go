@@ -3,6 +3,7 @@ package state
 import (
 	"cmp"
 	"fmt"
+	"slices"
 
 	"github.com/viktordanov/uagent/core"
 
@@ -75,6 +76,10 @@ func (s *State) onRunEvent(ev core.Event) { //nolint:gocyclo // a dispatch switc
 	case core.RunFinished:
 		s.dropStreamed()
 		s.finishRun(e.Result)
+		s.Queue = slices.Clone(s.Queue)
+		for i := range s.Queue {
+			s.Queue[i].AfterTool = false // the session drops the marks: the queue waits for no tool call now
+		}
 	}
 }
 

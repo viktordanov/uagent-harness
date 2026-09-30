@@ -159,6 +159,24 @@ func TestReduce_Queue(t *testing.T) {
 	assert.Equal(t, state.InputFailed, b.Input)
 }
 
+// TestReduce_AfterToolEndsWithTheRun: a message held for the tool call is
+// labelled so; when the run stops, the session drops the hold, so the kept
+// queue shows it as an ordinary queued message.
+func TestReduce_AfterToolEndsWithTheRun(t *testing.T) {
+	s, _ := apply(opened(),
+		session.InputQueued{Input: core.UserInput{ID: "a", Text: "start"}},
+		session.InputSent{IDs: []string{"a"}},
+		core.RunStarted{RunID: "r"},
+		session.InputQueued{Input: core.UserInput{ID: "b", Text: "later"}},
+		session.InputQueued{Input: core.UserInput{ID: "c", Text: "after the tool"}, AfterTool: true},
+	)
+	assert.Equal(t, []state.Queued{{ID: "b", Text: "later"}, {ID: "c", Text: "after the tool", AfterTool: true}}, s.Queue)
+
+	stopped, _ := apply(s, core.RunFinished{Result: core.Result{Status: core.StatusInterrupted}}, session.Idle{})
+	assert.Equal(t, []state.Queued{{ID: "b", Text: "later"}, {ID: "c", Text: "after the tool"}}, stopped.Queue)
+	assert.True(t, s.Queue[1].AfterTool, "the earlier state keeps its own queue")
+}
+
 func TestReduce_SteerTheQueue(t *testing.T) {
 	queued, _ := apply(opened(),
 		session.InputQueued{Input: core.UserInput{ID: "a", Text: "first"}},
