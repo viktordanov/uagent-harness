@@ -28,8 +28,6 @@ brew install viktordanov/tap/uah
 - Your ChatGPT plan's [usage](#usage-limits) in the footer
 - [Configuration](#configuration) in TOML or `/config`, including the prompts
 
-The [ledger](docs/ledger.md) lists what's next.
-
 > [!NOTE]
 > The docs are kept in sync with the code by [Memoria](https://github.com/viktordanov/rs-memoria): CI fails when code changes and its README hasn't been reviewed.
 <!-- /memoria:section -->
