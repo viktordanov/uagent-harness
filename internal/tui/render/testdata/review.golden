@@ -1,11 +1,11 @@
 
+
 ╭────────────────────────────────────────────────╮
 │ λ uah                                          │
 │                                                │
 │ model:     gpt-6-sol high   /model to change   │
 │ directory: /workspace/proj                     │
 ╰────────────────────────────────────────────────╯
-
 
   REVIEW changes against 'main'  2 findings · patch is incorrect · 1m 12s
     The loader hides a failure.

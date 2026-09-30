@@ -7,8 +7,8 @@
 ╰────────────────────────────────────────────────╯
 
 
-
 λ Fix the failing test in pkg/foo
+
 
   RAN    fail    go test ./pkg/foo  exit 1
   RUN    4s      go test ./... -run Bar

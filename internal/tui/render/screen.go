@@ -115,6 +115,9 @@ func transcript(s state.State, c *Cache, w, height int, head []string) []string 
 	}
 	c.maxScroll = -1
 	if i < 0 {
+		if n := len(head); n > 0 && head[n-1] == "" && len(all) > 0 && all[0] == "" {
+			head = head[:n-1] // one blank line between the banner and an item that starts with one
+		}
 		all = append(slices.Clip(head), all...)
 		c.maxScroll = max(len(all)-height, 0)
 	}

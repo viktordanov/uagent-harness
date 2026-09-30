@@ -7,13 +7,13 @@
 
 
 
+
 ╭────────────────────────────────────────────────╮
 │ λ uah                                          │
 │                                                │
 │ model:     gpt-6-sol high   /model to change   │
 │ directory: /workspace/proj                     │
 ╰────────────────────────────────────────────────╯
-
 
   REVIEW changes against 'main'  42s
     └ ⠋ git diff 1a2b3c4

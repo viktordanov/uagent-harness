@@ -7,9 +7,44 @@ import (
 	"github.com/viktordanov/uagent-harness/internal/tui/state"
 )
 
-// transcriptLines are an item's lines, with the message selected to go
-// back to (state.Backtrack) marked, as Codex highlights it.
+// transcriptLines are an item's lines as the transcript shows them: its own
+// lines (ownLines), after a blank line when it or the item above stands
+// apart (spaced). The blank line is the item's, so the backtrack fade and
+// text selection map it like its other lines.
 func (c *Cache) transcriptLines(s state.State, i, w int) []string {
+	lines := c.ownLines(s, i, w)
+	if len(lines) == 0 || lines[0] == "" || !c.spaced(s, i, w) {
+		return lines
+	}
+
+	return append([]string{""}, lines...)
+}
+
+// spaced reports whether item i needs a blank line above it: it or the
+// nearest item above that draws anything stands apart, and no blank line
+// is there yet. The first item drawn gets none.
+func (c *Cache) spaced(s state.State, i, w int) bool {
+	for j := i - 1; j >= 0; j-- {
+		above := c.ownLines(s, j, w)
+		if len(above) == 0 {
+			continue
+		}
+
+		return above[len(above)-1] != "" && (apart(s.Items[i]) || apart(s.Items[j]))
+	}
+
+	return false
+}
+
+// apart is an item with a blank line above and below it: your message on
+// its band, and a file edit with its diff.
+func apart(it state.Item) bool {
+	return it.Kind == state.KindUser || (it.Kind == state.KindTool && len(it.Diff) > 0)
+}
+
+// ownLines are an item's lines, with the message selected to go back to
+// (state.Backtrack) marked, as Codex highlights it.
+func (c *Cache) ownLines(s state.State, i, w int) []string {
 	it := s.Items[i]
 	if s.Backtrack != nil && it.Key == s.Backtrack.Key {
 		return c.styles.bandLines("▶ ", it.Text, c.styles.selected.Render("  ↵ edit from here"), w)

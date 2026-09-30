@@ -22,20 +22,24 @@ func SelectedText(s state.State, c *Cache, f Frame) (string, int) {
 		return "", 0
 	}
 	var out []string
-	add := func(key string, gutter int, lines []string) {
+	add := func(key string, gutter int, lines []string, spaced bool) {
 		keep := c.styles.keep(lines, gutter)
 		for l, line := range lines {
+			if l == 0 && spaced && len(out) > 0 && out[len(out)-1] == "" {
+				continue // the blank line above an item that stands apart, after one the copy has
+			}
 			if from, to, ok := s.SelectedCols(key, l); ok {
 				out = append(out, copyCells(ansi.Strip(line), max(from, keep[l][0]), min(to, keep[l][1])))
 			}
 		}
 	}
 	if start.Key == state.BannerKey {
-		add(state.BannerKey, 0, c.styles.banner(s, f.Version, f.Width))
+		add(state.BannerKey, 0, c.styles.banner(s, f.Version, f.Width), false)
 	}
 	for i, it := range s.Items {
 		if it.Key == start.Key || len(out) > 0 {
-			add(it.Key, gutter(it), c.transcriptLines(s, i, f.Width))
+			lines := c.transcriptLines(s, i, f.Width)
+			add(it.Key, gutter(it), lines, len(lines) > len(c.ownLines(s, i, f.Width)))
 		}
 		if it.Key == end.Key {
 			break

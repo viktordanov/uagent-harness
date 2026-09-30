@@ -45,13 +45,13 @@
 
 
 
+
 ╭────────────────────────────────────────────────╮
 │ λ uah                                          │
 │                                                │
 │ model:     gpt-6-sol high   /model to change   │
 │ directory: /workspace/proj                     │
 ╰────────────────────────────────────────────────╯
-
 
 
 ! go test ./...  ✗ exit 1 · 2.3s
