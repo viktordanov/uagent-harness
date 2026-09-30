@@ -76,21 +76,6 @@ func Sessions(stateDir string) ([]Info, error) {
 	return infos, nil
 }
 
-// Find returns the session with id, or found=false.
-func Find(stateDir, id string) (info Info, found bool, err error) {
-	infos, err := Sessions(stateDir)
-	if err != nil {
-		return Info{}, false, err
-	}
-	for _, in := range infos {
-		if in.ID == id {
-			return in, true, nil
-		}
-	}
-
-	return Info{}, false, nil
-}
-
 // summarize folds a session's runs (newest first) into an Info.
 func summarize(id string, runs []harness.RunRecord) Info {
 	newest, oldest := runs[0].Result, runs[len(runs)-1]
@@ -156,13 +141,6 @@ func Load(stateDir, id string) ([]LoadedRun, error) {
 	return withRewinds(stateDir, id, runs)
 }
 
-// SameDir reports whether two paths name the same directory after making
-// them absolute, cleaning them, and resolving symlinks, the way Codex matches
-// a session's working directory.
-func SameDir(a, b string) bool {
-	return normalizeDir(a) == normalizeDir(b)
-}
-
 // InDir keeps the sessions whose workspace is dir.
 func InDir(infos []Info, dir string) []Info {
 	want := normalizeDir(dir)
@@ -188,6 +166,8 @@ func ActiveSince(infos []Info, t time.Time) []Info {
 	return out
 }
 
+// normalizeDir makes p absolute and clean and resolves symlinks, the way
+// Codex matches a session's working directory.
 func normalizeDir(p string) string {
 	abs, err := filepath.Abs(p)
 	if err != nil {

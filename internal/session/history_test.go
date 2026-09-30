@@ -34,7 +34,6 @@ func TestInDir(t *testing.T) {
 		ids = append(ids, in.ID)
 	}
 	assert.Equal(t, []string{"a", "d", "e"}, ids, "exact directory after normalization; subdirectories do not match")
-	assert.True(t, session.SameDir(link, proj+"/"))
 }
 
 func TestInteractive(t *testing.T) {
