@@ -422,5 +422,5 @@ func TestEmbedded_PreToolUseHooks(t *testing.T) {
 	last := strings.Join(reqs[len(reqs)-1].ToolOutputs, "\n")
 	assert.Contains(t, last, "Error: blocked by a PreToolUse hook: destructive commands are not allowed", "a block is the tool's error result")
 	assert.Contains(t, last, "rewritten", "updatedInput replaced the command")
-	assert.Equal(t, 2, countKind[session.HookRan](ev.all))
+	assert.Equal(t, 4, countKind[session.HookRan](ev.all)) // each hook also reports "running" as it starts
 }

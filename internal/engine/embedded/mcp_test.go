@@ -88,7 +88,7 @@ func TestEmbedded_MCPTools(t *testing.T) {
 	}
 	require.Len(t, last.ToolImages, 1)
 	assert.True(t, strings.HasPrefix(last.ToolImages[0], "data:image/png;base64,"))
-	assert.Equal(t, 1, countKind[session.HookRan](ev.all))
+	assert.Equal(t, 2, countKind[session.HookRan](ev.all)) // the hook also reports "running" as it starts
 }
 
 func TestEmbedded_MCPServerCrashes(t *testing.T) {
