@@ -16,35 +16,40 @@ import (
 )
 
 // observer writes each persisted session item as one JSON line, exactly as
-// the runner prints it. It also emits the diff of each applied patch, read
-// from the same line, so the live view and a reloaded one agree.
+// the runner prints it. It also emits the diff of each applied patch and
+// the output of each failed command and finished MCP call, read from the
+// same line, so the live view and a reloaded one agree.
 type observer struct {
 	sessionID session.ID
 	out       io.Writer
 	cancel    context.CancelFunc
-	// emit, when set, receives engine.PatchApplied.
+	// emit, when set, receives engine.PatchApplied and engine.ToolOutput.
 	emit func(core.Event)
 
 	mu      sync.Mutex
 	failure error
-	patched map[string]bool
+	// patched and output are the calls whose events were emitted.
+	patched, output map[string]bool
 }
 
 func (o *observer) observe(id session.ID, item sessionstore.Item) {
 	if id != o.sessionID {
 		return
 	}
-	if ev, ok := o.write(item); ok && o.emit != nil {
-		o.emit(ev)
+	for _, ev := range o.write(item) {
+		if o.emit != nil {
+			o.emit(ev)
+		}
 	}
 }
 
-// write writes the item and returns the patch it completes, once per call.
-func (o *observer) write(item sessionstore.Item) (engine.PatchApplied, bool) {
+// write writes the item and returns the patch it completes and the output
+// it finishes, each once per call.
+func (o *observer) write(item sessionstore.Item) []core.Event {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	if o.failure != nil {
-		return engine.PatchApplied{}, false
+		return nil
 	}
 	line, err := json.Marshal(item)
 	if err == nil {
@@ -54,18 +59,30 @@ func (o *observer) write(item sessionstore.Item) (engine.PatchApplied, bool) {
 		o.failure = fmt.Errorf("failed to write session item %d: %w", item.Sequence, err)
 		o.cancel()
 
-		return engine.PatchApplied{}, false
+		return nil
 	}
-	ev, ok := engine.PatchFromItem(line)
-	if !ok || o.patched[ev.CallID] {
-		return engine.PatchApplied{}, false
+	var events []core.Event
+	if ev, ok := engine.PatchFromItem(line); ok && once(&o.patched, ev.CallID) {
+		events = append(events, ev)
 	}
-	if o.patched == nil {
-		o.patched = map[string]bool{}
+	if ev, ok := engine.ToolOutputFromItem(line); ok && once(&o.output, ev.CallID) {
+		events = append(events, ev)
 	}
-	o.patched[ev.CallID] = true
 
-	return ev, true
+	return events
+}
+
+// once records id in seen and reports whether it is new.
+func once(seen *map[string]bool, id string) bool {
+	if (*seen)[id] {
+		return false
+	}
+	if *seen == nil {
+		*seen = map[string]bool{}
+	}
+	(*seen)[id] = true
+
+	return true
 }
 
 func (o *observer) err() error {

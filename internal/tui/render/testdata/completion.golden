@@ -7,8 +7,8 @@
 λ Run `ls` and `cat a.txt`, then reply with the file contents.
 
 
-  RAN            ls
-  RAN            cat a.txt
+  LIST           .
+  READ           a.txt
 
 • hello
 

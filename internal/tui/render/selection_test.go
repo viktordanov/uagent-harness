@@ -122,7 +122,7 @@ func TestSelectedText(t *testing.T) {
 	assert.Equal(t, "+ added", text, "a diff line on its tint, without its label")
 
 	text, lines = copied(pos(msg, 2, 0), pos(answer, 99, 99))
-	assert.Equal(t, "show me 界面 main\n\nRAN            ls\n\nHere it is:\n\nfunc main() {}\n\n+ added\n\nDone.", text)
+	assert.Equal(t, "show me 界面 main\n\nLIST           .\n\nHere it is:\n\nfunc main() {}\n\n+ added\n\nDone.", text)
 	assert.Equal(t, 11, lines)
 
 	text, _ = render.SelectedText(s, c, f)

@@ -129,7 +129,8 @@ func firstPrompt(req core.Request) string {
 // runner writes only the items each run appended, so the runs together are
 // the whole transcript. Saved compactions join the events they happened
 // among, as engine.Compacted, applied patches their calls, as
-// engine.PatchApplied, and rewinds the run before them, as engine.Rewound.
+// engine.PatchApplied, failed commands and MCP calls their output, as
+// engine.ToolOutput, and rewinds the run before them, as engine.Rewound.
 func Load(stateDir, id string) ([]LoadedRun, error) {
 	records, err := harness.New(harness.Config{StateDir: stateDir}).Runs()
 	if err != nil {

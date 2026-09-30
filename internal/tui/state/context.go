@@ -60,6 +60,8 @@ func (s *State) onEngineEvent(ev core.Event) bool {
 		s.onAgentActivity(e)
 	case engine.PatchApplied:
 		s.onPatchApplied(e)
+	case engine.ToolOutput:
+		s.onToolOutput(e)
 	case engine.Rewound:
 		s.onRewound(e)
 	case engine.WebSearch:

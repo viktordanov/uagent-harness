@@ -84,6 +84,12 @@ type State struct {
 	Yolo     bool
 	Settings session.Settings
 	Files    []string // instruction files in the prompt
+	// Home is the user's home directory, which tool lines show as ~. The
+	// shell sets it.
+	Home string
+	// loadedWorkspace is the workspace of the run a loaded transcript is
+	// at, for tool lines drawn before the session opens (toolcalls.go).
+	loadedWorkspace string
 
 	Items []Item
 	index map[string]int

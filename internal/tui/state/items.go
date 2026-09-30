@@ -3,6 +3,7 @@ package state
 import (
 	"time"
 
+	"github.com/viktordanov/uagent-harness/internal/cmdparse"
 	"github.com/viktordanov/uagent-harness/internal/contextusage"
 	"github.com/viktordanov/uagent-harness/internal/engine"
 
@@ -108,6 +109,21 @@ type Item struct {
 	Detail string
 	// Diff is what an applied apply_patch call changed (engine.PatchApplied).
 	Diff []patch.FileDiff
+	// Command is a Bash call's command, whole, as the model sent it.
+	Command string
+	// Verb and Parts are the call's compact line, shaped once when it
+	// arrives (toolcalls.go): Verb its label (READ, LIST, SEARCH; "" for
+	// the tool's own) and Parts its text in styled runs (nil: Label).
+	Verb  string
+	Parts []cmdparse.Part
+	// ErrorLine says why the call failed; Result sums up an MCP call's
+	// result; Note is the auto-reviewer's approval of it (toolcalls.go).
+	ErrorLine, Result, Note string
+	// Group are the names on a call's compact line when calls after it
+	// joined it (skills loaded one after another); MergedInto is the key
+	// of the call whose line shows this one.
+	Group      []string
+	MergedInto string
 
 	// KindContext
 	Context *contextusage.Usage

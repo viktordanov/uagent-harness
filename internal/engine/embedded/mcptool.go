@@ -14,12 +14,13 @@ import (
 	"github.com/unreallabsai/unreal-agent/harness/tool"
 
 	"github.com/viktordanov/uagent-harness/internal/approval"
+	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/mcp"
 )
 
 // The remote job plan an MCP call runs as (see docs/design/mcp.md).
 const (
-	mcpPlanType    operation.RemoteJobPlanType    = "uah.mcp_call"
+	mcpPlanType    operation.RemoteJobPlanType    = engine.MCPPlanType
 	mcpPlanVersion operation.RemoteJobPlanVersion = 1
 )
 

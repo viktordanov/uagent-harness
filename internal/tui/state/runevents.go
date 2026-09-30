@@ -53,7 +53,7 @@ func (s *State) onRunEvent(ev core.Event) { //nolint:gocyclo // a dispatch switc
 			s.notice(session.LevelError, "model failure: "+e.Failure)
 		}
 	case core.ToolCalled:
-		s.put(Item{Kind: KindTool, Key: "call:" + e.CallID, Name: e.Name, Label: s.eventLabel(e), Tool: ToolCalled, Started: e.At})
+		s.onToolCalled(e)
 	case core.ToolStarted:
 		if s.Live != nil {
 			s.Live.Tools++
@@ -69,6 +69,9 @@ func (s *State) onRunEvent(ev core.Event) { //nolint:gocyclo // a dispatch switc
 		}
 		if !s.update("call:"+e.CallID, func(it *Item) { it.Tool, it.Detail, it.Duration = state, e.Detail, e.Duration }) {
 			s.put(Item{Kind: KindTool, Key: "call:" + e.CallID, Name: e.Name, Label: e.Label, Tool: state, Detail: e.Detail, Duration: e.Duration})
+		}
+		if state == ToolFailed {
+			s.unmerge("call:" + e.CallID)
 		}
 	case core.AssistantMessage:
 		s.put(Item{Kind: KindAssistant, Key: s.finalKey(KindAssistant, "text"), Text: e.Text, Final: e.Final})

@@ -15,47 +15,66 @@ import (
 )
 
 // withPatches adds the diff of each applied apply_patch call to its run as
-// engine.PatchApplied, after the call's ToolFinished, so a reloaded
-// transcript shows it. The diff comes from the call's completed job in the
-// run's events file, the same item the live engine read it from.
+// engine.PatchApplied, and the output of each failed command and finished
+// MCP call as engine.ToolOutput, after the call's ToolFinished, so a
+// reloaded transcript shows them. Both come from the call's finished
+// operation in the run's events file, the same item the live engine read
+// them from.
 func withPatches(runs []LoadedRun) []LoadedRun {
 	for i := range runs {
-		for _, p := range runPatches(runs[i].Record.Dir) {
-			events := runs[i].Events
-			at := slices.IndexFunc(events, func(e core.Event) bool {
-				f, ok := e.(core.ToolFinished)
-
-				return ok && f.CallID == p.CallID
-			}) + 1
-			if at == 0 {
-				at = slices.IndexFunc(events, func(e core.Event) bool { return e.OccurredAt().After(p.At) })
-				if at < 0 {
-					at = len(events)
-				}
-			}
-			runs[i].Events = slices.Insert(events, at, core.Event(p))
+		for _, p := range runCallEvents(runs[i].Record.Dir) {
+			runs[i].Events = insertAfterCall(runs[i].Events, p)
 		}
 	}
 
 	return runs
 }
 
-// runPatches reads a run's applied patches, once per call; an unreadable
-// file has none.
-func runPatches(runDir string) []engine.PatchApplied {
+// insertAfterCall puts ev after its call's ToolFinished, or else in time
+// order.
+func insertAfterCall(events []core.Event, ev callEvent) []core.Event {
+	at := slices.IndexFunc(events, func(e core.Event) bool {
+		f, ok := e.(core.ToolFinished)
+
+		return ok && f.CallID == ev.callID
+	}) + 1
+	if at == 0 {
+		at = slices.IndexFunc(events, func(e core.Event) bool { return e.OccurredAt().After(ev.OccurredAt()) })
+		if at < 0 {
+			at = len(events)
+		}
+	}
+
+	return slices.Insert(events, at, ev.Event)
+}
+
+// callEvent is an event about one call.
+type callEvent struct {
+	core.Event
+
+	callID string
+}
+
+// runCallEvents reads a run's applied patches and tool outputs, once per
+// call each; an unreadable file has none.
+func runCallEvents(runDir string) []callEvent {
 	f, err := os.Open(filepath.Join(runDir, harness.EventsFile))
 	if err != nil {
 		return nil
 	}
 	defer f.Close()
-	var out []engine.PatchApplied
-	seen := map[string]bool{}
+	var out []callEvent
+	patched, output := map[string]bool{}, map[string]bool{}
 	r := bufio.NewReaderSize(f, 1<<20)
 	for {
 		line, err := r.ReadBytes('\n')
-		if p, ok := engine.PatchFromItem(line); ok && !seen[p.CallID] {
-			seen[p.CallID] = true
-			out = append(out, p)
+		if p, ok := engine.PatchFromItem(line); ok && !patched[p.CallID] {
+			patched[p.CallID] = true
+			out = append(out, callEvent{p, p.CallID})
+		}
+		if o, ok := engine.ToolOutputFromItem(line); ok && !output[o.CallID] {
+			output[o.CallID] = true
+			out = append(out, callEvent{o, o.CallID})
 		}
 		if errors.Is(err, io.EOF) || err != nil {
 			return out

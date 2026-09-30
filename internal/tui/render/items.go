@@ -103,7 +103,7 @@ func (st *Styles) itemLines(it state.Item, w int, now time.Time, v view) []strin
 			return append([]string{st.toolLine(it, w, now), diffIndent + st.diffSummary(it.Diff)}, st.diffBlock(it.Diff, w, 0)...)
 		}
 
-		return []string{st.toolLine(it, w, now)}
+		return append([]string{st.toolLine(it, w, now)}, st.detailedNotes(it, w)...)
 	case state.KindAgent:
 		lines := st.agentLines(it, w, now)
 		if v.details {
@@ -193,8 +193,24 @@ func (st *Styles) toolLine(it state.Item, w int, now time.Time) string {
 	}
 	head := fmt.Sprintf("  %s %s  ", mark, st.tool.Render(it.Name))
 	room := w - ansi.StringWidth(head) - ansi.StringWidth(detail) - 2
+	label := it.Label
+	if it.Command != "" {
+		label = oneLine(untab(it.Command)) // whole, where the runner's label stops at 120 characters
+	}
 
-	return head + ansi.Truncate(it.Label, max(room, 8), "…") + "  " + detail
+	return head + ansi.Truncate(label, max(room, 8), "…") + "  " + detail
+}
+
+// detailedNotes are a call's second lines in the detailed view: as in the
+// compact view, under the call's text, but whole, wrapped to the width.
+func (st *Styles) detailedNotes(it state.Item, w int) []string {
+	indent := strings.Repeat(" ", 2+1+1+ansi.StringWidth(it.Name)+2) // "  ✓ Bash  "
+	var out []string
+	for _, n := range st.toolNotes(it) {
+		out = append(out, styleLines(wrapPrefixed(n.text, w, indent, indent), n.style)...)
+	}
+
+	return out
 }
 
 // wrapPrefixed wraps text to width w with first and continuation prefixes.

@@ -17,8 +17,9 @@ import (
 )
 
 // TestNoticeColor: an information notice, such as an auto-approved
-// command, is drawn in the theme's neutral gray, while tool lines stay in
-// the warm dim and a warning in its own color, in both themes. The golden
+// command whose call is not in the transcript, is drawn in the theme's
+// neutral gray, while tool labels stay in the warm dim and a warning in its
+// own color, in both themes. The golden
 // marks each line: "▒" in the notice gray, "░" in the dim, "█" otherwise.
 func TestNoticeColor(t *testing.T) {
 	s := apply(base(),

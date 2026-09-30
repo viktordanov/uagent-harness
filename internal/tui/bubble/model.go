@@ -5,6 +5,7 @@ package bubble
 
 import (
 	"context"
+	"os"
 	"strings"
 	"time"
 
@@ -144,6 +145,7 @@ func New(ctx context.Context, deps Deps) Model {
 
 	st := state.New(deps.Now())
 	st.Details, st.Mouse, st.Title, st.Windows = deps.Details, deps.Mouse, deps.Title, deps.Windows
+	st.Home, _ = os.UserHomeDir()
 
 	m := Model{
 		ctx: ctx, deps: deps, st: st,

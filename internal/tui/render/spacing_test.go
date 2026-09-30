@@ -42,8 +42,8 @@ func spacedRun(t *testing.T) state.State {
 		session.InputSent{At: t0, IDs: []string{"m1"}},
 		core.RunStarted{At: t0, RunID: "20260924-120000-3f2a1b2c"},
 	}
-	evs = append(evs, ran("r1", "ls")...)
-	evs = append(evs, ran("r2", "cat a.txt")...)
+	evs = append(evs, ran("r1", "go build ./...")...)
+	evs = append(evs, ran("r2", "go vet ./...")...)
 	evs = append(evs,
 		core.ToolCalled{At: t0, CallID: "p1", Name: "apply_patch", Label: string(args), Arguments: string(args)},
 		core.ToolStarted{At: t0, CallID: "p1", OpID: "p1"},
@@ -134,8 +134,8 @@ func TestSpacing(t *testing.T) {
 			assert.Equal(t, []string{"~", ""}, lines[msg+1:msg+3], text)
 
 			// Commands one after another.
-			ls := index(t, lines, msg, " ls")
-			assert.Contains(t, lines[ls+1], "cat a.txt", text)
+			ls := index(t, lines, msg, "go build ./...")
+			assert.Contains(t, lines[ls+1], "go vet ./...", text)
 
 			// The edit: a blank line above and one after its diff.
 			edit := index(t, lines, ls, "notes.md")

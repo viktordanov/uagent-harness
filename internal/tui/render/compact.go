@@ -36,7 +36,7 @@ func (st *Styles) compactLines(it state.Item, w int, now time.Time) ([]string, b
 			return st.patchLines(it, w, now, compactDiffLines), true
 		}
 
-		return []string{st.compactTool(it, w, now)}, true
+		return st.compactToolLines(it, w, now), true
 	case state.KindAgent:
 		// A running subagent is drawn at the bottom, above the working line.
 		if it.Detail == engine.AgentRunning {
@@ -93,48 +93,6 @@ func (st *Styles) finishLine(it state.Item) string {
 	}
 
 	return st.bad.Render(fmt.Sprintf("  ✗ run ended: %s", it.Status)) + st.dim.Render(" · ") + when
-}
-
-// compactTool draws a tool call as a column: "  RAN   4.1s  go test ./...".
-// A live call is in the accent; a finished one is dim.
-func (st *Styles) compactTool(it state.Item, w int, now time.Time) string {
-	label, live := toolLabel(it.Name), false
-	var when string
-	switch it.Tool {
-	case state.ToolCalled, state.ToolRunning:
-		live, when = true, elapsed(now.Sub(it.Started))
-		if label == "RAN" {
-			label = "RUN"
-		}
-	case state.ToolOK:
-		if it.Duration >= time.Second {
-			when = secs(it.Duration)
-		}
-	case state.ToolFailed:
-		when = st.bad.Render(pad("fail")) + " "
-	case state.ToolStopped:
-		when = st.warn.Render(pad("stop")) + " "
-	}
-	var tail string
-	if it.Tool == state.ToolFailed && it.Detail != "" {
-		tail = st.bad.Render("  " + oneLine(it.Detail))
-	}
-	var head string
-	switch {
-	case live:
-		head = st.accent.Render("  " + pad(label) + pad(when) + " ")
-	case it.Tool == state.ToolFailed || it.Tool == state.ToolStopped:
-		head = st.dim.Render("  "+pad(label)) + when
-	default:
-		head = st.dim.Render("  " + pad(label) + pad(when) + " ")
-	}
-	room := max(w-ansi.StringWidth(head)-ansi.StringWidth(tail), 8)
-	text := ansi.Truncate(oneLine(untab(it.Label)), room, "…")
-	if live {
-		return head + text
-	}
-
-	return head + st.dim.Render(text) + tail
 }
 
 // toolLabels name the tools whose label is not their name's first word in

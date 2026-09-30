@@ -93,11 +93,16 @@ func (s *State) answer(e Answer) (State, []Effect) {
 
 func oneLine(text string) string { return strings.Join(strings.Fields(text), " ") }
 
-// onAutoReviewed shows the auto-reviewer's verdict: a line for what it
-// approved or denied, and nothing extra when it left the choice to the user.
+// onAutoReviewed shows the auto-reviewer's verdict: an approval under the
+// call it approved (a line of its own when the call is not in the
+// transcript), a line for what it denied, and nothing extra when it left
+// the choice to the user.
 func (s *State) onAutoReviewed(e engine.AutoReviewed) {
 	switch e.Outcome {
 	case "allow":
+		if s.attachApproval(e.Command, fmt.Sprintf("auto-approved · %s risk · %s", e.Risk, oneLine(e.Reason))) {
+			return
+		}
 		s.notice(session.LevelInfo, fmt.Sprintf("auto-approved (%s risk): %s — %s", e.Risk, oneLine(e.Command), e.Reason))
 	case "deny":
 		s.notice(session.LevelWarning, fmt.Sprintf("auto-review denied (%s risk): %s — %s", e.Risk, oneLine(e.Command), e.Reason))

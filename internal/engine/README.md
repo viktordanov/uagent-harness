@@ -19,7 +19,7 @@ The embedded engine runs unreal-agent-runner's packages inside uah, so messages,
 8. [Tests](#tests)
 <!-- /memoria:section -->
 
-<!-- memoria:section id="interface" files="engine.go events.go subagents.go patch.go embedded/scope.go" -->
+<!-- memoria:section id="interface" files="engine.go events.go subagents.go patch.go tooloutput.go embedded/scope.go" -->
 ## The interface
 
 `engine.Engine` has three methods: `Name`, `Priority`, and `Start(ctx, request, options, sink) (Run, error)`. The sink receives `RunStarted` first and `RunFinished` last, from one goroutine at a time. A `Run` takes messages and settings while it is live (`Send`, `SetEffort`, `SetModel`, `SetServiceTier`, `SetMode`, `Compact`, `Clear`), stops (`Interrupt`, `Kill`), and ends (`Wait`). A live change fails when the run can no longer take it, such as when it has just stopped, and the session then applies it from the next run. `Priority` says whether the session's provider accepts priority processing, which `/fast` turns on ([below](#what-varies-by-provider-and-model)).
@@ -53,7 +53,7 @@ Optional interfaces are the seams the session probes with a type assertion. The 
 | `Forker` | `Fork` copies a parent's history into a new child session for `spawn_agent`'s `fork_context`; `SetCacheKey` gives a session another prompt cache key (every subagent uses its root session's) | embedded |
 | `Scoper` | `SetScope` narrows one session from its next run (`embedded/scope.go`): the tools it is offered, actions approved in advance (a role's `tools` and `approve`), and `NeverAsk`, which declines every action that would ask, before the auto-reviewer, for `/review`'s reviewer | embedded |
 
-The engine's own events join the run's stream: `CompactionStarted`, `Compacted` (with the compaction's `Stats`), `AutoReviewed`, `AgentUpdated`, `AgentActivity` (a child's tool events, for the parent's view), `PatchApplied` (the diff of an applied `apply_patch` call, `patch.go`), `Rewound` (the session went back to before a message), `Reconnecting` and `ReconnectEnded` (a model request's retries, below), `TextDelta`, `ReasoningDelta`, and `StreamReset` (the answer as it arrives, below), and `WebSearch` (a hosted web search, below). The embedded engine's `Subagents()` returns its `Subagents`, so a session can follow one child's whole stream (`session.WatchAgent`).
+The engine's own events join the run's stream: `CompactionStarted`, `Compacted` (with the compaction's `Stats`), `AutoReviewed`, `AgentUpdated`, `AgentActivity` (a child's tool events, for the parent's view), `PatchApplied` (the diff of an applied `apply_patch` call, `patch.go`), `ToolOutput` (the end of a failed command's output, or an MCP call's result or error, `tooloutput.go`), `Rewound` (the session went back to before a message), `Reconnecting` and `ReconnectEnded` (a model request's retries, below), `TextDelta`, `ReasoningDelta`, and `StreamReset` (the answer as it arrives, below), and `WebSearch` (a hosted web search, below). The embedded engine's `Subagents()` returns its `Subagents`, so a session can follow one child's whole stream (`session.WatchAgent`).
 <!-- /memoria:section -->
 
 <!-- memoria:section id="varies" files="engine.go embedded/engine.go embedded/providers.go" -->
@@ -184,7 +184,7 @@ On openai and openai-codex (`Provider.RemoteCompaction`), with `remote_compactio
 
 A tool's static definition is what the model is offered, so a change in a layer reaches both the model and the translator.
 
-The observer (`observer.go`) writes each session item as the runner prints it. When an item completes an `apply_patch` job, it also emits `PatchApplied` with the diff from the job's handle; `session.Load` reads the same item from a run's events file, so a live and a reloaded transcript show the same diff.
+The observer (`observer.go`) writes each session item as the runner prints it. When an item completes an `apply_patch` job, it also emits `PatchApplied` with the diff from the job's handle, and when it finishes a shell command that failed or an MCP call, `ToolOutput` with the last 4 KB of the command's stderr (its stdout when stderr is empty) or the first 4 KB of the MCP result, or its error, each once per call; the runner's `ToolFinished` carries only the exit code or the status. `session.Load` reads the same items from a run's events file, so a live and a reloaded transcript show the same diff and the same error lines.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="auth" files="codexauth/codexauth.go codexauth/login.go codexauth/refresh.go codexauth/file.go codexauth/transport.go embedded/clients.go embedded/engine.go" -->

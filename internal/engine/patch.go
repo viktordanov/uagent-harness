@@ -55,7 +55,7 @@ func PatchFromItem(line []byte) (PatchApplied, bool) {
 		return PatchApplied{}, false
 	}
 	for _, op := range item.Data.Operations {
-		if op.Type != "remote_job" || op.Status != "completed" || op.State.Plan.Type != PatchPlanType || len(op.State.Handle) == 0 {
+		if op.Type != remoteJob || op.Status != "completed" || op.State.Plan.Type != PatchPlanType || len(op.State.Handle) == 0 {
 			continue
 		}
 		var h PatchHandle

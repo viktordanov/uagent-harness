@@ -12,7 +12,7 @@
 █ │ directory: /workspace/proj                     │
 ░ ╰────────────────────────────────────────────────╯
 
-░   RAN            ls
+█   LIST           .
 ▒   auto-approved (medium risk): python3 fetch.py — read-only requests for the data the user asked for
 █   ! auto-review denied (high risk): rm -rf build — deletes files outside the task
 

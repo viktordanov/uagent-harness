@@ -188,6 +188,7 @@ func (s *State) loadHistory(h HistoryLoaded) {
 	s.SessionID = h.SessionID
 	for _, run := range h.Runs {
 		res := run.Record.Result
+		s.loadedWorkspace = res.Request.Workspace
 		s.onRunEvent(core.RunStarted{At: res.StartedAt, RunID: res.Request.RunID, SessionID: res.Request.SessionID})
 		var rewinds []core.Event // after the run, as they happened
 		for _, e := range run.Events {
