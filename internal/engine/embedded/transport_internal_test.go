@@ -181,9 +181,13 @@ func TestModelCall_WaitsForTheNetwork(t *testing.T) {
 // file and size, and a progress without a tool once it is written.
 func TestModelCall_ToolProgress(t *testing.T) {
 	args := `{"input":"*** Begin Patch\n*** Add File: a.go\n+package a\n*** End Patch"}`
+	// The header ends in the second piece; the pause lets its progress out
+	// before a later one replaces it in the queue.
+	cut := strings.Index(args, `a.go\n`) + len(`a.go\n`)
 	srv := fakellm.New(t, fakellm.Reply{
 		Calls:     []fakellm.Call{{Name: "apply_patch", Args: args}},
-		ArgDeltas: []string{args[:20], args[20:40], args[40:]},
+		ArgDeltas: []string{args[:20], args[20:cut], args[cut:]},
+		Pace:      100 * time.Millisecond,
 	})
 	events, err := ask(t, srv.URL, 0, nil)
 	require.NoError(t, err)
