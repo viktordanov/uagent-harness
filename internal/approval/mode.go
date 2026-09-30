@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/viktordanov/uagent-harness/internal/sandbox"
+	"github.com/viktordanov/uah/internal/sandbox"
 )
 
 // Mode is a permission mode: a sandbox mode and who decides what needs

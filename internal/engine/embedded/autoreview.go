@@ -8,9 +8,9 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/approval"
-	"github.com/viktordanov/uagent-harness/internal/engine"
-	"github.com/viktordanov/uagent-harness/internal/review"
+	"github.com/viktordanov/uah/internal/approval"
+	"github.com/viktordanov/uah/internal/engine"
+	"github.com/viktordanov/uah/internal/review"
 )
 
 // How much of the session the auto-reviewer sees; the reviewer trims it to

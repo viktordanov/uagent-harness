@@ -9,7 +9,7 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/codereview"
+	"github.com/viktordanov/uah/internal/codereview"
 )
 
 // ErrNoReview means the session's engine cannot run a reviewer.

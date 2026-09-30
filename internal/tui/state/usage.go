@@ -8,8 +8,8 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/session"
-	"github.com/viktordanov/uagent-harness/internal/usage"
+	"github.com/viktordanov/uah/internal/session"
+	"github.com/viktordanov/uah/internal/usage"
 )
 
 // UsageReason says why the usage is read, which decides what the answer

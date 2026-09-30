@@ -11,7 +11,7 @@ import (
 	"github.com/unreallabsai/unreal-agent/harness/operation"
 	"github.com/unreallabsai/unreal-agent/harness/tool"
 
-	"github.com/viktordanov/uagent-harness/internal/engine"
+	"github.com/viktordanov/uah/internal/engine"
 )
 
 // The remote job plan a subagent tool call runs as.

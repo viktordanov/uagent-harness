@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/viktordanov/uagent-harness/internal/engine"
+	"github.com/viktordanov/uah/internal/engine"
 )
 
 // item is a tool_call_status line as the runner writes it, with one

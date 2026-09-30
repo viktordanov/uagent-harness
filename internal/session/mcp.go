@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/viktordanov/uagent-harness/internal/engine"
-	"github.com/viktordanov/uagent-harness/internal/mcp"
+	"github.com/viktordanov/uah/internal/engine"
+	"github.com/viktordanov/uah/internal/mcp"
 )
 
 // MCPStarted reports the MCP servers once an interactive session has

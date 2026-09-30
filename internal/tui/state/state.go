@@ -10,10 +10,10 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/compaction"
-	"github.com/viktordanov/uagent-harness/internal/engine"
-	"github.com/viktordanov/uagent-harness/internal/images"
-	"github.com/viktordanov/uagent-harness/internal/session"
+	"github.com/viktordanov/uah/internal/compaction"
+	"github.com/viktordanov/uah/internal/engine"
+	"github.com/viktordanov/uah/internal/images"
+	"github.com/viktordanov/uah/internal/session"
 )
 
 // Mode is the screen being shown.

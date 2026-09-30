@@ -15,9 +15,9 @@ import (
 	uaharness "github.com/viktordanov/uagent/harness"
 	"github.com/viktordanov/uagent/testing/fixtures"
 
-	"github.com/viktordanov/uagent-harness/internal/session"
-	"github.com/viktordanov/uagent-harness/internal/tui/bubble"
-	"github.com/viktordanov/uagent-harness/testing/harnesstest"
+	"github.com/viktordanov/uah/internal/session"
+	"github.com/viktordanov/uah/internal/tui/bubble"
+	"github.com/viktordanov/uah/testing/harnesstest"
 )
 
 // TestTUI_DiffAndReviewMenu runs /diff on a real git work tree, lists its

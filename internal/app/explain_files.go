@@ -5,12 +5,12 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/viktordanov/uagent-harness/internal/config"
-	"github.com/viktordanov/uagent-harness/internal/history"
-	"github.com/viktordanov/uagent-harness/internal/hooks"
-	"github.com/viktordanov/uagent-harness/internal/instructions"
-	"github.com/viktordanov/uagent-harness/internal/mcp"
-	"github.com/viktordanov/uagent-harness/internal/sandbox"
+	"github.com/viktordanov/uah/internal/config"
+	"github.com/viktordanov/uah/internal/history"
+	"github.com/viktordanov/uah/internal/hooks"
+	"github.com/viktordanov/uah/internal/instructions"
+	"github.com/viktordanov/uah/internal/mcp"
+	"github.com/viktordanov/uah/internal/sandbox"
 )
 
 // fileSettings are the settings only the configuration files set.

@@ -15,7 +15,7 @@ import (
 	"github.com/unreallabsai/unreal-agent/harness/sessionstore"
 	"github.com/unreallabsai/unreal-agent/harness/sessionstore/localfile"
 
-	"github.com/viktordanov/uagent-harness/internal/sessionfile"
+	"github.com/viktordanov/uah/internal/sessionfile"
 )
 
 const recorded = "testdata/recorded.session.jsonl"

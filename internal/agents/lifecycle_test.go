@@ -12,11 +12,11 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/agents"
-	"github.com/viktordanov/uagent-harness/internal/approval"
-	"github.com/viktordanov/uagent-harness/internal/engine"
-	"github.com/viktordanov/uagent-harness/internal/session"
-	"github.com/viktordanov/uagent-harness/testing/fakellm"
+	"github.com/viktordanov/uah/internal/agents"
+	"github.com/viktordanov/uah/internal/approval"
+	"github.com/viktordanov/uah/internal/engine"
+	"github.com/viktordanov/uah/internal/session"
+	"github.com/viktordanov/uah/testing/fakellm"
 )
 
 // TestAgents_InterruptStopsChildren interrupts the parent: its child's

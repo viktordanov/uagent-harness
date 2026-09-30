@@ -9,7 +9,7 @@ import (
 
 	"github.com/unreallabsai/unreal-agent/harness/llm"
 
-	"github.com/viktordanov/uagent-harness/internal/patch"
+	"github.com/viktordanov/uah/internal/patch"
 )
 
 // The tools whose calls the facts read, by the names the model calls them.

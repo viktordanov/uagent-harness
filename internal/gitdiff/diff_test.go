@@ -12,8 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent-harness/internal/gitdiff"
-	"github.com/viktordanov/uagent-harness/internal/patch"
+	"github.com/viktordanov/uah/internal/gitdiff"
+	"github.com/viktordanov/uah/internal/patch"
 )
 
 // repo is a temporary git repository, isolated from the user's and the

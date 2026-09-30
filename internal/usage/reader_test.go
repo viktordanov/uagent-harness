@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent-harness/internal/usage"
+	"github.com/viktordanov/uah/internal/usage"
 )
 
 // testToken is a test access token (not a real one) with an account ID and

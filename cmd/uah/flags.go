@@ -11,13 +11,13 @@ import (
 
 	"github.com/urfave/cli/v3"
 
-	"github.com/viktordanov/uagent-harness/internal/app"
-	"github.com/viktordanov/uagent-harness/internal/approval"
-	"github.com/viktordanov/uagent-harness/internal/config"
-	"github.com/viktordanov/uagent-harness/internal/engine"
-	"github.com/viktordanov/uagent-harness/internal/home"
-	"github.com/viktordanov/uagent-harness/internal/sandbox"
-	"github.com/viktordanov/uagent-harness/internal/session"
+	"github.com/viktordanov/uah/internal/app"
+	"github.com/viktordanov/uah/internal/approval"
+	"github.com/viktordanov/uah/internal/config"
+	"github.com/viktordanov/uah/internal/engine"
+	"github.com/viktordanov/uah/internal/home"
+	"github.com/viktordanov/uah/internal/sandbox"
+	"github.com/viktordanov/uah/internal/session"
 )
 
 // sessionFlags are shared by the TUI and `uah exec`.

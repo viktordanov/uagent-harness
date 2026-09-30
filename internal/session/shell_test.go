@@ -15,10 +15,10 @@ import (
 	uaharness "github.com/viktordanov/uagent/harness"
 	"github.com/viktordanov/uagent/testing/fixtures"
 
-	"github.com/viktordanov/uagent-harness/internal/sandbox"
-	"github.com/viktordanov/uagent-harness/internal/session"
-	"github.com/viktordanov/uagent-harness/internal/usershell"
-	"github.com/viktordanov/uagent-harness/testing/harnesstest"
+	"github.com/viktordanov/uah/internal/sandbox"
+	"github.com/viktordanov/uah/internal/session"
+	"github.com/viktordanov/uah/internal/usershell"
+	"github.com/viktordanov/uah/testing/harnesstest"
 )
 
 func shellRunner(t *testing.T) *usershell.Runner {

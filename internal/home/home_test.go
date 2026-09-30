@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/viktordanov/uagent-harness/internal/home"
+	"github.com/viktordanov/uah/internal/home"
 )
 
 func TestDir(t *testing.T) {

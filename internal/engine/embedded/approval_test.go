@@ -13,15 +13,15 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/approval"
-	"github.com/viktordanov/uagent-harness/internal/engine"
-	"github.com/viktordanov/uagent-harness/internal/engine/embedded"
-	"github.com/viktordanov/uagent-harness/internal/hooks"
-	"github.com/viktordanov/uagent-harness/internal/review"
-	"github.com/viktordanov/uagent-harness/internal/rules"
-	"github.com/viktordanov/uagent-harness/internal/sandbox"
-	"github.com/viktordanov/uagent-harness/internal/session"
-	"github.com/viktordanov/uagent-harness/testing/fakellm"
+	"github.com/viktordanov/uah/internal/approval"
+	"github.com/viktordanov/uah/internal/engine"
+	"github.com/viktordanov/uah/internal/engine/embedded"
+	"github.com/viktordanov/uah/internal/hooks"
+	"github.com/viktordanov/uah/internal/review"
+	"github.com/viktordanov/uah/internal/rules"
+	"github.com/viktordanov/uah/internal/sandbox"
+	"github.com/viktordanov/uah/internal/session"
+	"github.com/viktordanov/uah/testing/fakellm"
 )
 
 // approvalEnv is a workspace-write session whose commands go through an

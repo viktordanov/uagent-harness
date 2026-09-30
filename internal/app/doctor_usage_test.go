@@ -11,8 +11,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/viktordanov/uagent-harness/internal/app"
-	"github.com/viktordanov/uagent-harness/internal/usage"
+	"github.com/viktordanov/uah/internal/app"
+	"github.com/viktordanov/uah/internal/usage"
 )
 
 // usageBody is a /wham/usage body with one weekly window, sent as the

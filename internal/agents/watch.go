@@ -8,7 +8,7 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/session"
+	"github.com/viktordanov/uah/internal/session"
 )
 
 // Bounds of a child's event log and of a view's backlog.

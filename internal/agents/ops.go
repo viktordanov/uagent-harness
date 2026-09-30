@@ -7,8 +7,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/viktordanov/uagent-harness/internal/engine"
-	"github.com/viktordanov/uagent-harness/internal/session"
+	"github.com/viktordanov/uah/internal/engine"
+	"github.com/viktordanov/uah/internal/session"
 )
 
 // Codex's refusals for spawn_agent.

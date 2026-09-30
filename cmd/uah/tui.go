@@ -11,14 +11,14 @@ import (
 
 	"github.com/urfave/cli/v3"
 
-	"github.com/viktordanov/uagent-harness/internal/history"
-	"github.com/viktordanov/uagent-harness/internal/home"
-	"github.com/viktordanov/uagent-harness/internal/images"
-	"github.com/viktordanov/uagent-harness/internal/images/clipboard"
-	"github.com/viktordanov/uagent-harness/internal/models"
-	"github.com/viktordanov/uagent-harness/internal/session"
-	"github.com/viktordanov/uagent-harness/internal/store"
-	"github.com/viktordanov/uagent-harness/internal/tui/bubble"
+	"github.com/viktordanov/uah/internal/history"
+	"github.com/viktordanov/uah/internal/home"
+	"github.com/viktordanov/uah/internal/images"
+	"github.com/viktordanov/uah/internal/images/clipboard"
+	"github.com/viktordanov/uah/internal/models"
+	"github.com/viktordanov/uah/internal/session"
+	"github.com/viktordanov/uah/internal/store"
+	"github.com/viktordanov/uah/internal/tui/bubble"
 )
 
 // tuiAction is the default action: open the terminal UI, optionally with a

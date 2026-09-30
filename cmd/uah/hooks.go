@@ -9,10 +9,10 @@ import (
 
 	"github.com/urfave/cli/v3"
 
-	"github.com/viktordanov/uagent-harness/internal/app"
-	"github.com/viktordanov/uagent-harness/internal/config"
-	"github.com/viktordanov/uagent-harness/internal/home"
-	"github.com/viktordanov/uagent-harness/internal/hooks"
+	"github.com/viktordanov/uah/internal/app"
+	"github.com/viktordanov/uah/internal/config"
+	"github.com/viktordanov/uah/internal/home"
+	"github.com/viktordanov/uah/internal/hooks"
 )
 
 // hooksCommand is `uah hooks`: list the hooks for a workspace and trust project hooks.

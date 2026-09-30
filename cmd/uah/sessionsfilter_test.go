@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent-harness/testing/fakellm"
+	"github.com/viktordanov/uah/testing/fakellm"
 )
 
 // TestSessionsFilters lists sessions by workspace and by activity, as a

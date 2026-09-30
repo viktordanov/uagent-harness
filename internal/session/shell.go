@@ -10,8 +10,8 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/approval"
-	"github.com/viktordanov/uagent-harness/internal/usershell"
+	"github.com/viktordanov/uah/internal/approval"
+	"github.com/viktordanov/uah/internal/usershell"
 )
 
 // ErrNoShell means the session was opened without a runner for the user's

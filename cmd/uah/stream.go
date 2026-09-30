@@ -9,9 +9,9 @@ import (
 	"github.com/viktordanov/uagent/core"
 	"github.com/viktordanov/uagent/stream"
 
-	"github.com/viktordanov/uagent-harness/internal/compaction"
-	"github.com/viktordanov/uagent-harness/internal/engine"
-	"github.com/viktordanov/uagent-harness/internal/session"
+	"github.com/viktordanov/uah/internal/compaction"
+	"github.com/viktordanov/uah/internal/engine"
+	"github.com/viktordanov/uah/internal/session"
 )
 
 // jsonlWriter writes run events in uagent's stream schema and session events

@@ -3,15 +3,15 @@ package state
 import (
 	"time"
 
-	"github.com/viktordanov/uagent-harness/internal/cmdparse"
-	"github.com/viktordanov/uagent-harness/internal/contextusage"
-	"github.com/viktordanov/uagent-harness/internal/engine"
+	"github.com/viktordanov/uah/internal/cmdparse"
+	"github.com/viktordanov/uah/internal/contextusage"
+	"github.com/viktordanov/uah/internal/engine"
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/gitdiff"
-	"github.com/viktordanov/uagent-harness/internal/mcp"
-	"github.com/viktordanov/uagent-harness/internal/patch"
+	"github.com/viktordanov/uah/internal/gitdiff"
+	"github.com/viktordanov/uah/internal/mcp"
+	"github.com/viktordanov/uah/internal/patch"
 )
 
 // Kind is what a transcript item shows.

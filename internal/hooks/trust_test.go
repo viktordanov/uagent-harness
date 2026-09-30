@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent-harness/internal/hooks"
+	"github.com/viktordanov/uah/internal/hooks"
 )
 
 // TestTrust_Scripts: a command that runs a local script is trusted with the

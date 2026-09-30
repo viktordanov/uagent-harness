@@ -4,7 +4,7 @@ import (
 	"maps"
 	"slices"
 
-	"github.com/viktordanov/uagent-harness/internal/mcp"
+	"github.com/viktordanov/uah/internal/mcp"
 )
 
 // merge returns base with every value set in over (a layer or a project

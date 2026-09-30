@@ -8,7 +8,7 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/engine/codexauth"
+	"github.com/viktordanov/uah/internal/engine/codexauth"
 )
 
 // codexLogin describes the openai-codex login in Codex's auth file for `uah

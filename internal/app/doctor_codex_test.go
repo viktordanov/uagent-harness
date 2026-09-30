@@ -14,8 +14,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/viktordanov/uagent-harness/internal/app"
-	"github.com/viktordanov/uagent-harness/internal/engine/codexauth"
+	"github.com/viktordanov/uah/internal/app"
+	"github.com/viktordanov/uah/internal/engine/codexauth"
 )
 
 // TestDoctor_CodexLoginUahRefreshes: an expired token with a refresh token

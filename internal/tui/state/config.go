@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/viktordanov/uagent-harness/internal/approval"
-	"github.com/viktordanov/uagent-harness/internal/session"
+	"github.com/viktordanov/uah/internal/approval"
+	"github.com/viktordanov/uah/internal/session"
 )
 
 // ConfigPanel is the /config panel, after Claude Code's: the basic

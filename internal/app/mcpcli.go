@@ -7,8 +7,8 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/viktordanov/uagent-harness/internal/config"
-	"github.com/viktordanov/uagent-harness/internal/mcp"
+	"github.com/viktordanov/uah/internal/config"
+	"github.com/viktordanov/uah/internal/mcp"
 )
 
 // MCPEntry is one configured server as `uah mcp list` and `get` show it.

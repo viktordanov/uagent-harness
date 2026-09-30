@@ -1,6 +1,6 @@
 package approval
 
-import "github.com/viktordanov/uagent-harness/internal/rules"
+import "github.com/viktordanov/uah/internal/rules"
 
 // DecideTyped decides a command the user typed themselves (a `!` command
 // in the TUI) when such commands follow the agent's rules: a forbidden

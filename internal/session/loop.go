@@ -6,9 +6,9 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/approval"
-	"github.com/viktordanov/uagent-harness/internal/engine"
-	"github.com/viktordanov/uagent-harness/internal/hooks"
+	"github.com/viktordanov/uah/internal/approval"
+	"github.com/viktordanov/uah/internal/engine"
+	"github.com/viktordanov/uah/internal/hooks"
 )
 
 // Commands and internal events handled by the loop.

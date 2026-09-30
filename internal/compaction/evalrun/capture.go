@@ -16,11 +16,11 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/agents"
-	"github.com/viktordanov/uagent-harness/internal/compaction"
-	"github.com/viktordanov/uagent-harness/internal/engine"
-	"github.com/viktordanov/uagent-harness/internal/engine/embedded"
-	"github.com/viktordanov/uagent-harness/internal/session"
+	"github.com/viktordanov/uah/internal/agents"
+	"github.com/viktordanov/uah/internal/compaction"
+	"github.com/viktordanov/uah/internal/engine"
+	"github.com/viktordanov/uah/internal/engine/embedded"
+	"github.com/viktordanov/uah/internal/session"
 )
 
 // probeMessage is the message a capture sends to start a run. It follows

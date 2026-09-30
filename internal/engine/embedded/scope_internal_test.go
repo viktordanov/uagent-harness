@@ -6,9 +6,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/viktordanov/uagent-harness/internal/approval"
-	"github.com/viktordanov/uagent-harness/internal/engine"
-	"github.com/viktordanov/uagent-harness/internal/mcp"
+	"github.com/viktordanov/uah/internal/approval"
+	"github.com/viktordanov/uah/internal/engine"
+	"github.com/viktordanov/uah/internal/mcp"
 )
 
 func TestScope_Tools(t *testing.T) {

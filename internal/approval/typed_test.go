@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent-harness/internal/approval"
-	"github.com/viktordanov/uagent-harness/internal/rules"
+	"github.com/viktordanov/uah/internal/approval"
+	"github.com/viktordanov/uah/internal/rules"
 )
 
 // TestDecideTyped pins how a command the user typed follows the rules: a

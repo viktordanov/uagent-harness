@@ -8,8 +8,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/viktordanov/uagent-harness/internal/tui/bubble"
-	"github.com/viktordanov/uagent-harness/testing/fakellm"
+	"github.com/viktordanov/uah/internal/tui/bubble"
+	"github.com/viktordanov/uah/testing/fakellm"
 )
 
 // TestTUI_StreamsTheAnswer: the answer shows as the model writes it, while

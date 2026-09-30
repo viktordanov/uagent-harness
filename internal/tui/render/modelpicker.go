@@ -5,7 +5,7 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/viktordanov/uagent-harness/internal/tui/state"
+	"github.com/viktordanov/uah/internal/tui/state"
 )
 
 // pickerRows is how many rows the /model picker shows at once.

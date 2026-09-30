@@ -5,7 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/viktordanov/uagent-harness/internal/approval"
+	"github.com/viktordanov/uah/internal/approval"
 )
 
 // TestTUI_ShiftTabCyclesTheMode drives shift+tab through the session: the

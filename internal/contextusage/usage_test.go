@@ -7,9 +7,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/unreallabsai/unreal-agent/harness/llm"
 
-	"github.com/viktordanov/uagent-harness/internal/compaction"
-	"github.com/viktordanov/uagent-harness/internal/contextusage"
-	"github.com/viktordanov/uagent-harness/internal/instructions"
+	"github.com/viktordanov/uah/internal/compaction"
+	"github.com/viktordanov/uah/internal/contextusage"
+	"github.com/viktordanov/uah/internal/instructions"
 )
 
 func msg(role llm.Role, text string) llm.Item {

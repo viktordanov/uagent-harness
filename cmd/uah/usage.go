@@ -10,8 +10,8 @@ import (
 
 	"github.com/urfave/cli/v3"
 
-	"github.com/viktordanov/uagent-harness/internal/app"
-	"github.com/viktordanov/uagent-harness/internal/usage"
+	"github.com/viktordanov/uah/internal/app"
+	"github.com/viktordanov/uah/internal/usage"
 )
 
 // usageCommand is `uah usage`: the subscription's usage windows, as Codex's

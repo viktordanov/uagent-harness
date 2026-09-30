@@ -12,7 +12,7 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/engine"
+	"github.com/viktordanov/uah/internal/engine"
 )
 
 // observer writes each persisted session item as one JSON line, exactly as

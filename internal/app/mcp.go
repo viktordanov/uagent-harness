@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"slices"
 
-	"github.com/viktordanov/uagent-harness/internal/config"
-	"github.com/viktordanov/uagent-harness/internal/mcp"
+	"github.com/viktordanov/uah/internal/config"
+	"github.com/viktordanov/uah/internal/mcp"
 )
 
 // MCPCredentialsFile holds MCP OAuth logins when they are not in the OS

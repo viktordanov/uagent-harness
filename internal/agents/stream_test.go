@@ -8,9 +8,9 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/agents"
-	"github.com/viktordanov/uagent-harness/internal/engine"
-	"github.com/viktordanov/uagent-harness/testing/fakellm"
+	"github.com/viktordanov/uah/internal/agents"
+	"github.com/viktordanov/uah/internal/engine"
+	"github.com/viktordanov/uah/testing/fakellm"
 )
 
 // TestAgents_ChildrenDoNotStream: a parent that streams its own answer

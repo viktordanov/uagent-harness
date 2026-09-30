@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/unreallabsai/unreal-agent/harness/llm"
 
-	"github.com/viktordanov/uagent-harness/internal/compaction"
+	"github.com/viktordanov/uah/internal/compaction"
 )
 
 // calls is n Bash calls, each with an output of the given tokens.

@@ -18,7 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/unreallabsai/unreal-agent/harness/llm/clients/openaicodex"
 
-	"github.com/viktordanov/uagent-harness/internal/engine/codexauth"
+	"github.com/viktordanov/uah/internal/engine/codexauth"
 )
 
 // TestProbeRemoteCompaction asks the ChatGPT backend for Codex's remote

@@ -5,8 +5,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/viktordanov/uagent-harness/internal/models"
-	"github.com/viktordanov/uagent-harness/internal/session"
+	"github.com/viktordanov/uah/internal/models"
+	"github.com/viktordanov/uah/internal/session"
 )
 
 // The /model picker is Codex's model popup and its reasoning popup as one

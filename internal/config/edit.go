@@ -6,7 +6,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 
-	"github.com/viktordanov/uagent-harness/internal/config/tomledit"
+	"github.com/viktordanov/uah/internal/config/tomledit"
 )
 
 // SetValue sets key, dotted for a table ("tui.mouse"), in the configuration

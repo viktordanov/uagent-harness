@@ -8,8 +8,8 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/engine"
-	"github.com/viktordanov/uagent-harness/internal/session"
+	"github.com/viktordanov/uah/internal/engine"
+	"github.com/viktordanov/uah/internal/session"
 )
 
 // AgentView is a subagent's live transcript, shown in place of the

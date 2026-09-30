@@ -7,7 +7,7 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/viktordanov/uagent-harness/internal/engine/codexauth"
+	"github.com/viktordanov/uah/internal/engine/codexauth"
 )
 
 // codexOriginator is what the runner's openaicodex client sends as

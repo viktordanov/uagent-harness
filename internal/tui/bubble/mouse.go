@@ -3,8 +3,8 @@ package bubble
 import (
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/viktordanov/uagent-harness/internal/tui/render"
-	"github.com/viktordanov/uagent-harness/internal/tui/state"
+	"github.com/viktordanov/uah/internal/tui/render"
+	"github.com/viktordanov/uah/internal/tui/state"
 )
 
 // onMouse turns the reported mouse into selection intents: the left

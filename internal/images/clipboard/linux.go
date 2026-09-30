@@ -8,7 +8,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/viktordanov/uagent-harness/internal/images"
+	"github.com/viktordanov/uah/internal/images"
 )
 
 // imageTypes are the clipboard types read as an image, in order of

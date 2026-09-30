@@ -4,9 +4,9 @@ import (
 	"path/filepath"
 	"slices"
 
-	"github.com/viktordanov/uagent-harness/internal/approval"
-	"github.com/viktordanov/uagent-harness/internal/config"
-	"github.com/viktordanov/uagent-harness/internal/rules"
+	"github.com/viktordanov/uah/internal/approval"
+	"github.com/viktordanov/uah/internal/config"
+	"github.com/viktordanov/uah/internal/rules"
 )
 
 // pickApprovals is the --ask flag, the configured approval_policy, or

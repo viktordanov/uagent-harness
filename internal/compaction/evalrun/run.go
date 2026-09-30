@@ -9,9 +9,9 @@ import (
 
 	"github.com/unreallabsai/unreal-agent/harness/llm"
 
-	"github.com/viktordanov/uagent-harness/internal/compaction"
-	"github.com/viktordanov/uagent-harness/internal/compaction/eval"
-	"github.com/viktordanov/uagent-harness/internal/sessionfile"
+	"github.com/viktordanov/uah/internal/compaction"
+	"github.com/viktordanov/uah/internal/compaction/eval"
+	"github.com/viktordanov/uah/internal/sessionfile"
 )
 
 // Options configure a run.

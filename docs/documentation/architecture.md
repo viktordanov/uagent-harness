@@ -1,4 +1,4 @@
-# uagent-harness architecture
+# uah architecture
 
 uah is a pure core with well-organized infrastructure around it, not layered DDD.
 

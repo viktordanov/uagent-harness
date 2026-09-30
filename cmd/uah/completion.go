@@ -11,12 +11,12 @@ import (
 
 	"github.com/urfave/cli/v3"
 
-	"github.com/viktordanov/uagent-harness/internal/app"
-	"github.com/viktordanov/uagent-harness/internal/approval"
-	"github.com/viktordanov/uagent-harness/internal/home"
-	"github.com/viktordanov/uagent-harness/internal/models"
-	"github.com/viktordanov/uagent-harness/internal/session"
-	"github.com/viktordanov/uagent-harness/internal/store"
+	"github.com/viktordanov/uah/internal/app"
+	"github.com/viktordanov/uah/internal/approval"
+	"github.com/viktordanov/uah/internal/home"
+	"github.com/viktordanov/uah/internal/models"
+	"github.com/viktordanov/uah/internal/session"
+	"github.com/viktordanov/uah/internal/store"
 )
 
 // completeFlag is the shell-completion flag urfave/cli adds to every call

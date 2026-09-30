@@ -7,8 +7,8 @@ import (
 
 	"github.com/unreallabsai/unreal-agent/harness/operation"
 
-	"github.com/viktordanov/uagent-harness/internal/engine"
-	"github.com/viktordanov/uagent-harness/internal/patch"
+	"github.com/viktordanov/uah/internal/engine"
+	"github.com/viktordanov/uah/internal/patch"
 )
 
 var errPatchInterrupted = errors.New("interrupted: the run stopped before this patch was applied; check the files before applying it again")

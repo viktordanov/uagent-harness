@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/viktordanov/uagent-harness/internal/session"
+	"github.com/viktordanov/uah/internal/session"
 )
 
 // newSessionID checks --session-id, as Claude Code's flag: the ID of a new

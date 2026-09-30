@@ -6,7 +6,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/viktordanov/uagent-harness/internal/models"
+	"github.com/viktordanov/uah/internal/models"
 )
 
 // Source is a models.Source that returns a fixed list, or Err.

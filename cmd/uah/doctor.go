@@ -9,7 +9,7 @@ import (
 
 	"github.com/urfave/cli/v3"
 
-	"github.com/viktordanov/uagent-harness/internal/app"
+	"github.com/viktordanov/uah/internal/app"
 )
 
 // doctorCommand is `uah doctor`: check what a session in the workspace needs.

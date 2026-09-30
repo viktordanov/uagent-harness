@@ -7,8 +7,8 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/engine"
-	"github.com/viktordanov/uagent-harness/internal/tui/state"
+	"github.com/viktordanov/uah/internal/engine"
+	"github.com/viktordanov/uah/internal/tui/state"
 )
 
 // TestStreamedAnswer: an answer the model is still writing is drawn as the
@@ -17,7 +17,9 @@ import (
 func TestStreamedAnswer(t *testing.T) {
 	// A state shares its transcript with the states reduced from it, so
 	// each case starts from its own.
-	live := func() state.State { return apply(base(), core.RunStarted{At: t0, RunID: "r1"}, core.TurnStarted{At: t0, Turn: 1}) }
+	live := func() state.State {
+		return apply(base(), core.RunStarted{At: t0, RunID: "r1"}, core.TurnStarted{At: t0, Turn: 1})
+	}
 	text := "The **fix** is in:\n\n```go\nreturn nil"
 	streaming := apply(live(), engine.TextDelta{At: t0, ItemID: "msg", Text: text[:10], Final: true}, engine.TextDelta{At: t0, ItemID: "msg", Text: text[10:]}, state.Tick{Now: t0})
 	final := apply(live(), core.AssistantMessage{At: t0, Turn: 1, Text: text, Final: true}, state.Tick{Now: t0})

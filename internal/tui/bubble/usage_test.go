@@ -12,9 +12,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent-harness/internal/tui/bubble"
-	"github.com/viktordanov/uagent-harness/internal/usage"
-	"github.com/viktordanov/uagent-harness/testing/harnesstest"
+	"github.com/viktordanov/uah/internal/tui/bubble"
+	"github.com/viktordanov/uah/internal/usage"
+	"github.com/viktordanov/uah/testing/harnesstest"
 )
 
 // usageReader reads a Codex test login's usage from a loopback backend that

@@ -13,8 +13,8 @@ import (
 
 	"github.com/unreallabsai/unreal-agent/harness/llm"
 
-	"github.com/viktordanov/uagent-harness/internal/compaction"
-	"github.com/viktordanov/uagent-harness/internal/instructions"
+	"github.com/viktordanov/uah/internal/compaction"
+	"github.com/viktordanov/uah/internal/instructions"
 )
 
 // Category names, in the order /context lists them.

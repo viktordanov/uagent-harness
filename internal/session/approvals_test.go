@@ -9,8 +9,8 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/approval"
-	"github.com/viktordanov/uagent-harness/internal/session"
+	"github.com/viktordanov/uah/internal/approval"
+	"github.com/viktordanov/uah/internal/session"
 )
 
 func newInteractive(t *testing.T) *harness {

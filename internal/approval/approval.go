@@ -10,7 +10,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/viktordanov/uagent-harness/internal/rules"
+	"github.com/viktordanov/uah/internal/rules"
 )
 
 // Policy is when the user is asked, as Codex's approval_policy.

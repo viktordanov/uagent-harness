@@ -10,10 +10,10 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/codereview"
-	"github.com/viktordanov/uagent-harness/internal/gitdiff"
-	"github.com/viktordanov/uagent-harness/internal/session"
-	"github.com/viktordanov/uagent-harness/internal/tui/state"
+	"github.com/viktordanov/uah/internal/codereview"
+	"github.com/viktordanov/uah/internal/gitdiff"
+	"github.com/viktordanov/uah/internal/session"
+	"github.com/viktordanov/uah/internal/tui/state"
 )
 
 var targets = state.ReviewTargetsLoaded{

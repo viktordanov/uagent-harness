@@ -7,7 +7,7 @@ import (
 	"github.com/unreallabsai/unreal-agent/harness/llm"
 	"github.com/unreallabsai/unreal-agent/harness/tool"
 
-	"github.com/viktordanov/uagent-harness/internal/images"
+	"github.com/viktordanov/uah/internal/images"
 )
 
 // pastedImages rewrites a request with the images pasted into its user

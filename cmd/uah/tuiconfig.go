@@ -5,8 +5,8 @@ import (
 
 	"github.com/urfave/cli/v3"
 
-	"github.com/viktordanov/uagent-harness/internal/app"
-	"github.com/viktordanov/uagent-harness/internal/tui/state"
+	"github.com/viktordanov/uah/internal/app"
+	"github.com/viktordanov/uah/internal/tui/state"
 )
 
 // tuiConfig loads what /config shows: the values a session opened now

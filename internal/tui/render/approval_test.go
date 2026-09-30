@@ -3,7 +3,7 @@ package render_test
 import (
 	"testing"
 
-	"github.com/viktordanov/uagent-harness/internal/session"
+	"github.com/viktordanov/uah/internal/session"
 )
 
 func TestScreen_Approval(t *testing.T) {

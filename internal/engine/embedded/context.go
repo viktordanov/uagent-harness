@@ -5,8 +5,8 @@ import (
 
 	"github.com/unreallabsai/unreal-agent/harness/llm"
 
-	"github.com/viktordanov/uagent-harness/internal/compaction"
-	"github.com/viktordanov/uagent-harness/internal/contextusage"
+	"github.com/viktordanov/uah/internal/compaction"
+	"github.com/viktordanov/uah/internal/contextusage"
 )
 
 // lastRequests keep each session's latest model request, as sent after any

@@ -10,9 +10,9 @@ import (
 	"charm.land/bubbles/v2/textarea"
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/viktordanov/uagent-harness/internal/images"
-	"github.com/viktordanov/uagent-harness/internal/images/clipboard"
-	"github.com/viktordanov/uagent-harness/internal/tui/state"
+	"github.com/viktordanov/uah/internal/images"
+	"github.com/viktordanov/uah/internal/images/clipboard"
+	"github.com/viktordanov/uah/internal/tui/state"
 )
 
 // clipboardTimeout bounds one read of the clipboard.

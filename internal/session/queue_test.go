@@ -11,7 +11,7 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/session"
+	"github.com/viktordanov/uah/internal/session"
 )
 
 // queuedOnDisk waits until the sidecar keeps want as the session's queue.

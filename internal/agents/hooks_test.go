@@ -10,9 +10,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent-harness/internal/agents"
-	"github.com/viktordanov/uagent-harness/internal/hooks"
-	"github.com/viktordanov/uagent-harness/testing/fakellm"
+	"github.com/viktordanov/uah/internal/agents"
+	"github.com/viktordanov/uah/internal/hooks"
+	"github.com/viktordanov/uah/testing/fakellm"
 )
 
 // TestAgents_SubagentStopHook runs SubagentStop when the child finishes:

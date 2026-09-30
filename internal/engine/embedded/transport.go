@@ -17,7 +17,7 @@ import (
 
 	"github.com/unreallabsai/unreal-agent/harness/primitives"
 
-	"github.com/viktordanov/uagent-harness/internal/engine"
+	"github.com/viktordanov/uah/internal/engine"
 )
 
 // A model request's limits, which tests shorten: the wait for headers, for

@@ -12,10 +12,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent-harness/internal/app"
-	"github.com/viktordanov/uagent-harness/internal/hooks"
-	"github.com/viktordanov/uagent-harness/internal/session"
-	"github.com/viktordanov/uagent-harness/testing/fakellm"
+	"github.com/viktordanov/uah/internal/app"
+	"github.com/viktordanov/uah/internal/hooks"
+	"github.com/viktordanov/uah/internal/session"
+	"github.com/viktordanov/uah/testing/fakellm"
 )
 
 // TestSetup_SubagentHooks runs a session that spawns a subagent, with one

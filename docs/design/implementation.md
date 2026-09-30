@@ -6,7 +6,7 @@ Status: draft, 2026-09-24. It turns [harness.md](harness.md) and [tui.md](tui.md
 2. [Decisions made here](#2-decisions-made-here)
 3. [Dependency graph](#3-dependency-graph)
 4. [Changes in uagent (v0.3.0)](#4-changes-in-uagent-v030)
-5. [uagent-harness layout](#5-uagent-harness-layout)
+5. [uah layout](#5-uah-layout)
 6. [Session package](#6-session-package)
 7. [Engines](#7-engines)
 8. [Instructions and configuration](#8-instructions-and-configuration)
@@ -24,7 +24,7 @@ References: `UA/` is `github.com/viktordanov/uagent` (local `~/Projects/Code/go-
 | Repository | Module | Role |
 | --- | --- | --- |
 | `go-unreal-agent` (public) | `github.com/viktordanov/uagent` | The thin wrapper: one run of the runner with guards. Owns the **event model** (`core`), the **process engine** (`harness`), the **stream** encoding, and run records. Stays small and close to the runner. |
-| `go-unreal-harness` (private, this repository) | `github.com/viktordanov/uagent-harness` | The general-purpose harness built on top: sessions, the embedded engine, instructions, configuration, hooks, and the TUI. |
+| `go-unreal-harness` (private, this repository) | `github.com/viktordanov/uah` | The general-purpose harness built on top: sessions, the embedded engine, instructions, configuration, hooks, and the TUI. |
 
 The rule for deciding where code goes: if a one-shot `uagent "<prompt>"` run needs it, or both engines must agree on it (events, run records, the session lock), it belongs in uagent. Everything about long-lived sessions and interaction belongs here.
 
@@ -115,12 +115,12 @@ Each change is additive; the stream stays at schema version 1. Every item update
 - `UA/testing/fakerunner`: echo `messages[]` IDs back as `input` items so delivery acknowledgement can be tested.
 - Tag `v0.3.0`.
 
-## 5. uagent-harness layout
+## 5. uah layout
 
 ```text
 go-unreal-harness/
 ├── README.md
-├── go.mod                              module github.com/viktordanov/uagent-harness
+├── go.mod                              module github.com/viktordanov/uah
 ├── .golangci.yml                       copied from uagent
 ├── .github/workflows/ci.yml            build, race tests, lint
 ├── docs/design/                        harness.md, tui.md, implementation.md

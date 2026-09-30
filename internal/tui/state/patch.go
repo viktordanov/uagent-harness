@@ -3,8 +3,8 @@ package state
 import (
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/engine"
-	"github.com/viktordanov/uagent-harness/internal/patch"
+	"github.com/viktordanov/uah/internal/engine"
+	"github.com/viktordanov/uah/internal/patch"
 )
 
 // eventLabel is a tool call's label: the files an apply_patch call

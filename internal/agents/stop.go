@@ -5,8 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/viktordanov/uagent-harness/internal/hooks"
-	"github.com/viktordanov/uagent-harness/internal/session"
+	"github.com/viktordanov/uah/internal/hooks"
+	"github.com/viktordanov/uah/internal/session"
 )
 
 // maxStopContinuations stops SubagentStop hooks from keeping a child going

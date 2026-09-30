@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent-harness/internal/session"
-	"github.com/viktordanov/uagent-harness/internal/tui/state"
+	"github.com/viktordanov/uah/internal/session"
+	"github.com/viktordanov/uah/internal/tui/state"
 )
 
 // TestEditor_OpensTheDraft: ctrl+g hands the draft, placeholders as text,

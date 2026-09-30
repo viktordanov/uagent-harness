@@ -22,7 +22,7 @@ import (
 
 	_ "modernc.org/sqlite" // the pure-Go SQLite driver
 
-	"github.com/viktordanov/uagent-harness/internal/images"
+	"github.com/viktordanov/uah/internal/images"
 )
 
 // schemaVersion changes when the tables do; an index with another version is rebuilt.

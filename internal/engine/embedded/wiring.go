@@ -22,10 +22,10 @@ import (
 	"github.com/viktordanov/uagent/core"
 	"github.com/viktordanov/uagent/harness"
 
-	"github.com/viktordanov/uagent-harness/internal/approval"
-	"github.com/viktordanov/uagent-harness/internal/compaction"
-	"github.com/viktordanov/uagent-harness/internal/engine"
-	"github.com/viktordanov/uagent-harness/internal/instructions"
+	"github.com/viktordanov/uah/internal/approval"
+	"github.com/viktordanov/uah/internal/compaction"
+	"github.com/viktordanov/uah/internal/engine"
+	"github.com/viktordanov/uah/internal/instructions"
 )
 
 // The runner's defaults.

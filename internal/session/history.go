@@ -10,8 +10,8 @@ import (
 	"github.com/viktordanov/uagent/core"
 	"github.com/viktordanov/uagent/harness"
 
-	"github.com/viktordanov/uagent-harness/internal/approval"
-	"github.com/viktordanov/uagent-harness/internal/images"
+	"github.com/viktordanov/uah/internal/approval"
+	"github.com/viktordanov/uah/internal/images"
 )
 
 // Info summarizes one session from its run records.

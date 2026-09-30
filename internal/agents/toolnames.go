@@ -8,9 +8,9 @@ import (
 
 	rtool "github.com/unreallabsai/unreal-agent/harness/tool"
 
-	"github.com/viktordanov/uagent-harness/internal/mcp"
-	"github.com/viktordanov/uagent-harness/internal/patch"
-	"github.com/viktordanov/uagent-harness/internal/rules"
+	"github.com/viktordanov/uah/internal/mcp"
+	"github.com/viktordanov/uah/internal/patch"
+	"github.com/viktordanov/uah/internal/rules"
 )
 
 // toolAliases maps the tool names an agent definition may use, uah's and

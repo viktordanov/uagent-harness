@@ -12,8 +12,8 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/hooks"
-	"github.com/viktordanov/uagent-harness/internal/session"
+	"github.com/viktordanov/uah/internal/hooks"
+	"github.com/viktordanov/uah/internal/session"
 )
 
 func withHooks(t *testing.T, hs ...hooks.Hook) *harness {

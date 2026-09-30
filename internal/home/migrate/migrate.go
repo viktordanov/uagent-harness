@@ -14,8 +14,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/viktordanov/uagent-harness/internal/home"
-	"github.com/viktordanov/uagent-harness/internal/store"
+	"github.com/viktordanov/uah/internal/home"
+	"github.com/viktordanov/uah/internal/store"
 )
 
 // Marker is the file in the home that records a migration.

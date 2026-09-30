@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent-harness/internal/config/tomledit"
+	"github.com/viktordanov/uah/internal/config/tomledit"
 )
 
 const file = `# My settings

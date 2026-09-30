@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/viktordanov/uagent-harness/internal/models"
+	"github.com/viktordanov/uah/internal/models"
 )
 
 func TestSuggest(t *testing.T) {

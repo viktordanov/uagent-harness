@@ -20,7 +20,7 @@ import (
 	"github.com/unreallabsai/unreal-agent/harness/llm/clients/openaicodex"
 	"github.com/unreallabsai/unreal-agent/harness/llm/clients/openrouter"
 
-	"github.com/viktordanov/uagent-harness/internal/engine/embedded"
+	"github.com/viktordanov/uah/internal/engine/embedded"
 )
 
 // sent is one request as the server saw it.

@@ -15,10 +15,10 @@ import (
 	uaharness "github.com/viktordanov/uagent/harness"
 	"github.com/viktordanov/uagent/testing/fixtures"
 
-	"github.com/viktordanov/uagent-harness/internal/approval"
-	"github.com/viktordanov/uagent-harness/internal/hooks"
-	"github.com/viktordanov/uagent-harness/internal/session"
-	"github.com/viktordanov/uagent-harness/testing/harnesstest"
+	"github.com/viktordanov/uah/internal/approval"
+	"github.com/viktordanov/uah/internal/hooks"
+	"github.com/viktordanov/uah/internal/session"
+	"github.com/viktordanov/uah/testing/harnesstest"
 )
 
 // TestSession_RunnerRuns drives real runs of uagent's fake runner, which

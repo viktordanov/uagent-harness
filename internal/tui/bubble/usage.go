@@ -5,8 +5,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/viktordanov/uagent-harness/internal/tui/state"
-	"github.com/viktordanov/uagent-harness/internal/usage"
+	"github.com/viktordanov/uah/internal/tui/state"
+	"github.com/viktordanov/uah/internal/usage"
 )
 
 // loadUsage reads the subscription's usage off the update loop. Without a

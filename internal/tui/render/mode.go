@@ -5,9 +5,9 @@ import (
 
 	"charm.land/lipgloss/v2"
 
-	"github.com/viktordanov/uagent-harness/internal/approval"
-	"github.com/viktordanov/uagent-harness/internal/sandbox"
-	"github.com/viktordanov/uagent-harness/internal/tui/state"
+	"github.com/viktordanov/uah/internal/approval"
+	"github.com/viktordanov/uah/internal/sandbox"
+	"github.com/viktordanov/uah/internal/tui/state"
 )
 
 // yoloText is how the footer and the header name yolo mode.

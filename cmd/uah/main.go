@@ -15,8 +15,8 @@ import (
 
 	"github.com/urfave/cli/v3"
 
-	"github.com/viktordanov/uagent-harness/internal/home"
-	"github.com/viktordanov/uagent-harness/internal/home/migrate"
+	"github.com/viktordanov/uah/internal/home"
+	"github.com/viktordanov/uah/internal/home/migrate"
 )
 
 const (

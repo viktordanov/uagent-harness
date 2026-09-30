@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent-harness/internal/models"
-	"github.com/viktordanov/uagent-harness/internal/tui/state"
+	"github.com/viktordanov/uah/internal/models"
+	"github.com/viktordanov/uah/internal/tui/state"
 )
 
 func codexCatalog(origin models.Origin) models.Catalog {

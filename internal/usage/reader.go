@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/viktordanov/uagent-harness/internal/engine/codexauth"
+	"github.com/viktordanov/uah/internal/engine/codexauth"
 )
 
 // ErrUnsupported means the provider has no usage uah can read. The error a

@@ -8,7 +8,7 @@ import (
 
 	"github.com/unreallabsai/unreal-agent/harness/llm"
 
-	"github.com/viktordanov/uagent-harness/internal/llmcall"
+	"github.com/viktordanov/uah/internal/llmcall"
 )
 
 // overflowRetries bounds how often a summary call that overflows the window

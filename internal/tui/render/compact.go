@@ -12,8 +12,8 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/engine"
-	"github.com/viktordanov/uagent-harness/internal/tui/state"
+	"github.com/viktordanov/uah/internal/engine"
+	"github.com/viktordanov/uah/internal/tui/state"
 )
 
 // The compact view, Codex-shaped: your messages on a band after a λ, tool

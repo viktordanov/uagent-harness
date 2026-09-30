@@ -7,8 +7,8 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/cmdparse"
-	"github.com/viktordanov/uagent-harness/internal/engine"
+	"github.com/viktordanov/uah/internal/cmdparse"
+	"github.com/viktordanov/uah/internal/engine"
 )
 
 // Tool calls read as what they do (the gallery's R6; docs/design/tool-calls.md):

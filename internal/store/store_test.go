@@ -14,9 +14,9 @@ import (
 	uaharness "github.com/viktordanov/uagent/harness"
 	"github.com/viktordanov/uagent/testing/fixtures"
 
-	"github.com/viktordanov/uagent-harness/internal/session"
-	"github.com/viktordanov/uagent-harness/internal/store"
-	"github.com/viktordanov/uagent-harness/testing/harnesstest"
+	"github.com/viktordanov/uah/internal/session"
+	"github.com/viktordanov/uah/internal/store"
+	"github.com/viktordanov/uah/testing/harnesstest"
 )
 
 // runs writes real run records with the fake runner: one run per prompt,

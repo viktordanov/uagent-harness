@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/viktordanov/uagent-harness/internal/images"
+	"github.com/viktordanov/uah/internal/images"
 )
 
 // MacOS reads the clipboard with osascript: a file copied in Finder first,

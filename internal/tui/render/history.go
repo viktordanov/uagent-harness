@@ -5,7 +5,7 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/viktordanov/uagent-harness/internal/tui/state"
+	"github.com/viktordanov/uah/internal/tui/state"
 )
 
 // searchPrompt starts the footer while ctrl+r searches, as Codex's.

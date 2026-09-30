@@ -12,11 +12,11 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/engine"
-	"github.com/viktordanov/uagent-harness/internal/patch"
-	"github.com/viktordanov/uagent-harness/internal/session"
-	"github.com/viktordanov/uagent-harness/internal/tui/render"
-	"github.com/viktordanov/uagent-harness/internal/tui/state"
+	"github.com/viktordanov/uah/internal/engine"
+	"github.com/viktordanov/uah/internal/patch"
+	"github.com/viktordanov/uah/internal/session"
+	"github.com/viktordanov/uah/internal/tui/render"
+	"github.com/viktordanov/uah/internal/tui/state"
 )
 
 // patchedRun is a run whose model applied a patch to two files: a small

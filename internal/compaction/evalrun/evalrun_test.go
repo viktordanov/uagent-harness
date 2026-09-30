@@ -8,9 +8,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent-harness/internal/compaction"
-	"github.com/viktordanov/uagent-harness/internal/compaction/eval"
-	"github.com/viktordanov/uagent-harness/internal/compaction/evalrun"
+	"github.com/viktordanov/uah/internal/compaction"
+	"github.com/viktordanov/uah/internal/compaction/eval"
+	"github.com/viktordanov/uah/internal/compaction/evalrun"
 )
 
 // TestRun_Fixtures runs the evaluation on the recorded fixture sessions

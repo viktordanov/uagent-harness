@@ -9,12 +9,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent-harness/internal/agents"
-	"github.com/viktordanov/uagent-harness/internal/approval"
-	"github.com/viktordanov/uagent-harness/internal/engine/embedded"
-	"github.com/viktordanov/uagent-harness/internal/rules"
-	"github.com/viktordanov/uagent-harness/internal/session"
-	"github.com/viktordanov/uagent-harness/testing/fakellm"
+	"github.com/viktordanov/uah/internal/agents"
+	"github.com/viktordanov/uah/internal/approval"
+	"github.com/viktordanov/uah/internal/engine/embedded"
+	"github.com/viktordanov/uah/internal/rules"
+	"github.com/viktordanov/uah/internal/session"
+	"github.com/viktordanov/uah/testing/fakellm"
 )
 
 // waitAll is a reply that waits for every agent spawned so far.

@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/viktordanov/uagent-harness/internal/approval"
-	"github.com/viktordanov/uagent-harness/internal/session"
+	"github.com/viktordanov/uah/internal/approval"
+	"github.com/viktordanov/uah/internal/session"
 )
 
 // ConfigValue is one key's effective value and where it came from, as

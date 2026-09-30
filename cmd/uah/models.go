@@ -9,8 +9,8 @@ import (
 
 	"github.com/urfave/cli/v3"
 
-	"github.com/viktordanov/uagent-harness/internal/app"
-	"github.com/viktordanov/uagent-harness/internal/models"
+	"github.com/viktordanov/uah/internal/app"
+	"github.com/viktordanov/uah/internal/models"
 )
 
 // modelsCommand is `uah models`: the models the provider offers this login,

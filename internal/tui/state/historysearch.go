@@ -4,7 +4,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/viktordanov/uagent-harness/internal/images"
+	"github.com/viktordanov/uah/internal/images"
 )
 
 // Reverse search, as Codex's ctrl+r (chat_composer/history_search.rs,

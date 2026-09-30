@@ -10,10 +10,10 @@ import (
 	"github.com/viktordanov/uagent/core"
 	uaharness "github.com/viktordanov/uagent/harness"
 
-	"github.com/viktordanov/uagent-harness/internal/cmdparse"
-	"github.com/viktordanov/uagent-harness/internal/engine"
-	"github.com/viktordanov/uagent-harness/internal/session"
-	"github.com/viktordanov/uagent-harness/internal/tui/state"
+	"github.com/viktordanov/uah/internal/cmdparse"
+	"github.com/viktordanov/uah/internal/engine"
+	"github.com/viktordanov/uah/internal/session"
+	"github.com/viktordanov/uah/internal/tui/state"
 )
 
 func inWorkspace() state.State {

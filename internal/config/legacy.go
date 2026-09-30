@@ -4,7 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/viktordanov/uagent-harness/internal/home"
+	"github.com/viktordanov/uah/internal/home"
 )
 
 // legacyProjectName is the project directory uah read before it moved to .uah.

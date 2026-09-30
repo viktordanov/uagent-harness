@@ -3,8 +3,8 @@ package render_test
 import (
 	"testing"
 
-	"github.com/viktordanov/uagent-harness/internal/models"
-	"github.com/viktordanov/uagent-harness/internal/tui/state"
+	"github.com/viktordanov/uah/internal/models"
+	"github.com/viktordanov/uah/internal/tui/state"
 )
 
 // TestScreen_ModelPicker draws /model's two steps: the provider's models

@@ -8,7 +8,7 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/engine"
+	"github.com/viktordanov/uah/internal/engine"
 )
 
 // client resolves the provider, model, and credentials as the runner does

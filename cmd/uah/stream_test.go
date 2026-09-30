@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent-harness/testing/fakellm"
-	"github.com/viktordanov/uagent-harness/testing/harnesstest"
+	"github.com/viktordanov/uah/testing/fakellm"
+	"github.com/viktordanov/uah/testing/harnesstest"
 )
 
 // TestRunStreamsTheAnswer: `uah run --stream` writes the answer's deltas

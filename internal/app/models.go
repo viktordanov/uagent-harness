@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/viktordanov/uagent-harness/internal/models"
-	"github.com/viktordanov/uagent-harness/internal/session"
+	"github.com/viktordanov/uah/internal/models"
+	"github.com/viktordanov/uah/internal/session"
 )
 
 // NewModels is the model catalog for the settings' provider and base URL,

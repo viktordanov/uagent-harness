@@ -3,8 +3,8 @@ package state
 import (
 	"fmt"
 
-	"github.com/viktordanov/uagent-harness/internal/approval"
-	"github.com/viktordanov/uagent-harness/internal/session"
+	"github.com/viktordanov/uah/internal/approval"
+	"github.com/viktordanov/uah/internal/session"
 )
 
 // CycleMode is shift+tab: the next permission mode, read only, workspace,

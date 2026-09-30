@@ -11,9 +11,9 @@ import (
 
 	"github.com/viktordanov/uagent/harness"
 
-	"github.com/viktordanov/uagent-harness/internal/app"
-	"github.com/viktordanov/uagent-harness/internal/session"
-	"github.com/viktordanov/uagent-harness/internal/store"
+	"github.com/viktordanov/uah/internal/app"
+	"github.com/viktordanov/uah/internal/session"
+	"github.com/viktordanov/uah/internal/store"
 )
 
 // sessionsRmCommand is `uah sessions rm`: delete a session, its run

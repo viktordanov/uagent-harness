@@ -10,9 +10,9 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/viktordanov/uagent-harness/internal/images"
-	"github.com/viktordanov/uagent-harness/internal/session"
-	"github.com/viktordanov/uagent-harness/internal/tui/state"
+	"github.com/viktordanov/uah/internal/images"
+	"github.com/viktordanov/uah/internal/session"
+	"github.com/viktordanov/uah/internal/tui/state"
 )
 
 // Frame is what the shell provides for one screen.

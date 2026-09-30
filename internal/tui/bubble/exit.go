@@ -3,7 +3,7 @@ package bubble
 import (
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/tui/render"
+	"github.com/viktordanov/uah/internal/tui/render"
 )
 
 // Exit is what the TUI leaves behind when it quits: the session that was

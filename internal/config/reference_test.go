@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent-harness/internal/config"
+	"github.com/viktordanov/uah/internal/config"
 )
 
 // TestReferenceListsEveryKey keeps docs/configuration.md complete: every

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/viktordanov/uagent-harness/internal/engine"
+	"github.com/viktordanov/uah/internal/engine"
 )
 
 // The tool names, Codex's v1 set.

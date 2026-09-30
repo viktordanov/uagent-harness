@@ -9,8 +9,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/viktordanov/uagent-harness/internal/home"
-	"github.com/viktordanov/uagent-harness/internal/hooks"
+	"github.com/viktordanov/uah/internal/home"
+	"github.com/viktordanov/uah/internal/hooks"
 )
 
 // LayerDir holds configuration layers: every *.toml in it merges after the

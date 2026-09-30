@@ -12,11 +12,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent-harness/internal/app"
-	"github.com/viktordanov/uagent-harness/internal/contextusage"
-	"github.com/viktordanov/uagent-harness/internal/instructions"
-	"github.com/viktordanov/uagent-harness/internal/session"
-	"github.com/viktordanov/uagent-harness/testing/fakellm"
+	"github.com/viktordanov/uah/internal/app"
+	"github.com/viktordanov/uah/internal/contextusage"
+	"github.com/viktordanov/uah/internal/instructions"
+	"github.com/viktordanov/uah/internal/session"
+	"github.com/viktordanov/uah/testing/fakellm"
 )
 
 // TestSetup_ModelInstructionsFile sets model_instructions_file to a path

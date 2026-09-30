@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent-harness/internal/instructions"
+	"github.com/viktordanov/uah/internal/instructions"
 )
 
 // TestPrompts writes the built-in prompts beside the configuration file,

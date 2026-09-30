@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent-harness/internal/config"
-	"github.com/viktordanov/uagent-harness/internal/hooks"
+	"github.com/viktordanov/uah/internal/config"
+	"github.com/viktordanov/uah/internal/hooks"
 )
 
 // layerHome isolates uah's home and UAH_EXTRA_CONFIG, and returns the

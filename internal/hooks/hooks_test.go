@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent-harness/internal/hooks"
+	"github.com/viktordanov/uah/internal/hooks"
 )
 
 func run(t *testing.T, in hooks.Input, hs ...hooks.Hook) (hooks.Decision, []hooks.Result) {

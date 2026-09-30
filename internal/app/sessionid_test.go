@@ -10,9 +10,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent-harness/internal/app"
-	"github.com/viktordanov/uagent-harness/internal/session"
-	"github.com/viktordanov/uagent-harness/testing/fakellm"
+	"github.com/viktordanov/uah/internal/app"
+	"github.com/viktordanov/uah/internal/session"
+	"github.com/viktordanov/uah/testing/fakellm"
 )
 
 // TestSetup_NewSessionID starts a session with the ID --session-id gives,
@@ -45,9 +45,9 @@ func TestSetup_NewSessionID(t *testing.T) {
 
 	for name, change := range map[string]func(*app.Inputs){
 		"an ID that exists": func(*app.Inputs) {},
-		"not a UUID":       func(in *app.Inputs) { in.NewSessionID = "session-1" },
-		"a UUID in braces": func(in *app.Inputs) { in.NewSessionID = "{" + id + "}" },
-		"resuming at once": func(in *app.Inputs) { in.NewSessionID, in.SessionRef = "2b5e8c7a-3f1d-4b2e-9c6a-7d8e9f0a1b2c", id },
+		"not a UUID":        func(in *app.Inputs) { in.NewSessionID = "session-1" },
+		"a UUID in braces":  func(in *app.Inputs) { in.NewSessionID = "{" + id + "}" },
+		"resuming at once":  func(in *app.Inputs) { in.NewSessionID, in.SessionRef = "2b5e8c7a-3f1d-4b2e-9c6a-7d8e9f0a1b2c", id },
 	} {
 		t.Run(name+" is a usage error", func(t *testing.T) {
 			in := in

@@ -13,10 +13,10 @@ import (
 
 	"github.com/viktordanov/uagent/harness"
 
-	"github.com/viktordanov/uagent-harness/internal/app"
-	"github.com/viktordanov/uagent-harness/internal/session"
-	"github.com/viktordanov/uagent-harness/internal/store"
-	"github.com/viktordanov/uagent-harness/testing/fakellm"
+	"github.com/viktordanov/uah/internal/app"
+	"github.com/viktordanov/uah/internal/session"
+	"github.com/viktordanov/uah/internal/store"
+	"github.com/viktordanov/uah/testing/fakellm"
 )
 
 // TestRemoveSession runs a session that spawns a subagent and another

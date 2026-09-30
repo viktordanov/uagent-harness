@@ -8,8 +8,8 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/engine"
-	"github.com/viktordanov/uagent-harness/internal/tui/state"
+	"github.com/viktordanov/uah/internal/engine"
+	"github.com/viktordanov/uah/internal/tui/state"
 )
 
 // kindsAndTexts are the transcript's assistant and reasoning items as

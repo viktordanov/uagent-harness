@@ -10,7 +10,7 @@ import (
 
 	"github.com/urfave/cli/v3"
 
-	"github.com/viktordanov/uagent-harness/internal/app"
+	"github.com/viktordanov/uah/internal/app"
 )
 
 // flagConfig names the user configuration file flag, and its command.

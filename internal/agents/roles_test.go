@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent-harness/internal/agents"
+	"github.com/viktordanov/uah/internal/agents"
 )
 
 func writeRole(t *testing.T, dir, name, body string) {

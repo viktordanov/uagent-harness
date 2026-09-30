@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent-harness/internal/codereview"
+	"github.com/viktordanov/uah/internal/codereview"
 )
 
 func TestPrompt_Targets(t *testing.T) {

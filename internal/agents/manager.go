@@ -8,11 +8,11 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/viktordanov/uagent-harness/internal/contextusage"
-	"github.com/viktordanov/uagent-harness/internal/engine"
-	"github.com/viktordanov/uagent-harness/internal/instructions"
-	"github.com/viktordanov/uagent-harness/internal/mcp"
-	"github.com/viktordanov/uagent-harness/internal/session"
+	"github.com/viktordanov/uah/internal/contextusage"
+	"github.com/viktordanov/uah/internal/engine"
+	"github.com/viktordanov/uah/internal/instructions"
+	"github.com/viktordanov/uah/internal/mcp"
+	"github.com/viktordanov/uah/internal/session"
 )
 
 // Defaults, Codex's.

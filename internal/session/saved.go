@@ -13,7 +13,7 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/approval"
+	"github.com/viktordanov/uah/internal/approval"
 )
 
 // Saved are the settings a session keeps in its sidecar whenever they

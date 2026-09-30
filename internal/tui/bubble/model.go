@@ -14,15 +14,15 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/compaction"
-	"github.com/viktordanov/uagent-harness/internal/history"
-	"github.com/viktordanov/uagent-harness/internal/images"
-	"github.com/viktordanov/uagent-harness/internal/images/clipboard"
-	"github.com/viktordanov/uagent-harness/internal/models"
-	"github.com/viktordanov/uagent-harness/internal/session"
-	"github.com/viktordanov/uagent-harness/internal/tui/render"
-	"github.com/viktordanov/uagent-harness/internal/tui/state"
-	"github.com/viktordanov/uagent-harness/internal/usage"
+	"github.com/viktordanov/uah/internal/compaction"
+	"github.com/viktordanov/uah/internal/history"
+	"github.com/viktordanov/uah/internal/images"
+	"github.com/viktordanov/uah/internal/images/clipboard"
+	"github.com/viktordanov/uah/internal/models"
+	"github.com/viktordanov/uah/internal/session"
+	"github.com/viktordanov/uah/internal/tui/render"
+	"github.com/viktordanov/uah/internal/tui/state"
+	"github.com/viktordanov/uah/internal/usage"
 )
 
 const (

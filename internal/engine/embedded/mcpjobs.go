@@ -8,7 +8,7 @@ import (
 
 	"github.com/unreallabsai/unreal-agent/harness/operation"
 
-	"github.com/viktordanov/uagent-harness/internal/mcp"
+	"github.com/viktordanov/uah/internal/mcp"
 )
 
 var errInterrupted = errors.New("interrupted: the run stopped while this MCP call was running, and it was not repeated")

@@ -13,10 +13,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent-harness/internal/app"
-	"github.com/viktordanov/uagent-harness/internal/config"
-	"github.com/viktordanov/uagent-harness/internal/instructions"
-	"github.com/viktordanov/uagent-harness/testing/harnesstest"
+	"github.com/viktordanov/uah/internal/app"
+	"github.com/viktordanov/uah/internal/config"
+	"github.com/viktordanov/uah/internal/instructions"
+	"github.com/viktordanov/uah/testing/harnesstest"
 )
 
 // setupEnv isolates the configuration directory and CODEX_HOME, and returns

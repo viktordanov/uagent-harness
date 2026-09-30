@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/viktordanov/uagent-harness/internal/gitdiff"
+	"github.com/viktordanov/uah/internal/gitdiff"
 )
 
 var (

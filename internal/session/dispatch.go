@@ -8,7 +8,7 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/hooks"
+	"github.com/viktordanov/uah/internal/hooks"
 )
 
 // onSubmit accepts a message and sends it through its UserPromptSubmit hooks,

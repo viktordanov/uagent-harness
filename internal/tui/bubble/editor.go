@@ -13,9 +13,9 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"mvdan.cc/sh/v3/shell"
 
-	"github.com/viktordanov/uagent-harness/internal/home"
-	"github.com/viktordanov/uagent-harness/internal/sandbox"
-	"github.com/viktordanov/uagent-harness/internal/tui/state"
+	"github.com/viktordanov/uah/internal/home"
+	"github.com/viktordanov/uah/internal/sandbox"
+	"github.com/viktordanov/uah/internal/tui/state"
 )
 
 var (

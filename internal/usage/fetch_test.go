@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent-harness/internal/engine/codexauth"
-	"github.com/viktordanov/uagent-harness/internal/usage"
+	"github.com/viktordanov/uah/internal/engine/codexauth"
+	"github.com/viktordanov/uah/internal/usage"
 )
 
 var testCreds = codexauth.Creds{AccessToken: "token-abc", AccountID: "acct-123"}

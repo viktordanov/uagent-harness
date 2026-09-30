@@ -3,8 +3,8 @@ package render_test
 import (
 	"testing"
 
-	"github.com/viktordanov/uagent-harness/internal/mcp"
-	"github.com/viktordanov/uagent-harness/internal/tui/state"
+	"github.com/viktordanov/uah/internal/mcp"
+	"github.com/viktordanov/uah/internal/tui/state"
 )
 
 func mcpServers() []mcp.ServerStatus {

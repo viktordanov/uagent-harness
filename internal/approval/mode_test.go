@@ -6,8 +6,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent-harness/internal/approval"
-	"github.com/viktordanov/uagent-harness/internal/sandbox"
+	"github.com/viktordanov/uah/internal/approval"
+	"github.com/viktordanov/uah/internal/sandbox"
 )
 
 // TestModes pins the mapping: each mode's sandbox, who decides, and the

@@ -6,8 +6,8 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/session"
-	"github.com/viktordanov/uagent-harness/internal/usershell"
+	"github.com/viktordanov/uah/internal/session"
+	"github.com/viktordanov/uah/internal/usershell"
 )
 
 // Shell mode: "!" at the start of an empty composer makes enter run the

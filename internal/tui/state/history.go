@@ -4,8 +4,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/viktordanov/uagent-harness/internal/images"
-	"github.com/viktordanov/uagent-harness/internal/session"
+	"github.com/viktordanov/uah/internal/images"
+	"github.com/viktordanov/uah/internal/session"
 )
 
 // Prompt history, after Codex's composer history (chat_composer_history.rs,

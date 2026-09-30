@@ -11,10 +11,10 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/viktordanov/uagent-harness/internal/codereview"
-	"github.com/viktordanov/uagent-harness/internal/gitdiff"
-	"github.com/viktordanov/uagent-harness/internal/patch"
-	"github.com/viktordanov/uagent-harness/internal/tui/state"
+	"github.com/viktordanov/uah/internal/codereview"
+	"github.com/viktordanov/uah/internal/gitdiff"
+	"github.com/viktordanov/uah/internal/patch"
+	"github.com/viktordanov/uah/internal/tui/state"
 )
 
 // /diff draws as the edit tool's diffs do, under a DIFF line with the

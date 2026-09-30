@@ -5,7 +5,7 @@ import (
 
 	"github.com/unreallabsai/unreal-agent/harness/operation"
 
-	"github.com/viktordanov/uagent-harness/internal/engine"
+	"github.com/viktordanov/uah/internal/engine"
 )
 
 // resultBudget bounds the final messages in one tool result, in

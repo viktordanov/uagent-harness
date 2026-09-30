@@ -8,7 +8,7 @@ import (
 
 	"github.com/unreallabsai/unreal-agent/harness/llm"
 
-	"github.com/viktordanov/uagent-harness/internal/compaction"
+	"github.com/viktordanov/uah/internal/compaction"
 )
 
 // remoteCompact asks the provider for Codex's remote compaction: the turn

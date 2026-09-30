@@ -10,8 +10,8 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/viktordanov/uagent-harness/internal/patch"
-	"github.com/viktordanov/uagent-harness/internal/tui/state"
+	"github.com/viktordanov/uah/internal/patch"
+	"github.com/viktordanov/uah/internal/tui/state"
 )
 
 // Diffs are drawn as Codex draws an applied patch, "Edited path (+3 -1)"

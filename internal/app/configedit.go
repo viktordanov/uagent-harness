@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/viktordanov/uagent-harness/internal/config"
-	"github.com/viktordanov/uagent-harness/internal/config/tomledit"
+	"github.com/viktordanov/uah/internal/config"
+	"github.com/viktordanov/uah/internal/config/tomledit"
 )
 
 // SaveSetting writes one key to the user file (in.ConfigPath) with the

@@ -15,8 +15,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent-harness/internal/engine/codexauth"
-	"github.com/viktordanov/uagent-harness/internal/usage"
+	"github.com/viktordanov/uah/internal/engine/codexauth"
+	"github.com/viktordanov/uah/internal/usage"
 )
 
 // TestCodexReader_RenewsARejectedLogin: after a 401, the reader refreshes

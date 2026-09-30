@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/viktordanov/uagent-harness/internal/config"
-	"github.com/viktordanov/uagent-harness/internal/session"
-	planusage "github.com/viktordanov/uagent-harness/internal/usage"
+	"github.com/viktordanov/uah/internal/config"
+	"github.com/viktordanov/uah/internal/session"
+	planusage "github.com/viktordanov/uah/internal/usage"
 )
 
 // NewUsage is the usage reader for the settings' provider and base URL:

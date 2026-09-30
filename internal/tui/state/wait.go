@@ -9,8 +9,8 @@ import (
 
 	"github.com/dustin/go-humanize"
 
-	"github.com/viktordanov/uagent-harness/internal/engine"
-	"github.com/viktordanov/uagent-harness/internal/patch"
+	"github.com/viktordanov/uah/internal/engine"
+	"github.com/viktordanov/uah/internal/patch"
 )
 
 // Wait is what the live run waits on, since when. Hint replaces "esc to

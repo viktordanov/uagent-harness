@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/viktordanov/uagent-harness/internal/agents"
-	"github.com/viktordanov/uagent-harness/internal/config"
-	"github.com/viktordanov/uagent-harness/internal/models"
-	"github.com/viktordanov/uagent-harness/internal/session"
+	"github.com/viktordanov/uah/internal/agents"
+	"github.com/viktordanov/uah/internal/config"
+	"github.com/viktordanov/uah/internal/models"
+	"github.com/viktordanov/uah/internal/session"
 )
 
 // Agents are the resolved [agents] settings.

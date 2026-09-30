@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/viktordanov/uagent-harness/internal/patch"
+	"github.com/viktordanov/uah/internal/patch"
 )
 
 // Event names a point where hooks run.

@@ -13,8 +13,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent-harness/testing/harnesstest"
-	"github.com/viktordanov/uagent-harness/testing/oauthserver"
+	"github.com/viktordanov/uah/testing/harnesstest"
+	"github.com/viktordanov/uah/testing/oauthserver"
 )
 
 func mcpEnv(t *testing.T) (user string, env []string) {

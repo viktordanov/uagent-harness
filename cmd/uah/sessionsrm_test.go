@@ -11,7 +11,7 @@ import (
 
 	"github.com/viktordanov/uagent/harness"
 
-	"github.com/viktordanov/uagent-harness/testing/fakellm"
+	"github.com/viktordanov/uah/testing/fakellm"
 )
 
 // TestSessionsRm deletes a session by prefix: --dry-run lists the paths

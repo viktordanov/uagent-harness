@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/unreallabsai/unreal-agent/harness/llm"
 
-	"github.com/viktordanov/uagent-harness/internal/compaction"
+	"github.com/viktordanov/uah/internal/compaction"
 )
 
 // Codex's own vectors (codex-rs/utils/string/src/truncate/tests.rs).

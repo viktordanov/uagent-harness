@@ -13,8 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"mvdan.cc/sh/v3/syntax"
 
-	"github.com/viktordanov/uagent-harness/internal/approval"
-	"github.com/viktordanov/uagent-harness/internal/tui/bubble"
+	"github.com/viktordanov/uah/internal/approval"
+	"github.com/viktordanov/uah/internal/tui/bubble"
 )
 
 // The test binary is the editor: VISUAL names it, and TestMain sends it

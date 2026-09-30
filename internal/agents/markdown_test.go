@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent-harness/internal/agents"
+	"github.com/viktordanov/uah/internal/agents"
 )
 
 // TestLoadRoles_Markdown reads Claude Code's agent files: the front

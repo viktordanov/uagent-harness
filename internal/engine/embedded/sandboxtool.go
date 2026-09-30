@@ -14,8 +14,8 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/approval"
-	"github.com/viktordanov/uagent-harness/internal/sandbox"
+	"github.com/viktordanov/uah/internal/approval"
+	"github.com/viktordanov/uah/internal/sandbox"
 )
 
 // Escalation arguments, as Codex's shell tool names them.

@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent-harness/internal/config"
+	"github.com/viktordanov/uah/internal/config"
 )
 
 // TestLoad_ModelInstructionsFile resolves model_instructions_file as Codex

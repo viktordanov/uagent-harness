@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/viktordanov/uagent-harness/testing/harnesstest"
+	"github.com/viktordanov/uah/testing/harnesstest"
 )
 
 // TestMain keeps every test away from the user's ~/.uah.

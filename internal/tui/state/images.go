@@ -6,8 +6,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/viktordanov/uagent-harness/internal/images"
-	"github.com/viktordanov/uagent-harness/internal/session"
+	"github.com/viktordanov/uah/internal/images"
+	"github.com/viktordanov/uah/internal/session"
 )
 
 // Images pasted into the composer, as Codex and Claude Code have them:

@@ -5,7 +5,7 @@ import (
 
 	"github.com/unreallabsai/unreal-agent/harness/llm"
 
-	"github.com/viktordanov/uagent-harness/internal/compaction"
+	"github.com/viktordanov/uah/internal/compaction"
 )
 
 // Kind is a kind of fact the recall counts.

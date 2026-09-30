@@ -3,7 +3,7 @@ package state
 import (
 	"strings"
 
-	"github.com/viktordanov/uagent-harness/internal/session"
+	"github.com/viktordanov/uah/internal/session"
 )
 
 // ctrl+g edits the draft in an external editor, as Claude Code's and

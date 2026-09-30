@@ -7,7 +7,7 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/approval"
+	"github.com/viktordanov/uah/internal/approval"
 )
 
 // Subagents runs the child agents a session's agent starts; internal/agents

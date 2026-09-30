@@ -3,7 +3,7 @@ package render
 import (
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/viktordanov/uagent-harness/internal/tui/state"
+	"github.com/viktordanov/uah/internal/tui/state"
 )
 
 // agentScreen draws a subagent's transcript, as the session's own is

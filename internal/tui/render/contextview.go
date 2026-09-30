@@ -6,7 +6,7 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/viktordanov/uagent-harness/internal/contextusage"
+	"github.com/viktordanov/uah/internal/contextusage"
 )
 
 // The /context grid: gridSide×gridSide cells, each 1% of the window, as

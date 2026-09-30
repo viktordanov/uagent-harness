@@ -12,9 +12,9 @@ import (
 	"github.com/unreallabsai/unreal-agent/harness/llm"
 	"github.com/unreallabsai/unreal-agent/harness/llm/clients/openai"
 
-	"github.com/viktordanov/uagent-harness/internal/compaction"
-	"github.com/viktordanov/uagent-harness/internal/llmcall"
-	"github.com/viktordanov/uagent-harness/testing/fakellm"
+	"github.com/viktordanov/uah/internal/compaction"
+	"github.com/viktordanov/uah/internal/llmcall"
+	"github.com/viktordanov/uah/testing/fakellm"
 )
 
 func client(t *testing.T, srv *fakellm.Server) llm.Adapter {

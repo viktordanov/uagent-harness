@@ -6,8 +6,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent-harness/internal/contextusage"
-	"github.com/viktordanov/uagent-harness/internal/tui/state"
+	"github.com/viktordanov/uah/internal/contextusage"
+	"github.com/viktordanov/uah/internal/tui/state"
 )
 
 func TestReduce_ContextView(t *testing.T) {

@@ -1,8 +1,8 @@
 package state
 
 import (
-	"github.com/viktordanov/uagent-harness/internal/mcp"
-	"github.com/viktordanov/uagent-harness/internal/session"
+	"github.com/viktordanov/uah/internal/mcp"
+	"github.com/viktordanov/uah/internal/session"
 )
 
 // EffListMCP asks the session for its MCP servers.

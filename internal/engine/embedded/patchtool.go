@@ -14,11 +14,11 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/approval"
-	"github.com/viktordanov/uagent-harness/internal/engine"
-	"github.com/viktordanov/uagent-harness/internal/models"
-	"github.com/viktordanov/uagent-harness/internal/patch"
-	"github.com/viktordanov/uagent-harness/internal/sandbox"
+	"github.com/viktordanov/uah/internal/approval"
+	"github.com/viktordanov/uah/internal/engine"
+	"github.com/viktordanov/uah/internal/models"
+	"github.com/viktordanov/uah/internal/patch"
+	"github.com/viktordanov/uah/internal/sandbox"
 )
 
 const patchPlanVersion operation.RemoteJobPlanVersion = 1

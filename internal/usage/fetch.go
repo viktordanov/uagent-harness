@@ -13,7 +13,7 @@ import (
 
 	"github.com/unreallabsai/unreal-agent/harness/llm/clients/openaicodex"
 
-	"github.com/viktordanov/uagent-harness/internal/engine/codexauth"
+	"github.com/viktordanov/uah/internal/engine/codexauth"
 )
 
 // Options configure Fetch. The zero value reads the real backend.

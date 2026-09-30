@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/viktordanov/uagent-harness/internal/patch"
+	"github.com/viktordanov/uah/internal/patch"
 )
 
 // PatchPlanType is the remote job plan an apply_patch call runs as. Its

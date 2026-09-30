@@ -15,8 +15,8 @@ import (
 
 	"github.com/unreallabsai/unreal-agent/harness/operation"
 
-	"github.com/viktordanov/uagent-harness/internal/approval"
-	"github.com/viktordanov/uagent-harness/internal/sandbox"
+	"github.com/viktordanov/uah/internal/approval"
+	"github.com/viktordanov/uah/internal/sandbox"
 )
 
 const (

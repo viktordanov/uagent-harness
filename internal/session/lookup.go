@@ -8,8 +8,8 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/images"
-	"github.com/viktordanov/uagent-harness/internal/sessionfile"
+	"github.com/viktordanov/uah/internal/images"
+	"github.com/viktordanov/uah/internal/sessionfile"
 )
 
 // FirstPromptMax is how many characters of the first message the sidecar

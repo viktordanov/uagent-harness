@@ -20,9 +20,9 @@ import (
 	"github.com/unreallabsai/unreal-agent/harness/llm/responsesapi"
 	"github.com/unreallabsai/unreal-agent/harness/primitives"
 
-	"github.com/viktordanov/uagent-harness/internal/engine/codexauth"
-	"github.com/viktordanov/uagent-harness/internal/llmcall"
-	"github.com/viktordanov/uagent-harness/internal/usage"
+	"github.com/viktordanov/uah/internal/engine/codexauth"
+	"github.com/viktordanov/uah/internal/llmcall"
+	"github.com/viktordanov/uah/internal/usage"
 )
 
 // The probes read the Codex sign-in the way the engine does and never print

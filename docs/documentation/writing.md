@@ -1,4 +1,4 @@
-# Writing uagent-harness documentation
+# Writing uah documentation
 
 Describe uah directly, in a neutral third-person voice: "uah runs…" and "The session queues…".
 Address the reader directly only in instructions.

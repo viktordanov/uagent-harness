@@ -21,8 +21,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/viktordanov/uagent-harness/internal/compaction"
-	"github.com/viktordanov/uagent-harness/internal/sessionfile"
+	"github.com/viktordanov/uah/internal/compaction"
+	"github.com/viktordanov/uah/internal/sessionfile"
 )
 
 // Point is where a case cuts a session: after the item Seq.

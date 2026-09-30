@@ -6,9 +6,9 @@ import (
 
 	"github.com/unreallabsai/unreal-agent/harness/llm"
 
-	"github.com/viktordanov/uagent-harness/internal/config"
-	"github.com/viktordanov/uagent-harness/internal/review"
-	"github.com/viktordanov/uagent-harness/internal/session"
+	"github.com/viktordanov/uah/internal/config"
+	"github.com/viktordanov/uah/internal/review"
+	"github.com/viktordanov/uah/internal/session"
 )
 
 // pickReview checks approvals_reviewer (auto_review by default, the

@@ -11,7 +11,7 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/viktordanov/uagent-harness/internal/cmdparse"
+	"github.com/viktordanov/uah/internal/cmdparse"
 )
 
 // mcpParts is an MCP call's line: "server · tool  key "value", key 5",

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/viktordanov/uagent-harness/internal/engine"
-	"github.com/viktordanov/uagent-harness/internal/patch"
+	"github.com/viktordanov/uah/internal/engine"
+	"github.com/viktordanov/uah/internal/patch"
 )
 
 // Stream events the scanner acts on.

@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/viktordanov/uagent-harness/internal/cmdparse"
+	"github.com/viktordanov/uah/internal/cmdparse"
 )
 
 const root = "/Users/me/Work/proj"

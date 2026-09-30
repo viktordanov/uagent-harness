@@ -12,11 +12,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent-harness/internal/app"
-	"github.com/viktordanov/uagent-harness/internal/engine"
-	"github.com/viktordanov/uagent-harness/internal/mcp"
-	"github.com/viktordanov/uagent-harness/testing/harnesstest"
-	"github.com/viktordanov/uagent-harness/testing/oauthserver"
+	"github.com/viktordanov/uah/internal/app"
+	"github.com/viktordanov/uah/internal/engine"
+	"github.com/viktordanov/uah/internal/mcp"
+	"github.com/viktordanov/uah/testing/harnesstest"
+	"github.com/viktordanov/uah/testing/oauthserver"
 )
 
 func TestSetupMCP(t *testing.T) {

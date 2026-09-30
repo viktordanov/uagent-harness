@@ -4,7 +4,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/viktordanov/uagent-harness/internal/tui/state"
+	"github.com/viktordanov/uah/internal/tui/state"
 )
 
 // transcriptLines are an item's lines as the transcript shows them: its own

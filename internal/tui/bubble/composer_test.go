@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent-harness/internal/tui/bubble"
-	"github.com/viktordanov/uagent-harness/testing/fakellm"
+	"github.com/viktordanov/uah/internal/tui/bubble"
+	"github.com/viktordanov/uah/testing/fakellm"
 )
 
 // cursorLine is the screen line the terminal's cursor is on.

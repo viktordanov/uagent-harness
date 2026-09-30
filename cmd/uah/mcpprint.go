@@ -9,8 +9,8 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/viktordanov/uagent-harness/internal/app"
-	"github.com/viktordanov/uagent-harness/internal/mcp"
+	"github.com/viktordanov/uah/internal/app"
+	"github.com/viktordanov/uah/internal/mcp"
 )
 
 // printServers writes Codex's two tables: stdio servers, then HTTP ones.

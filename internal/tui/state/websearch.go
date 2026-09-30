@@ -1,6 +1,6 @@
 package state
 
-import "github.com/viktordanov/uagent-harness/internal/engine"
+import "github.com/viktordanov/uah/internal/engine"
 
 // WebSearchTool is the name a web search's transcript line shows: the
 // provider's hosted tool (docs/design/web-search.md).

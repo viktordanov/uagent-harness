@@ -3,7 +3,7 @@ package app
 import (
 	"fmt"
 
-	"github.com/viktordanov/uagent-harness/internal/config"
+	"github.com/viktordanov/uah/internal/config"
 )
 
 // Codex's web_search values that uah offers (docs/design/web-search.md).

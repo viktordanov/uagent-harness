@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent-harness/internal/history"
+	"github.com/viktordanov/uah/internal/history"
 )
 
 func newFile(t *testing.T, maxBytes int64) history.File {

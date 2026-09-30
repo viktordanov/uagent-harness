@@ -11,7 +11,7 @@ import (
 
 	"github.com/viktordanov/uagent/harness"
 
-	"github.com/viktordanov/uagent-harness/internal/sessionfile"
+	"github.com/viktordanov/uah/internal/sessionfile"
 )
 
 // sidecarSuffix names a session's sidecar in the sessions directory.

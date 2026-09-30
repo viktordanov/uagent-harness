@@ -8,8 +8,8 @@ import (
 
 	"github.com/unreallabsai/unreal-agent/harness/tool"
 
-	"github.com/viktordanov/uagent-harness/internal/config"
-	"github.com/viktordanov/uagent-harness/internal/instructions"
+	"github.com/viktordanov/uah/internal/config"
+	"github.com/viktordanov/uah/internal/instructions"
 )
 
 // skillRoots are the directories holding <name>/SKILL.md skills, most

@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/viktordanov/uagent-harness/internal/approval"
+	"github.com/viktordanov/uah/internal/approval"
 )
 
 // askFor asks a child's approvals through its parent's session, with the

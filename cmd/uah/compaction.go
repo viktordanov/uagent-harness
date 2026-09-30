@@ -10,9 +10,9 @@ import (
 	"github.com/unreallabsai/unreal-agent/harness/llm"
 	"github.com/urfave/cli/v3"
 
-	"github.com/viktordanov/uagent-harness/internal/compaction/eval"
-	"github.com/viktordanov/uagent-harness/internal/compaction/evalrun"
-	"github.com/viktordanov/uagent-harness/internal/home"
+	"github.com/viktordanov/uah/internal/compaction/eval"
+	"github.com/viktordanov/uah/internal/compaction/evalrun"
+	"github.com/viktordanov/uah/internal/home"
 )
 
 // compactionCommand is the hidden `uah compaction eval`: the compaction

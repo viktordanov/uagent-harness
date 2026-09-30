@@ -10,9 +10,9 @@ import (
 	"github.com/viktordanov/uagent/core"
 	uaharness "github.com/viktordanov/uagent/harness"
 
-	"github.com/viktordanov/uagent-harness/internal/engine"
-	"github.com/viktordanov/uagent-harness/internal/patch"
-	"github.com/viktordanov/uagent-harness/internal/session"
+	"github.com/viktordanov/uah/internal/engine"
+	"github.com/viktordanov/uah/internal/patch"
+	"github.com/viktordanov/uah/internal/session"
 )
 
 // TestPrintTranscript_Diff prints an applied patch as plain +/- lines.

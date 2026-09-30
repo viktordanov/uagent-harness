@@ -5,7 +5,7 @@ import (
 	"maps"
 	"slices"
 
-	"github.com/viktordanov/uagent-harness/internal/config/tomledit"
+	"github.com/viktordanov/uah/internal/config/tomledit"
 )
 
 // ParseApprovalMode checks an approval_mode value.

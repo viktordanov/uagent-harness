@@ -8,9 +8,9 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/codereview"
-	"github.com/viktordanov/uagent-harness/internal/gitdiff"
-	"github.com/viktordanov/uagent-harness/internal/session"
+	"github.com/viktordanov/uah/internal/codereview"
+	"github.com/viktordanov/uah/internal/gitdiff"
+	"github.com/viktordanov/uah/internal/session"
 )
 
 // /diff and /review, after Codex's: /diff shows the work tree's changes

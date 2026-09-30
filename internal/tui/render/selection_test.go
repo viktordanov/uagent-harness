@@ -12,9 +12,9 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/session"
-	"github.com/viktordanov/uagent-harness/internal/tui/render"
-	"github.com/viktordanov/uagent-harness/internal/tui/state"
+	"github.com/viktordanov/uah/internal/session"
+	"github.com/viktordanov/uah/internal/tui/render"
+	"github.com/viktordanov/uah/internal/tui/state"
 )
 
 // selectRun is a finished run with a message, a tool call, and an answer

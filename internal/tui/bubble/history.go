@@ -3,9 +3,9 @@ package bubble
 import (
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/viktordanov/uagent-harness/internal/history"
-	"github.com/viktordanov/uagent-harness/internal/tui/render"
-	"github.com/viktordanov/uagent-harness/internal/tui/state"
+	"github.com/viktordanov/uah/internal/history"
+	"github.com/viktordanov/uah/internal/tui/render"
+	"github.com/viktordanov/uah/internal/tui/state"
 )
 
 // onSearchKey drives the ctrl+r search, whose query is the footer's: ctrl+r

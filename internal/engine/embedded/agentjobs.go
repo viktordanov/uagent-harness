@@ -8,7 +8,7 @@ import (
 
 	"github.com/unreallabsai/unreal-agent/harness/operation"
 
-	"github.com/viktordanov/uagent-harness/internal/engine"
+	"github.com/viktordanov/uah/internal/engine"
 )
 
 var errAgentInterrupted = errors.New("interrupted: the run stopped while this agent call was running, and it was not repeated")

@@ -5,7 +5,7 @@ import (
 
 	"github.com/unreallabsai/unreal-agent/harness/llm"
 
-	"github.com/viktordanov/uagent-harness/internal/sandbox"
+	"github.com/viktordanov/uah/internal/sandbox"
 )
 
 // jsonString is the JSON schema type of a string.

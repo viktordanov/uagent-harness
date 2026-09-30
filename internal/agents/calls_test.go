@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent-harness/internal/agents"
-	"github.com/viktordanov/uagent-harness/internal/engine"
+	"github.com/viktordanov/uah/internal/agents"
+	"github.com/viktordanov/uah/internal/engine"
 )
 
 // TestCall_Errors checks the tools' argument errors and unknown agents,

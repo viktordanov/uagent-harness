@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/viktordanov/uagent-harness/internal/patch"
+	"github.com/viktordanov/uah/internal/patch"
 )
 
 // parse reads git's unified diff into display diffs, one per file. Binary

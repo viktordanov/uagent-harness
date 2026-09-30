@@ -10,9 +10,9 @@ import (
 	"github.com/viktordanov/uagent/core"
 	uaharness "github.com/viktordanov/uagent/harness"
 
-	"github.com/viktordanov/uagent-harness/internal/session"
-	"github.com/viktordanov/uagent-harness/internal/tui/state"
-	"github.com/viktordanov/uagent-harness/internal/usershell"
+	"github.com/viktordanov/uah/internal/session"
+	"github.com/viktordanov/uah/internal/tui/state"
+	"github.com/viktordanov/uah/internal/usershell"
 )
 
 func TestReduce_ShellMode(t *testing.T) {

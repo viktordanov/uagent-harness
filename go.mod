@@ -1,4 +1,4 @@
-module github.com/viktordanov/uagent-harness
+module github.com/viktordanov/uah
 
 go 1.27.1
 

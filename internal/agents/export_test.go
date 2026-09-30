@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/viktordanov/uagent-harness/internal/contextusage"
-	"github.com/viktordanov/uagent-harness/internal/session"
+	"github.com/viktordanov/uah/internal/contextusage"
+	"github.com/viktordanov/uah/internal/session"
 )
 
 // BeforeSubmit runs f before each message goes to a child's session.

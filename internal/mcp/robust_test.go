@@ -19,7 +19,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent-harness/internal/mcp"
+	"github.com/viktordanov/uah/internal/mcp"
 )
 
 func call(t *testing.T, m *mcp.Manager, server, tool, args string) (mcp.Result, error) {

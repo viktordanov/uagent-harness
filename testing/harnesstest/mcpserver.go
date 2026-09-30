@@ -30,7 +30,7 @@ func MCPServer(tb testing.TB) string {
 			return
 		}
 		mcpPath = filepath.Join(dir, "mcpserver")
-		build := exec.CommandContext(context.Background(), "go", "build", "-o", mcpPath, "github.com/viktordanov/uagent-harness/testing/mcpserver")
+		build := exec.CommandContext(context.Background(), "go", "build", "-o", mcpPath, "github.com/viktordanov/uah/testing/mcpserver")
 		if out, err := build.CombinedOutput(); err != nil {
 			errMCP = fmt.Errorf("build mcpserver: %w\n%s", err, out)
 		}

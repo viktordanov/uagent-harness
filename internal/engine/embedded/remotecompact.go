@@ -11,7 +11,7 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/viktordanov/uagent-harness/internal/compaction"
+	"github.com/viktordanov/uah/internal/compaction"
 )
 
 // Remote compaction is Codex's (rust-v0.159.1, core/src/compact_remote_v2*.rs):

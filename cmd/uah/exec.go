@@ -11,7 +11,7 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/app"
+	"github.com/viktordanov/uah/internal/app"
 )
 
 const (

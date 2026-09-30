@@ -11,10 +11,10 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/session"
-	"github.com/viktordanov/uagent-harness/internal/tui/render"
-	"github.com/viktordanov/uagent-harness/internal/tui/state"
-	"github.com/viktordanov/uagent-harness/internal/usershell"
+	"github.com/viktordanov/uah/internal/session"
+	"github.com/viktordanov/uah/internal/tui/render"
+	"github.com/viktordanov/uah/internal/tui/state"
+	"github.com/viktordanov/uah/internal/usershell"
 )
 
 func TestShellModePromptAndFooter(t *testing.T) {

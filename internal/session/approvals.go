@@ -9,8 +9,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/viktordanov/uagent-harness/internal/approval"
-	"github.com/viktordanov/uagent-harness/internal/hooks"
+	"github.com/viktordanov/uah/internal/approval"
+	"github.com/viktordanov/uah/internal/hooks"
 )
 
 // ApprovalRequested asks the user to approve a command. The session waits

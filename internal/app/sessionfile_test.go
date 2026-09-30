@@ -12,10 +12,10 @@ import (
 	runnersession "github.com/unreallabsai/unreal-agent/harness/session"
 	"github.com/unreallabsai/unreal-agent/harness/sessionstore/localfile"
 
-	"github.com/viktordanov/uagent-harness/internal/app"
-	"github.com/viktordanov/uagent-harness/internal/session"
-	"github.com/viktordanov/uagent-harness/internal/sessionfile"
-	"github.com/viktordanov/uagent-harness/testing/fakellm"
+	"github.com/viktordanov/uah/internal/app"
+	"github.com/viktordanov/uah/internal/session"
+	"github.com/viktordanov/uah/internal/sessionfile"
+	"github.com/viktordanov/uah/testing/fakellm"
 )
 
 // TestSessionFileFollowsTheDocumentedFormat records a session on the

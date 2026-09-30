@@ -19,7 +19,7 @@ import (
 
 	"github.com/unreallabsai/unreal-agent/harness/llm"
 
-	"github.com/viktordanov/uagent-harness/internal/llmcall"
+	"github.com/viktordanov/uah/internal/llmcall"
 )
 
 // DefaultTimeout bounds one review, as Codex's REVIEW_TIMEOUT does.

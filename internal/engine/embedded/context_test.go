@@ -6,8 +6,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent-harness/internal/contextusage"
-	"github.com/viktordanov/uagent-harness/testing/fakellm"
+	"github.com/viktordanov/uah/internal/contextusage"
+	"github.com/viktordanov/uah/testing/fakellm"
 )
 
 func TestEmbedded_ContextUsageBreaksDownTheLastRequest(t *testing.T) {

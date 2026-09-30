@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent-harness/internal/app"
-	"github.com/viktordanov/uagent-harness/internal/home/migrate"
+	"github.com/viktordanov/uah/internal/app"
+	"github.com/viktordanov/uah/internal/home/migrate"
 )
 
 // TestDoctor_Home reports the home, whether the old folders were copied

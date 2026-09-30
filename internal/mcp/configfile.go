@@ -8,7 +8,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	gotoml "github.com/pelletier/go-toml/v2"
-	"github.com/viktordanov/uagent-harness/internal/config/tomledit"
+	"github.com/viktordanov/uah/internal/config/tomledit"
 )
 
 // validName is Codex's server name rule for `codex mcp add`.

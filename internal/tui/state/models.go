@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/viktordanov/uagent-harness/internal/models"
+	"github.com/viktordanov/uah/internal/models"
 )
 
 type (

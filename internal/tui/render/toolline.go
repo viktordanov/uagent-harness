@@ -8,8 +8,8 @@ import (
 
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/viktordanov/uagent-harness/internal/cmdparse"
-	"github.com/viktordanov/uagent-harness/internal/tui/state"
+	"github.com/viktordanov/uah/internal/cmdparse"
+	"github.com/viktordanov/uah/internal/tui/state"
 )
 
 // A tool call in the compact view is one line in the column: its label,

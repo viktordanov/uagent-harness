@@ -9,9 +9,9 @@ import (
 	"slices"
 	"time"
 
-	"github.com/viktordanov/uagent-harness/internal/home"
-	"github.com/viktordanov/uagent-harness/internal/hooks"
-	"github.com/viktordanov/uagent-harness/internal/mcp"
+	"github.com/viktordanov/uah/internal/home"
+	"github.com/viktordanov/uah/internal/hooks"
+	"github.com/viktordanov/uah/internal/mcp"
 )
 
 // Config holds defaults below flags, the environment, and a resumed session.

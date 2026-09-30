@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent-harness/internal/images/clipboard"
+	"github.com/viktordanov/uah/internal/images/clipboard"
 )
 
 // fakeExec answers commands by their joined arguments; anything else fails,

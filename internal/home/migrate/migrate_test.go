@@ -19,10 +19,10 @@ import (
 	uaharness "github.com/viktordanov/uagent/harness"
 	"github.com/viktordanov/uagent/testing/fixtures"
 
-	"github.com/viktordanov/uagent-harness/internal/home"
-	"github.com/viktordanov/uagent-harness/internal/home/migrate"
-	"github.com/viktordanov/uagent-harness/internal/store"
-	"github.com/viktordanov/uagent-harness/testing/harnesstest"
+	"github.com/viktordanov/uah/internal/home"
+	"github.com/viktordanov/uah/internal/home/migrate"
+	"github.com/viktordanov/uah/internal/store"
+	"github.com/viktordanov/uah/testing/harnesstest"
 )
 
 // oldHome lays out the folders uah used before ~/.uah under a fresh HOME:

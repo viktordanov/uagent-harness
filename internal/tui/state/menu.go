@@ -5,8 +5,8 @@ import (
 
 	"github.com/sahilm/fuzzy"
 
-	"github.com/viktordanov/uagent-harness/internal/models"
-	"github.com/viktordanov/uagent-harness/internal/session"
+	"github.com/viktordanov/uah/internal/models"
+	"github.com/viktordanov/uah/internal/session"
 )
 
 // menuSize is how many suggestions the menu shows.

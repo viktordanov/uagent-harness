@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/viktordanov/uagent-harness/internal/engine"
-	"github.com/viktordanov/uagent-harness/internal/session"
+	"github.com/viktordanov/uah/internal/engine"
+	"github.com/viktordanov/uah/internal/session"
 )
 
 // Going back to an earlier message, as Codex's backtrack

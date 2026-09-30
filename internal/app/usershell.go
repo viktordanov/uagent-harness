@@ -3,9 +3,9 @@ package app
 import (
 	"path/filepath"
 
-	"github.com/viktordanov/uagent-harness/internal/approval"
-	"github.com/viktordanov/uagent-harness/internal/config"
-	"github.com/viktordanov/uagent-harness/internal/usershell"
+	"github.com/viktordanov/uah/internal/approval"
+	"github.com/viktordanov/uah/internal/config"
+	"github.com/viktordanov/uah/internal/usershell"
 )
 
 // userShell runs the commands the user types in the TUI's shell mode, in

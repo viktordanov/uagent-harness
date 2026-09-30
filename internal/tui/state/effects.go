@@ -1,6 +1,6 @@
 package state
 
-import "github.com/viktordanov/uagent-harness/internal/session"
+import "github.com/viktordanov/uah/internal/session"
 
 // Effect is work for the shell to do. The reducer never does I/O.
 type Effect interface{ effect() }

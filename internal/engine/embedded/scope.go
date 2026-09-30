@@ -7,11 +7,11 @@ import (
 
 	"github.com/unreallabsai/unreal-agent/harness/tool"
 
-	"github.com/viktordanov/uagent-harness/internal/approval"
-	"github.com/viktordanov/uagent-harness/internal/engine"
-	"github.com/viktordanov/uagent-harness/internal/mcp"
-	"github.com/viktordanov/uagent-harness/internal/patch"
-	"github.com/viktordanov/uagent-harness/internal/rules"
+	"github.com/viktordanov/uah/internal/approval"
+	"github.com/viktordanov/uah/internal/engine"
+	"github.com/viktordanov/uah/internal/mcp"
+	"github.com/viktordanov/uah/internal/patch"
+	"github.com/viktordanov/uah/internal/rules"
 )
 
 var _ engine.Scoper = (*Engine)(nil)

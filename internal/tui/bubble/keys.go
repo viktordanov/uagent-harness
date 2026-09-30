@@ -3,8 +3,8 @@ package bubble
 import (
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/viktordanov/uagent-harness/internal/approval"
-	"github.com/viktordanov/uagent-harness/internal/tui/state"
+	"github.com/viktordanov/uah/internal/approval"
+	"github.com/viktordanov/uah/internal/tui/state"
 )
 
 // Keys named in more than one mode.

@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent-harness/internal/config"
-	"github.com/viktordanov/uagent-harness/internal/mcp"
+	"github.com/viktordanov/uah/internal/config"
+	"github.com/viktordanov/uah/internal/mcp"
 )
 
 // codexConfig is a Codex [mcp_servers] section, as Codex documents it.

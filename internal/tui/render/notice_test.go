@@ -12,8 +12,8 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/engine"
-	"github.com/viktordanov/uagent-harness/internal/tui/render"
+	"github.com/viktordanov/uah/internal/engine"
+	"github.com/viktordanov/uah/internal/tui/render"
 )
 
 // TestNoticeColor: an information notice, such as an auto-approved

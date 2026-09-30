@@ -3,8 +3,8 @@ package state
 import (
 	"strings"
 
-	"github.com/viktordanov/uagent-harness/internal/codereview"
-	"github.com/viktordanov/uagent-harness/internal/gitdiff"
+	"github.com/viktordanov/uah/internal/codereview"
+	"github.com/viktordanov/uah/internal/gitdiff"
 )
 
 // The /review menu is Codex's review popup as the command menu: after

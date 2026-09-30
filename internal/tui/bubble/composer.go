@@ -9,7 +9,7 @@ import (
 	"charm.land/bubbles/v2/textarea"
 	"charm.land/lipgloss/v2"
 
-	"github.com/viktordanov/uagent-harness/internal/tui/render"
+	"github.com/viktordanov/uah/internal/tui/render"
 )
 
 // minComposerRows is the composer's height limit on a short terminal.

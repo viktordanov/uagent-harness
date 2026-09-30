@@ -3,7 +3,7 @@ package engine
 import (
 	"time"
 
-	"github.com/viktordanov/uagent-harness/internal/compaction"
+	"github.com/viktordanov/uah/internal/compaction"
 )
 
 // Engine events join a run's events.

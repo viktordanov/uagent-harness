@@ -16,13 +16,13 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uagent-harness/internal/app"
-	"github.com/viktordanov/uagent-harness/internal/engine"
-	"github.com/viktordanov/uagent-harness/internal/home"
-	"github.com/viktordanov/uagent-harness/internal/images"
-	"github.com/viktordanov/uagent-harness/internal/patch"
-	"github.com/viktordanov/uagent-harness/internal/session"
-	"github.com/viktordanov/uagent-harness/internal/store"
+	"github.com/viktordanov/uah/internal/app"
+	"github.com/viktordanov/uah/internal/engine"
+	"github.com/viktordanov/uah/internal/home"
+	"github.com/viktordanov/uah/internal/images"
+	"github.com/viktordanov/uah/internal/patch"
+	"github.com/viktordanov/uah/internal/session"
+	"github.com/viktordanov/uah/internal/store"
 )
 
 // sessionsCommand is `uah sessions`: list sessions, or show one.

@@ -9,7 +9,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/colorprofile"
 
-	"github.com/viktordanov/uagent-harness/internal/tui/bubble"
+	"github.com/viktordanov/uah/internal/tui/bubble"
 )
 
 // printExit is what uah prints when the TUI quits, as Codex does

@@ -6,8 +6,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent-harness/internal/compaction"
-	"github.com/viktordanov/uagent-harness/testing/fakellm"
+	"github.com/viktordanov/uah/internal/compaction"
+	"github.com/viktordanov/uah/testing/fakellm"
 )
 
 func TestEmbedded_ClearStartsFreshInTheSameSession(t *testing.T) {

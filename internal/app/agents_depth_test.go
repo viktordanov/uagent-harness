@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent-harness/internal/app"
+	"github.com/viktordanov/uah/internal/app"
 )
 
 // TestSetup_MaxDepthIsOne clamps a configured max_depth above 1 with a

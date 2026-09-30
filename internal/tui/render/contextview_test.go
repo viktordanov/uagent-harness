@@ -3,8 +3,8 @@ package render_test
 import (
 	"testing"
 
-	"github.com/viktordanov/uagent-harness/internal/contextusage"
-	"github.com/viktordanov/uagent-harness/internal/tui/state"
+	"github.com/viktordanov/uah/internal/contextusage"
+	"github.com/viktordanov/uah/internal/tui/state"
 )
 
 func TestScreen_Context(t *testing.T) {

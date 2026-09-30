@@ -3,8 +3,8 @@ package bubble
 import (
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/viktordanov/uagent-harness/internal/gitdiff"
-	"github.com/viktordanov/uagent-harness/internal/tui/state"
+	"github.com/viktordanov/uah/internal/gitdiff"
+	"github.com/viktordanov/uah/internal/tui/state"
 )
 
 // runReview runs /diff's and /review's effects: git reads off the update

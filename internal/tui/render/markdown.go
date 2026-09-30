@@ -5,7 +5,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
-	"github.com/viktordanov/uagent-harness/internal/tui/render/markdown"
+	"github.com/viktordanov/uah/internal/tui/render/markdown"
 )
 
 // markdownLines renders the Markdown the model writes at width w, the way

@@ -2,16 +2,16 @@
 # uah
 
 <p align="center">
-  <a href="https://github.com/viktordanov/uagent-harness/actions/workflows/ci.yml"><img src="https://github.com/viktordanov/uagent-harness/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://github.com/viktordanov/uagent-harness/actions/workflows/memoria.yml"><img src="https://github.com/viktordanov/uagent-harness/actions/workflows/memoria.yml/badge.svg" alt="Docs checked by Memoria"></a>
-  <a href="https://github.com/viktordanov/uagent-harness/releases/latest"><img src="https://img.shields.io/github/v/release/viktordanov/uagent-harness" alt="Release"></a>
+  <a href="https://github.com/viktordanov/uah/actions/workflows/ci.yml"><img src="https://github.com/viktordanov/uah/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/viktordanov/uah/actions/workflows/memoria.yml"><img src="https://github.com/viktordanov/uah/actions/workflows/memoria.yml/badge.svg" alt="Docs checked by Memoria"></a>
+  <a href="https://github.com/viktordanov/uah/releases/latest"><img src="https://img.shields.io/github/v/release/viktordanov/uah" alt="Release"></a>
   <a href="https://aur.archlinux.org/packages/uah-bin"><img src="https://img.shields.io/aur/version/uah-bin" alt="AUR"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/viktordanov/uagent-harness" alt="License"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/viktordanov/uah" alt="License"></a>
 </p>
 
 <p align="center"><img src="docs/assets/uah.png" alt="The uah TUI: a flaky test found and fixed with a diff, then two subagents reviewing in parallel" width="900"></p>
 
-A terminal coding agent that works like Codex, running on [unreal-agent](https://github.com/unreallabsai/unreal-agent) through [uagent](https://github.com/viktordanov/uagent).
+uah (unreal agent harness) is a terminal coding agent that works like Codex, running on [unreal-agent](https://github.com/unreallabsai/unreal-agent) through [uagent](https://github.com/viktordanov/uagent).
 
 ```sh
 brew install viktordanov/tap/uah
@@ -44,10 +44,10 @@ The [ledger](docs/ledger.md) lists what's next.
    ```sh
    brew install viktordanov/tap/uah                                 # macOS and Linux
    yay -S uah-bin                                                   # Arch Linux (AUR)
-   go install github.com/viktordanov/uagent-harness/cmd/uah@latest  # from source, Go 1.27.1 or later
+   go install github.com/viktordanov/uah/cmd/uah@latest  # from source, Go 1.27.1 or later
    ```
 
-   Or grab an archive from the [releases](https://github.com/viktordanov/uagent-harness/releases).
+   Or grab an archive from the [releases](https://github.com/viktordanov/uah/releases).
 
 2. Sign in with `codex login`; uah uses your ChatGPT account and refreshes the login as Codex does. For another provider, pass `--provider` (openai, openrouter, fireworks, or ollama) and set its API key variable.
 3. Run `uah doctor`. It checks the login, sandbox, config, and MCP servers, and says how to fix anything that fails.
@@ -565,7 +565,7 @@ Pushing a `v1.2.3` tag builds the release archives for macOS and Linux (arm64 an
 CI runs the build, the race tests, the Markdown renderer's benchmarks once (so they keep running; its tests hold the bounds), and the linter on each push; the linter also fails on a function above 20 cyclomatic complexity, a backstop for the rule of about 15. Design records, the architecture rules, and the documentation procedure are in [docs](docs/README.md):
 
 <!-- memoria:import src="docs/README.md#summary" -->
-The configuration reference, design records for the harness, the TUI, state storage, sandboxing, compaction, MCP, subagents, pasted images, streaming, Markdown rendering, going back to an earlier message, selecting text with the mouse, editing the prompt in an editor, the system prompt, web search, `/diff` and `/review`, prompt history and the composer's height, how tool calls read in the transcript, keeping the ChatGPT login fresh, and running uah as a terminal host backend, plus the architecture rules and documentation procedure for uagent-harness.
+The configuration reference, design records for the harness, the TUI, state storage, sandboxing, compaction, MCP, subagents, pasted images, streaming, Markdown rendering, going back to an earlier message, selecting text with the mouse, editing the prompt in an editor, the system prompt, web search, `/diff` and `/review`, prompt history and the composer's height, how tool calls read in the transcript, keeping the ChatGPT login fresh, and running uah as a terminal host backend, plus the architecture rules and documentation procedure for uah.
 <!-- /memoria:import -->
 
 [`bench/tui`](bench/tui/README.md) is a separate Go module with the benchmark behind choosing Bubble Tea v2. `go test -run '^$' -bench Markdown -benchmem ./internal/tui/render` measures the Markdown renderer. `uah compaction eval [session file or directory]`, a hidden command, compares the compaction strategies on recorded sessions and prints tables of numbers only; its tests hold the strategies to their bounds on a synthetic session ([internal/compaction](internal/compaction/README.md#measuring-compaction)).
