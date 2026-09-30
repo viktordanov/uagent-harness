@@ -58,17 +58,28 @@ type AutoReviewed struct {
 	Reason  string
 }
 
-func (e AutoReviewed) OccurredAt() time.Time { return e.At }
+// AutoReviewing means the auto-reviewer started judging Command; an
+// AutoReviewed follows, with Outcome "error" when the reviewer failed.
+type AutoReviewing struct {
+	At      time.Time
+	Command string
+}
+
+func (e AutoReviewed) OccurredAt() time.Time  { return e.At }
+func (e AutoReviewing) OccurredAt() time.Time { return e.At }
 
 // Reconnecting means a model request failed, for a lost connection or an
 // HTTP status the client retries, and the client tries again: attempt
 // Attempt of MaxAttempts starts after about Delay. Reason is the failure.
+// Offline means the network is unreachable: the client waits for it
+// without using up an attempt.
 type Reconnecting struct {
 	At          time.Time
 	Attempt     int
 	MaxAttempts int
 	Delay       time.Duration
 	Reason      string
+	Offline     bool
 }
 
 // ReconnectEnded means a model request that was retried stopped retrying:
@@ -80,6 +91,31 @@ type ReconnectEnded struct {
 
 func (e Reconnecting) OccurredAt() time.Time   { return e.At }
 func (e ReconnectEnded) OccurredAt() time.Time { return e.At }
+
+// Phases of a model request, in ModelProgress.Phase.
+const (
+	PhaseConnecting = "connecting"
+	PhaseSending    = "sending"
+	PhaseWaiting    = "waiting"
+	PhaseStreaming  = "streaming"
+	PhaseDone       = "done"
+)
+
+// ModelProgress reports where the turn's model request is: its Phase, the
+// Bytes sent (while sending) or received, and the tool call the model is
+// writing (Tool, the file it names in Target, ToolBytes so far; Tool is
+// empty once the call is written). At is when data last arrived.
+type ModelProgress struct {
+	At        time.Time
+	Phase     string
+	Attempt   int
+	Bytes     int64
+	Tool      string
+	Target    string
+	ToolBytes int64
+}
+
+func (e ModelProgress) OccurredAt() time.Time { return e.At }
 
 // TextDelta is text the model is writing into its message ItemID, as it
 // arrives. Final means the message is the final answer, when the provider
