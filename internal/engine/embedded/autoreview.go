@@ -89,12 +89,18 @@ func (w *wiring) reviewedAsk(sw *switcher, req core.Request) approval.Ask {
 		if !alone && !always {
 			return askNext(ctx, next, p)
 		}
+		if emit != nil {
+			emit(engine.AutoReviewing{At: time.Now(), Command: p.Command})
+		}
 		v, err := rv.Review(ctx, reviewRequest(t, req, p, mode.get()))
 		if err != nil {
-			return approval.Decline
+			v = review.Verdict{Outcome: "error", Reason: err.Error()}
 		}
 		if emit != nil {
 			emit(engine.AutoReviewed{At: time.Now(), Command: p.Command, Outcome: string(v.Outcome), Risk: string(v.Risk), Reason: v.Reason})
+		}
+		if err != nil {
+			return approval.Decline
 		}
 		switch v.Outcome {
 		case review.Allow:

@@ -2,6 +2,7 @@ package embedded_test
 
 import (
 	"context"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -289,4 +290,33 @@ func TestEmbedded_AutoReview(t *testing.T) {
 			assert.Contains(t, strings.Join(review.UserTexts, "\n"), "touch ", "the reviewer sees the action")
 		})
 	}
+}
+
+// TestEmbedded_AutoReviewStartsAndEnds: a review reports its start, and
+// its end even when the reviewer's model call fails (it then denies).
+func TestEmbedded_AutoReviewStartsAndEnds(t *testing.T) {
+	e := newApprovalEnv(t, approvalOpts{interactive: true, autoReview: true}, func(outside string) []fakellm.Reply {
+		return []fakellm.Reply{
+			{Escalated: []string{"touch " + filepath.Join(outside, "x.txt")}},
+			{Fail: http.StatusBadRequest, FailCode: "invalid_prompt"},
+			{Text: "done"},
+		}
+	})
+	e.run(t)
+	e.ev.finished()
+	var started []engine.AutoReviewing
+	var ended []engine.AutoReviewed
+	for _, ev := range e.ev.all {
+		switch v := ev.(type) {
+		case engine.AutoReviewing:
+			started = append(started, v)
+		case engine.AutoReviewed:
+			ended = append(ended, v)
+		}
+	}
+	require.Len(t, started, 1)
+	require.Len(t, ended, 1)
+	assert.Equal(t, "deny", ended[0].Outcome)
+	assert.Equal(t, started[0].Command, ended[0].Command)
+	assert.NoFileExists(t, filepath.Join(e.outside, "x.txt"))
 }
