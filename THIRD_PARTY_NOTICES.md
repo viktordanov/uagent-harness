@@ -27,8 +27,17 @@ Adapted in uah:
 | `internal/tui/render/markdown/table.go` | Table layout: padding, gaps, rules, fitting columns to the width, and the key/value records (`codex-rs/tui/src/markdown_render.rs`, `markdown_render/table_key_value.rs`) |
 | `internal/models/bundled.json` | The bundled model catalog, `codex-rs/models-manager/models.json` (a subset of its fields) |
 | `internal/engine/codexauth/refresh.go` | The ChatGPT token refresh: the request, the client ID and endpoint, and how a refusal is classified (`codex-rs/login/src/auth/manager.rs`, `login/src/oauth/client.rs`, `login/src/oauth/error.rs`) |
+| `internal/cmdparse/parsed.go`, `parse.go`, `summarize.go`, `operands.go`, `format.go`, `script.go`, and `parse_test.go` | The command classifier at `rust-v0.159.1`: `codex-rs/shell-command/src/parse_command.rs` (reads, listings, searches, and its tests), `codex-rs/protocol/src/parse_command.rs` (`ParsedCommand`), and the word-only command check in `codex-rs/shell-command/src/bash.rs`, parsed with `mvdan.cc/sh` instead of tree-sitter; without PowerShell |
 
 Many other parts follow Codex's behavior (configuration keys, rules, approvals, MCP, subagents); those are uah's own code written against Codex's documented behavior and source, and the design records in [docs/design](docs/design) cite the Codex files they follow.
+
+## rust-shlex
+
+<https://github.com/comex/rust-shlex>, 2.0.1, the crate Codex's command parser splits and quotes words with. Copyright 2015 Nicholas Allegra (comex). Licensed under the MIT License or the Apache License, Version 2.0, at your option; uah uses it under the Apache License, Version 2.0 (see [LICENSE](LICENSE)).
+
+| uah | From rust-shlex |
+| --- | --- |
+| `internal/cmdparse/shlex.go` | `src/bytes.rs` (`split` and `try_join`: POSIX word splitting and the quoting strategies) |
 
 ## unreal-agent
 
