@@ -289,3 +289,13 @@ func (p *parser) ensureUpdateNotEmpty(line string) error {
 
 	return nil
 }
+
+// LastFile is the path in the last file header of a patch's tail, JSON-escaped or not, once the path ends.
+func LastFile(tail string) string {
+	i := max(strings.LastIndex(tail, addFile), strings.LastIndex(tail, deleteFile), strings.LastIndex(tail, updateFile))
+	if i < 0 {
+		return ""
+	}
+	_, path, _ := strings.Cut(tail[i:], ": ")
+	return path[:max(strings.IndexAny(path, "\n\\\""), 0)]
+}
