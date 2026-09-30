@@ -20,9 +20,9 @@ type AgentWatch struct {
 	// behind (open it again to catch up).
 	Next <-chan core.Event
 	Stop func()
-	// Send gives the agent a message, as the parent's send_input does; now
-	// steers it into the agent's live run, as ctrl+enter does.
-	Send func(text string, now bool) error
+	// Send gives the agent a message, as the parent's send_input does; when
+	// says when it reaches the agent's live run (Session.Send).
+	Send func(text string, when When) error
 	// SteerQueued sends the agent's queued messages now, in order, as
 	// ctrl+enter on an empty composer does.
 	SteerQueued func() error

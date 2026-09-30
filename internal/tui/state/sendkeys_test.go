@@ -41,25 +41,33 @@ func working(t *testing.T) state.State {
 
 var sendKeys = []string{state.KeyEnter, state.KeyCtrlEnter, state.KeyAltEnter}
 
-// TestSendKeys_WhileWorking: enter (and ctrl+enter, alt+enter, which are
-// enter where the terminal cannot tell them apart) gives the message to the
-// working agent before its next model request; tab queues it for the end
-// of the run, as in Codex.
+// TestSendKeys_WhileWorking: the three ways to send while the agent works.
+// ctrl+enter (alt+enter where the terminal cannot tell it from enter) gives
+// the agent the message now, enter once no model response or tool call is
+// under way, and tab at the end of the run.
 func TestSendKeys_WhileWorking(t *testing.T) {
 	busy := working(t)
+	for _, tc := range []struct {
+		key  string
+		want state.Effect
+	}{
+		{state.KeyCtrlEnter, state.EffSteer{Text: "msg", When: session.SendNow}},
+		{state.KeyAltEnter, state.EffSteer{Text: "msg", When: session.SendNow}},
+		{state.KeyEnter, state.EffSteer{Text: "msg", When: session.SendAfterTool}},
+		{state.KeyTab, state.EffSubmit{Text: "msg"}},
+	} {
+		_, effects, _ := press(busy, tc.key, "msg")
+		assert.Equal(t, []state.Effect{tc.want}, effects, tc.key)
+	}
 	for _, key := range sendKeys {
-		_, effects, _ := press(busy, key, "now")
-		assert.Equal(t, []state.Effect{state.EffSteer{Text: "now"}}, effects, "%s sends now", key)
-		_, effects, _ = press(busy, key, "  ")
+		_, effects, _ := press(busy, key, "  ")
 		assert.Equal(t, []state.Effect{state.EffSteerQueued{}}, effects, "%s on an empty composer sends the queue now", key)
 	}
-	_, effects, _ := press(busy, state.KeyTab, "later")
-	assert.Equal(t, []state.Effect{state.EffSubmit{Text: "later"}}, effects, "tab queues")
 	_, _, sent := press(busy, state.KeyTab, " ")
 	assert.False(t, sent, "tab on an empty composer is the composer's")
 
 	kept, _ := apply(busy, session.Idle{})
-	_, effects, _ = press(kept, state.KeyEnter, "")
+	_, effects, _ := press(kept, state.KeyEnter, "")
 	assert.Equal(t, []state.Effect{state.EffSteerQueued{}}, effects, "a queue an interrupt kept goes too")
 }
 
@@ -95,12 +103,13 @@ func TestSendKeys_TheTerminalPicksTheNewlineHint(t *testing.T) {
 	s, _ = apply(s, state.KeyboardReported{Disambiguates: true})
 	assert.Equal(t, "shift+enter", s.Keys.NewlineKey())
 
-	assert.Equal(t, "enter send now · tab queue", s.Keys.SendHint(true))
+	assert.Equal(t, "enter after tool · ctrl+enter now · tab after run", s.Keys.SendHint(true))
+	assert.Equal(t, "enter after tool · alt+enter now · tab after run", state.Keys{}.SendHint(true), "ctrl+enter may arrive as enter")
 	assert.Equal(t, "enter send · shift+enter new line", s.Keys.SendHint(false))
 	assert.Equal(t, "enter send · ctrl+j new line", state.Keys{}.SendHint(false))
 
 	plain, _ := apply(opened(), state.Submit{Text: "/help"})
-	assert.Contains(t, plain.Items[len(plain.Items)-1].Text, "tab queue for the end of the run")
+	assert.Contains(t, plain.Items[len(plain.Items)-1].Text, "tab after the run")
 	assert.Contains(t, plain.Items[len(plain.Items)-1].Text, "shift+enter arrives as enter in this terminal")
 	enhanced, _ := apply(opened(), state.KeyboardReported{Disambiguates: true}, state.Submit{Text: "/help"})
 	assert.Contains(t, enhanced.Items[len(enhanced.Items)-1].Text, "shift+enter or ctrl+j new line")
@@ -113,14 +122,16 @@ func TestSendKeys_AgentView(t *testing.T) {
 	s, _ := apply(opened(), state.AgentViewOpened{ID: "subagent-1", Nickname: "Ada"})
 	assert.False(t, s.Working(), "the viewed agent is idle")
 	_, effects, _ := press(s, state.KeyEnter, "hi")
-	assert.Equal(t, []state.Effect{state.EffAgentSend{ID: "subagent-1", Text: "hi"}}, effects)
+	assert.Equal(t, []state.Effect{state.EffAgentSend{ID: "subagent-1", Text: "hi", When: session.SendAfterRun}}, effects)
 
 	s, _ = apply(s, state.AgentEvents{ID: "subagent-1", Events: []core.Event{core.RunStarted{RunID: "r"}}})
 	require.True(t, s.Working())
-	_, effects, _ = press(s, state.KeyEnter, "faster")
-	assert.Equal(t, []state.Effect{state.EffAgentSend{ID: "subagent-1", Text: "faster", Now: true}}, effects, "enter steers the working agent")
+	_, effects, _ = press(s, state.KeyCtrlEnter, "faster")
+	assert.Equal(t, []state.Effect{state.EffAgentSend{ID: "subagent-1", Text: "faster", When: session.SendNow}}, effects, "ctrl+enter steers the working agent now")
+	_, effects, _ = press(s, state.KeyEnter, "next")
+	assert.Equal(t, []state.Effect{state.EffAgentSend{ID: "subagent-1", Text: "next", When: session.SendAfterTool}}, effects, "enter after its tool call")
 	_, effects, _ = press(s, state.KeyTab, "later")
-	assert.Equal(t, []state.Effect{state.EffAgentSend{ID: "subagent-1", Text: "later"}}, effects, "tab gives it the message for after")
+	assert.Equal(t, []state.Effect{state.EffAgentSend{ID: "subagent-1", Text: "later", When: session.SendAfterRun}}, effects, "tab gives it the message for after the run")
 
 	s, _ = apply(s, state.KeyboardReported{Disambiguates: true})
 	assert.Equal(t, s.Keys, s.View.St.Keys)

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/viktordanov/uagent-harness/internal/hooks"
+	"github.com/viktordanov/uagent-harness/internal/session"
 )
 
 // maxStopContinuations stops SubagentStop hooks from keeping a child going
@@ -40,7 +41,7 @@ func (m *Manager) checkStop(c *child, check stopCheck) {
 	if d.Block && reason != "" && c.stopStreak < maxStopContinuations {
 		c.stopStreak++
 		m.mu.Unlock()
-		if _, err := m.submit(c, reason, false); err == nil {
+		if _, err := m.submit(c, reason, session.SendAfterRun); err == nil {
 			return
 		}
 		m.mu.Lock()

@@ -234,11 +234,11 @@ func (s *State) onIntent(ev any) (State, []Effect) { //nolint:gocyclo // a dispa
 			return *s, []Effect{EffSteerQueued{}} // an empty composer sends the queue now
 		}
 		if text == "" || strings.HasPrefix(text, "/") {
-			return s.onIntent(Submit(e))
+			return s.onIntent(Submit{Text: e.Text})
 		}
 		s.Scroll = 0
 
-		return *s, []Effect{EffSteer{Text: s.withImages(text)}}
+		return *s, []Effect{EffSteer{Text: s.withImages(text), When: e.When}}
 	case Esc:
 		if !s.Busy && !s.ShellRunning() && !s.ReviewRunning() {
 			return *s, nil

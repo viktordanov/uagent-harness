@@ -96,8 +96,14 @@ func (s *Session) onRunEvent(e core.Event) {
 		s.hooks.runID = v.RunID
 	case core.ToolCalled:
 		s.hooks.tools[v.CallID] = v
+	case core.TurnStarted:
+		s.modelBusy = true
+	case core.ModelResponded:
+		s.modelBusy = false
 	case core.ToolFinished:
 		s.postToolUse(v)
+		delete(s.hooks.tools, v.CallID)
+		s.sendAfterTool()
 	}
 	s.noteCompaction(e)
 	if m, ok := e.(core.UserMessage); ok && s.sent[m.ID] {
@@ -118,7 +124,8 @@ func (s *Session) onEnded(m evEnded) bool {
 	if s.closeReply == nil {
 		s.requeueUnread(userStopped)
 	}
-	s.live = nil
+	s.live, s.modelBusy = nil, false
+	clear(s.afterTool) // they go out with the next run, or stay queued
 	if len(s.sent) > 0 {
 		ids := make([]string, 0, len(s.sent))
 		for id := range s.sent {

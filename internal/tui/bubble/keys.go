@@ -19,11 +19,10 @@ const (
 	keyBackspace = "backspace"
 )
 
-// onKey maps keys to intents. The send keys follow Codex
-// (state.SendIntent): while the agent works, enter gives it the message
-// before its next model request and tab queues it for the end of the run;
-// ctrl+enter and alt+enter do what enter does. Shift+Enter and ctrl+j add a
-// line.
+// onKey maps keys to intents. The send keys (state.SendIntent): while the
+// agent works, ctrl+enter and alt+enter give it the message now, enter after
+// its next tool call, and tab at the end of the run. Shift+Enter and ctrl+j
+// add a line.
 func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) { //nolint:gocyclo // a dispatch switch over a closed set; see docs/documentation/architecture.md
 	if m.st.Mode == state.ModePicker {
 		return m.onPickerKey(msg)

@@ -44,7 +44,7 @@ func (m *Manager) spawn(ctx context.Context, call engine.AgentCall, a spawnArgs)
 		}
 	}
 	m.startHooks(ctx, c)
-	if _, err := m.submit(c, a.Message, false); err != nil {
+	if _, err := m.submit(c, a.Message, session.SendAfterRun); err != nil {
 		m.discard(c)
 
 		return spawnResult{}, err
@@ -243,7 +243,12 @@ func (m *Manager) send(parentID, id, message string, interrupt bool) (string, er
 		}
 	}
 
-	return m.submit(c, message, interrupt)
+	when := session.SendAfterRun
+	if interrupt {
+		when = session.SendNow
+	}
+
+	return m.submit(c, message, when)
 }
 
 // wait returns when any of the children reaches a final status, with every

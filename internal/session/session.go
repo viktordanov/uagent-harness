@@ -136,6 +136,10 @@ type Session struct {
 	// firstPromptPending is a new session whose sidecar has no first
 	// message yet; the first run records it.
 	firstPromptPending bool
+	// afterTool are the queued SendAfterTool messages by ID; modelBusy is a
+	// model request under way.
+	afterTool map[string]bool
+	modelBusy bool
 }
 
 // Open starts a session. Its first event is SessionOpened.
@@ -155,7 +159,7 @@ func Open(ctx context.Context, eng engine.Engine, opts Options) (*Session, error
 		id: id, eng: eng, priority: eng.Priority(), yolo: opts.Yolo,
 		in: make(chan any, eventBuffer), out: make(chan core.Event, eventBuffer),
 		ctx: runCtx, stop: stop, done: make(chan struct{}),
-		settings: opts.Settings, state: StateIdle, sent: map[string]bool{},
+		settings: opts.Settings, state: StateIdle, sent: map[string]bool{}, afterTool: map[string]bool{},
 		hooks:       hookState{runner: opts.Hooks, resumed: opts.Resumed, tools: map[string]core.ToolCalled{}},
 		interactive: opts.Interactive, stream: opts.Stream, approvals: map[string]pending{}, askOverride: opts.Ask,
 		sessionsDir: opts.SessionsDir, shell: opts.Shell, shells: map[string]context.CancelFunc{},
@@ -207,15 +211,26 @@ func (s *Session) Events() <-chan core.Event { return s.out }
 // Submit sends a message: it starts a run when idle and queues it while a run
 // is live. Queued messages go out together when the run ends.
 func (s *Session) Submit(text string) (core.UserInput, error) {
-	return s.submit(text, false)
+	return s.Send(text, SendAfterRun)
 }
 
 // SteerNow sends a message to the agent now. With live input it reaches the
-// running agent; otherwise the run is interrupted and a new run starts with
-// the queue and this message.
+// running agent, which drops the model response under way for it; otherwise
+// the run is interrupted and a new run starts with the queue and this message.
 func (s *Session) SteerNow(text string) (core.UserInput, error) {
-	return s.submit(text, true)
+	return s.Send(text, SendNow)
 }
+
+// When is when a message sent while a run is live reaches the agent: now
+// (SteerNow), once no model response or tool call is under way (queued until
+// then, it rides the next model request), or when the run ends (Submit).
+type When int
+
+const (
+	SendNow When = iota
+	SendAfterTool
+	SendAfterRun
+)
 
 // SteerQueued sends every queued message now, in order, as SteerNow sends
 // one (ctrl+enter on an empty composer). It reports how many there were.
@@ -304,10 +319,12 @@ func (s *Session) close() error {
 	}
 }
 
-func (s *Session) submit(text string, steer bool) (core.UserInput, error) {
+// Send sends a message: it starts a run when idle, and while a run is live
+// it reaches the agent when says.
+func (s *Session) Send(text string, when When) (core.UserInput, error) {
 	if strings.TrimSpace(text) == "" {
 		return core.UserInput{}, errors.New("the message is empty")
 	}
 
-	return call[core.UserInput](s, cmdSubmit{text: text, steer: steer})
+	return call[core.UserInput](s, cmdSubmit{text: text, when: when})
 }

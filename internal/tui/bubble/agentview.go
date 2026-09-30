@@ -116,14 +116,14 @@ func (m *Model) stopWatch() {
 }
 
 // sendToAgent gives the watched agent a message.
-func (m Model) sendToAgent(text string, now bool) tea.Cmd {
+func (m Model) sendToAgent(text string, when session.When) tea.Cmd {
 	w := m.watch
 
 	return func() tea.Msg {
 		if w == nil {
 			return nil
 		}
-		if err := w.Send(text, now); err != nil {
+		if err := w.Send(text, when); err != nil {
 			return state.Failed{Err: err}
 		}
 

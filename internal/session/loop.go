@@ -14,8 +14,8 @@ import (
 // Commands and internal events handled by the loop.
 type (
 	cmdSubmit struct {
-		text  string
-		steer bool
+		text string
+		when When
 	}
 	cmdInterrupt   struct{}
 	cmdSteerQueued struct{}

@@ -44,7 +44,7 @@ An `Options.Interactive` session connects the engine's MCP servers as it opens, 
 
 Every message gets an ID and is reported as `InputQueued`, then `InputSent` when it goes to the runner, and `InputDelivered` when the runner echoes it as a `UserMessage`. Messages that never reached the runner are reported as `InputFailed`.
 
-What `dispatch` does with a message depends on the state and on whether it is a steer (ctrl+enter, `SteerNow`):
+What `dispatch` does with a message depends on the state and on whether it is a steer (ctrl+enter, `SteerNow`, `Send` with `SendNow`):
 
 | State | Enter (`Submit`) | Steer (`SteerNow`) |
 | --- | --- | --- |
@@ -53,7 +53,9 @@ What `dispatch` does with a message depends on the state and on whether it is a 
 | `starting` | Queues it | With `LiveInput`, holds it and sends it once the run has started. Otherwise queues it and interrupts |
 | `stopping` | Queues it | Queues it; a new run starts after the stop |
 
-`SteerQueued` (ctrl+enter on an empty composer) steers every queued message, in order, each keeping its ID: `dispatch` handles each as a steer, and messages still waiting for their hooks go as steers once the hooks allow them. While idle, with the queue a user interrupt kept, the messages start a run together. It reports how many messages it took, and does nothing when none are queued.
+`Send` with `SendAfterTool` (enter while the agent works) queues the message and marks it. `sendAfterTool` steers the marked messages into the run, in order, when no model response is under way (a `core.TurnStarted` without its `core.ModelResponded`) and every `core.ToolCalled` has its `core.ToolFinished`: at once when that holds as the message arrives, else at the `ToolFinished` that ends the last running call. So the message never cuts off a response and rides the request after the tool calls' output. Until then it is an ordinary queued message: `Withdraw` takes it back, `SteerQueued` sends it, and when the run ends first it goes out with the next run (the marks are dropped then).
+
+`SteerQueued` (enter or ctrl+enter on an empty composer) steers every queued message, in order, each keeping its ID: `dispatch` handles each as a steer, and messages still waiting for their hooks go as steers once the hooks allow them. While idle, with the queue a user interrupt kept, the messages start a run together. It reports how many messages it took, and does nothing when none are queued.
 
 When a run ends, messages sent into it that it never read go back to the front of the queue. After a user interrupt (esc esc, `/stop`) the queue stays and the session goes idle; otherwise the queue starts the next run at once. `Withdraw` takes a message back while it is queued or waiting for its hooks.
 

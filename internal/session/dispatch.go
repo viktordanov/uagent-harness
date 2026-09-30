@@ -18,10 +18,12 @@ func (s *Session) onSubmit(c cmdSubmit) core.UserInput {
 	s.emit(InputQueued{At: time.Now(), Input: input})
 	s.hooks.stopStreak = 0
 	s.hooks.stopGen++ // a pending Stop hook no longer decides anything
+	s.afterTool[input.ID] = c.when == SendAfterTool
+	steer := c.when == SendNow
 	if s.hooks.jobs != nil && (s.hooks.runner.Has(hooks.UserPromptSubmit, "") || s.hooks.runner.Has(hooks.SessionStart, "")) {
 		// Through the worker even without UserPromptSubmit hooks, so the
 		// SessionStart context is ready and the order is kept.
-		s.hooks.checking = append(s.hooks.checking, pendingInput{input: input, steer: c.steer})
+		s.hooks.checking = append(s.hooks.checking, pendingInput{input: input, steer: steer})
 		in := s.hookInput(hooks.UserPromptSubmit)
 		in.Prompt = input.Text
 		s.hooks.jobs <- func() {
@@ -34,7 +36,7 @@ func (s *Session) onSubmit(c cmdSubmit) core.UserInput {
 
 		return input
 	}
-	s.dispatch(input, c.steer)
+	s.dispatch(input, steer)
 
 	return input
 }
@@ -104,6 +106,7 @@ func (s *Session) dispatch(input core.UserInput, steer bool) {
 			s.restartAfterStop = true
 			s.interruptLive()
 		}
+		s.sendAfterTool()
 	case StateStarting:
 		if steer {
 			s.startSteers = append(s.startSteers, input) // sent live once the run starts
@@ -116,6 +119,20 @@ func (s *Session) dispatch(input core.UserInput, steer bool) {
 			s.restartAfterStop = true
 		}
 	case StateClosed:
+	}
+}
+
+// sendAfterTool steers the queued SendAfterTool messages into the live run,
+// in order, once no model response or tool call is under way.
+func (s *Session) sendAfterTool() {
+	if s.state != StateRunning || s.modelBusy || len(s.hooks.tools) > 0 {
+		return
+	}
+	steer := slices.DeleteFunc(slices.Clone(s.queue), func(in core.UserInput) bool { return !s.afterTool[in.ID] })
+	s.queue = slices.DeleteFunc(s.queue, func(in core.UserInput) bool { return s.afterTool[in.ID] })
+	for _, in := range steer {
+		delete(s.afterTool, in.ID)
+		s.dispatch(in, true)
 	}
 }
 

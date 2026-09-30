@@ -60,7 +60,7 @@ func TestAgents_Watch(t *testing.T) {
 		}
 	}
 	answers("first answer")
-	require.NoError(t, w.Send("CHILD-W and now?", false))
+	require.NoError(t, w.Send("CHILD-W and now?", session.SendAfterRun))
 	answers("second answer")
 	assert.True(t, slices.ContainsFunc(e.llm.Requests(), func(r fakellm.Request) bool {
 		return slices.Contains(r.UserTexts, "CHILD-W and now?")

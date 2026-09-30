@@ -1,6 +1,6 @@
-# Send keys: send before the next model request, or queue
+# Send keys: now, after the next tool call, or after the run
 
-While the agent works, uah has two ways to send a message, as Codex rust-v0.159.1 has. Enter gives it to the agent after its running tool calls, before its next model request. Tab queues it for the end of the run. The keys are the same in every terminal, so they also work where ctrl+enter cannot be told from enter. The terminal's answer to the keyboard enhancement query only picks the new-line hint.
+While the agent works, uah has three ways to send a message. Ctrl+enter sends it now: the agent drops the model response under way and asks again with the message. Enter sends it after the next tool call: the message waits until the model's response and its tool calls are done, then rides the next model request. Tab queues it for the end of the run. Alt+enter is ctrl+enter for the terminals where ctrl+enter arrives as enter (tmux with `extended-keys off`). The terminal's answer to the keyboard enhancement query picks the new-line hint and names the send-now key in the footer.
 
 1. [The problem](#the-problem)
 2. [What Codex and Claude Code do](#what-codex-and-claude-code-do)
@@ -12,6 +12,8 @@ While the agent works, uah has two ways to send a message, as Codex rust-v0.159.
 ## The problem
 
 Before this change, enter queued while the agent worked, ctrl+enter or alt+enter sent now, and shift+enter or ctrl+j added a line. tmux has `extended-keys off` by default. With that setting, ctrl+enter reaches the program as plain enter, so "send now" quietly became "queue", and nothing happened until the run ended. The owner runs uah inside a tmux-backed browser terminal, where this happens every time. The owner also decided that a message sent while the agent works should go after the next tool call, not after the whole run, which is Codex's enter.
+
+The next version made enter Codex's steer. On the embedded engine that dropped the model response under way at once, since the runner asks the model again for every live message: enter interrupted the model's thinking. The owner then asked for three ways: ctrl+enter forces the message in now, enter waits for the next tool call and never cuts off a response, and tab waits for the run's end.
 
 A probe with Bubble Tea v2.0.9 inside tmux 3.7c (`tmux -L probe -f /dev/null`, `send-keys C-Enter`, and so on) reported these keys:
 
@@ -65,26 +67,27 @@ tmux does not answer the query in any mode. With extended keys on, ctrl+enter ar
 
 | Key | While the agent works | While idle |
 | --- | --- | --- |
-| enter | Send now: the agent reads it after its running tool calls, before its next model request (`Steer`) | Send (`Submit`) |
+| ctrl+enter, alt+enter | Send now (`Steer`, `session.SendNow`): the runner drops the model response under way and asks again with the message; running tool calls go on | Send (`Submit`) |
+| enter | Send after the next tool call (`Steer`, `session.SendAfterTool`): while a model response or tool call is under way, the session holds the message in the queue (shown as queued, ↑ takes it back); once neither is, it steers it into the run, so it rides the next model request. If the run ends first, it goes out with the next run, as the queue does | Send (`Submit`) |
 | enter on an empty composer | Send the queued messages now, in order | The same, for a queue an interrupt kept; nothing without a queue |
 | tab | Queue for the end of the run (`Submit`) | Send, as enter. In shell mode, on an empty composer, and in the open menu, it keeps its own meaning |
-| ctrl+enter, alt+enter | As enter | As enter |
 | shift+enter, ctrl+j | New line; shift+enter only where the terminal tells it from enter | The same |
 
-The footer shows `enter send now · tab queue` while the agent works. In the detailed view while idle it shows `enter send · shift+enter new line` where the terminal answered the query, and `enter send · ctrl+j new line` elsewhere, as Codex's footer picks its new-line key. The queue's hint says `enter sends now`. `/help` gives the keys and the new-line key for this terminal.
+The footer shows `enter after tool · ctrl+enter now · tab after run` while the agent works, with `alt+enter` in place of `ctrl+enter` where the terminal did not answer the query, since there ctrl+enter may arrive as enter. In the detailed view while idle it shows `enter send · shift+enter new line` where the terminal answered the query, and `enter send · ctrl+j new line` elsewhere, as Codex's footer picks its new-line key. The queue's hint says `enter sends now`. `/help` gives the keys and the new-line key for this terminal.
 
 `State.SendIntent(key, draft)` maps the keys, and `State.Working` says whether the agent the composer talks to works: in the agent view, the viewed subagent. `State.Keys.Disambiguated` is the terminal's answer, set by `state.KeyboardReported`, which the shell sends for `tea.KeyboardEnhancementsMsg`.
 
 ## Decisions
 
-- **Codex's model, in every terminal.** The owner's decision: queued messages go after the next tool call, not after the whole run. Enter is Codex's steer and tab is Codex's queue. The keys no longer depend on the terminal, so tmux with `extended-keys off` needs no detection for sending.
+- **Three ways to send.** The owner's decision: ctrl+enter forces the message in now, enter never cuts off a model response but sends after the next tool call, and tab waits for the run's end. On the embedded engine every live message makes the runner drop the response under way and ask again (`coordinator.requestModelResponse`), so enter's wait is in the session: `Session.sendAfterTool` steers the held messages when no `core.TurnStarted` is without its `core.ModelResponded` and every `core.ToolCalled` has its `core.ToolFinished`. Waiting for the tool calls to finish, not only for the response, keeps the runner from asking the model again at once with a "still running" placeholder for the running calls. A tool call that runs long holds the message as long; ctrl+enter does not wait.
+- **Alt+enter where ctrl+enter is enter.** tmux with `extended-keys off` sends ctrl+enter as enter and passes alt+enter through, so alt+enter is always the send-now key too. Enter and tab work in every terminal.
 - **Enter on an empty composer sends the queue now.** Codex has no key for this: its queue goes out at the turn's end, and esc sends pending steers after an interrupt. uah keeps the send-the-queue-now action it had on ctrl+enter, on the key that works in every terminal. ctrl+enter and alt+enter keep it too.
-- **ctrl+enter and alt+enter are aliases of enter.** They are harmless where the terminal shows them, and in tmux they arrive as enter anyway.
-- **The process engine.** It has no live input. Enter while the agent works does what steering did there before: the run stops and restarts with the queue and the message (`Session.dispatch`). The embedded engine, the default, takes the message into the live run.
-- **The terminal's answer only picks the new-line hint.** It is what Codex uses it for. Where no answer comes (tmux, Terminal.app), shift+enter arrives as enter: the same bytes, so uah cannot tell the two apart, and it sends. The footer and `/help` name ctrl+j there, and `/help` says that shift+enter sends in this terminal. Before the answer arrives, the hint says ctrl+j, which works everywhere, so no timer is needed.
+- **The process engine.** It has no live input. Ctrl+enter while the agent works does what steering did there before: the run stops and restarts with the queue and the message (`Session.dispatch`); enter does the same once the model's response and its tool calls are done. The embedded engine, the default, takes the message into the live run.
+- **The terminal's answer only picks the hints.** It picks the new-line key, as Codex does, and the send-now key in the footer. Where no answer comes (tmux, Terminal.app), shift+enter arrives as enter: the same bytes, so uah cannot tell the two apart, and it sends. The footer and `/help` name ctrl+j there, and `/help` says that shift+enter sends in this terminal. Before the answer arrives, the hint says ctrl+j, which works everywhere, so no timer is needed.
 - **No warning, no doctor check, and no setting.** The first version of this item had `[tui] steer_key` to pick between the old and the plain bindings. With one set of bindings it has nothing left to pick.
 
 ## Tests
 
-- `internal/tui/state/sendkeys_test.go` covers the keys. It checks enter, ctrl+enter, alt+enter, and tab while the agent works and while idle, the empty composer, a queue an interrupt kept, a command sent with tab, shell mode, the agent view, the new-line hint from the terminal's answer, and `/help`.
-- `internal/tui/bubble/steer_test.go` runs the real shell over the embedded engine and fakellm. Tab queues two messages, and enter or ctrl+enter on the empty composer sends them in the next request. With and without `tea.KeyboardEnhancementsMsg`, enter reaches the model's next request while a tab-queued message waits for the run's end, and the idle footer names the new-line key.
+- `internal/tui/state/sendkeys_test.go` covers the keys. It checks the three ways to send (ctrl+enter, alt+enter, enter, tab) while the agent works and while idle, the empty composer, a queue an interrupt kept, a command sent with tab, shell mode, the agent view, the new-line hint from the terminal's answer, and `/help`.
+- `internal/tui/bubble/steer_test.go` runs the real shell over the embedded engine and fakellm. While the model streams a response, enter does not cut it off: the message shows as queued and is in the request after the response's tool call; ctrl+enter and alt+enter drop the response, and the next request has the message at once. Tab queues two messages, and enter or ctrl+enter on the empty composer sends them in the next request. With and without `tea.KeyboardEnhancementsMsg`, ctrl+enter reaches the model's next request while a tab-queued message waits for the run's end, and the footer names the send-now and new-line keys.
+- `internal/session/sendaftertool_test.go` covers `SendAfterTool` in the session: held through the response and its tool call, then steered; sent with the next run when the run ends first; withdrawn while held; sent at once when no response is under way.

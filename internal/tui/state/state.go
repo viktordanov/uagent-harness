@@ -170,8 +170,12 @@ func New(now time.Time) State {
 type (
 	// Submit is Enter with the composer text; text starting with "/" is a command.
 	Submit struct{ Text string }
-	// Steer is Ctrl+Enter with the composer text.
-	Steer struct{ Text string }
+	// Steer is Enter (When: session.SendAfterTool) or Ctrl+Enter
+	// (session.SendNow) with the composer text while the agent works.
+	Steer struct {
+		Text string
+		When session.When
+	}
 	// Esc is the Escape key; twice while busy interrupts, and twice on an
 	// empty composer while idle goes back to an earlier message
 	// (backtrack.go). Empty says the composer is empty.

@@ -4,7 +4,9 @@ import (
 	"context"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
@@ -95,18 +97,74 @@ func TestTUI_SendTheQueueNow(t *testing.T) {
 	}
 }
 
-// TestTUI_EnterReachesTheNextRequestTabWaits: while the agent works, enter
-// gives the message to the live run before its next model request, and a
-// tab-queued message waits for the run's end, as in Codex. The terminal's
-// keyboard answer changes neither.
-func TestTUI_EnterReachesTheNextRequestTabWaits(t *testing.T) {
+// TestTUI_EnterWaitsForTheToolCallCtrlEnterCutsIn: while the model
+// streams a response, enter holds the message, shown as queued, until the
+// response and its tool call are done, so it rides the request after the
+// tool's output; ctrl+enter (alt+enter where the terminal cannot tell it
+// from enter) drops the response under way, and the next request has the
+// message at once.
+func TestTUI_EnterWaitsForTheToolCallCtrlEnterCutsIn(t *testing.T) {
+	patch := fakellm.Call{Name: "apply_patch", Args: `{"input":"*** Begin Patch\n*** Add File: a.go\n+package a\n*** End Patch"}`}
+	for _, tc := range []struct {
+		name string
+		mod  tea.KeyMod
+	}{
+		{"enter", 0},
+		{"ctrl+enter", tea.ModCtrl},
+		{"alt+enter", tea.ModAlt},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			hold := make(chan struct{})
+			var release sync.Once
+			llm := fakellm.New(t, fakellm.Reply{Deltas: []string{"Reading the code first"}, Hold: hold, Calls: []fakellm.Call{patch}})
+			t.Cleanup(func() { release.Do(func() { close(hold) }) }) // before the server closes
+			d := start(t, liveDeps(t, llm))
+			d.until("the session is open", func() bool { return d.m.(bubble.Model).Exit().SessionID != "" })
+
+			d.typeText("start")
+			d.key(tea.KeyEnter, 0)
+			d.waitFor("Reading the code first")
+			d.waitFor("enter after tool · alt+enter now · tab after run")
+			d.typeText("look here")
+			d.key(tea.KeyEnter, tc.mod)
+			if tc.mod != 0 {
+				d.until("the request with the message", func() bool { return len(llm.Requests()) == 2 })
+				next := llm.Requests()[1]
+				assert.Contains(t, next.UserTexts, "look here", "at once")
+				assert.Empty(t, next.ToolOutputs, "the response was dropped before its tool call")
+				d.waitIdle()
+
+				return
+			}
+			d.waitFor("↳ queued: look here")
+			d.pump(300 * time.Millisecond)
+			assert.Len(t, llm.Requests(), 1, "the response is not cut off")
+
+			release.Do(func() { close(hold) })
+			d.until("the request with the message", func() bool {
+				return slices.ContainsFunc(llm.Requests(), func(r fakellm.Request) bool { return slices.Contains(r.UserTexts, "look here") })
+			})
+			d.waitIdle()
+			reqs := llm.Requests()
+			i := slices.IndexFunc(reqs, func(r fakellm.Request) bool { return slices.Contains(r.UserTexts, "look here") })
+			assert.NotEmpty(t, reqs[i].ToolOutputs, "after the tool call's output")
+			assert.Contains(t, d.view(), "λ look here")
+		})
+	}
+}
+
+// TestTUI_TabWaitsForTheRunsEnd: a tab-queued message waits for the run's
+// end while a ctrl+enter one reaches the next request, as in Codex. The
+// terminal's keyboard answer names the send-now key and the new-line key.
+func TestTUI_TabWaitsForTheRunsEnd(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
 		report  tea.Msg
 		newline string
+		hint    string
 	}{
-		{"no answer, as tmux", nil, "ctrl+j new line"},
-		{"enhanced", enhanced, "shift+enter new line"},
+		{"no answer, as tmux", nil, "ctrl+j new line", "enter after tool · alt+enter now · tab after run"},
+		{"enhanced", enhanced, "shift+enter new line", "enter after tool · ctrl+enter now · tab after run"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			gate := make(chan struct{})
@@ -115,6 +173,7 @@ func TestTUI_EnterReachesTheNextRequestTabWaits(t *testing.T) {
 			deps := liveDeps(t, llm)
 			deps.Details = true // the idle footer names the new-line key
 			d := start(t, deps)
+			d.send(tea.WindowSizeMsg{Width: 140, Height: 30}) // the detailed footer's hint fits
 			if tc.report != nil {
 				d.send(tc.report)
 			}
@@ -124,12 +183,12 @@ func TestTUI_EnterReachesTheNextRequestTabWaits(t *testing.T) {
 			d.typeText("start")
 			d.key(tea.KeyEnter, 0)
 			d.until("the model thinking", func() bool { return len(llm.Requests()) == 1 })
-			d.waitFor("enter send now · tab queue") // the footer while the agent works
+			d.waitFor(tc.hint) // the footer while the agent works
 			d.typeText("after the run")
 			d.key(tea.KeyTab, 0)
 			d.waitFor("1. after the run") // the detailed view lists the queue
 			d.typeText("look here first")
-			d.key(tea.KeyEnter, 0)
+			d.key(tea.KeyEnter, tea.ModCtrl)
 			d.until("the steered request", func() bool {
 				reqs := llm.Requests()
 

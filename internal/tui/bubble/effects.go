@@ -45,7 +45,7 @@ func (m Model) run(e state.Effect) tea.Cmd { //nolint:gocyclo // a dispatch swit
 	case state.EffSubmit:
 		return withSession(func(s *session.Session) error { _, err := s.Submit(e.Text); return err })
 	case state.EffSteer:
-		return withSession(func(s *session.Session) error { _, err := s.SteerNow(e.Text); return err })
+		return withSession(func(s *session.Session) error { _, err := s.Send(e.Text, e.When); return err })
 	case state.EffSteerQueued:
 		return withSession(func(s *session.Session) error { _, err := s.SteerQueued(); return err })
 	case state.EffShell:
@@ -156,7 +156,7 @@ func (m Model) run(e state.Effect) tea.Cmd { //nolint:gocyclo // a dispatch swit
 	case state.EffViewAgent:
 		return m.watchAgent(e.ID)
 	case state.EffAgentSend:
-		return m.sendToAgent(e.Text, e.Now)
+		return m.sendToAgent(e.Text, e.When)
 	case state.EffAgentSteerQueued:
 		return m.steerAgentQueue()
 	case state.EffAgentInterrupt:

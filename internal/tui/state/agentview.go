@@ -52,10 +52,10 @@ type (
 	// EffCloseAgentView stops following it.
 	EffCloseAgentView struct{}
 	// EffAgentSend gives the viewed agent a message, as send_input does;
-	// Now steers it into the agent's live run (ctrl+enter).
+	// When says when it reaches the agent's live run, as for the main agent.
 	EffAgentSend struct {
 		ID, Text string
-		Now      bool
+		When     session.When
 	}
 	// EffAgentSteerQueued sends the viewed agent's queued messages now,
 	// in order (ctrl+enter on an empty composer).
@@ -150,7 +150,11 @@ func (s *State) onAgentView(ev any) ([]Effect, bool) {
 	case Submit, Steer:
 		text := strings.TrimSpace(textOf(e))
 		name, _, _ := strings.Cut(strings.TrimPrefix(text, "/"), " ")
-		_, steer := e.(Steer)
+		st, steer := e.(Steer)
+		when := session.SendAfterRun
+		if steer {
+			when = st.When
+		}
 		switch {
 		case text == "" && steer && len(v.St.Queue) > 0:
 			v.St.Scroll = 0
@@ -164,7 +168,7 @@ func (s *State) onAgentView(ev any) ([]Effect, bool) {
 		default:
 			v.St.Scroll = 0
 
-			return []Effect{EffAgentSend{ID: v.ID, Text: s.withImages(text), Now: steer}}, true
+			return []Effect{EffAgentSend{ID: v.ID, Text: s.withImages(text), When: when}}, true
 		}
 	case ScrollBy, ScrollToBottom, ToggleDetails:
 		*v.St, _ = Reduce(*v.St, ev)

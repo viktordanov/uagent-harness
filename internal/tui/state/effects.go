@@ -8,8 +8,11 @@ type Effect interface{ effect() }
 type (
 	// EffSubmit sends a message (it queues while the agent works).
 	EffSubmit struct{ Text string }
-	// EffSteer sends a message now.
-	EffSteer struct{ Text string }
+	// EffSteer gives the working agent a message, now or after its tool call.
+	EffSteer struct {
+		Text string
+		When session.When
+	}
 	// EffSteerQueued sends every queued message now, in order.
 	EffSteerQueued struct{}
 	// EffInterrupt stops the live run; queued messages stay.

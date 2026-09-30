@@ -65,7 +65,7 @@ func TestReduce_AgentView(t *testing.T) {
 	assert.Equal(t, "seven files", s.View.St.Items[len(s.View.St.Items)-1].Text)
 
 	s, eff = apply(s, state.Submit{Text: "and the dirs?"})
-	assert.Equal(t, []state.Effect{state.EffAgentSend{ID: "subagent-1", Text: "and the dirs?"}}, eff)
+	assert.Equal(t, []state.Effect{state.EffAgentSend{ID: "subagent-1", Text: "and the dirs?", When: session.SendAfterRun}}, eff)
 	s, eff = apply(s, state.Submit{Text: "/model x"})
 	assert.Empty(t, eff)
 	assert.Contains(t, s.View.St.Items[len(s.View.St.Items)-1].Text, "/model is for the main agent")
@@ -160,7 +160,11 @@ func TestReduce_FinishedAgentsAndNotifications(t *testing.T) {
 
 	s, _ = apply(s, state.AgentViewOpened{ID: "subagent-aaaaaaaa-1", Nickname: "Ada"})
 	_, eff = apply(s, state.Steer{Text: "faster"})
-	assert.Equal(t, []state.Effect{state.EffAgentSend{ID: "subagent-aaaaaaaa-1", Text: "faster", Now: true}}, eff, "ctrl+enter steers the agent")
+	assert.Equal(t, []state.Effect{state.EffAgentSend{ID: "subagent-aaaaaaaa-1", Text: "faster"}}, eff, "ctrl+enter steers the agent now")
+	_, eff = apply(s, state.Steer{Text: "then this", When: session.SendAfterTool})
+	assert.Equal(t, []state.Effect{state.EffAgentSend{ID: "subagent-aaaaaaaa-1", Text: "then this", When: session.SendAfterTool}}, eff, "enter after its tool call")
+	_, eff = apply(s, state.Submit{Text: "at the end"})
+	assert.Equal(t, []state.Effect{state.EffAgentSend{ID: "subagent-aaaaaaaa-1", Text: "at the end", When: session.SendAfterRun}}, eff, "tab after its run")
 
 	_, eff = apply(s, state.Steer{})
 	assert.Empty(t, eff, "nothing queued for the agent")

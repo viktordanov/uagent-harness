@@ -1,6 +1,10 @@
 package state
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/viktordanov/uagent-harness/internal/session"
+)
 
 // Keys is what the terminal tells about its keys (the keys design,
 // docs/design/keys.md).
@@ -34,20 +38,24 @@ const (
 	KeyTab       = "tab"
 )
 
-// SendIntent maps a send key to its intent, as Codex binds them: while the
-// agent works, enter gives the message to it after its running tool calls,
-// before its next model request (Steer), and tab queues the message for the
-// end of the run (Submit); while idle both send. Enter on an empty composer
-// sends the queued messages now. ctrl+enter and alt+enter do what enter
-// does, also where the terminal cannot tell them from it. nil means the key
-// sends nothing: tab on an empty composer or in shell mode, which then does
-// what it does in the composer.
+// SendIntent maps a send key to its intent. While the agent works,
+// ctrl+enter (alt+enter where the terminal cannot tell it from enter) gives
+// it the message now (session.SendNow), enter once no model response or tool
+// call is under way (session.SendAfterTool), and tab at the end of the run
+// (Submit); while idle all send. Enter on an empty composer sends the queued
+// messages now. nil means the key sends nothing: tab on an empty composer or
+// in shell mode, which then does what it does in the composer.
 func (s State) SendIntent(key, draft string) any {
 	empty := strings.TrimSpace(draft) == ""
 	switch key {
 	case KeyEnter, KeyCtrlEnter, KeyAltEnter:
 		if s.Working() || empty {
-			return Steer{Text: draft} // empty: sends the queue now, if any
+			when := session.SendNow
+			if key == KeyEnter {
+				when = session.SendAfterTool
+			}
+
+			return Steer{Text: draft, When: when} // empty: sends the queue now, if any
 		}
 
 		return Submit{Text: draft}
@@ -71,10 +79,16 @@ func (s State) Working() bool {
 }
 
 // SendHint is the footer's hint for the send keys: while the agent works,
-// how to send now and how to queue; while idle, how to send and add a line.
+// the three ways to send, naming alt+enter where the terminal cannot tell
+// ctrl+enter from enter; while idle, how to send and add a line.
 func (k Keys) SendHint(working bool) string {
 	if working {
-		return "enter send now · tab queue"
+		now := KeyAltEnter // the terminal may not tell ctrl+enter from enter
+		if k.Disambiguated {
+			now = KeyCtrlEnter
+		}
+
+		return "enter after tool · " + now + " now · tab after run"
 	}
 
 	return "enter send · " + k.NewlineKey() + " new line"
@@ -87,7 +101,7 @@ func (k Keys) sendHelp() string {
 		newline = "shift+enter or ctrl+j new line"
 	}
 
-	return "enter send; while the agent works, it reads the message after its running tool calls (on an empty prompt: the queued messages now) · tab queue for the end of the run (idle: send) · ctrl+enter, alt+enter as enter · " + newline
+	return "enter send; while the agent works, enter sends after the model's response and its tool calls (on an empty prompt: the queued messages now) · ctrl+enter or alt+enter now, dropping the response under way · tab after the run (idle: send) · " + newline
 }
 
 // onKeys keeps the terminal's answer, also for an open agent view.

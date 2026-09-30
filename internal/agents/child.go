@@ -117,9 +117,9 @@ func (m *Manager) nickname(parentID string, role Role, preferred string) string 
 	}
 }
 
-// submit sends a child a message, now or after its live run stops, and
-// marks it running. It returns the message's ID.
-func (m *Manager) submit(c *child, message string, now bool) (string, error) {
+// submit sends a child a message, reaching its live run when says
+// (session.Session.Send), and marks it running. It returns the message's ID.
+func (m *Manager) submit(c *child, message string, when session.When) (string, error) {
 	m.mu.Lock()
 	c.gen++
 	c.sending++
@@ -130,14 +130,10 @@ func (m *Manager) submit(c *child, message string, now bool) (string, error) {
 	s := c.s
 	m.mu.Unlock()
 	m.notify(c)
-	submit := s.Submit
-	if now {
-		submit = s.SteerNow
-	}
 	if m.beforeSubmit != nil {
 		m.beforeSubmit(message)
 	}
-	in, err := submit(message)
+	in, err := s.Send(message, when)
 	m.mu.Lock()
 	if err == nil && !c.early[in.ID] {
 		c.pending[in.ID] = true
