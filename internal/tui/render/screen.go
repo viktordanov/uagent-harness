@@ -194,7 +194,7 @@ func (st *Styles) panelLines(s state.State, f Frame) []string {
 	}
 	var out []string
 	if s.Details {
-		out = append(out, st.dim.Render(ansi.Truncate("queued · sent when the agent is ready · "+s.Keys.SendNowKey()+" sends now · ↑ edits the last", f.Width, "…")))
+		out = append(out, st.dim.Render(ansi.Truncate("queued · sent when the run ends · enter on an empty prompt sends now · ↑ edits the last", f.Width, "…")))
 	}
 	for i, q := range s.Queue {
 		if i == 3 {
@@ -209,7 +209,7 @@ func (st *Styles) panelLines(s state.State, f Frame) []string {
 		}
 	}
 	if !s.Details {
-		out = append(out, st.dim.Render("    "+s.Keys.SendNowKey()+" sends now · ↑ edits"))
+		out = append(out, st.dim.Render("    enter sends now · ↑ edits"))
 	}
 
 	return out

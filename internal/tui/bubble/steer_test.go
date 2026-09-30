@@ -43,45 +43,38 @@ func liveDeps(t *testing.T, llm *fakellm.Server) bubble.Deps {
 }
 
 // enhanced is the terminal's answer to the keyboard enhancement query when
-// it tells ctrl+enter from enter (kitty, Ghostty, WezTerm); tmux and
-// Terminal.app never answer.
+// it tells shift+enter and ctrl+enter from enter (kitty, Ghostty, WezTerm);
+// tmux and Terminal.app never answer. It changes no send key.
 var enhanced = tea.KeyboardEnhancementsMsg{Flags: 1}
 
-// TestTUI_SendTheQueueNow: while the model thinks, two messages queue; the
-// send-now key on the empty composer gives both to the working agent, in
-// order, before its next model request. Where the terminal tells
-// ctrl+enter from enter, enter queues and ctrl+enter sends now; where it
-// cannot (no answer to the query), tab queues and enter sends now.
+// TestTUI_SendTheQueueNow: while the model thinks, tab queues two messages;
+// enter (or ctrl+enter) on the empty composer gives both to the working
+// agent, in order, before its next model request.
 func TestTUI_SendTheQueueNow(t *testing.T) {
 	for _, tc := range []struct {
-		name           string
-		report         tea.Msg
-		queue, sendNow tea.KeyPressMsg
-		hint           string
+		name    string
+		sendNow tea.KeyPressMsg
 	}{
-		{"enhanced", enhanced, tea.KeyPressMsg{Code: tea.KeyEnter}, tea.KeyPressMsg{Code: tea.KeyEnter, Mod: tea.ModCtrl}, "ctrl+enter sends now"},
-		{"plain", nil, tea.KeyPressMsg{Code: tea.KeyTab}, tea.KeyPressMsg{Code: tea.KeyEnter}, "enter sends now"},
+		{"enter", tea.KeyPressMsg{Code: tea.KeyEnter}},
+		{"ctrl+enter", tea.KeyPressMsg{Code: tea.KeyEnter, Mod: tea.ModCtrl}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			gate := make(chan struct{})
 			llm := fakellm.New(t, fakellm.Reply{Text: "never shown", Gate: gate})
 			t.Cleanup(func() { close(gate) }) // before the server closes
 			d := start(t, liveDeps(t, llm))
-			if tc.report != nil {
-				d.send(tc.report)
-			}
 			d.until("the session is open", func() bool { return d.m.(bubble.Model).Exit().SessionID != "" })
 
 			d.typeText("start")
 			d.key(tea.KeyEnter, 0)
 			d.until("the model thinking", func() bool { return len(llm.Requests()) == 1 })
 			d.typeText("first queued")
-			d.send(tc.queue)
+			d.key(tea.KeyTab, 0)
 			d.typeText("second queued")
-			d.send(tc.queue)
+			d.key(tea.KeyTab, 0)
 			d.waitFor("↳ queued: second queued")
 			assert.Contains(t, d.view(), "↳ queued: first queued")
-			assert.Contains(t, d.view(), tc.hint, "the queue's hint names the key that works")
+			assert.Contains(t, d.view(), "enter sends now", "the queue's hint")
 
 			d.send(tc.sendNow)
 			d.waitFor("• done")
@@ -102,34 +95,51 @@ func TestTUI_SendTheQueueNow(t *testing.T) {
 	}
 }
 
-// TestTUI_EnterSteersWhereCtrlEnterCannotBeSeen: in a terminal that never
-// answers the keyboard enhancement query (tmux without extended keys, where
-// ctrl+enter arrives as enter), enter while the agent works gives the
-// message to the live run, and tab queues one for after it.
-func TestTUI_EnterSteersWhereCtrlEnterCannotBeSeen(t *testing.T) {
-	gate := make(chan struct{})
-	llm := fakellm.New(t, fakellm.Reply{Text: "never shown", Gate: gate})
-	t.Cleanup(func() { close(gate) })
-	d := start(t, liveDeps(t, llm))
-	d.until("the session is open", func() bool { return d.m.(bubble.Model).Exit().SessionID != "" })
+// TestTUI_EnterReachesTheNextRequestTabWaits: while the agent works, enter
+// gives the message to the live run before its next model request, and a
+// tab-queued message waits for the run's end, as in Codex. The terminal's
+// keyboard answer changes neither.
+func TestTUI_EnterReachesTheNextRequestTabWaits(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		report  tea.Msg
+		newline string
+	}{
+		{"no answer, as tmux", nil, "ctrl+j new line"},
+		{"enhanced", enhanced, "shift+enter new line"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			gate := make(chan struct{})
+			llm := fakellm.New(t, fakellm.Reply{Text: "never shown", Gate: gate})
+			t.Cleanup(func() { close(gate) })
+			deps := liveDeps(t, llm)
+			deps.Details = true // the idle footer names the new-line key
+			d := start(t, deps)
+			if tc.report != nil {
+				d.send(tc.report)
+			}
+			d.until("the session is open", func() bool { return d.m.(bubble.Model).Exit().SessionID != "" })
+			d.waitFor(tc.newline)
 
-	d.typeText("start")
-	d.key(tea.KeyEnter, 0)
-	d.until("the model thinking", func() bool { return len(llm.Requests()) == 1 })
-	d.waitFor("enter send now · tab queue") // the footer shows the keys that work
-	d.typeText("after the run")
-	d.key(tea.KeyTab, 0)
-	d.waitFor("↳ queued: after the run")
-	d.typeText("look here first")
-	d.key(tea.KeyEnter, 0)
-	d.until("the steered request", func() bool {
-		reqs := llm.Requests()
+			d.typeText("start")
+			d.key(tea.KeyEnter, 0)
+			d.until("the model thinking", func() bool { return len(llm.Requests()) == 1 })
+			d.waitFor("enter send now · tab queue") // the footer while the agent works
+			d.typeText("after the run")
+			d.key(tea.KeyTab, 0)
+			d.waitFor("1. after the run") // the detailed view lists the queue
+			d.typeText("look here first")
+			d.key(tea.KeyEnter, 0)
+			d.until("the steered request", func() bool {
+				reqs := llm.Requests()
 
-		return len(reqs) > 1 && slices.Contains(reqs[1].UserTexts, "look here first")
-	})
-	assert.NotContains(t, llm.Requests()[1].UserTexts, "after the run", "the queued message waits for the run's end")
-	d.waitFor("λ after the run")
-	d.waitIdle()
-	reqs := llm.Requests()
-	assert.Contains(t, reqs[len(reqs)-1].UserTexts, "after the run", "then the queue goes out")
+				return len(reqs) > 1 && slices.Contains(reqs[1].UserTexts, "look here first")
+			})
+			assert.NotContains(t, llm.Requests()[1].UserTexts, "after the run", "the queued message waits for the run's end")
+			d.waitFor("λ after the run")
+			d.waitIdle()
+			reqs := llm.Requests()
+			assert.Contains(t, reqs[len(reqs)-1].UserTexts, "after the run", "then the queue goes out")
+		})
+	}
 }

@@ -69,10 +69,9 @@ Keys worth knowing:
 
 | Key | Does |
 | --- | --- |
-| enter | Send. While the agent works, the message queues and goes out when it finishes (in a terminal that tells ctrl+enter from enter; for others, see below) |
-| ctrl+enter, alt+enter | Send now: the working agent reads it before its next model request. On an empty prompt, it sends the queued messages now, in order |
-| enter, tab (tmux and other terminals where ctrl+enter arrives as enter) | While the agent works, enter sends now and tab queues, as in Codex rust-v0.159.1; enter on an empty prompt sends the queued messages now. The footer shows which keys apply. `[tui] steer_key` picks the bindings; see the [keys design](docs/design/keys.md) |
-| ctrl+j, shift+enter | New line; ctrl+j works in every terminal |
+| enter | Send. While the agent works, it reads the message after its running tool calls, before its next model request, as in Codex rust-v0.159.1. On an empty prompt, it sends the queued messages now, in order. ctrl+enter and alt+enter do the same |
+| tab | While the agent works, queue the message: it goes out when the run ends. While idle, send |
+| ctrl+j, shift+enter | New line; ctrl+j works in every terminal. In tmux without extended keys, shift+enter arrives as enter and sends; see the [keys design](docs/design/keys.md) |
 | esc esc | Interrupt; queued messages stay. While the agent is idle, on an empty prompt: go back to an earlier message and edit it |
 | ↑ / ↓ on an empty prompt | Your earlier prompts in this folder, from this session and earlier ones; ↓ past the newest empties the prompt again. With messages queued, ↑ takes the last one back first |
 | ctrl+r | Search your earlier prompts; see [Reuse an earlier prompt](#reuse-an-earlier-prompt) |
@@ -371,7 +370,7 @@ Earlier versions used `~/.config/uagent`, `~/.local/state/unreal-agent`, and a p
 | MCP servers | `[mcp_servers.<name>]` `command`, `args`, `env`, `env_vars`, `cwd`, `url`, `bearer_token_env_var`, `http_headers`, `env_http_headers`, `enabled`, `required`, `startup_timeout_sec`, `tool_timeout_sec`, `enabled_tools`, `disabled_tools`, `supports_parallel_tool_calls`, `default_tools_approval_mode`, `tools.<tool>.approval_mode`, `auth`, `scopes`, `oauth_resource`, `[oauth]`; `mcp_oauth_credentials_store`, `mcp_oauth_callback_port`, `mcp_oauth_callback_url` |
 | Subagents | `[agents]` `enabled`, `max_concurrent_threads_per_session`, `max_depth`, `default_subagent_model`, `default_subagent_reasoning_effort` |
 | `/review` | `review_model` |
-| TUI | `[tui]` `details`, `mouse`, `title`, `steer_key` |
+| TUI | `[tui]` `details`, `mouse`, `title` |
 | Prompt history | `[history]` `persistence`, `max_bytes` |
 | Projects | `[projects."<path>"]` `trusted` |
 
@@ -415,7 +414,7 @@ The runner's session file, `sessions/<id>.session.jsonl`, is a versioned JSON-li
 <!-- /memoria:import -->
 
 <!-- memoria:import src="internal/tui/README.md#summary" -->
-The TUI is a pure reducer from session events and user intents to state and effects, a pure renderer from state to screen lines, and a thin Bubble Tea v2 shell that turns keys into intents and runs the effects against the session. Where the terminal tells ctrl+enter from enter, enter queues while the agent works and ctrl+enter sends now; elsewhere, as in tmux, enter sends now and tab queues. Esc esc interrupts, and ctrl+v pastes an image.
+The TUI is a pure reducer from session events and user intents to state and effects, a pure renderer from state to screen lines, and a thin Bubble Tea v2 shell that turns keys into intents and runs the effects against the session. As in Codex, enter while the agent works gives it the message after its running tool calls and tab queues it for the end of the run. Esc esc interrupts, and ctrl+v pastes an image.
 <!-- /memoria:import -->
 
 Read more: [sessions](internal/session/README.md), [the session index](internal/store/README.md), [the session file](internal/sessionfile/README.md), and [the TUI](internal/tui/README.md) with its look. Diagnostics go to `~/.uah/logs/uah-tui.log`.

@@ -31,7 +31,7 @@ Design:
 22. [`/diff` and `/review`](design/review.md): how Codex collects and shows the git diff and runs a code review in a separate thread, and how uah shows the diff and runs a read-only reviewer whose findings reach the agent.
 23. [Prompt history and a taller composer](design/prompt-history.md): how Codex stores prompts in `history.jsonl`, recalls them with ↑ and ↓, and searches them with ctrl+r, what Claude Code does, and how uah does the same with Codex's file format plus each prompt's workspace, shows each folder only its own prompts as Claude Code does, resolves the key conflicts, and grows the composer to half the window.
 24. [Tool calls in the transcript](design/tool-calls.md): the owner's pick from the gallery (R6 with spacing b), the port of Codex's command classifier, where the error lines and MCP results come from, and how an approval finds its call.
-25. [Send keys](design/keys.md): how Codex and Claude Code bind queue and send now, what the terminal reports about ctrl+enter (tmux measured), and how uah picks enter-sends-now and tab-queues where ctrl+enter cannot be told from enter.
+25. [Send keys](design/keys.md): how Codex and Claude Code bind send-now and queue, what the terminal reports about ctrl+enter and shift+enter (tmux measured), and why uah binds enter to send before the next model request and tab to queue in every terminal, as Codex does.
 
 Reference:
 

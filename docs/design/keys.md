@@ -1,6 +1,6 @@
-# Send keys: queue and send now in every terminal
+# Send keys: send before the next model request, or queue
 
-While the agent works, uah has two ways to send a message: queue it for the end of the run, or send it now, into the live run. Where the terminal tells ctrl+enter from enter, enter queues and ctrl+enter sends now. Where it cannot, enter sends now and tab queues, as in Codex. uah picks the bindings from the terminal's answer to the keyboard enhancement query, and the footer and `/help` show the keys that work.
+While the agent works, uah has two ways to send a message, as Codex rust-v0.159.1 has. Enter gives it to the agent after its running tool calls, before its next model request. Tab queues it for the end of the run. The keys are the same in every terminal, so they also work where ctrl+enter cannot be told from enter. The terminal's answer to the keyboard enhancement query only picks the new-line hint.
 
 1. [The problem](#the-problem)
 2. [What Codex and Claude Code do](#what-codex-and-claude-code-do)
@@ -11,7 +11,7 @@ While the agent works, uah has two ways to send a message: queue it for the end 
 
 ## The problem
 
-Before this change, enter queued while the agent worked, ctrl+enter or alt+enter sent now, and shift+enter or ctrl+j added a line. tmux has `extended-keys off` by default. With that setting, ctrl+enter reaches the program as plain enter, so "send now" quietly became "queue", and nothing happened until the run ended. The owner runs uah inside a tmux-backed browser terminal, where this happens every time.
+Before this change, enter queued while the agent worked, ctrl+enter or alt+enter sent now, and shift+enter or ctrl+j added a line. tmux has `extended-keys off` by default. With that setting, ctrl+enter reaches the program as plain enter, so "send now" quietly became "queue", and nothing happened until the run ended. The owner runs uah inside a tmux-backed browser terminal, where this happens every time. The owner also decided that a message sent while the agent works should go after the next tool call, not after the whole run, which is Codex's enter.
 
 A probe with Bubble Tea v2.0.9 inside tmux 3.7c (`tmux -L probe -f /dev/null`, `send-keys C-Enter`, and so on) reported these keys:
 
@@ -38,6 +38,14 @@ A probe with Bubble Tea v2.0.9 inside tmux 3.7c (`tmux -L probe -f /dev/null`, `
 - **Send now.** Ctrl+Enter, or the chord Ctrl+X Ctrl+S, sends the queued messages now. The docs say that in terminals without extended keys, Ctrl+Enter arrives as Enter and queues. The chord works everywhere. Claude Code does not detect this case.
 - **New line.** `\` + Enter, Option+Enter, Shift+Enter (native in several terminals), and Ctrl+J, which works in any terminal.
 
+Details beyond the bindings, from the same Codex version:
+
+- **The steer's preview.** A message sent with enter while the turn runs shows under "Messages to be submitted after next tool call (press Esc to interrupt and send immediately)" (`pending_input_preview.rs`). If the core rejects the steer, it moves to "Messages to be submitted at end of turn".
+- **Tab while idle.** Tab submits like enter, "so input is never dropped", except for a `!` command (`chat_composer.rs` module comment).
+- **Other keys.** Esc with pending steers interrupts and sends them. Shift+Left or Alt+Up edits the last queued message. Codex also pushes the kitty flags with care inside tmux: it reads `extended-keys-format` with `tmux display-message` and leaves out event types unless the format is `csi-u` (`tui/tmux.rs`, `keyboard_modes.rs`).
+
+Claude Code's docs also give the tmux settings that make shift+enter work: `set -s extended-keys on`, `set -as terminal-features 'xterm*:extkeys'`, and `allow-passthrough on`.
+
 ## What the terminal reports
 
 Bubble Tea v2.0.9 always asks for key disambiguation. On the first frame, and on each change of `View.KeyboardEnhancements` or the alt screen, it writes modifyOtherKeys (`CSI > 4 ; 2 m`), pushes the kitty flags, and queries them with `CSI ? u`. A terminal that speaks the kitty keyboard protocol answers, and the program gets `tea.KeyboardEnhancementsMsg`, where `SupportsKeyDisambiguation()` is true for flags above 0. A terminal that does not answer sends nothing. Bubble Tea has no timeout and no "not supported" message.
@@ -51,34 +59,32 @@ Bubble Tea v2.0.9 always asks for key disambiguation. On the first frame, and on
 | Terminal.app | none expected: no kitty protocol | `enter` | not measured here |
 | iTerm2 | depends on its CSI u setting | varies | not measured here |
 
-tmux does not answer the query in any mode. With extended keys on, ctrl+enter arrives, but the message does not, so tmux alone cannot tell uah whether the keys work. Codex's probe gives the same result: to Codex, tmux is a terminal without enhancements.
+tmux does not answer the query in any mode. With extended keys on, ctrl+enter arrives, but the message does not, so tmux alone cannot tell uah whether the keys work. Codex's probe gives the same result: to Codex, tmux is a terminal without enhancements. For this reason, uah's send keys do not depend on the answer.
 
 ## The bindings
 
-| Key | The terminal tells ctrl+enter from enter | It cannot (default until it answers) |
+| Key | While the agent works | While idle |
 | --- | --- | --- |
-| enter, agent working | Queue | Send now |
-| enter, idle | Send | Send |
-| enter, empty composer | Nothing | Send the queued messages now; nothing if none |
-| tab, agent working, draft | The composer's | Queue |
-| ctrl+enter, alt+enter | Send now; on an empty composer, the queue now | The same |
-| shift+enter, ctrl+j | New line | ctrl+j new line; shift+enter arrives as enter where the terminal cannot tell them apart |
-| Footer while working | `enter queue · ctrl+enter send now` | `enter send now · tab queue` |
-| Queue hint | `ctrl+enter sends now` | `enter sends now` |
+| enter | Send now: the agent reads it after its running tool calls, before its next model request (`Steer`) | Send (`Submit`) |
+| enter on an empty composer | Send the queued messages now, in order | The same, for a queue an interrupt kept; nothing without a queue |
+| tab | Queue for the end of the run (`Submit`) | Send, as enter. In shell mode, on an empty composer, and in the open menu, it keeps its own meaning |
+| ctrl+enter, alt+enter | As enter | As enter |
+| shift+enter, ctrl+j | New line; shift+enter only where the terminal tells it from enter | The same |
 
-`state.Keys` holds the choice. `Keys.Steer` is `[tui] steer_key`, and `Keys.Disambiguated` is the terminal's answer, set by `state.KeyboardReported`, which the shell sends for `tea.KeyboardEnhancementsMsg`. `State.SendIntent(key, draft)` maps enter, tab, ctrl+enter, and alt+enter to `Submit` or `Steer`. In the agent view, "working" means the viewed agent's run.
+The footer shows `enter send now · tab queue` while the agent works. In the detailed view while idle it shows `enter send · shift+enter new line` where the terminal answered the query, and `enter send · ctrl+j new line` elsewhere, as Codex's footer picks its new-line key. The queue's hint says `enter sends now`. `/help` gives the keys and the new-line key for this terminal.
+
+`State.SendIntent(key, draft)` maps the keys, and `State.Working` says whether the agent the composer talks to works: in the agent view, the viewed subagent. `State.Keys.Disambiguated` is the terminal's answer, set by `state.KeyboardReported`, which the shell sends for `tea.KeyboardEnhancementsMsg`.
 
 ## Decisions
 
-- **The plain bindings are the default.** Nothing is known until the terminal answers, and it may never answer, so uah starts on enter-sends-now and tab-queues, which work in every terminal. An answer switches to the ctrl+enter bindings, typically within milliseconds of startup, before the first key. No timer is needed.
-- **The plain bindings follow Codex.** Enter sends now and tab queues, as Codex does everywhere. uah adds one thing: enter on an empty composer sends the queue now, the plain-key form of ctrl+enter on an empty composer. Idle, a queue an interrupt kept goes the same way.
-- **Terminals with enhancements keep the old bindings.** They keep the queue-first behavior that Claude Code also has, and the ctrl+enter the owner already uses.
-- **tmux with extended keys on gets the plain bindings.** The message cannot tell uah that tmux passes ctrl+enter through. `$TMUX` would be a hint only, and uah would need to ask tmux for its options. ctrl+enter and alt+enter still send now there, so nothing is lost. `steer_key = "ctrl+enter"` restores the other bindings.
-- **Shift+enter is not guarded.** Where the terminal sends shift+enter as enter, the two keys are the same bytes, so enter's meaning applies. The footer and `/help` show ctrl+j as the new-line key in the plain bindings, as Codex's footer does.
-- **No warning and no doctor check.** The footer shows the keys that work, and `/help` describes them.
-- **An override.** `[tui] steer_key = "auto" | "ctrl+enter" | "enter"`, default `auto`. Any other value stops the TUI with an error.
+- **Codex's model, in every terminal.** The owner's decision: queued messages go after the next tool call, not after the whole run. Enter is Codex's steer and tab is Codex's queue. The keys no longer depend on the terminal, so tmux with `extended-keys off` needs no detection for sending.
+- **Enter on an empty composer sends the queue now.** Codex has no key for this: its queue goes out at the turn's end, and esc sends pending steers after an interrupt. uah keeps the send-the-queue-now action it had on ctrl+enter, on the key that works in every terminal. ctrl+enter and alt+enter keep it too.
+- **ctrl+enter and alt+enter are aliases of enter.** They are harmless where the terminal shows them, and in tmux they arrive as enter anyway.
+- **The process engine.** It has no live input. Enter while the agent works does what steering did there before: the run stops and restarts with the queue and the message (`Session.dispatch`). The embedded engine, the default, takes the message into the live run.
+- **The terminal's answer only picks the new-line hint.** It is what Codex uses it for. Where no answer comes (tmux, Terminal.app), shift+enter arrives as enter: the same bytes, so uah cannot tell the two apart, and it sends. The footer and `/help` name ctrl+j there, and `/help` says that shift+enter sends in this terminal. Before the answer arrives, the hint says ctrl+j, which works everywhere, so no timer is needed.
+- **No warning, no doctor check, and no setting.** The first version of this item had `[tui] steer_key` to pick between the old and the plain bindings. With one set of bindings it has nothing left to pick.
 
 ## Tests
 
-- `internal/tui/state/sendkeys_test.go` covers both bindings. It checks enter, tab, ctrl+enter, and alt+enter while the agent works and while idle, the empty composer, a queue an interrupt kept, shell mode, the agent view, the override, the hints, and `/help`.
-- `internal/tui/bubble/steer_test.go` runs the real shell over the embedded engine and fakellm. With `tea.KeyboardEnhancementsMsg`, enter queues and ctrl+enter sends the queue now. Without it, tab queues and enter sends the queue now. Without it, enter also gives a message to the live run while a tab-queued message waits for the run's end.
+- `internal/tui/state/sendkeys_test.go` covers the keys. It checks enter, ctrl+enter, alt+enter, and tab while the agent works and while idle, the empty composer, a queue an interrupt kept, a command sent with tab, shell mode, the agent view, the new-line hint from the terminal's answer, and `/help`.
+- `internal/tui/bubble/steer_test.go` runs the real shell over the embedded engine and fakellm. Tab queues two messages, and enter or ctrl+enter on the empty composer sends them in the next request. With and without `tea.KeyboardEnhancementsMsg`, enter reaches the model's next request while a tab-queued message waits for the run's end, and the idle footer names the new-line key.
