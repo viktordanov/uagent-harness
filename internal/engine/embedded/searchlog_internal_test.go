@@ -2,8 +2,6 @@ package embedded
 
 import (
 	"bytes"
-	"io"
-	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -39,38 +37,13 @@ func TestInsertSearches(t *testing.T) {
 	assert.False(t, ok)
 }
 
-// TestWithSearches: a request that gets no search keeps its body byte for
-// byte, and one that gets them carries the new length.
-func TestWithSearches(t *testing.T) {
-	body := `{"input":[{"type":"message","id":"msg_1"}]}`
-	request := func() *http.Request {
-		req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, "http://x/responses", bytes.NewReader([]byte(body)))
-		require.NoError(t, err)
-
-		return req
-	}
-	read := func(req *http.Request) string {
-		out, err := io.ReadAll(req.Body)
-		require.NoError(t, err)
-
-		return string(out)
-	}
-
-	empty := &searchLog{}
-	req := request()
-	got, err := empty.withSearches(req)
-	require.NoError(t, err)
-	assert.Same(t, req, got, "no searches recorded")
-
+// TestSearchLogApply: a body that gets no search stays byte for byte the
+// same, and one that gets them has them before their anchors.
+func TestSearchLogApply(t *testing.T) {
+	body := []byte(`{"input":[{"type":"message","id":"msg_1"}]}`)
+	assert.Equal(t, body, (&searchLog{}).apply(body), "no searches recorded")
 	other := &searchLog{records: []searchRecord{{Before: "msg_9", Item: []byte(`{"id":"ws"}`)}}}
-	got, err = other.withSearches(request())
-	require.NoError(t, err)
-	assert.Equal(t, body, read(got), "unchanged")
-
+	assert.Equal(t, body, other.apply(body), "no anchor")
 	l := &searchLog{records: []searchRecord{{Before: "msg_1", Item: []byte(`{"id":"ws"}`)}}}
-	got, err = l.withSearches(request())
-	require.NoError(t, err)
-	want := `{"input":[{"id":"ws"},{"type":"message","id":"msg_1"}]}`
-	assert.Equal(t, want, read(got))
-	assert.Equal(t, int64(len(want)), got.ContentLength)
+	assert.Equal(t, `{"input":[{"id":"ws"},{"type":"message","id":"msg_1"}]}`, string(l.apply(body)))
 }

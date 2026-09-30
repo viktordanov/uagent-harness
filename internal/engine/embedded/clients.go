@@ -4,7 +4,7 @@ package embedded
 // builds them (harness/llm/clients/*/client.go and the HTTP client of
 // harness/primitives/remote.go, MIT License, Copyright (c) 2026 Unreal
 // Labs; see THIRD_PARTY_NOTICES.md) but over an *http.Client uah makes,
-// whose transport sees each attempt of a model request (reconnect.go). The
+// whose transport sees each attempt of a model request (transport.go). The
 // runner's constructors make their own and take no transport. The request
 // each client sends is the runner's (TestClients_MatchTheRunner).
 
@@ -35,38 +35,32 @@ const (
 	contentJSON       = "application/json"
 )
 
-// remoteHTTPClient is primitives.NewRemoteClient's HTTP client with the
-// watching transport.
-func remoteHTTPClient() *http.Client {
-	dialer := &net.Dialer{Timeout: 30 * time.Second, KeepAlive: 30 * time.Second}
-
-	return &http.Client{Transport: watchTransport{base: &http.Transport{
-		Proxy:                 http.ProxyFromEnvironment,
-		DialContext:           dialer.DialContext,
-		ForceAttemptHTTP2:     true,
-		MaxIdleConns:          100,
-		IdleConnTimeout:       90 * time.Second,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ExpectContinueTimeout: time.Second,
-	}}}
+// remoteHTTPClient is primitives.NewRemoteClient's HTTP client over the
+// model transport.
+func remoteHTTPClient(headerTimeout time.Duration) *http.Client {
+	return &http.Client{Transport: callTransport{base: modelTransport(headerTimeout)}}
 }
 
-// codexHTTPClient is openaicodex.NewClient's HTTP client with the watching
-// transport: a clone of the default transport that never forwards
-// subscription credentials through redirects. Under the watching transport,
-// the login's sets the credentials on each attempt and renews them after a
-// 401 (codexauth.Login.Transport), where the runner's client sends the token
-// it read once.
-func codexHTTPClient(login *codexauth.Login) (*http.Client, error) {
-	transport, ok := http.DefaultTransport.(*http.Transport)
-	if !ok {
-		return nil, errors.New("the default HTTP transport is not an *http.Transport")
+// headerTimeout is responseHeaderTimeout, or none for a loopback server,
+// which may take long to load its model.
+func headerTimeout(baseURL string) time.Duration {
+	if u, err := url.Parse(baseURL); err == nil && loopback(u.Hostname()) {
+		return 0
 	}
 
+	return responseHeaderTimeout
+}
+
+// codexHTTPClient is openaicodex.NewClient's HTTP client over the model
+// transport, never forwarding subscription credentials through redirects.
+// Under the observing transport, the login sets the credentials on each
+// attempt and renews them after a 401 (codexauth.Login.Transport), where
+// the runner's client sends the token it read once.
+func codexHTTPClient(login *codexauth.Login, baseURL string) *http.Client {
 	return &http.Client{
-		Transport:     watchTransport{base: login.Transport(transport.Clone())},
+		Transport:     callTransport{base: login.Transport(modelTransport(headerTimeout(baseURL)))},
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
-	}, nil
+	}
 }
 
 // newClient builds a Responses client over hc with the attempt limit, for
@@ -106,7 +100,7 @@ func keyedClient(name string, c ClientConfig, cache responsesapi.CacheKeyPlaceme
 		return remoteAdapter{}, errors.New(name + " base URL must be set")
 	}
 
-	return newClient(remoteHTTPClient(), c, responsesapi.Config{
+	return newClient(remoteHTTPClient(headerTimeout(baseURL)), c, responsesapi.Config{
 		Endpoint:          baseURL + "/responses",
 		Headers:           map[string][]string{"Authorization": {"Bearer " + c.APIKey}, headerContentType: {contentJSON}},
 		CacheKeyPlacement: cache,
@@ -142,7 +136,7 @@ func ollamaClient(c ClientConfig) (Client, error) {
 		baseURL = ollama.BaseURL
 	}
 
-	return newClient(remoteHTTPClient(), c, responsesapi.Config{
+	return newClient(remoteHTTPClient(0), c, responsesapi.Config{
 		Endpoint: baseURL + "/responses",
 		Headers:  map[string][]string{headerContentType: {contentJSON}},
 	})
@@ -165,11 +159,7 @@ func codexClient(c ClientConfig) (Client, error) {
 	if _, err := login.Check(); err != nil {
 		return nil, err //nolint:wrapcheck // the provider wraps it
 	}
-	hc, err := codexHTTPClient(login)
-	if err != nil {
-		return nil, err
-	}
-	ra, err := newClient(hc, c, responsesapi.Config{
+	ra, err := newClient(codexHTTPClient(login, baseURL), c, responsesapi.Config{
 		Endpoint: baseURL + "/responses",
 		Headers: map[string][]string{
 			headerContentType: {contentJSON},
@@ -194,10 +184,8 @@ func codexBaseURL(value string) (string, error) {
 	}
 	parsed, err := url.Parse(value)
 	if err == nil && parsed.User == nil && parsed.RawQuery == "" && parsed.Fragment == "" &&
-		(parsed.Scheme == "http" || parsed.Scheme == "https") {
-		if ip := net.ParseIP(parsed.Hostname()); ip != nil && ip.IsLoopback() {
-			return value, nil
-		}
+		(parsed.Scheme == "http" || parsed.Scheme == "https") && net.ParseIP(parsed.Hostname()) != nil && loopback(parsed.Hostname()) {
+		return value, nil
 	}
 
 	return "", errors.New("codex base URL must be " + openaicodex.BaseURL + " or an explicit loopback IP endpoint")

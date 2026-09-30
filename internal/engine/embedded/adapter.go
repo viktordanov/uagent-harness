@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"sync"
 
 	"github.com/unreallabsai/unreal-agent/harness/llm"
@@ -32,14 +33,17 @@ type switcher struct {
 	// images, when set, gives the model the images pasted into user
 	// messages (images.go).
 	images func(llm.Request) llm.Request
-	// stream, when set, receives each turn request's web searches as they
-	// happen (websearch.go) and, when text is set, its text as it arrives
-	// (stream.go).
+	// stream, when set, receives each model request's retries and, for a
+	// turn request, its progress, its web searches (websearch.go), and when
+	// text is set its text as it arrives (sse.go).
 	stream func(core.Event)
 	text   bool
 	// searches, when set, records the session's web searches and puts
 	// them back into later turn requests (searchlog.go).
 	searches *searchLog
+	// max is the attempt limit; diag gets the diagnostics (modelcall.go).
+	max  int
+	diag io.Writer
 }
 
 // variant is what a client is built for: priority processing, and effort
@@ -47,8 +51,8 @@ type switcher struct {
 // so the ultra client sends the reasoning field itself.
 type variant struct{ priority, ultra bool }
 
-func newSwitcher(model string, v variant, build func(variant) (Client, error)) (*switcher, error) {
-	s := &switcher{build: build, model: model, clients: map[variant]Client{}}
+func newSwitcher(model string, v variant, maxAttempts int, build func(variant) (Client, error)) (*switcher, error) {
+	s := &switcher{build: build, model: model, max: maxAttempts, clients: map[variant]Client{}}
 	if err := s.use(v); err != nil {
 		return nil, err
 	}
@@ -75,9 +79,9 @@ func (s *switcher) Respond(ctx context.Context, req llm.Request, opts llm.Reques
 	if s.cacheKey != "" {
 		opts.CacheKey = s.cacheKey
 	}
-	ctx, done := s.streaming(ctx)
+	ctx, done := s.observe(ctx, kindTurn)
 	resp, err := client.Respond(ctx, req, opts)
-	done(err)
+	err = done(err)
 	if _, compacting := ctx.Value(remoteCallKey{}).(*remoteCall); err == nil && s.seen != nil && !compacting {
 		s.seen(req, resp.Usage)
 	}
@@ -189,8 +193,10 @@ func (s *switcher) direct() llm.Adapter {
 		if s.cacheKey != "" {
 			opts.CacheKey = s.cacheKey
 		}
+		ctx, done := s.observe(ctx, kindDirect)
+		resp, err := client.Respond(ctx, req, opts)
 
-		return client.Respond(ctx, req, opts) //nolint:wrapcheck // llmcall wraps model errors
+		return resp, done(err) //nolint:wrapcheck // llmcall wraps model errors
 	})
 }
 

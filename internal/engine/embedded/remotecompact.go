@@ -1,7 +1,6 @@
 package embedded
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -22,9 +21,9 @@ import (
 // in place of the history it covers. The runner's llm.Item (v0.1.1) has
 // neither, so the transport does both, as it does for web searches
 // (searchlog.go): it appends the trigger to the body of the request the
-// compactor marks, takes the item out of the answer before the runner
-// parses it, and puts it back into later turn requests where the
-// compaction's placeholder message is. A probe on openai-codex on
+// compactor marks, the scanner takes the item out of the answer before the
+// runner parses it (sse.go), and puts it back into later turn requests
+// where the compaction's placeholder message is. A probe on openai-codex on
 // 2026-09-30 found the backend accepts both, with or without Codex's
 // x-codex-beta-features header. See docs/design/compaction.md.
 
@@ -35,17 +34,25 @@ type remoteCallKey struct{}
 type remoteCall struct {
 	mu   sync.Mutex
 	item json.RawMessage
-	err  error
 }
 
 func (c *remoteCall) result() (json.RawMessage, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if c.item == nil && c.err == nil {
+	if c.item == nil {
 		return nil, errors.New("the provider answered without a compaction item")
 	}
 
-	return c.item, c.err
+	return c.item, nil
+}
+
+// reset forgets the item of an earlier attempt.
+func (c *remoteCall) reset() {
+	if c != nil {
+		c.mu.Lock()
+		c.item = nil
+		c.mu.Unlock()
+	}
 }
 
 // remoteItemsKey carries the remote compaction that a turn request's
@@ -68,16 +75,13 @@ func withRemoteItem(ctx context.Context, rec *compaction.Record) context.Context
 
 var compactionTrigger = []byte(`{"type":"compaction_trigger"}`)
 
-// eventItemDone is the stream event that carries a finished output item.
-const eventItemDone = "response.output_item.done"
-
-// withRemoteCompaction rewrites the body of a request: the placeholder of
-// a remote compaction becomes its item, and a request that asks for one
-// gets the trigger after its history. Other requests pass unchanged.
-func withRemoteCompaction(req *http.Request) (*http.Request, error) {
+// rewriteBody gives an attempt the body the provider sees: the session's
+// recorded searches inserted (searchlog.go), a remote compaction's item in
+// place of its placeholder, and the trigger after the history of a request
+// that asks for one. Other requests pass unchanged.
+func (c *modelCall) rewriteBody(req *http.Request) (*http.Request, error) {
 	item, hasItem := req.Context().Value(remoteItemsKey{}).(remoteItem)
-	_, asks := req.Context().Value(remoteCallKey{}).(*remoteCall)
-	if (!hasItem && !asks) || req.Body == nil || req.Header.Get("Content-Encoding") != "" {
+	if c.log == nil && !hasItem && c.remote == nil || req.Body == nil || req.Header.Get("Content-Encoding") != "" {
 		return req, nil
 	}
 	body, err := io.ReadAll(req.Body)
@@ -85,10 +89,13 @@ func withRemoteCompaction(req *http.Request) (*http.Request, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to read the request body: %w", err)
 	}
+	if c.log != nil {
+		body = c.log.apply(body)
+	}
 	if hasItem {
 		body = replaceItem(body, item)
 	}
-	if asks {
+	if c.remote != nil {
 		body = appendInput(body, compactionTrigger)
 	}
 	clone := req.Clone(req.Context())
@@ -118,34 +125,6 @@ func appendInput(body, item []byte) []byte {
 	end := items[len(items)-1].end
 
 	return slices.Concat(body[:end], []byte{','}, item, body[end:])
-}
-
-// takeCompaction reads the whole answer of a remote compaction request,
-// keeps its compaction item, and returns the stream with the item replaced
-// by an assistant message, which the runner's parser accepts.
-func takeCompaction(ctx context.Context, body io.ReadCloser) io.ReadCloser {
-	call, _ := ctx.Value(remoteCallKey{}).(*remoteCall)
-	if call == nil {
-		return body
-	}
-	defer body.Close()
-	var out bytes.Buffer
-	r := bufio.NewReaderSize(body, 1<<20)
-	for {
-		line, err := r.ReadBytes('\n')
-		out.Write(call.swap(line))
-		if err != nil {
-			if !errors.Is(err, io.EOF) {
-				call.mu.Lock()
-				call.err = fmt.Errorf("failed to read the compaction answer: %w", err)
-				call.mu.Unlock()
-			}
-
-			break
-		}
-	}
-
-	return io.NopCloser(&out)
 }
 
 // compactedMessage stands in for the compaction item in what the runner

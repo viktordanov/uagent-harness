@@ -38,7 +38,7 @@ func (w *wiring) client(req core.Request, opts engine.Options) (string, *switche
 		return "", nil, err
 	}
 	start := variant{priority: opts.ServiceTier == tierPriority, ultra: req.Effort == effortUltra}
-	sw, err := newSwitcher(model, start, func(v variant) (Client, error) {
+	sw, err := newSwitcher(model, start, maxAttempts, func(v variant) (Client, error) {
 		if v.priority && !p.Priority {
 			return nil, errNoPriority
 		}
@@ -47,7 +47,7 @@ func (w *wiring) client(req core.Request, opts engine.Options) (string, *switche
 			return nil, fmt.Errorf("failed to create the %s client: %w", p.Name, err)
 		}
 
-		return watched{Client: c, max: maxAttempts, emit: w.emit}, nil
+		return c, nil
 	})
 
 	return model, sw, err

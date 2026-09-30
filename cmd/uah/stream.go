@@ -144,7 +144,8 @@ func sessionEventDTO(event core.Event) (any, bool) {
 			MaxAttempts int    `json:"max_attempts"`
 			DelayMS     int64  `json:"delay_ms"`
 			Reason      string `json:"reason"`
-		}{header("reconnecting", e.At), e.Attempt, e.MaxAttempts, e.Delay.Milliseconds(), e.Reason}, true
+			Offline     bool   `json:"offline,omitempty"`
+		}{header("reconnecting", e.At), e.Attempt, e.MaxAttempts, e.Delay.Milliseconds(), e.Reason, e.Offline}, true
 	case engine.ReconnectEnded:
 		return struct {
 			sessionHeader

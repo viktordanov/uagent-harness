@@ -130,7 +130,7 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 	}
 	sw.tools = w.bashTools
 	sw.images = w.e.pastedImages
-	sw.stream, sw.text = w.emit, opts.Stream
+	sw.stream, sw.text, sw.diag = w.emit, opts.Stream, w.l.Stderr
 	operations := operation.NewLocalOperationManager(runCtx, newMCPJobs(runCtx, w.e.cfg.MCP), newAgentJobs(runCtx, w.e.cfg.Subagents, string(s.id)), newPatchJobs(runCtx))
 	first := compaction.Trigger("")
 	switch {

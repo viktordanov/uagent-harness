@@ -10,7 +10,6 @@ import (
 	"io"
 	"io/fs"
 	"log/slog"
-	"net/http"
 	"os"
 	"path/filepath"
 	"slices"
@@ -132,26 +131,16 @@ func copySearches(dir, parentID, childID string) error {
 	return child.add(parent.snapshot())
 }
 
-// withSearches returns req with the recorded searches inserted into its
-// body, or req itself when none applies.
-func (l *searchLog) withSearches(req *http.Request) (*http.Request, error) {
-	records := l.snapshot()
-	if len(records) == 0 || req.Body == nil || req.Header.Get("Content-Encoding") != "" {
-		return req, nil
+// apply returns body with the recorded searches inserted next to their
+// anchors, or body itself when none applies.
+func (l *searchLog) apply(body []byte) []byte {
+	if records := l.snapshot(); len(records) > 0 {
+		if out, ok := insertSearches(body, records); ok {
+			return out
+		}
 	}
-	body, err := io.ReadAll(req.Body)
-	_ = req.Body.Close()
-	if err != nil {
-		return nil, fmt.Errorf("failed to read the request body: %w", err)
-	}
-	if out, ok := insertSearches(body, records); ok {
-		body = out
-	}
-	clone := req.Clone(req.Context())
-	clone.Body, clone.ContentLength = io.NopCloser(bytes.NewReader(body)), int64(len(body))
-	clone.GetBody = func() (io.ReadCloser, error) { return io.NopCloser(bytes.NewReader(body)), nil }
 
-	return clone, nil
+	return body
 }
 
 // inputItem is where an input item lies in the body, and its ID.

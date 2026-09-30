@@ -1,8 +1,6 @@
 package embedded
 
 import (
-	"context"
-	"io"
 	"strings"
 	"testing"
 
@@ -19,31 +17,39 @@ const chatgptStream = "event: response.output_item.added\n" +
 	"event: response.completed\n" +
 	`data: {"type":"response.completed","response":{"id":"r","status":"completed","output":[],"usage":{"input_tokens":124,"output_tokens":115}}}` + "\n\n"
 
-func TestTakeCompaction_KeepsTheItemAndHidesItFromTheRunner(t *testing.T) {
+func TestRemoteCall_KeepsTheItemAndHidesItFromTheRunner(t *testing.T) {
 	call := &remoteCall{}
-	body := takeCompaction(context.WithValue(context.Background(), remoteCallKey{}, call), io.NopCloser(strings.NewReader(chatgptStream)))
-	out, err := io.ReadAll(body)
-	require.NoError(t, err)
+	out := readAttempt(t, &modelCall{ctx: t.Context(), remote: call, final: map[string]bool{}}, chatgptStream)
 	item, err := call.result()
 	require.NoError(t, err)
 	assert.JSONEq(t, `{"id":"cmp_1","type":"compaction","encrypted_content":"E=="}`, string(item))
-	assert.NotContains(t, string(out), `"type":"compaction"`, "the runner's parser never sees the item")
-	assert.Equal(t, 2, strings.Count(string(out), "msg_uah_compaction"))
-	assert.Contains(t, string(out), `"output_tokens":115`, "the usage passes")
-	assert.Contains(t, string(out), "event: response.completed\n")
+	assert.NotContains(t, out, `"type":"compaction"`, "the runner's parser never sees the item")
+	assert.Equal(t, 2, strings.Count(out, "msg_uah_compaction"))
+	assert.Contains(t, out, `"output_tokens":115`, "the usage passes")
+	assert.Contains(t, out, "event: response.completed\n")
 }
 
-func TestTakeCompaction_AnAnswerWithoutAnItemFails(t *testing.T) {
+func TestRemoteCall_AnAnswerWithoutAnItemFails(t *testing.T) {
 	call := &remoteCall{}
-	_, _ = io.ReadAll(takeCompaction(context.WithValue(context.Background(), remoteCallKey{}, call), io.NopCloser(strings.NewReader(
-		`data: {"type":"response.completed","response":{"id":"r","status":"completed","output":[]}}`+"\n\n"))))
+	readAttempt(t, &modelCall{ctx: t.Context(), remote: call, final: map[string]bool{}},
+		`data: {"type":"response.completed","response":{"id":"r","status":"completed","output":[]}}`+"\n\n")
 	_, err := call.result()
 	assert.Error(t, err)
 }
 
-func TestTakeCompaction_OtherRequestsPass(t *testing.T) {
-	body := io.NopCloser(strings.NewReader(chatgptStream))
-	assert.Equal(t, body, takeCompaction(context.Background(), body))
+// TestRemoteCall_ACutAnswerIsForgotten: the item of an attempt cut after
+// it is not the answer of the next attempt, which has none.
+func TestRemoteCall_ACutAnswerIsForgotten(t *testing.T) {
+	call := &remoteCall{}
+	c := &modelCall{ctx: t.Context(), remote: call, final: map[string]bool{}}
+	readAttempt(t, c, chatgptStream[:strings.Index(chatgptStream, "event: response.completed")])
+	readAttempt(t, c, `data: {"type":"response.completed","response":{"id":"r","status":"completed","output":[]}}`+"\n\n")
+	_, err := call.result()
+	assert.Error(t, err)
+}
+
+func TestRemoteCall_OtherRequestsPass(t *testing.T) {
+	assert.Equal(t, chatgptStream, readAttempt(t, &modelCall{ctx: t.Context(), final: map[string]bool{}}, chatgptStream))
 }
 
 func TestRemoteBodies(t *testing.T) {
