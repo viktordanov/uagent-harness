@@ -220,7 +220,7 @@ func (s *State) onIntent(ev any) (State, []Effect) { //nolint:gocyclo // a dispa
 		if text == "" {
 			return *s, nil
 		}
-		if strings.HasPrefix(text, "/") {
+		if _, _, ok := commandLine(text); ok {
 			return s.command(text)
 		}
 		s.Scroll = 0
@@ -233,7 +233,7 @@ func (s *State) onIntent(ev any) (State, []Effect) { //nolint:gocyclo // a dispa
 
 			return *s, []Effect{EffSteerQueued{}} // an empty composer sends the queue now
 		}
-		if text == "" || strings.HasPrefix(text, "/") {
+		if _, _, ok := commandLine(text); ok || text == "" {
 			return s.onIntent(Submit{Text: e.Text})
 		}
 		s.Scroll = 0

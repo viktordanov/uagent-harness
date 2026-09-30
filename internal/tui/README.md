@@ -139,7 +139,7 @@ In the `/model` picker, ↑/↓ (or ctrl+p/ctrl+n) choose, enter on a model list
 <!-- memoria:section id="commands" files="state/commands.go state/menu.go state/models.go state/modelpicker.go render/modelpicker.go state/context.go state/contextview.go state/mcp.go state/agents.go state/heatmap.go state/review.go state/reviewmenu.go bubble/review.go" -->
 ## Slash commands
 
-`state.Commands()` is the registry; `/help` prints it in this order. A command without "While busy" waits until the agent is idle.
+`state.Commands()` is the registry; `/help` prints it in this order. A command without "While busy" waits until the agent is idle. A message is a command only when its first word after `/` is letters, digits, `-`, and `_` (`commandLine`); a draft that starts with a pasted path, such as `/Users/me/a.json - take this json`, is sent as a message.
 
 | Command | Does | While busy |
 | --- | --- | --- |

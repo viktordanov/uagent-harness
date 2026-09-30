@@ -174,7 +174,7 @@ var steerWhen = map[string]session.When{KeyEnter: session.SendAfterTool, KeyCtrl
 
 // Intents are what the user asks for, translated from keys by the shell.
 type (
-	// Submit is Enter with the composer text; text starting with "/" is a command.
+	// Submit is Enter with the composer text; text starting with "/" and a command-like word is a command.
 	Submit struct{ Text string }
 	// Steer is a send key with the composer text while the agent works.
 	Steer struct {

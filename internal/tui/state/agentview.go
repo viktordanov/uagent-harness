@@ -150,16 +150,16 @@ func (s *State) onAgentView(ev any) ([]Effect, bool) {
 	case Submit, Steer:
 		text, when := textOf(e)
 		text = strings.TrimSpace(text)
-		name, _, _ := strings.Cut(strings.TrimPrefix(text, "/"), " ")
+		name, _, command := commandLine(text)
 		switch {
 		case text == "" && when != session.SendAfterRun && len(v.St.Queue) > 0: // a Steer
 			v.St.Scroll = 0
 
 			return []Effect{EffAgentSteerQueued{ID: v.ID}}, true
 		case text == "":
-		case strings.HasPrefix(text, "/") && (name == cmdAgentsName || name == "quit" || name == "exit"):
+		case command && (name == cmdAgentsName || name == "quit" || name == "exit"):
 			return nil, false
-		case strings.HasPrefix(text, "/"):
+		case command:
 			v.St.notice(session.LevelWarning, fmt.Sprintf("/%s is for the main agent; alt+← returns to it", name))
 		default:
 			v.St.Scroll = 0

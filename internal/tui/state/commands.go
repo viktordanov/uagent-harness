@@ -77,9 +77,25 @@ func Complete(prefix string) []Command {
 	return out
 }
 
+// commandLine splits a slash command into its name and arguments. ok is
+// false when text is a message: it does not start with "/", or its first
+// word holds more than letters, digits, "-" and "_", as a pasted path such
+// as /Users/me/a.json does.
+func commandLine(text string) (name, args string, ok bool) {
+	rest, found := strings.CutPrefix(text, "/")
+	name, args, _ = strings.Cut(rest, " ")
+	if i := strings.IndexAny(name, "\n\t"); i >= 0 {
+		name, args = name[:i], rest[i:]
+	}
+	ok = found && name != "" && strings.Trim(name, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_") == ""
+
+	return name, strings.TrimSpace(args), ok
+}
+
+func isCommand(text string) bool { _, _, ok := commandLine(text); return ok }
+
 func (s *State) command(text string) (State, []Effect) {
-	name, args, _ := strings.Cut(strings.TrimPrefix(text, "/"), " ")
-	args = strings.TrimSpace(args)
+	name, args, _ := commandLine(text)
 	cmd, ok := FindCommand(name)
 	if !ok {
 		s.notice(session.LevelError, fmt.Sprintf("unknown command /%s (see /help)", name))

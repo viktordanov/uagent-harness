@@ -189,7 +189,7 @@ func (s *State) remember(ev any) []Effect {
 	s.History.add(raw)
 	s.History.reset()
 	switch {
-	case local || (!s.Shell && strings.HasPrefix(text, "/")):
+	case local || (!s.Shell && isCommand(text)):
 		return nil
 	case s.SessionID == "": // sent once the session opens, recorded then with its workspace
 		s.History.unsent = append(s.History.unsent, shown)

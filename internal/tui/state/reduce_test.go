@@ -292,6 +292,9 @@ func TestReduce_Commands(t *testing.T) {
 		"resume opens list": {from: opened(), text: "/resume", effects: []state.Effect{state.EffLoadSessions{}}},
 		"stop":              {from: busy, text: "/stop", effects: []state.Effect{state.EffInterrupt{}}},
 		"unknown":           {from: opened(), text: "/nope", notice: "unknown command /nope"},
+		"pasted path":       {from: opened(), text: "/Users/me/a.json - take this json", effects: []state.Effect{state.EffSubmit{Text: "/Users/me/a.json - take this json"}}},
+		"path on own line":  {from: opened(), text: "/tmp/a.json\nsummarize it", effects: []state.Effect{state.EffSubmit{Text: "/tmp/a.json\nsummarize it"}}},
+		"command then line": {from: opened(), text: "/nope\nmore", notice: "unknown command /nope"},
 		"help":              {from: opened(), text: "/help", notice: "/model <id>"},
 		"status":            {from: opened(), text: "/status", notice: "session sess-1 · embedded engine", effects: []state.Effect{state.EffLoadActivity{}, state.EffLoadUsage{Reason: state.UsageStatus}}},
 	}
