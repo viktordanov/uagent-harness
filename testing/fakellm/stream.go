@@ -74,7 +74,7 @@ func reasoningItem(n int, reply Reply) outputItem {
 // streamPieces writes the reply's reasoning and message pieces, then waits
 // for Hold. It reports false when the request was canceled while held.
 func streamPieces(w http.ResponseWriter, r *http.Request, n int, reply Reply) bool {
-	if len(reply.Deltas) == 0 && len(reply.Reasoning) == 0 && len(reply.Searches) == 0 {
+	if len(reply.Deltas) == 0 && len(reply.Reasoning) == 0 && len(reply.Searches) == 0 && len(reply.ArgDeltas) == 0 {
 		return true
 	}
 	rc := http.NewResponseController(w)
@@ -108,9 +108,16 @@ func streamPieces(w http.ResponseWriter, r *http.Request, n int, reply Reply) bo
 				pace(reply.Pace)
 				send(deltaEvent{Type: "response.output_text.delta", OutputIndex: index, ItemID: item.ID, Delta: piece})
 			}
-		default: // a function call opens when searches precede it
-			if len(reply.Searches) > 0 {
+		default: // a function call opens when searches precede it or its arguments stream
+			if len(reply.Searches)+len(reply.ArgDeltas) > 0 {
 				send(deltaEvent{Type: eventItemAdded, OutputIndex: index, Item: &outputItem{ID: item.ID, Type: item.Type, CallID: item.CallID, Name: item.Name}})
+			}
+			for _, piece := range reply.ArgDeltas {
+				pace(reply.Pace)
+				send(deltaEvent{Type: "response.function_call_arguments.delta", OutputIndex: index, ItemID: item.ID, Delta: piece})
+			}
+			if len(reply.ArgDeltas) > 0 {
+				send(deltaEvent{Type: "response.output_item.done", OutputIndex: index, Item: &item})
 			}
 		}
 	}

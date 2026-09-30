@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"slices"
@@ -37,9 +38,11 @@ type Reply struct {
 	// that needs an ID from an earlier tool result.
 	From func(Request) Reply
 	// Fail, when set, is the HTTP status of an error answer with FailCode
-	// as the Responses API error code, as a provider rejects a request.
-	Fail     int
-	FailCode string
+	// as the Responses API error code, as a provider rejects a request;
+	// 200 streams a response.failed instead. RetryAfter is its Retry-After.
+	Fail       int
+	FailCode   string
+	RetryAfter string
 	// FailBody, when set, is the error answer's body as sent, such as the
 	// ChatGPT backend's {"detail":"..."}.
 	FailBody string
@@ -50,6 +53,10 @@ type Reply struct {
 	// either, so the next reply answers the same request.
 	Drop bool
 	Cut  bool
+	// Freeze takes the connection and never answers; NoEnd ends the stream
+	// without its completed response.
+	Freeze bool
+	NoEnd  bool
 	// Deltas stream the message in these pieces before the response
 	// completes (Text defaults to them joined), and Reasoning streams a
 	// reasoning summary the same way, before the message. Pace waits
@@ -60,6 +67,8 @@ type Reply struct {
 	Reasoning []string
 	Pace      time.Duration
 	Hold      <-chan struct{}
+	// ArgDeltas stream each function call's arguments in these pieces.
+	ArgDeltas []string
 	// Searches are hosted web searches, streamed and listed before the
 	// other output items, as the provider runs them.
 	Searches []Search
@@ -210,43 +219,53 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if reply.Drop {
-		drop(w)
+	if reply.Drop || reply.Freeze {
+		conn := hijack(w)
+		if reply.Freeze {
+			_, _ = io.Copy(io.Discard, conn) // until the client gives up
+		}
+		_ = conn.Close()
 
 		return
 	}
-	if reply.Fail != 0 {
+	if reply.Fail != 0 && reply.Fail != http.StatusOK {
 		failWith(w, reply)
 
 		return
 	}
-	event, err := json.Marshal(streamEvent{Type: "response.completed", Response: response(n, reply)})
+	end := streamEvent{Type: "response.completed", Response: response(n, reply)}
+	if reply.Fail == http.StatusOK {
+		end.Type, end.Response.Status = "response.failed", "failed"
+		end.Response.Error = map[string]string{"code": reply.FailCode, "message": "fakellm: " + reply.FailCode}
+	}
+	event, err := json.Marshal(end)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 
 		return
 	}
 	w.Header().Set("Content-Type", "text/event-stream")
-	if !streamPieces(w, r, n, reply) {
-		return // the request was canceled while held
+	if !streamPieces(w, r, n, reply) || reply.NoEnd {
+		return // the request was canceled while held, or ends early
 	}
 	if reply.Cut {
 		_, _ = fmt.Fprintf(w, "data: %s", event[:len(event)/2])
 		http.NewResponseController(w).Flush() //nolint:errcheck // the connection closes next
-		drop(w)
+		_ = hijack(w).Close()
 
 		return
 	}
 	_, _ = fmt.Fprintf(w, "data: %s\n\n", event)
 }
 
-// drop closes the request's connection at once.
-func drop(w http.ResponseWriter) {
+// hijack takes the request's connection.
+func hijack(w http.ResponseWriter) net.Conn {
 	conn, _, err := http.NewResponseController(w).Hijack()
 	if err != nil {
 		panic(err) // httptest's server supports hijacking
 	}
-	_ = conn.Close()
+
+	return conn
 }
 
 type (
@@ -255,11 +274,12 @@ type (
 		Response responseBody `json:"response"`
 	}
 	responseBody struct {
-		ID     string       `json:"id"`
-		Object string       `json:"object"`
-		Status string       `json:"status"`
-		Output []outputItem `json:"output"`
-		Usage  *usage       `json:"usage,omitempty"`
+		ID     string            `json:"id"`
+		Object string            `json:"object"`
+		Status string            `json:"status"`
+		Output []outputItem      `json:"output"`
+		Usage  *usage            `json:"usage,omitempty"`
+		Error  map[string]string `json:"error,omitempty"`
 	}
 	outputItem struct {
 		ID        string        `json:"id"`
@@ -374,6 +394,9 @@ func failWith(w http.ResponseWriter, reply Reply) {
 		body = []byte(reply.FailBody)
 	}
 	w.Header().Set("Content-Type", "application/json")
+	if reply.RetryAfter != "" {
+		w.Header().Set("Retry-After", reply.RetryAfter)
+	}
 	w.WriteHeader(reply.Fail)
 	_, _ = w.Write(body)
 }
