@@ -48,7 +48,7 @@ Errors are Codex's, for example `invalid hunk at line 5, Expected update hunk to
 
 An update finds each chunk as Codex does (`seek_sequence.rs`). It looks after the `@@` context line and after the previous chunk, and tries four matches in turn: exact, then without trailing whitespace, then without surrounding whitespace, then with typographic dashes, quotes, and spaces made ASCII. The matched lines are replaced by the chunk's new lines, and the file ends with a newline. This is Codex's default mode: line endings become LF, and a context line takes the patch's text.
 
-Relative paths resolve against the working directory. `Paths` lists every path a patch writes, move destinations included, for the sandbox check.
+Relative paths resolve against the working directory. `Paths` lists every path a patch writes, move destinations included, for the sandbox check. `LastFile` names the file of the last complete file header in the tail of a patch still being written, raw or JSON-escaped, for the status line while the model writes an `apply_patch` call.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="diff" files="diff.go plain.go" -->
@@ -70,5 +70,5 @@ Hooks see the call as Codex shows it to them: `tool_name` `apply_patch` and `too
 <!-- memoria:section id="tests" files="parse_test.go apply_test.go diff_test.go" -->
 ## Tests
 
-`parse_test.go` and `apply_test.go` port Codex's cases: every op, context and `@@` chunks, `*** End of File`, moves, the fuzzy matches, pure additions, and the error messages. `diff_test.go` pins line numbers, context, hunk breaks, and a large rewrite that stays bounded. The engine's tests apply patches end to end (`internal/engine/embedded/patch_test.go`).
+`parse_test.go` and `apply_test.go` port Codex's cases: every op, context and `@@` chunks, `*** End of File`, moves, the fuzzy matches, pure additions, and the error messages. `diff_test.go` pins line numbers, context, hunk breaks, and a large rewrite that stays bounded. `lastfile_test.go` covers `LastFile` on raw and escaped tails and an unfinished path. The engine's tests apply patches end to end (`internal/engine/embedded/patch_test.go`).
 <!-- /memoria:section -->

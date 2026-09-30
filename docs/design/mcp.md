@@ -53,7 +53,7 @@ Servers live as long as the session's engine: they start when an interactive ses
 | `internal/mcp/names.go` | Codex's qualified tool names |
 | `internal/mcp/manager.go` | The `Manager`: starting servers once, the tools to offer, closing; `Tool.NeedsApproval` |
 | `internal/mcp/server.go` | One server's connection: connecting within the startup timeout, watching for a stop, reconnecting an expired HTTP session, naming tools |
-| `internal/mcp/call.go` | Calls: one at a time unless parallel, the tool timeout, one retry after a session expired |
+| `internal/mcp/call.go` | Calls: one at a time unless parallel, the tool timeout (which also bounds the wait for a serial server's turn), one retry after a session expired |
 | `internal/mcp/status.go` | `ServerStatus` for `/mcp` and `uah doctor` |
 | `internal/mcp/result.go` | Converts a `CallToolResult` to text and images |
 | `internal/mcp/transport.go` | Stdio commands with Codex's environment, and HTTP headers |

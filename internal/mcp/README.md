@@ -34,7 +34,7 @@ A manager belongs to one engine, which `internal/app` builds for each session it
 
 1. The embedded engine's registry offers each tool from `Manager.Tools` under its qualified name: `mcp__<server>__<tool>`, each part cut to `[A-Za-z0-9_]`, at most 64 characters, with 12 hex digits of a SHA-1 when a name is too long or collides.
 2. When the model calls one, the engine's translator checks that the arguments are a JSON object, applies the approval mode, and submits a runner remote job (plan `uah.mcp_call`) instead of running the call itself, so the coordinator never waits on a server.
-3. The engine's remote job handler calls `Manager.Call` on its own goroutine. A server without `supports_parallel_tool_calls` takes one call at a time; a waiting call is bounded only by cancellation, and `tool_timeout_sec` (default 300 s) starts when the call runs.
+3. The engine's remote job handler calls `Manager.Call` on its own goroutine. A server without `supports_parallel_tool_calls` takes one call at a time; `tool_timeout_sec` (default 300 s) starts when the call is made, so it also bounds the wait for the server's turn.
 4. The SDK sends `tools/call`. A canceled job cancels the call's context, and the SDK tells the server.
 5. `convert` turns the result into text and images, as Codex does: structured content replaces the content as JSON text, images become `data:` URLs, and `isError` fails the job with the text. The runner bounds the text (40,000 characters, head and tail) before the model sees it.
 
