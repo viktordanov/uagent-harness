@@ -1,13 +1,15 @@
 # Prompt history and a taller composer
 
 Ledger item 68: ↑ and ↓ bring back earlier prompts, from this session and from earlier ones, ctrl+r searches them, and the composer grows past 8 rows for a long prompt.
+Ledger item 74: ↑, ↓, and ctrl+r show only the prompts sent in the session's workspace, as Claude Code keeps history per project.
 
 1. [What Codex does](#what-codex-does)
 2. [What Claude Code does](#what-claude-code-does)
 3. [The design](#the-design)
-4. [Keys and their conflicts](#keys-and-their-conflicts)
-5. [Decisions](#decisions)
-6. [Open](#open)
+4. [History per folder](#history-per-folder)
+5. [Keys and their conflicts](#keys-and-their-conflicts)
+6. [Decisions](#decisions)
+7. [Open](#open)
 
 ## What Codex does
 
@@ -75,9 +77,9 @@ Checked against the Claude Code documentation ([interactive mode](https://code.c
 
 ## The design
 
-- **The file** (`internal/history`): `<uah home>/history.jsonl` (`~/.uah`, or `$UAH_HOME`), in Codex's format with Codex's field names. `File.Append` builds the lines first, opens the file `O_APPEND` and 0600, narrows it to 0600 when it is not, takes an exclusive `flock` (10 tries 100 ms apart), writes them in one call, and trims to the cap as Codex does: the oldest lines go until the file is at most 80% of `max_bytes`, and the newest line stays. `File.Load` reads every line under a shared lock and skips a line that is not an entry. `Recorder` keeps the order: the shell adds each prompt on its update loop and flushes off it, and a flush writes everything queued so far, in order.
+- **The file** (`internal/history`): `<uah home>/history.jsonl` (`~/.uah`, or `$UAH_HOME`), in Codex's format with Codex's field names and one field of uah's, `workspace` (see [History per folder](#history-per-folder)). `File.Append` builds the lines first, opens the file `O_APPEND` and 0600, narrows it to 0600 when it is not, takes an exclusive `flock` (10 tries 100 ms apart), writes them in one call, and trims to the cap as Codex does: the oldest lines go until the file is at most 80% of `max_bytes`, and the newest line stays. `File.Load` reads every line under a shared lock and skips a line that is not an entry. `Recorder` keeps the order: the shell adds each prompt on its update loop and flushes off it, and a flush writes everything queued so far, in order.
 - **The configuration**: `[history]` with Codex's keys, `persistence = "save-all" | "none"` and `max_bytes`. `none` stops the writes and still reads the file, as in Codex. `max_bytes` defaults to 8 MiB (8388608); 0 means no cap. An invalid `persistence` stops the TUI before it starts. `uah config` shows both keys.
-- **State** (`internal/tui/state/history.go`, `historysearch.go`). `State.History` holds the entries, oldest first: the file's (`PromptsLoaded`, from `EffLoadPrompts` at startup), then this process's. Everything else is pure:
+- **State** (`internal/tui/state/history.go`, `historysearch.go`). `State.History` holds the entries, oldest first: the file's (`PromptsLoaded`, from `EffLoadPrompts` at startup), then this process's, each with its workspace, and shows the session's workspace's entries. Everything else is pure:
   - `Recalls(draft, atEdge, newer)` is Codex's `should_handle_navigation`: always on an empty composer; on the recalled text left as it was with the cursor at its start or end; ↓ only while browsing. The shell asks it before dispatching `RecallOlder` or `RecallNewer`, so a key it declines keeps its old meaning.
   - A recall returns `EffSetDraft`. An entry that starts with `!` puts the composer in shell mode with the command; a message gets its images back from its tags. Past the newest, ↓ gives the empty composer and leaves shell mode.
   - `Reduce` records a `Submit` or `Steer` before reducing it (`remember`), so shell mode and the images are those of the prompt sent. The entry of this process keeps the images' tags; the file gets `EffRecordPrompt` with the text as shown: placeholders, `!` for a command. Slash commands stay out of the file. A repeat of this process's last prompt is not added again. Each submission ends browsing and searching.
@@ -87,6 +89,18 @@ Checked against the Claude Code documentation ([interactive mode](https://code.c
 - **Shell** (`internal/tui/bubble/history.go`, `composer.go`). ↑ and ↓ ask `Recalls` with `atEdge` (the cursor at the draft's first or last character); ctrl+r dispatches `SearchOpen`; while a search is open every key goes to `onSearchKey`, and a paste goes into the query. `runHistory` loads the file and appends through the recorder; a failure shows as an error notice. While the search is open, the terminal's cursor sits after the query in the footer.
 - **Render** (`internal/tui/render/history.go`). The footer becomes ` reverse-i-search: <query>` (the query in the accent, `↵` and `⇥` for new lines and tabs) with `  enter accept · esc cancel` for a match or `  no match` in the theme's bad color. The agent view draws the session's search too.
 - **The composer's height**: `composerRows(h) = max(8, h/2)`, applied as the textarea's `MaxHeight` on every resize (`resizeComposer`), so a 30-row terminal gives 15 rows and a 50-row terminal 25. The draft itself has no limit short of the textarea's 10,000 lines, and the composer scrolls to keep the cursor in view.
+
+## History per folder
+
+The file stays one global file with the size cap; only what ↑, ↓, and ctrl+r see is per folder.
+
+- **The line.** Each line uah writes adds `"workspace"`, the session's workspace as uah resolves it: an absolute, clean path (`--workspace`, the resumed session's, or the directory uah started in). For example: `{"session_id":"…","ts":1790000000,"text":"fix the tests","workspace":"/src/app"}`. Codex's three fields are unchanged, so the file stays Codex's format with one extra field that a reader of Codex's format ignores.
+- **The view.** `State.History` keeps every prompt with its workspace: the file's and this process's. It shows only those whose workspace equals the session's, compared as strings: the file's, then this process's. ↑, ↓, and ctrl+r see only that view.
+- **Following the session.** `SessionOpened` carries the session's settings. When its workspace differs from the one shown, the view is rebuilt for the new workspace and browsing and searching end. `/new`, `/resume`, and the session picker all open a session this way, so `/resume` into another folder shows that folder's history, and `/resume` back shows the first folder's again, with this process's prompts of that folder.
+- **Before a session opens.** A prompt sent while the first session opens (the initial prompt, or one typed during startup) has no session ID or workspace yet. uah holds it and writes it when `SessionOpened` arrives, with that session's ID and workspace, and adds it to that workspace's view.
+- **Old lines.** A line without `workspace` (Codex's lines, and uah's lines from before item 74) belongs to no folder, so no session shows it. uah does not migrate or rewrite them; the size cap drops them as the file grows.
+
+Claude Code keeps history per project, which is its working directory, and ↑ reaches earlier sessions of the same project. uah does the same with the session's workspace, which is uah's working directory unless `--workspace` or a resumed session names another. uah uses the workspace as given, not its git root: this is the same rule the session picker uses to list "this folder's" sessions, and a subfolder of a repository is its own folder, as in Claude Code. Claude Code's classic ctrl+r searches every project; uah's ctrl+r searches the folder, as ↑ does, so both keys show the same prompts.
 
 ## Keys and their conflicts
 
@@ -105,15 +119,18 @@ Checked against the Claude Code documentation ([interactive mode](https://code.c
 ## Decisions
 
 - **Load the whole file at startup.** Codex reads entries by offset on demand because its file has no cap by default. uah keeps a cap by default (8 MiB), reads the file once off the update loop, and searches in memory. The observable rules (newest first, unique texts, boundaries that keep the match) are Codex's.
-- **One history per process.** Codex resets its session entries when another thread starts. uah keeps them across `/new` and `/resume` in the same process; they are in the file by then anyway. Prompts another uah process sends after startup appear after a restart, as in Codex, whose line count is fixed when the thread starts.
+- **One history per process, shown per folder.** Codex resets its session entries when another thread starts. uah keeps them across `/new` and `/resume` in the same process, tagged with their workspace, and shows those of the session's workspace; they are in the file by then anyway. Prompts another uah process sends after startup appear after a restart, as in Codex, whose line count is fixed when the thread starts.
 - **Record at send time.** Codex writes a queued message to the file when the queue sends it. uah writes it when you press enter, which is when you typed it; a message taken back from the queue and sent again is recorded again.
 - **The file keeps placeholders, the process keeps images.** As in Codex, `[Image #1]` in a recalled prompt from the file is text; a prompt of this process brings its images back.
 - **No match highlighting in the composer.** The composer is a Bubble Tea textarea, which draws one style for its text. The footer shows the query instead.
 - **The composer's height follows the lead's rule, not Codex's.** Codex's composer can take the whole screen because its transcript lives in the terminal's scrollback. uah draws its transcript on the same screen, so the composer stops at half of it, and never below the 8 rows it had.
 - **Failures are notices.** A failed read or append shows an error notice, as other failed effects do; Codex logs a warning. uah's TUI logs nothing of its own.
 - **No `flock` on other platforms.** uah builds for macOS and Linux, where `flock` exists.
+- **The workspace, not the git root** (item 74). The workspace is what the session already records and what the session picker filters by. A git root would need a git lookup for each session and would merge the history of every subfolder of a repository.
+- **Exact paths.** Workspaces compare as strings, without resolving symbolic links, so the reducer stays pure. A folder opened through a symlink has its own history.
+- **No legacy handling** (item 74). Lines without `workspace` stay in the file and show nowhere; nothing is migrated, as the owner asked.
 
 ## Open
 
-- Ctrl+r's scope is every workspace, as Codex's. Claude Code's fullscreen dialog also scopes to the session or the project; the file has the session ID but no workspace.
+- Ctrl+r's scope is the session's workspace (item 74). Claude Code's fullscreen dialog can also scope to the session or to all projects; uah has no key to change the scope.
 - Pasted text is not collapsed into placeholders in uah's composer, so nothing like Codex's pending pastes needs restoring.

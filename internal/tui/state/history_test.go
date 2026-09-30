@@ -1,12 +1,14 @@
 package state_test
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/viktordanov/uagent-harness/internal/images"
+	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/internal/tui/state"
 )
 
@@ -22,10 +24,31 @@ func reduceAll(s state.State, evs ...any) (state.State, []state.Effect) {
 	return s, all
 }
 
+// withPrompts loads the history file with texts of the session's workspace.
 func withPrompts(texts ...string) state.State {
-	s, _ := apply(opened(), state.PromptsLoaded{Texts: texts})
+	s, _ := apply(opened(), state.PromptsLoaded{Prompts: in("/workspace", texts...)})
 
 	return s
+}
+
+// in is texts as prompts of workspace.
+func in(workspace string, texts ...string) []state.Prompt {
+	out := make([]state.Prompt, 0, len(texts))
+	for _, text := range texts {
+		out = append(out, state.Prompt{Workspace: workspace, Text: text})
+	}
+
+	return out
+}
+
+// records keeps the history file's appends.
+func records(effects []state.Effect) []state.Effect {
+	return slices.DeleteFunc(effects, func(e state.Effect) bool { _, ok := e.(state.EffRecordPrompt); return !ok })
+}
+
+// record is the history file's append of a prompt sent in sess-1.
+func record(text string) state.EffRecordPrompt {
+	return state.EffRecordPrompt{SessionID: "sess-1", Workspace: "/workspace", Text: text}
 }
 
 func draftOf(t *testing.T, effects []state.Effect) string {
@@ -77,11 +100,11 @@ func TestHistory_AnEditedPromptKeepsTheArrows(t *testing.T) {
 
 func TestHistory_SentPromptsAreRecordedAndRecalled(t *testing.T) {
 	s, effects := reduceAll(withPrompts("from the file"), state.Submit{Text: "  fix the tests  "})
-	assert.Contains(t, effects, state.EffRecordPrompt{SessionID: "sess-1", Text: "fix the tests"})
+	assert.Contains(t, effects, record("fix the tests"))
 
 	s, effects = reduceAll(s, state.Steer{Text: "fix the tests"}, state.Submit{Text: "/model gpt-6-luna"})
-	assert.Contains(t, effects, state.EffRecordPrompt{SessionID: "sess-1", Text: "fix the tests"}, "the file gets each prompt, as Codex's")
-	assert.NotContains(t, effects, state.EffRecordPrompt{SessionID: "sess-1", Text: "/model gpt-6-luna"}, "slash commands stay out of the file")
+	assert.Contains(t, effects, record("fix the tests"), "the file gets each prompt, as Codex's")
+	assert.NotContains(t, effects, record("/model gpt-6-luna"), "slash commands stay out of the file")
 
 	s, effects = apply(s, state.RecallOlder{})
 	assert.Equal(t, "/model gpt-6-luna", draftOf(t, effects), "but ↑ recalls them in this process")
@@ -93,7 +116,7 @@ func TestHistory_SentPromptsAreRecordedAndRecalled(t *testing.T) {
 }
 
 func TestHistory_TheFileLoadsBeforeThisProcesssPrompts(t *testing.T) {
-	s, _ := apply(opened(), state.Submit{Text: "early"}, state.PromptsLoaded{Texts: []string{"old"}})
+	s, _ := apply(opened(), state.Submit{Text: "early"}, state.PromptsLoaded{Prompts: in("/workspace", "old")})
 	s, effects := apply(s, state.RecallOlder{})
 	assert.Equal(t, "early", draftOf(t, effects))
 	_, effects = apply(s, state.RecallOlder{})
@@ -102,7 +125,7 @@ func TestHistory_TheFileLoadsBeforeThisProcesssPrompts(t *testing.T) {
 
 func TestHistory_ShellCommands(t *testing.T) {
 	s, effects := reduceAll(opened(), state.EnterShell{}, state.Submit{Text: "go test ./..."})
-	assert.Contains(t, effects, state.EffRecordPrompt{SessionID: "sess-1", Text: "!go test ./..."}, "with its !, as Codex's")
+	assert.Contains(t, effects, record("!go test ./..."), "with its !, as Codex's")
 	require.False(t, s.Shell)
 
 	s, effects = apply(s, state.RecallOlder{})
@@ -118,7 +141,7 @@ func TestHistory_ShellCommands(t *testing.T) {
 func TestHistory_ImagesComeBackInThisProcess(t *testing.T) {
 	s, _ := apply(withImages(), state.ImageAttached{Image: stored("a")})
 	s, effects := reduceAll(s, state.Submit{Text: "see [Image #1]"})
-	assert.Contains(t, effects, state.EffRecordPrompt{SessionID: "sess-1", Text: "see [Image #1]"}, "the file keeps the placeholder, as Codex's")
+	assert.Contains(t, effects, record("see [Image #1]"), "the file keeps the placeholder, as Codex's")
 	require.Empty(t, s.Attached)
 
 	s, effects = apply(s, state.RecallOlder{})
@@ -193,4 +216,60 @@ func TestHistory_SearchFindsImagesByTheirPlaceholder(t *testing.T) {
 	s, effects := apply(s, state.SearchOpen{}, state.SearchType{Text: "image #1"})
 	assert.Equal(t, "see [Image #1]", draftOf(t, effects))
 	assert.Len(t, s.Attached, 1)
+}
+
+// TestHistory_EachFolderSeesItsOwn: the file holds two workspaces' prompts
+// and a line without one; ↑ and ctrl+r see the session's workspace only.
+func TestHistory_EachFolderSeesItsOwn(t *testing.T) {
+	file := slices.Concat(in("/other", "other fix"), in("/workspace", "our fix"), in("", "legacy fix"), in("/workspace/sub", "sub fix"))
+	s, _ := apply(opened(), state.PromptsLoaded{Prompts: file})
+	require.Equal(t, 1, s.History.Len())
+
+	s, effects := apply(s, state.RecallOlder{})
+	assert.Equal(t, "our fix", draftOf(t, effects))
+	s, effects = apply(s, state.RecallOlder{})
+	assert.Empty(t, effects, "the folder's oldest stays")
+
+	s, _ = apply(s, state.RecallNewer{}, state.SearchOpen{})
+	s, effects = apply(s, state.SearchType{Text: "fix"})
+	assert.Equal(t, "our fix", draftOf(t, effects))
+	_, effects = apply(s, state.SearchMove{Older: true})
+	assert.Empty(t, effects, "no other folder's match, and no line without a folder")
+}
+
+// TestHistory_TheViewFollowsTheSession: a session opened in another folder
+// shows that folder's prompts, from the file and from this process, and
+// the first folder's come back with it.
+func TestHistory_TheViewFollowsTheSession(t *testing.T) {
+	s, _ := apply(opened(), state.PromptsLoaded{Prompts: slices.Concat(in("/workspace", "here"), in("/elsewhere", "there"))})
+	s, effects := reduceAll(s, state.Submit{Text: "here again"})
+	assert.Contains(t, effects, record("here again"))
+
+	other := settings()
+	other.Workspace = "/elsewhere"
+	s, _ = apply(s, session.SessionOpened{At: t0, ID: "sess-2", Resumed: true, Settings: other})
+	assert.Equal(t, 1, s.History.Len())
+	s, effects = apply(s, state.RecallOlder{})
+	assert.Equal(t, "there", draftOf(t, effects))
+	s, effects = reduceAll(s, state.Submit{Text: "there again"})
+	assert.Contains(t, effects, state.EffRecordPrompt{SessionID: "sess-2", Workspace: "/elsewhere", Text: "there again"})
+
+	s, _ = apply(s, session.SessionOpened{At: t0, ID: "sess-1", Resumed: true, Settings: settings()})
+	s, effects = apply(s, state.RecallOlder{})
+	assert.Equal(t, "here again", draftOf(t, effects))
+	_, effects = apply(s, state.RecallOlder{})
+	assert.Equal(t, "here", draftOf(t, effects))
+}
+
+// TestHistory_APromptBeforeTheSessionOpens: a prompt sent while the
+// session opens is recorded once it has, with its ID and workspace.
+func TestHistory_APromptBeforeTheSessionOpens(t *testing.T) {
+	s, effects := reduceAll(state.New(t0), state.PromptsLoaded{Prompts: in("/workspace", "old")}, state.Submit{Text: "early"})
+	assert.Empty(t, records(effects), "no session, no ID or workspace yet")
+	s, effects = reduceAll(s, session.SessionOpened{At: t0, ID: "sess-1", Settings: settings()})
+	assert.Equal(t, []state.Effect{record("early")}, records(effects))
+	s, effects = apply(s, state.RecallOlder{})
+	assert.Equal(t, "early", draftOf(t, effects))
+	_, effects = apply(s, state.RecallOlder{})
+	assert.Equal(t, "old", draftOf(t, effects))
 }

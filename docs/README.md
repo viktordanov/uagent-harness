@@ -29,7 +29,7 @@ Design:
 20. [The system prompt](design/system-prompt.md): Codex's prompt for gpt-6.1-sol with the nine changes uah needs, each with its reason, and Codex's `<environment_context>` at the end of the system message.
 21. [Web search](design/web-search.md): how Codex offers the hosted `web_search` tool, what the runner sends and drops, how uah offers it, shows each search, and puts the dropped searches back into later requests by insertion, the probes on openai-codex, and the limits.
 22. [`/diff` and `/review`](design/review.md): how Codex collects and shows the git diff and runs a code review in a separate thread, and how uah shows the diff and runs a read-only reviewer whose findings reach the agent.
-23. [Prompt history and a taller composer](design/prompt-history.md): how Codex stores prompts in `history.jsonl`, recalls them with ↑ and ↓, and searches them with ctrl+r, what Claude Code does, and how uah does the same with Codex's file format, the key conflicts it resolved, and a composer that grows to half the window.
+23. [Prompt history and a taller composer](design/prompt-history.md): how Codex stores prompts in `history.jsonl`, recalls them with ↑ and ↓, and searches them with ctrl+r, what Claude Code does, and how uah does the same with Codex's file format plus each prompt's workspace, shows each folder only its own prompts as Claude Code does, resolves the key conflicts, and grows the composer to half the window.
 
 Reference:
 

@@ -1,9 +1,11 @@
 // Package history is the prompt history file, <home>/history.jsonl, after
 // Codex's message history (codex-rs/message-history, rust-v0.159.1): one
 // JSON object per line, {"session_id":"…","ts":<unix seconds>,"text":"…"},
-// appended under an exclusive lock with one write per line, private to the
-// user (0600), and trimmed to a size cap by dropping the oldest lines. The
-// TUI reads it once at startup for ↑ and ctrl+r (docs/design/prompt-history.md).
+// plus uah's "workspace", the session's folder. Lines are appended under an
+// exclusive lock with one write per line, private to the user (0600), and
+// trimmed to a size cap by dropping the oldest lines. The TUI reads it once
+// at startup and shows ↑ and ctrl+r the current workspace's prompts only
+// (docs/design/prompt-history.md).
 package history
 
 import (
@@ -51,6 +53,9 @@ type Entry struct {
 	SessionID string `json:"session_id"`
 	TS        int64  `json:"ts"`
 	Text      string `json:"text"`
+	// Workspace is the session's workspace, absolute and clean; Codex's
+	// lines have none. A line without it belongs to no folder.
+	Workspace string `json:"workspace,omitempty"`
 }
 
 // File is the history file and its settings.

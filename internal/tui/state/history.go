@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/viktordanov/uagent-harness/internal/images"
+	"github.com/viktordanov/uagent-harness/internal/session"
 )
 
 // Prompt history, after Codex's composer history (chat_composer_history.rs,
@@ -13,11 +14,21 @@ import (
 // empty composer; once a recalled prompt is edited, ↑ and ↓ move the cursor
 // again. The shell loads <home>/history.jsonl at startup (EffLoadPrompts)
 // and appends each prompt sent (EffRecordPrompt); ctrl+r searches it
-// (historysearch.go).
+// (historysearch.go). ↑ and ctrl+r see only the prompts of the session's
+// workspace, as Claude Code keeps history per project: the file holds every
+// folder's, and the view follows the session to another folder.
 type PromptHistory struct {
-	// entries are the prompts, oldest first: the file's, then this
-	// process's. A prompt of this process keeps its images' tags, so
-	// recalling it attaches them again; a shell command starts with "!".
+	// file is the history file's prompts and local this process's, oldest
+	// first, of every workspace. A prompt of this process keeps its images'
+	// tags, so recalling it attaches them again; a shell command starts
+	// with "!".
+	file, local []Prompt
+	// workspace is the folder the view shows: the session's.
+	workspace string
+	// unsent are the prompts for the file sent before a session opened.
+	unsent []string
+	// entries are the view: the workspace's prompts from the file, then
+	// its prompts of this process.
 	entries  []string
 	fromFile int // how many entries came from the file
 	// cursor is the entry shown while browsing.
@@ -30,9 +41,13 @@ type PromptHistory struct {
 	Search *HistorySearch
 }
 
+// Prompt is a prompt and the workspace of the session it was sent in; ""
+// is no folder, as on a line Codex wrote.
+type Prompt struct{ Workspace, Text string }
+
 type (
 	// PromptsLoaded carries the history file's prompts, oldest first.
-	PromptsLoaded struct{ Texts []string }
+	PromptsLoaded struct{ Prompts []Prompt }
 	// RecallOlder is ↑ when Recalls says it recalls.
 	RecallOlder struct{}
 	// RecallNewer is ↓ when Recalls says it recalls.
@@ -45,8 +60,9 @@ type (
 type (
 	// EffLoadPrompts reads the history file.
 	EffLoadPrompts struct{}
-	// EffRecordPrompt appends a prompt to the history file.
-	EffRecordPrompt struct{ SessionID, Text string }
+	// EffRecordPrompt appends a prompt of the session's workspace to the
+	// history file.
+	EffRecordPrompt struct{ SessionID, Workspace, Text string }
 )
 
 func (EffLoadPrompts) effect()  {}
@@ -96,9 +112,8 @@ func (s *State) onHistory(ev any) (effects []Effect, ok bool) {
 	h := &s.History
 	switch e := ev.(type) {
 	case PromptsLoaded:
-		h.entries = append(slices.Clip(e.Texts), h.entries[h.fromFile:]...)
-		h.fromFile = len(e.Texts)
-		h.reset()
+		h.file = e.Prompts
+		h.view()
 	case RecallOlder:
 		switch {
 		case len(h.entries) == 0 || (h.browsing && h.cursor == 0):
@@ -145,7 +160,8 @@ func (s *State) show(raw string) []Effect {
 // remember records what a Submit or Steer sends, and a draft ctrl+c
 // clears, before the reducer acts on it. Every prompt joins this process's
 // history; the file gets messages and shell commands, not slash commands,
-// as Codex's does, with images as their placeholders.
+// as Codex's does, with images as their placeholders. A session opening
+// moves the view to its workspace.
 func (s *State) remember(ev any) []Effect {
 	var text string
 	local := false
@@ -156,6 +172,8 @@ func (s *State) remember(ev any) []Effect {
 		text = e.Text
 	case DraftCleared:
 		text, local = e.Draft, true
+	case session.SessionOpened:
+		return s.History.opened(e.ID, e.Settings.Workspace)
 	default:
 		return nil
 	}
@@ -170,11 +188,34 @@ func (s *State) remember(ev any) []Effect {
 	}
 	s.History.add(raw)
 	s.History.reset()
-	if local || (!s.Shell && strings.HasPrefix(text, "/")) {
+	switch {
+	case local || (!s.Shell && strings.HasPrefix(text, "/")):
+		return nil
+	case s.SessionID == "": // sent once the session opens, recorded then with its workspace
+		s.History.unsent = append(s.History.unsent, shown)
+
 		return nil
 	}
 
-	return []Effect{EffRecordPrompt{SessionID: s.SessionID, Text: shown}}
+	return []Effect{EffRecordPrompt{SessionID: s.SessionID, Workspace: s.Settings.Workspace, Text: shown}}
+}
+
+// opened follows the session's workspace, which the prompts sent before
+// the first session opened join, and records those prompts now.
+func (h *PromptHistory) opened(id, workspace string) []Effect {
+	for i := range h.local {
+		if h.local[i].Workspace == "" {
+			h.local[i].Workspace = workspace
+		}
+	}
+	h.follow(workspace)
+	effects := make([]Effect, 0, len(h.unsent))
+	for _, text := range h.unsent {
+		effects = append(effects, EffRecordPrompt{SessionID: id, Workspace: workspace, Text: text})
+	}
+	h.unsent = nil
+
+	return effects
 }
 
 // tagged is text with the tags of the draft's images it still names.
@@ -189,13 +230,40 @@ func (s *State) tagged(text string) string {
 	return images.Join(text, named)
 }
 
-// add appends a prompt of this process, skipping a repeat of the last one,
-// as Codex's record_local_submission does.
+// add appends a prompt of this process to the workspace's, skipping a
+// repeat of the last one, as Codex's record_local_submission does.
 func (h *PromptHistory) add(raw string) {
 	if len(h.entries) > h.fromFile && h.entries[len(h.entries)-1] == raw {
 		return
 	}
+	h.local = append(h.local, Prompt{Workspace: h.workspace, Text: raw})
 	h.entries = append(h.entries, raw)
+}
+
+// follow shows the prompts of workspace, the session's, from now on: a
+// session opened in another folder has that folder's history.
+func (h *PromptHistory) follow(workspace string) {
+	if workspace != h.workspace {
+		h.workspace = workspace
+		h.view()
+	}
+}
+
+// view rebuilds the entries from the workspace's prompts and ends
+// browsing. A prompt with no workspace, or before a session gave one, is
+// in no folder's view.
+func (h *PromptHistory) view() {
+	h.entries, h.fromFile = nil, 0
+	for i, p := range slices.Concat(h.file, h.local) {
+		if p.Workspace == "" || p.Workspace != h.workspace {
+			continue
+		}
+		if i < len(h.file) {
+			h.fromFile++
+		}
+		h.entries = append(h.entries, p.Text)
+	}
+	h.reset()
 }
 
 // reset ends browsing and searching, so the next ↑ starts at the newest.

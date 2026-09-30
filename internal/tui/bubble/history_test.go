@@ -10,22 +10,37 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/viktordanov/uagent-harness/internal/history"
+	"github.com/viktordanov/uagent-harness/internal/session"
 	"github.com/viktordanov/uagent-harness/internal/tui/bubble"
 	"github.com/viktordanov/uagent-harness/testing/fakellm"
 )
 
-// withHistory gives deps a history file holding prompts, in a temporary
-// directory.
+// withHistory gives deps a history file holding prompts of the sessions'
+// workspace, in a temporary directory.
 func withHistory(t *testing.T, d bubble.Deps, prompts ...string) (bubble.Deps, history.File) {
 	t.Helper()
 	file, err := history.New(t.TempDir(), "", nil)
 	require.NoError(t, err)
+	workspace := workspaceOf(t, d)
 	for _, p := range prompts {
-		require.NoError(t, file.Append(history.Entry{SessionID: "earlier", TS: 1, Text: p}))
+		require.NoError(t, file.Append(history.Entry{SessionID: "earlier", TS: 1, Text: p, Workspace: workspace}))
 	}
 	d.History = &file
 
 	return d, file
+}
+
+// workspaceOf is the workspace deps open a new session in, from the
+// session's first event.
+func workspaceOf(t *testing.T, d bubble.Deps) string {
+	t.Helper()
+	s, _, err := d.Open(t.Context(), "")
+	require.NoError(t, err)
+	defer s.Close()
+	opened, ok := (<-s.Events()).(session.SessionOpened)
+	require.True(t, ok)
+
+	return opened.Settings.Workspace
 }
 
 // footer is the screen's last line.

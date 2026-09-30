@@ -50,18 +50,18 @@ func (m Model) runHistory(e state.Effect) (tea.Cmd, bool) {
 			if err != nil {
 				return state.Failed{Err: err} // ↑ recalls this process's prompts only
 			}
-			texts := make([]string, 0, len(entries))
+			prompts := make([]state.Prompt, 0, len(entries))
 			for _, entry := range entries {
-				texts = append(texts, entry.Text)
+				prompts = append(prompts, state.Prompt{Workspace: entry.Workspace, Text: entry.Text})
 			}
 
-			return state.PromptsLoaded{Texts: texts}
+			return state.PromptsLoaded{Prompts: prompts}
 		}, true
 	case state.EffRecordPrompt:
 		if m.prompts == nil {
 			return nil, true
 		}
-		m.prompts.Add(history.Entry{SessionID: e.SessionID, TS: m.deps.Now().Unix(), Text: e.Text})
+		m.prompts.Add(history.Entry{SessionID: e.SessionID, TS: m.deps.Now().Unix(), Text: e.Text, Workspace: e.Workspace})
 		recorder := m.prompts
 
 		return func() tea.Msg {

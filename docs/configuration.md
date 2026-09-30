@@ -377,7 +377,7 @@ developer_instructions = "Review the diff you are given. List only real bugs, ea
 
 ### History
 
-`[history]`, with Codex's keys, for `<home>/history.jsonl`: the prompts ↑ and ctrl+r recall in the TUI, from every workspace and session. Each prompt is one line, `{"session_id":…,"ts":…,"text":…}`, as in Codex's `~/.codex/history.jsonl`; the file is private (0600). Messages and `!` commands go in, as typed, with images as their `[Image #N]` placeholders; slash commands do not. See the [prompt history design](design/prompt-history.md).
+`[history]`, with Codex's keys, for `<home>/history.jsonl`: the prompts ↑ and ctrl+r recall in the TUI. The file holds every workspace's prompts; the TUI shows the session's workspace's only. Each prompt is one line, `{"session_id":…,"ts":…,"text":…,"workspace":…}`: Codex's `~/.codex/history.jsonl` format plus the session's workspace, an absolute path. A line without `workspace` shows in no workspace. The file is private (0600). Messages and `!` commands go in, as typed, with images as their `[Image #N]` placeholders; slash commands do not. See the [prompt history design](design/prompt-history.md).
 
 | Key | Type | Default | Merge | Meaning |
 | --- | --- | --- | --- | --- |

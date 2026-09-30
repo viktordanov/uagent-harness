@@ -49,6 +49,23 @@ func TestAppendAndLoadInCodexFormat(t *testing.T) {
 	assert.Equal(t, filepath.Join(filepath.Dir(f.Path), "history.jsonl"), f.Path)
 }
 
+// TestAppendWritesTheWorkspace: a line carries its session's workspace
+// after Codex's fields, and reads back with it; Codex's lines have none.
+func TestAppendWritesTheWorkspace(t *testing.T) {
+	f := newFile(t, 0)
+	require.NoError(t, os.WriteFile(f.Path, []byte(`{"session_id":"c","ts":1,"text":"from codex"}`+"\n"), 0o600))
+	require.NoError(t, f.Append(history.Entry{SessionID: "s1", TS: 2, Text: "fix it", Workspace: "/src/app"}))
+
+	data, err := os.ReadFile(f.Path)
+	require.NoError(t, err)
+	assert.Contains(t, string(data), `{"session_id":"s1","ts":2,"text":"fix it","workspace":"/src/app"}`+"\n")
+	entries, err := f.Load()
+	require.NoError(t, err)
+	require.Len(t, entries, 2)
+	assert.Empty(t, entries[0].Workspace, "a line without the field belongs to no folder")
+	assert.Equal(t, "/src/app", entries[1].Workspace)
+}
+
 func TestLoadMissingFileIsEmpty(t *testing.T) {
 	entries, err := newFile(t, 0).Load()
 	require.NoError(t, err)

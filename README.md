@@ -72,7 +72,7 @@ Keys worth knowing:
 | enter | Send. While the agent works, the message queues and goes out when it finishes |
 | ctrl+enter | Send now: the working agent reads it before its next model request. On an empty prompt, it sends the queued messages now, in order |
 | esc esc | Interrupt; queued messages stay. While the agent is idle, on an empty prompt: go back to an earlier message and edit it |
-| ↑ / ↓ on an empty prompt | Your earlier prompts, from this session and earlier ones; ↓ past the newest empties the prompt again. With messages queued, ↑ takes the last one back first |
+| ↑ / ↓ on an empty prompt | Your earlier prompts in this folder, from this session and earlier ones; ↓ past the newest empties the prompt again. With messages queued, ↑ takes the last one back first |
 | ctrl+r | Search your earlier prompts; see [Reuse an earlier prompt](#reuse-an-earlier-prompt) |
 | `/` | Commands, such as `/model`, `/effort`, `/compact`, `/context`, `/diff`, `/review`, `/mcp`, `/agents`, `/status`, `/resume`, and `/new` |
 | `@` | Mention a workspace file (fuzzy search) |
@@ -104,11 +104,11 @@ Press esc twice on an empty prompt while the agent is idle, or type `/rewind`: y
 
 ### Reuse an earlier prompt
 
-On an empty prompt, ↑ brings back your previous prompt, from this session or an earlier one in any directory, and ↓ goes forward again. Edit a recalled prompt and it is yours: the arrows move the cursor again. A `!` command comes back in shell mode; a prompt of this run comes back with its images. Ctrl+c on a draft clears it, and ↑ brings it back.
+On an empty prompt, ↑ brings back your previous prompt in this folder, from this session or an earlier one, and ↓ goes forward again. Each folder has its own prompts, as in Claude Code: the folder is the session's workspace, and `/resume` into a session of another folder shows that folder's prompts. Edit a recalled prompt and it is yours: the arrows move the cursor again. A `!` command comes back in shell mode; a prompt of this run comes back with its images. Ctrl+c on a draft clears it, and ↑ brings it back.
 
-Ctrl+r searches: type part of a prompt, and the composer shows the newest match. Ctrl+r or ↑ go to older matches, ctrl+s or ↓ to newer ones. Enter keeps the match to edit, and esc puts your draft back.
+Ctrl+r searches this folder's prompts: type part of a prompt, and the composer shows the newest match. Ctrl+r or ↑ go to older matches, ctrl+s or ↓ to newer ones. Enter keeps the match to edit, and esc puts your draft back.
 
-Prompts are kept in `~/.uah/history.jsonl`, private to you, in Codex's format; slash commands are not. `[history] persistence = "none"` stops writing it, and `max_bytes` caps it (8 MiB by default). See the [prompt history design](docs/design/prompt-history.md).
+Prompts are kept in one file, `~/.uah/history.jsonl`, private to you, in Codex's format with each prompt's folder added; slash commands are not. Lines without a folder, such as those written before uah kept one, show in no folder. `[history] persistence = "none"` stops writing it, and `max_bytes` caps it (8 MiB by default). See the [prompt history design](docs/design/prompt-history.md).
 
 ### Select and copy text
 
