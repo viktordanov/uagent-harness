@@ -28,11 +28,11 @@ func call(t *testing.T, m *mcp.Manager, server, tool, args string) (mcp.Result, 
 	return m.Call(context.Background(), server, tool, json.RawMessage(args))
 }
 
-// A server that takes one call at a time runs them in turn, and a call's
-// tool timeout starts when it runs, not while it waits for its turn.
+// A server that takes one call at a time runs them in turn, within a tool
+// timeout that covers the wait for its turn.
 func TestSerialCallsWaitTheirTurn(t *testing.T) {
 	serial := stdio(t)
-	serial.ToolTimeoutSec = ptr(1.0)
+	serial.ToolTimeoutSec = ptr(2.0)
 	parallel := stdio(t)
 	parallel.SupportsParallelToolCalls = true
 	m := newManager(t, map[string]mcp.ServerConfig{"serial": serial, "parallel": parallel})

@@ -11,8 +11,8 @@ import (
 )
 
 // Call calls a server's tool with JSON arguments. A server that does not
-// take parallel calls runs one at a time; a call waiting for its turn is
-// bounded only by ctx, and the tool timeout starts when it runs. An error
+// take parallel calls runs one at a time; the tool timeout covers the wait
+// for its turn too. An error
 // means the call did not complete; a tool that ran and failed returns a
 // Result with IsError.
 func (m *Manager) Call(ctx context.Context, serverName, tool string, args json.RawMessage) (Result, error) {
@@ -20,6 +20,9 @@ func (m *Manager) Call(ctx context.Context, serverName, tool string, args json.R
 	if err != nil {
 		return Result{}, err
 	}
+	timeout := s.cfg.ToolTimeout()
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
 	if s.calls != nil {
 		select {
 		case s.calls <- struct{}{}:
@@ -37,9 +40,6 @@ func (m *Manager) Call(ctx context.Context, serverName, tool string, args json.R
 	if len(args) == 0 {
 		args = json.RawMessage("{}")
 	}
-	timeout := s.cfg.ToolTimeout()
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
 	params := &sdk.CallToolParams{Name: tool, Arguments: args}
 	r, err := session.CallTool(ctx, params)
 	if errors.Is(err, sdk.ErrSessionMissing) && ctx.Err() == nil {
