@@ -25,6 +25,9 @@ type Theme struct {
 	Accent, Dim, Bad, Warn color.Color
 	// Good marks what is ready or passed, such as an MCP server.
 	Good color.Color
+	// Notice is the neutral gray of information notices, such as an
+	// auto-approved command, apart from the warm dim of tool lines.
+	Notice color.Color
 	// Info and Extra tell /context's categories apart.
 	Info, Extra color.Color
 	// Band is the background of your messages, the composer, code, and
@@ -46,7 +49,7 @@ type Theme struct {
 // the λ, live commands, and marks, on dim text that stays warm.
 var Amber = Theme{
 	Accent: hex("#ffc400"), Dim: hex("#a08c64"), Bad: hex("#ff5a3c"), Warn: hex("#ffc400"), Good: hex("#9be564"),
-	Info: hex("#5cc8ff"), Extra: hex("#d49bff"),
+	Notice: hex("#8a8a8a"), Info: hex("#5cc8ff"), Extra: hex("#d49bff"),
 	Band:    hex("#2a2a2a"),
 	Breath:  []color.Color{hex("#5a4200"), hex("#806000"), hex("#a67c00"), hex("#cc9900"), hex("#e6b000"), hex("#ffc400"), hex("#ffe066")},
 	Keyword: hex("#ffc400"), Name: hex("#ffd75e"), String: hex("#9be564"), Number: hex("#ff9f43"), Comment: hex("#8a8272"),
@@ -58,7 +61,7 @@ var Amber = Theme{
 // AmberLight is Amber for light terminals: deep amber ink.
 var AmberLight = Theme{
 	Accent: hex("#b86e00"), Dim: hex("#8f7b58"), Bad: hex("#d0301c"), Warn: hex("#b86e00"), Good: hex("#4f8a10"),
-	Info: hex("#0a7bc2"), Extra: hex("#8a4fd6"),
+	Notice: hex("#707070"), Info: hex("#0a7bc2"), Extra: hex("#8a4fd6"),
 	Band:    hex("#efe9dc"),
 	Breath:  []color.Color{hex("#ecd9b0"), hex("#e0bf80"), hex("#d4a24c"), hex("#c88a22"), hex("#bd7a08"), hex("#b86e00"), hex("#8a4f00")},
 	Keyword: hex("#b86e00"), Name: hex("#9a5c00"), String: hex("#4f8a10"), Number: hex("#c4501a"), Comment: hex("#9a917f"),
@@ -91,6 +94,8 @@ func ThemeFor(bg color.Color) Theme {
 // has its own theme and nothing is shared between them.
 type Styles struct {
 	dim, bold, accent, bad, warn, italic, header, selected lipgloss.Style
+	// notice is information notices' gray.
+	notice lipgloss.Style
 	// yoloChip is yolo mode in the header: the warning color on the band,
 	// since the header's background is the accent.
 	yoloChip lipgloss.Style
@@ -122,6 +127,7 @@ func NewStyles(t Theme) *Styles {
 	st.bold = lipgloss.NewStyle().Bold(true)
 	st.accent = lipgloss.NewStyle().Foreground(t.Accent).Bold(true)
 	st.bad = lipgloss.NewStyle().Foreground(t.Bad)
+	st.notice = lipgloss.NewStyle().Foreground(t.Notice)
 	st.warn = lipgloss.NewStyle().Foreground(t.Warn)
 	st.italic = lipgloss.NewStyle().Foreground(t.Dim).Italic(true)
 	st.header = lipgloss.NewStyle().Foreground(t.Band).Background(t.Accent)

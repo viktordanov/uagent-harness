@@ -138,8 +138,8 @@ func (st *Styles) itemLines(it state.Item, w int, now time.Time, v view) []strin
 
 		return styleLines(wrapPrefixed(it.Text, w, "  ~ ", "    "), st.italic)
 	case state.KindNotice:
-		// Information is plain dim text; only warnings and errors get a mark.
-		style, mark, rest := st.dim, "  ", "  "
+		// Information is plain gray text; only warnings and errors get a mark.
+		style, mark, rest := st.notice, "  ", "  "
 		switch it.Level {
 		case session.LevelWarning:
 			style, mark, rest = st.warn, "  ! ", "    "
