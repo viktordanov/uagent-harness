@@ -18,7 +18,7 @@ import (
 // the renderer. No model is called: the summaries are the fixture's own
 // and stubs.
 func TestRun_Fixtures(t *testing.T) {
-	rep, err := evalrun.Run(context.Background(), fixtureDir, evalrun.Options{Scratch: t.TempDir(), Strategies: evalrun.Strategies()})
+	rep, err := evalrun.Run(context.Background(), fixtureDir, evalrun.Options{Scratch: t.TempDir(), Strategies: evalrun.Strategies(), Progress: testLog{t}})
 	require.NoError(t, err)
 	assert.Equal(t, 1, rep.Sessions)
 	assert.Equal(t, 3, rep.Cases, "the recorded /compact and the ≥50k and ≥100k requests")
@@ -64,4 +64,14 @@ func TestWrite_PrintsNumbersOnly(t *testing.T) {
 	for _, secret := range []string{"helper", "TestHelper", "main.go", "fix the build"} {
 		assert.NotContains(t, out, secret, "the tables carry no session content")
 	}
+}
+
+// testLog writes the evaluation's progress, such as why a cut was skipped,
+// to the test log.
+type testLog struct{ t *testing.T }
+
+func (l testLog) Write(p []byte) (int, error) {
+	l.t.Log(strings.TrimRight(string(p), "\n"))
+
+	return len(p), nil
 }
