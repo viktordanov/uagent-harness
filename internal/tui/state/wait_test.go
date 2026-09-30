@@ -28,7 +28,7 @@ func TestCurrentWait(t *testing.T) {
 		"the model, without progress": {events: turn, want: state.Wait{What: "Thinking", Since: at(time.Second)}},
 		"sending": {
 			events: append(turn, engine.ModelProgress{At: at(2 * time.Second), Phase: engine.PhaseSending, Bytes: 1_234_567}),
-			want:   state.Wait{What: "Sending the request · 1234.6 kB", Since: at(time.Second)},
+			want:   state.Wait{What: "Sending the request · 1.2 MB", Since: at(time.Second)},
 		},
 		"waiting": {
 			events: append(turn, engine.ModelProgress{At: at(2 * time.Second), Phase: engine.PhaseWaiting}),
@@ -120,6 +120,33 @@ func TestCurrentWait(t *testing.T) {
 	assert.False(t, ok, "no run, no wait")
 	idle, _ := apply(opened(), engine.Reconnecting{At: t0, Attempt: 2, MaxAttempts: 10}, engine.ModelProgress{At: t0, Phase: engine.PhaseSending})
 	assert.Nil(t, idle.Live, "events without a run leave nothing behind")
+}
+
+// TestCurrentWait_Phases: a turn's first moments and the hand-over between
+// the phases, as the engine reports them, also through a retry.
+func TestCurrentWait_Phases(t *testing.T) {
+	s, _ := apply(opened(), core.RunStarted{At: t0, RunID: "r1"}, core.TurnStarted{At: t0, Turn: 1})
+	steps := []struct {
+		ev   any
+		want string
+	}{
+		{state.Tick{Now: t0}, "Thinking"}, // before any progress
+		{engine.ModelProgress{At: t0, Phase: engine.PhaseConnecting, Attempt: 1}, "Waiting for the model"},
+		{engine.ModelProgress{At: t0, Phase: engine.PhaseSending, Attempt: 1, Bytes: 84_000}, "Sending the request · 84 kB"},
+		{engine.ModelProgress{At: t0, Phase: engine.PhaseWaiting, Attempt: 1}, "Waiting for the model"},
+		{engine.ModelProgress{At: t0, Phase: engine.PhaseStreaming, Attempt: 1}, "Thinking"},
+		{engine.ModelProgress{At: t0, Phase: engine.PhaseStreaming, Attempt: 1, Tool: "apply_patch", Target: "a.go", ToolBytes: 900}, "Writing a patch · a.go · 900 B"},
+		{engine.Reconnecting{At: t0, Attempt: 2, MaxAttempts: 10, Reason: "EOF"}, "Reconnecting · EOF · attempt 2/10 · connecting"},
+		{engine.ModelProgress{At: t0, Phase: engine.PhaseConnecting, Attempt: 2}, "Reconnecting · EOF · attempt 2/10 · connecting"},
+		{engine.ModelProgress{At: t0, Phase: engine.PhaseWaiting, Attempt: 2}, "Reconnecting · EOF · attempt 2/10 · connecting"},
+		{engine.ModelProgress{At: t0, Phase: engine.PhaseStreaming, Attempt: 2}, "Thinking"},
+		{engine.ModelProgress{At: t0, Phase: engine.PhaseDone, Attempt: 2}, "Working"},
+	}
+	for _, step := range steps {
+		s, _ = apply(s, step.ev)
+		got, _ := s.CurrentWait()
+		assert.Equal(t, step.want, got.What, "after %T %+v", step.ev, step.ev)
+	}
 }
 
 // TestReduce_ModelRequestEnds: the model's wait ends with the runner's

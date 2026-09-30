@@ -328,11 +328,10 @@ func (s *State) onIntent(ev any) (State, []Effect) { //nolint:gocyclo // a dispa
 }
 
 func (s *State) expireConfirmations() {
-	if !s.escArmed.IsZero() && s.Now.Sub(s.escArmed) >= confirmWindow {
-		s.escArmed, s.Status = time.Time{}, ""
-	}
-	if !s.quitArmed.IsZero() && s.Now.Sub(s.quitArmed) >= confirmWindow {
-		s.quitArmed, s.Status = time.Time{}, ""
+	for _, at := range []*time.Time{&s.escArmed, &s.quitArmed} {
+		if !at.IsZero() && s.Now.Sub(*at) >= confirmWindow {
+			*at, s.Status = time.Time{}, ""
+		}
 	}
 }
 

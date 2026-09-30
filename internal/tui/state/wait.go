@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dustin/go-humanize"
+
 	"github.com/viktordanov/uagent-harness/internal/engine"
 	"github.com/viktordanov/uagent-harness/internal/patch"
 )
@@ -52,13 +54,13 @@ func (s State) modelWait(p engine.ModelProgress) Wait {
 	w := Wait{What: "Thinking", Since: s.Live.Turn}
 	switch {
 	case p.Phase == engine.PhaseSending:
-		w.What = "Sending the request · " + kB(p.Bytes)
+		w.What = "Sending the request · " + humanize.Bytes(uint64(p.Bytes))
 	case p.Phase == engine.PhaseWaiting || p.Phase == engine.PhaseConnecting:
 		w.What = "Waiting for the model"
 	case p.Tool == patch.ToolName:
-		w.What = joinDetail("Writing a patch", p.Target, kB(p.ToolBytes))
+		w.What = joinDetail("Writing a patch", p.Target, humanize.Bytes(uint64(p.ToolBytes)))
 	case p.Tool != "":
-		w.What = "Preparing " + p.Tool + " · " + kB(p.ToolBytes)
+		w.What = "Preparing " + p.Tool + " · " + humanize.Bytes(uint64(p.ToolBytes))
 	case s.Writing():
 		w.What = "Writing"
 	}
@@ -101,9 +103,12 @@ func (s State) toolWait() Wait {
 // after the runner's response.
 func (s *State) onProgress(e engine.ModelProgress) {
 	l := s.live()
-	l.Turn, l.Progress, l.Retry = cmp.Or(l.Turn, e.At), e, nil
-	if e.Phase == engine.PhaseDone {
-		l.Turn, l.Progress = time.Time{}, engine.ModelProgress{}
+	l.Turn, l.Progress = cmp.Or(l.Turn, e.At), e
+	switch e.Phase {
+	case engine.PhaseStreaming: // the attempt got through
+		l.Retry = nil
+	case engine.PhaseDone:
+		l.Turn, l.Progress, l.Retry = time.Time{}, engine.ModelProgress{}, nil
 	}
 }
 
@@ -132,5 +137,3 @@ func (s *State) interrupt() []Effect {
 func joinDetail(parts ...string) string {
 	return strings.Join(slices.DeleteFunc(parts, func(p string) bool { return p == "" }), " · ")
 }
-
-func kB(n int64) string { return fmt.Sprintf("%.1f kB", float64(n)/1e3) }
