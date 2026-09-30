@@ -160,6 +160,8 @@ func (s *Session) interruptLive() {
 		s.run.Interrupt()
 	case StateStarting:
 		s.interruptWhenStarted = true
-	case StateIdle, StateStopping, StateClosed:
+	case StateStopping: // a second interrupt forces the stop
+		s.run.Kill()
+	case StateIdle, StateClosed:
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -20,8 +21,9 @@ import (
 
 // fakeCaps are what a fake run takes live; a change it does not take
 // fails with errNotLive, as a real run's does once it stopped, and the
-// session applies it from the next run.
-type fakeCaps struct{ LiveInput, LiveEffort, LiveMode bool }
+// session applies it from the next run. SlowStop ignores an interrupt:
+// only a kill ends the run.
+type fakeCaps struct{ LiveInput, LiveEffort, LiveMode, SlowStop bool }
 
 var errNotLive = errors.New("the run takes no live changes")
 
@@ -73,6 +75,7 @@ type fakeRun struct {
 	done   chan struct{}
 	once   sync.Once
 	result core.Result
+	killed atomic.Bool
 	sent   []core.UserInput
 	effort string
 	mode   approval.Mode
@@ -124,8 +127,13 @@ func (r *fakeRun) SetMode(m approval.Mode) error {
 }
 func (r *fakeRun) Compact(string) error { return errNotLive }
 func (r *fakeRun) Clear() error         { return errNotLive }
-func (r *fakeRun) Interrupt()           { r.finish(core.StatusInterrupted) }
-func (r *fakeRun) Kill()                { r.finish(core.StatusInterrupted) }
+func (r *fakeRun) Kill()                { r.killed.Store(true); r.finish(core.StatusInterrupted) }
+
+func (r *fakeRun) Interrupt() {
+	if !r.caps.SlowStop {
+		r.finish(core.StatusInterrupted)
+	}
+}
 
 func (r *fakeRun) Wait() (core.Result, error) {
 	<-r.done
@@ -284,6 +292,22 @@ func TestSession_InterruptKeepsTheQueue(t *testing.T) {
 	next := h.nextRun()
 	assert.Equal(t, []string{"later", "now"}, texts(next.req.Messages), "the kept queue goes out before the new message")
 	next.finish(core.StatusOK)
+}
+
+// TestSession_SecondInterruptKills: an interrupt while the run is already
+// stopping forces the stop.
+func TestSession_SecondInterruptKills(t *testing.T) {
+	h := newHarness(t, fakeCaps{SlowStop: true})
+	_, err := h.s.Submit("work")
+	require.NoError(t, err)
+	run := h.nextRun()
+
+	require.NoError(t, h.s.Interrupt())
+	assert.False(t, run.killed.Load(), "the first interrupt is graceful")
+	require.NoError(t, h.s.Interrupt())
+	h.until(isType[core.RunFinished])
+
+	assert.True(t, run.killed.Load())
 }
 
 func TestSession_SteerNow(t *testing.T) {
