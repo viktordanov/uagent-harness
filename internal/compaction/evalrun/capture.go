@@ -55,6 +55,9 @@ func Capture(ctx context.Context, scratch, sessionsDir, id string, p Point) ([]l
 	if err := copyRewinds(sessionsDir, dir, id, p.At); err != nil {
 		return nil, err
 	}
+	if err := stubSkill(workspace); err != nil {
+		return nil, err
+	}
 
 	return capture(ctx, state, workspace, id)
 }
@@ -184,4 +187,20 @@ func (noSubagents) Interrupt(string)                             {}
 
 func (noSubagents) Call(context.Context, engine.AgentCall) (string, error) {
 	return "", errors.New("the evaluation runs no subagents")
+}
+
+// stubSkill puts one skill in the scratch workspace, so the engine always
+// offers SkillUse: a recorded SkillUse call must find its tool to be
+// restored, whatever skills the machine running the evaluation has.
+func stubSkill(workspace string) error {
+	dir := filepath.Join(workspace, ".agents", "skills", "evalrun-stub")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return fmt.Errorf("failed to make the stub skill: %w", err)
+	}
+	body := "---\nname: evalrun-stub\ndescription: Keeps SkillUse available while a session is replayed.\n---\n"
+	if err := os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte(body), 0o600); err != nil {
+		return fmt.Errorf("failed to write the stub skill: %w", err)
+	}
+
+	return nil
 }
