@@ -1,4 +1,3 @@
-
 ╭────────────────────────────────────────────────╮
 │ λ uah                                          │
 │                                                │
@@ -16,9 +15,10 @@
 
 λ Thinking (3s · 8s • esc to interrupt)
   ↳ queued: also update the README
+  ↳ after tool: skip the vendored tests
     enter sends now · ↑ edits
 
 
 λ
 
- gpt-6-sol high … 100% context left · enter after tool · alt+enter now · tab after run · / commands
+ gpt-6-sol high · workspace mode … 100% context left · enter after tool · alt+enter now · tab later

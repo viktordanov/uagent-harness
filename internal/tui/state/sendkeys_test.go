@@ -103,8 +103,8 @@ func TestSendKeys_TheTerminalPicksTheNewlineHint(t *testing.T) {
 	s, _ = apply(s, state.KeyboardReported{Disambiguates: true})
 	assert.Equal(t, "shift+enter", s.Keys.NewlineKey())
 
-	assert.Equal(t, "enter after tool · ctrl+enter now · tab after run", s.Keys.SendHint(true))
-	assert.Equal(t, "enter after tool · alt+enter now · tab after run", state.Keys{}.SendHint(true), "ctrl+enter may arrive as enter")
+	assert.Equal(t, "enter after tool · ^enter now · tab later", s.Keys.SendHint(true))
+	assert.Equal(t, "enter after tool · alt+enter now · tab later", state.Keys{}.SendHint(true), "ctrl+enter may arrive as enter")
 	assert.Equal(t, "enter send · shift+enter new line", s.Keys.SendHint(false))
 	assert.Equal(t, "enter send · ctrl+j new line", state.Keys{}.SendHint(false))
 

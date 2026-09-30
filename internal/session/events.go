@@ -30,6 +30,8 @@ type InstructionsLoaded struct {
 type InputQueued struct {
 	At    time.Time
 	Input core.UserInput
+	// AfterTool marks a message held for the tool call (SendAfterTool).
+	AfterTool bool
 }
 
 // InputSent means the messages went to the runner, in a new run or live.

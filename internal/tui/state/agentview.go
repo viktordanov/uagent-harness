@@ -148,15 +148,11 @@ func (s *State) onAgentView(ev any) ([]Effect, bool) {
 	case Esc:
 		return v.esc(s.Now), true
 	case Submit, Steer:
-		text := strings.TrimSpace(textOf(e))
+		text, when := textOf(e)
+		text = strings.TrimSpace(text)
 		name, _, _ := strings.Cut(strings.TrimPrefix(text, "/"), " ")
-		st, steer := e.(Steer)
-		when := session.SendAfterRun
-		if steer {
-			when = st.When
-		}
 		switch {
-		case text == "" && steer && len(v.St.Queue) > 0:
+		case text == "" && when != session.SendAfterRun && len(v.St.Queue) > 0: // a Steer
 			v.St.Scroll = 0
 
 			return []Effect{EffAgentSteerQueued{ID: v.ID}}, true
@@ -179,15 +175,17 @@ func (s *State) onAgentView(ev any) ([]Effect, bool) {
 	return nil, true
 }
 
-func textOf(ev any) string {
+// textOf is a Submit's or Steer's text, and when it reaches the agent's
+// live run.
+func textOf(ev any) (string, session.When) {
 	switch e := ev.(type) {
 	case Submit:
-		return e.Text
+		return e.Text, session.SendAfterRun
 	case Steer:
-		return e.Text
+		return e.Text, e.When
 	}
 
-	return ""
+	return "", session.SendAfterRun
 }
 
 // switchAgent moves along the main agent and the subagents, in the order

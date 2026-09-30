@@ -237,14 +237,11 @@ func (m *Manager) send(parentID, id, message string, interrupt bool) (string, er
 	case closed:
 		return "", fmt.Errorf("agent with id %s is closed", id)
 	}
+	when := session.SendAfterRun
 	if interrupt {
 		if err := c.s.Interrupt(); err != nil {
 			return "", fmt.Errorf("failed to interrupt the agent: %w", err)
 		}
-	}
-
-	when := session.SendAfterRun
-	if interrupt {
 		when = session.SendNow
 	}
 

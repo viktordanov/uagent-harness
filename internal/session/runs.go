@@ -96,10 +96,8 @@ func (s *Session) onRunEvent(e core.Event) {
 		s.hooks.runID = v.RunID
 	case core.ToolCalled:
 		s.hooks.tools[v.CallID] = v
-	case core.TurnStarted:
-		s.modelBusy = true
-	case core.ModelResponded:
-		s.modelBusy = false
+	case core.TurnStarted, core.ModelResponded:
+		_, s.modelBusy = v.(core.TurnStarted) // a model request is under way until its response
 	case core.ToolFinished:
 		s.postToolUse(v)
 		delete(s.hooks.tools, v.CallID)

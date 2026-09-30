@@ -1,10 +1,6 @@
 package state
 
-import (
-	"strings"
-
-	"github.com/viktordanov/uagent-harness/internal/session"
-)
+import "strings"
 
 // Keys is what the terminal tells about its keys (the keys design,
 // docs/design/keys.md).
@@ -50,12 +46,7 @@ func (s State) SendIntent(key, draft string) any {
 	switch key {
 	case KeyEnter, KeyCtrlEnter, KeyAltEnter:
 		if s.Working() || empty {
-			when := session.SendNow
-			if key == KeyEnter {
-				when = session.SendAfterTool
-			}
-
-			return Steer{Text: draft, When: when} // empty: sends the queue now, if any
+			return Steer{Text: draft, When: steerWhen[key]} // empty: sends the queue now, if any
 		}
 
 		return Submit{Text: draft}
@@ -79,16 +70,15 @@ func (s State) Working() bool {
 }
 
 // SendHint is the footer's hint for the send keys: while the agent works,
-// the three ways to send, naming alt+enter where the terminal cannot tell
-// ctrl+enter from enter; while idle, how to send and add a line.
+// the three ways to send; while idle, how to send and add a line.
 func (k Keys) SendHint(working bool) string {
 	if working {
 		now := KeyAltEnter // the terminal may not tell ctrl+enter from enter
 		if k.Disambiguated {
-			now = KeyCtrlEnter
+			now = "^enter"
 		}
 
-		return "enter after tool · " + now + " now · tab after run"
+		return "enter after tool · " + now + " now · tab later"
 	}
 
 	return "enter send · " + k.NewlineKey() + " new line"

@@ -15,15 +15,14 @@ import (
 // or dispatches it directly when there are none to wait for.
 func (s *Session) onSubmit(c cmdSubmit) core.UserInput {
 	input := core.UserInput{ID: uuid.NewString(), Text: c.text}
-	s.emit(InputQueued{At: time.Now(), Input: input})
+	s.afterTool[input.ID] = c.when == SendAfterTool
+	s.emit(InputQueued{At: time.Now(), Input: input, AfterTool: s.afterTool[input.ID]})
 	s.hooks.stopStreak = 0
 	s.hooks.stopGen++ // a pending Stop hook no longer decides anything
-	s.afterTool[input.ID] = c.when == SendAfterTool
-	steer := c.when == SendNow
 	if s.hooks.jobs != nil && (s.hooks.runner.Has(hooks.UserPromptSubmit, "") || s.hooks.runner.Has(hooks.SessionStart, "")) {
 		// Through the worker even without UserPromptSubmit hooks, so the
 		// SessionStart context is ready and the order is kept.
-		s.hooks.checking = append(s.hooks.checking, pendingInput{input: input, steer: steer})
+		s.hooks.checking = append(s.hooks.checking, pendingInput{input: input, steer: c.when == SendNow})
 		in := s.hookInput(hooks.UserPromptSubmit)
 		in.Prompt = input.Text
 		s.hooks.jobs <- func() {
@@ -36,7 +35,7 @@ func (s *Session) onSubmit(c cmdSubmit) core.UserInput {
 
 		return input
 	}
-	s.dispatch(input, steer)
+	s.dispatch(input, c.when == SendNow)
 
 	return input
 }

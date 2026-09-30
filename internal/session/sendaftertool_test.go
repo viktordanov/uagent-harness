@@ -23,7 +23,8 @@ func afterTool(t *testing.T, h *harness) (*fakeRun, core.UserInput) {
 	h.until(isType[core.TurnStarted])
 	in, err := h.s.Send("look here", session.SendAfterTool)
 	require.NoError(t, err)
-	h.until(func(e core.Event) bool { q, ok := e.(session.InputQueued); return ok && q.Input.ID == in.ID })
+	q := h.until(func(e core.Event) bool { q, ok := e.(session.InputQueued); return ok && q.Input.ID == in.ID })
+	assert.True(t, q.(session.InputQueued).AfterTool, "the TUI labels it")
 
 	return run, in
 }

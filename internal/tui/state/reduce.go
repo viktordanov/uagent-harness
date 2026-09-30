@@ -109,7 +109,7 @@ func (s *State) onEvent(ev core.Event) { //nolint:gocyclo // a dispatch switch o
 	case session.InstructionsLoaded:
 		s.Files = e.Files
 	case session.InputQueued:
-		s.Queue = append(s.Queue, Queued{ID: e.Input.ID, Text: e.Input.Text})
+		s.Queue = append(s.Queue, Queued{ID: e.Input.ID, Text: e.Input.Text, AfterTool: e.AfterTool})
 		s.Busy = true
 	case session.InputSent:
 		for _, id := range e.IDs {
@@ -266,7 +266,7 @@ func (s *State) onIntent(ev any) (State, []Effect) { //nolint:gocyclo // a dispa
 		}
 		last := s.Queue[len(s.Queue)-1]
 
-		return *s, []Effect{EffWithdraw(last)}
+		return *s, []Effect{EffWithdraw{ID: last.ID, Text: last.Text}}
 	case ToggleDetails:
 		s.Details = !s.Details
 	case ScrollBy:

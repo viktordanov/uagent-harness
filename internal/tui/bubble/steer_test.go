@@ -124,7 +124,7 @@ func TestTUI_EnterWaitsForTheToolCallCtrlEnterCutsIn(t *testing.T) {
 			d.typeText("start")
 			d.key(tea.KeyEnter, 0)
 			d.waitFor("Reading the code first")
-			d.waitFor("enter after tool · alt+enter now · tab after run")
+			d.waitFor("enter after tool · alt+enter now · tab later")
 			d.typeText("look here")
 			d.key(tea.KeyEnter, tc.mod)
 			if tc.mod != 0 {
@@ -136,7 +136,7 @@ func TestTUI_EnterWaitsForTheToolCallCtrlEnterCutsIn(t *testing.T) {
 
 				return
 			}
-			d.waitFor("↳ queued: look here")
+			d.waitFor("↳ after tool: look here") // held, and labelled so
 			d.pump(300 * time.Millisecond)
 			assert.Len(t, llm.Requests(), 1, "the response is not cut off")
 
@@ -163,8 +163,8 @@ func TestTUI_TabWaitsForTheRunsEnd(t *testing.T) {
 		newline string
 		hint    string
 	}{
-		{"no answer, as tmux", nil, "ctrl+j new line", "enter after tool · alt+enter now · tab after run"},
-		{"enhanced", enhanced, "shift+enter new line", "enter after tool · ctrl+enter now · tab after run"},
+		{"no answer, as tmux", nil, "ctrl+j new line", "enter after tool · alt+enter now · tab later"},
+		{"enhanced", enhanced, "shift+enter new line", "enter after tool · ^enter now · tab later"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			gate := make(chan struct{})

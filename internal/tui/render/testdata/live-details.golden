@@ -5,7 +5,6 @@
 
 
 
-
 λ Fix the failing test in pkg/foo
 
 
@@ -17,6 +16,7 @@
   turn 2  ⠋ thinking 0:03
 queued · sent when the run ends · enter on an empty prompt sends now · ↑ edits the last
   1. also update the README
+  2. (after tool) skip the vendored tests
 
 
 λ

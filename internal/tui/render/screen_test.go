@@ -119,6 +119,7 @@ func TestScreens(t *testing.T) {
 			core.AssistantMessage{At: t0.Add(4 * time.Second), Text: "I'll patch the fixture while the suite runs."},
 			core.TurnStarted{At: t0.Add(5 * time.Second), Turn: 2},
 			session.InputQueued{At: t0, Input: core.UserInput{ID: "b", Text: "also update the README"}},
+			session.InputQueued{At: t0, Input: core.UserInput{ID: "c", Text: "skip the vendored tests"}, AfterTool: true},
 			state.Tick{Now: now},
 		)
 		golden(t, "live", screen(s, ""))

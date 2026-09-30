@@ -202,10 +202,14 @@ func (st *Styles) panelLines(s state.State, f Frame) []string {
 
 			break
 		}
+		label, held := "queued", ""
+		if q.AfterTool { // held for the tool call, not the run's end (enter)
+			label, held = "after tool", "(after tool) "
+		}
 		if s.Details {
-			out = append(out, ansi.Truncate(fmt.Sprintf("  %d. %s", i+1, oneLine(images.Display(q.Text))), f.Width, "…"))
+			out = append(out, ansi.Truncate(fmt.Sprintf("  %d. %s%s", i+1, held, oneLine(images.Display(q.Text))), f.Width, "…"))
 		} else {
-			out = append(out, st.dim.Render(ansi.Truncate("  ↳ queued: ", f.Width, ""))+ansi.Truncate(oneLine(images.Display(q.Text)), max(f.Width-12, 8), "…"))
+			out = append(out, st.dim.Render(ansi.Truncate("  ↳ "+label+": ", f.Width, ""))+ansi.Truncate(oneLine(images.Display(q.Text)), max(f.Width-len(label)-6, 8), "…"))
 		}
 	}
 	if !s.Details {
@@ -235,10 +239,10 @@ func (st *Styles) statusLine(s state.State, w int) string {
 }
 
 // compactHint is the compact footer's key hint: while the agent works, the
-// send keys that work in this terminal.
+// send keys that work in this terminal, in place of the commands' hint.
 func compactHint(s state.State) string {
 	if s.Working() {
-		return s.Keys.SendHint(true) + " · / commands "
+		return s.Keys.SendHint(true) + " "
 	}
 
 	return "ctrl+t details · / commands "

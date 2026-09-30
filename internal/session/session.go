@@ -136,8 +136,7 @@ type Session struct {
 	// firstPromptPending is a new session whose sidecar has no first
 	// message yet; the first run records it.
 	firstPromptPending bool
-	// afterTool are the queued SendAfterTool messages by ID; modelBusy is a
-	// model request under way.
+	// afterTool marks the queued SendAfterTool messages; modelBusy, a model request under way.
 	afterTool map[string]bool
 	modelBusy bool
 }
@@ -222,8 +221,7 @@ func (s *Session) SteerNow(text string) (core.UserInput, error) {
 }
 
 // When is when a message sent while a run is live reaches the agent: now
-// (SteerNow), once no model response or tool call is under way (queued until
-// then, it rides the next model request), or when the run ends (Submit).
+// (SteerNow), after the next tool call (sendAfterTool), or after the run.
 type When int
 
 const (

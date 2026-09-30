@@ -28,6 +28,8 @@ const (
 type Queued struct {
 	ID   string
 	Text string
+	// AfterTool is a message held until the agent's tool call (enter).
+	AfterTool bool
 }
 
 // Live is the run in progress.
@@ -166,12 +168,15 @@ func New(now time.Time) State {
 	return State{index: map[string]int{}, Now: now}
 }
 
+// steerWhen is when a Steer's message reaches the working agent, by key:
+// enter after its tool call, ctrl+enter and alt+enter now.
+var steerWhen = map[string]session.When{KeyEnter: session.SendAfterTool, KeyCtrlEnter: session.SendNow, KeyAltEnter: session.SendNow}
+
 // Intents are what the user asks for, translated from keys by the shell.
 type (
 	// Submit is Enter with the composer text; text starting with "/" is a command.
 	Submit struct{ Text string }
-	// Steer is Enter (When: session.SendAfterTool) or Ctrl+Enter
-	// (session.SendNow) with the composer text while the agent works.
+	// Steer is a send key with the composer text while the agent works.
 	Steer struct {
 		Text string
 		When session.When
