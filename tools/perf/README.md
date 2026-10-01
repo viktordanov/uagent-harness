@@ -49,7 +49,7 @@ Each scenario builds its session in a fresh scratch home, measures one block, an
 | --- | --- | --- | --- |
 | `load` | yes | Resume the session as `uah resume` does (index already built) and send one message, to the first request and the end of the run | `open_ms`, `first_request_ms` (message to the request's arrival at the fake model), `session_syncs`, `history_ms` (`session.Load`, the TUI's transcript, outside the block), `index_ms` (building the SQLite index, outside the block) |
 | `tui` | yes | Start the TUI on the session; wait for the first frame of the resumed transcript; page up 20 times, then down 20 times | `first_frame_ms` (the view after the TUI takes the opened session), `first_paint_ms` (the renderer's first write after it), `scroll_p50_ms`, `scroll_p95_ms`, `scroll_max_ms` (a key to its view), `view_*_ms` (the model's View), `term_kb` |
-| `turn` | yes | Resume the session and run the workload turn headless | `turn_ms`, `first_request_ms`, `events`, `events_per_s`, `records_appended` (records the turn added to the session file), `session_syncs` (the syncs of session files), `requests`, `request_mb` |
+| `turn` | yes | Resume the session and run the workload turn headless; the session closes before goroutines and connections are counted | `turn_ms`, `first_request_ms`, `events`, `events_per_s`, `records_appended` (records the turn added to the session file), `session_syncs` (the syncs of session files), `requests`, `request_mb` |
 | `spawn` | yes | Resume the session; the model spawns one child, waits, and finishes | `child_first_request_ms` (the parent's reply to the child's first request, once the fake model has read it; see `server_ms`) |
 | `fork` | yes | The same with `fork_context`: the child copies the whole history | `child_first_request_ms` |
 | `tui-turn` | no | The workload turn typed into the TUI, until the answer shows and the footer is idle | `turn_ms`, `views`, `view_*_ms`, `term_kb`, `term_writes` |
@@ -96,11 +96,13 @@ A session of 10,000 records cannot be made by running turns: every model request
 
 | Size | Records | Session file | Runs |
 | --- | --- | --- | --- |
-| small | 80 | 0.4 MB | 2 |
-| medium | 2,030 | 11.4 MB | 28 |
-| large | 9,980 | 56 MB | 134 |
+| small | 107 | 0.5 MB | 3 |
+| medium | 1,994 | 9.6 MB | 40 |
+| large | 10,001 | 48 MB | 197 |
 
-One workload turn writes 75 records: shell output is recorded as the command runs, several times per command. What uah reads back is what it wrote; only the IDs, times, and paths differ.
+One workload turn writes 51 records, and the seed 5. What uah reads back is what it wrote; only the IDs, times, and paths differ.
+
+A size is a number of records, so a fixture holds as many workload turns as fit: when a turn's records change, so does the history of each size. A turn wrote 75 records until a shell command wrote two awaiting records instead of eight (ledger item 85), so since then small holds two turns, not one, and medium and large about 1.45 times as many. What grows with the history grew with them, with no change in cost per turn: the fork's copy (`disk_written_mb`, `state_growth_mb`), the peak heap of a spawn or fork, the allocations of the small subagent scenarios, and `index_ms`.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="real" files="perf/real.go" -->
@@ -114,31 +116,37 @@ A session with an operation that never finished is skipped: resuming it would ca
 <!-- memoria:section id="baseline" files="baseline.json" -->
 ## Baseline
 
-[baseline.json](baseline.json) is the report of `go run ./tools/perf -count 3` on main at 1eafd1f (one-write forks, run starts without paging, shared model connections, unreal-agent v0.2.0), the medians of three runs on an Apple M4 Max (14 cores), macOS 27.2, Go 1.27.1, in the workspace-write sandbox. Compare a change with it on a similar machine: `go run ./tools/perf -baseline tools/perf/baseline.json`. Replace it, with a new commit and this paragraph, when a change moves the numbers on purpose.
+[baseline.json](baseline.json) is the report of `go run ./tools/perf -count 3` on main at 1eaf6a4 (session syncs in groups, one read of each events file on load, 30 frames a second, unreal-agent v0.4.6), with the `turn` scenario closing its session before the count, the medians of three runs on an Apple M4 Max (14 cores), macOS 27.2, Go 1.27.1, in the workspace-write sandbox. Compare a change with it on a similar machine: `go run ./tools/perf -baseline tools/perf/baseline.json`. Replace it, with a new commit and this paragraph, when a change moves the numbers on purpose.
 
 | Scenario | Wall ms | CPU ms | Alloc MB | Peak heap MB | Goroutines left | Conns after | Its own |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `load/small` | 36.5 | 15.4 | 12.0 | 10.1 | 0 | 0 | first_request_ms 27.1 |
-| `load/medium` | 159 | 160 | 229 | 66.9 | 0 | 0 | first_request_ms 128 |
-| `load/large` | 635 | 690 | 1,113 | 265 | 0 | 0 | first_request_ms 543 |
-| `tui/small` | 25.4 | 21.1 | 10.7 | 12.6 | 0 | 0 | first_frame_ms 6.27, scroll_p95_ms 0.43 |
-| `tui/medium` | 59.9 | 76.5 | 88.8 | 16.5 | 0 | 0 | first_frame_ms 40.5, scroll_p95_ms 0.36 |
-| `tui/large` | 177 | 296 | 403 | 20.8 | 1 | 0 | first_frame_ms 154, scroll_p95_ms 0.38 |
-| `turn/small` | 590 | 115 | 32.6 | 12.2 | 2 | 1 | turn_ms 590, records_appended 75.0 |
-| `turn/medium` | 704 | 325 | 475 | 68.0 | 2 | 1 | turn_ms 702, records_appended 75.0 |
-| `turn/large` | 1,409 | 1,141 | 2,270 | 267 | 2 | 1 | turn_ms 1,402, records_appended 75.0 |
-| `spawn/small` | 131 | 63.4 | 22.9 | 15.3 | -1 | 0 | child_first_request_ms 53.5 |
-| `spawn/medium` | 322 | 279 | 415 | 67.4 | -1 | 0 | child_first_request_ms 51.9 |
-| `spawn/large` | 1,125 | 1,161 | 2,016 | 277 | -1 | 0 | child_first_request_ms 53.2 |
-| `fork/small` | 136 | 48.7 | 32.0 | 14.6 | -1 | 0 | child_first_request_ms 59.6, disk_written_mb 0.48 |
-| `fork/medium` | 421 | 430 | 648 | 80.2 | -1 | 0 | child_first_request_ms 175, disk_written_mb 3.64 |
-| `fork/large` | 1,558 | 1,822 | 3,253 | 357 | -1 | 0 | child_first_request_ms 603, disk_written_mb 16.5 |
-| `tui-turn/small` | 585 | 105 | 37.8 | 15.4 | 3 | 1 | view_p95_ms 0.34 |
-| `idle/tui` | 3,000 | 13.1 | 0 | 0 | -1 | 1 | cpu_ms_per_s 4.37, updates_per_s 0, wakeups_per_s 165 |
-| `agents/small` | 332 | 220 | 39.1 | 28.1 | -1 | 0 | fork_ms 184 |
-| `leak/5-runs` | 792 | 248 | 85.0 | 24.0 | 0 | 0 | goroutines_left 0 |
+| `load/small` | 17.9 | 15.8 | 14.2 | 10.5 | 0 | 0 | first_request_ms 7.12 |
+| `load/medium` | 125 | 144 | 207 | 48.0 | 0 | 0 | first_request_ms 97.0 |
+| `load/large` | 557 | 621 | 1,019 | 232 | 0 | 0 | first_request_ms 462, index_ms 39.7 |
+| `tui/small` | 42.2 | 18.3 | 7.10 | 10.7 | 0 | 0 | first_frame_ms 4.19, first_paint_ms 33.8, scroll_p95_ms 0.26 |
+| `tui/medium` | 42.7 | 35.2 | 17.6 | 12.3 | 0 | 0 | first_frame_ms 17.5, first_paint_ms 33.7, scroll_p95_ms 0.33 |
+| `tui/large` | 111 | 111 | 58.0 | 19.1 | 0 | 0 | first_frame_ms 78.6, first_paint_ms 101, scroll_p95_ms 0.36 |
+| `turn/small` | 361 | 72.5 | 38.6 | 13.2 | -1 | 0 | turn_ms 360, records_appended 51 |
+| `turn/medium` | 523 | 313 | 528 | 48.3 | -1 | 0 | turn_ms 523, records_appended 51 |
+| `turn/large` | 1,270 | 1,142 | 2,582 | 240 | -1 | 0 | turn_ms 1,265, records_appended 51 |
+| `spawn/small` | 58.8 | 37.0 | 30.2 | 15.3 | -1 | 0 | child_first_request_ms 19.5 |
+| `spawn/medium` | 292 | 311 | 464 | 78.0 | -1 | 0 | child_first_request_ms 22.2 |
+| `spawn/large` | 1,252 | 1,333 | 2,281 | 327 | -1 | 0 | child_first_request_ms 21.1 |
+| `fork/small` | 66.5 | 49.4 | 44.1 | 18.3 | -1 | 0 | child_first_request_ms 30.9, disk_written_mb 0.46 |
+| `fork/medium` | 375 | 465 | 723 | 112 | -1 | 0 | child_first_request_ms 147, disk_written_mb 4.93 |
+| `fork/large` | 1,676 | 2,045 | 3,630 | 471 | -1 | 0 | child_first_request_ms 662, disk_written_mb 23.9 |
+| `tui-turn/small` | 357 | 92.1 | 43.1 | 15.9 | 3 | 1 | view_p95_ms 0.34 |
+| `idle/tui` | 3,001 | 14.4 | 0 | 0 | -2 | 1 | cpu_ms_per_s 4.81, updates_per_s 0, wakeups_per_s 169 |
+| `agents/small` | 126 | 82.0 | 55.3 | 22.8 | -1 | 0 | fork_ms 86.8 |
+| `leak/5-runs` | 512 | 167 | 105 | 13.3 | 0 | 0 | goroutines_left 0 |
 
-The fork rows are from `-count 3 -run fork` after ledger item 84, and the `tui-turn` and `idle/tui` rows from `-count 3 -run 'tui-turn|idle'` after item 86 (30 frames a second: 165 idle wakeups a second, from 326), with the rest unchanged. Before it, a fork took 33 s on the large fixture (child's first request 1.8 s): the forked child resumed the parent's shell operations from the copied history and started them again, which also emptied the parent's saved command outputs, so its state_growth_mb (5.3 then, 16.2 now: the child's session file) was low. The numbers before 1eafd1f, on 1eaf678, were: load/large first request 3,308 ms, turn/large 4,050 ms with 5.9 GB allocated, fork/large first child request 23,293 ms, and two goroutines and one connection left per closed session.
+Against the baseline before it (1eafd1f, with the fork rows after ledger item 84 and the TUI-turn and idle rows after item 86), a turn takes 360 ms instead of 590 on the small fixture and writes 51 records instead of 75, a load's first request comes in 7 ms instead of 27, the large TUI allocates 58 MB instead of 403, and the subagent scenarios take half the time. Three changes there are not regressions:
+
+- The fixtures hold more turns (see [How fixtures are built](#how-fixtures-are-built)): fork/large writes 23.9 MB instead of 16.5 and peaks at 471 MB instead of 357, and small spawns and forks allocate about a third more. Per workload turn, the fork's copy is the same or smaller (0.13 MB on medium).
+- `first_paint_ms` on the small TUI is 33.8 instead of 17.1. The renderer writes on its frame ticker only, which starts with the program: the first write comes at the first tick after the first frame, at 33 ms at 30 frames a second (17 ms at 60). The first frame comes at 4 ms; Bubble Tea has no way to write a frame before its tick, and its ticker cannot pause, so the first paint waits one frame at most.
+- `turn` goroutines and connections left are now -1 and 0 (2 and 1 before): the scenario counted them with its session still open, so they were the session's own goroutines and its model connection. It closes the session first now, as `leak` does. `tui-turn` keeps its TUI open for `idle/tui`, so it still counts the open session's.
+
+`child_cpu_ms` of `tui-turn/small` (the sandboxed commands' CPU time) moves between 130 and 210 ms from run to run of one commit, so a change from the 107 before is noise. Before 1eafd1f, on 1eaf678: load/large first request 3,308 ms, turn/large 4,050 ms with 5.9 GB allocated, fork/large first child request 23,293 ms, and two goroutines and one connection left per closed session. A fork took 33 s on the large fixture before item 84: the child ran the parent's shell operations again.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="test" files="perf/perf_test.go perf/race_test.go perf/norace_test.go perf/fork_internal_test.go" -->

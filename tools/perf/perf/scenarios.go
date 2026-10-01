@@ -293,7 +293,6 @@ func (r *run) turn(t target) ([]Named, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer closeSession(s)
 	replies := turnReplies("perf")
 	if t.real {
 		replies = textOnly(replies)
@@ -317,7 +316,7 @@ func (r *run) turn(t target) ([]Named, error) {
 		requestStats(x, e.LLM)
 
 		return nil
-	}, nil)
+	}, func() { closeSession(s) })
 
 	return []Named{{Name: name, Fixture: &fx, Sample: sample}}, err
 }
