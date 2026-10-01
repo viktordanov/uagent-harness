@@ -131,6 +131,9 @@ func LoadTask(dir string) (Task, error) {
 		problems = append(problems, "no exercises")
 	}
 	for _, d := range []string{repoDir, solutionDir} {
+		if d == solutionDir && t.SolutionScript != "" {
+			continue // the script is the solution; git keeps no empty folder
+		}
 		if st, err := os.Stat(filepath.Join(dir, d)); err != nil || !st.IsDir() {
 			problems = append(problems, "no "+d+"/")
 		}
@@ -176,8 +179,10 @@ func (t Task) ApplySolution(ctx context.Context, ws string, env []string) error 
 			return err
 		}
 	}
-	if err := copyTree(filepath.Join(t.Dir, solutionDir), ws); err != nil {
-		return err
+	if _, err := os.Stat(filepath.Join(t.Dir, solutionDir)); err == nil {
+		if err := copyTree(filepath.Join(t.Dir, solutionDir), ws); err != nil {
+			return err
+		}
 	}
 	if t.SolutionScript != "" {
 		return runScript(ctx, t.SolutionScript, ws, env)
