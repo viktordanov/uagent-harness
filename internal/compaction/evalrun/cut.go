@@ -10,6 +10,7 @@ package evalrun
 import (
 	"bufio"
 	"bytes"
+	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
 	"fmt"
@@ -20,6 +21,8 @@ import (
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/unreallabsai/unreal-agent/harness/operation"
 
 	"github.com/viktordanov/uah/internal/compaction"
 	"github.com/viktordanov/uah/internal/sessionfile"
@@ -117,7 +120,10 @@ func thresholdPoints(items []sessionfile.Item) []Point {
 var processGroup = regexp.MustCompile(`"ProcessGroupID":\s*\d+`)
 
 // Cut writes the session file at src up to and including the item seq to
-// dst, with every process group zeroed.
+// dst, with every process group zeroed. An operation that had not ended by
+// then gets a last operation line that cancels it: opening the copy would
+// otherwise run its command again, in the session's own workspace. The
+// items keep their sequences, which the cut's points and rewinds name.
 func Cut(src, dst string, seq uint64) error {
 	in, err := os.Open(src)
 	if err != nil {
@@ -125,6 +131,8 @@ func Cut(src, dst string, seq uint64) error {
 	}
 	defer in.Close()
 	var out bytes.Buffer
+	var ops []operation.Operation // the last state of each, in first-seen order
+	at := map[operation.ID]int{}
 	r := bufio.NewReaderSize(in, 1<<20)
 	for {
 		line, rerr := r.ReadBytes('\n')
@@ -132,13 +140,31 @@ func Cut(src, dst string, seq uint64) error {
 			if past(line, seq) {
 				break
 			}
-			out.Write(processGroup.ReplaceAll(line, []byte(`"ProcessGroupID":0`)))
+			line = processGroup.ReplaceAll(line, []byte(`"ProcessGroupID":0`))
+			for _, op := range operations(line) {
+				if i, ok := at[op.ID]; ok {
+					ops[i] = op
+				} else {
+					at[op.ID] = len(ops)
+					ops = append(ops, op)
+				}
+			}
+			out.Write(line)
 		}
 		if errors.Is(rerr, io.EOF) {
 			break
 		}
 		if rerr != nil {
 			return fmt.Errorf("failed to read the session file: %w", rerr)
+		}
+	}
+	for _, op := range ops {
+		if op.Status == operation.StatusCompleted || op.Status == operation.StatusFailed || op.Status == operation.StatusCanceled {
+			continue
+		}
+		op.Status = operation.StatusCanceled
+		if err := logLine(&out, "operation", struct{ Operation operation.Operation }{op}); err != nil {
+			return fmt.Errorf("failed to cancel operation %s: %w", op.ID, err)
 		}
 	}
 	if err := os.WriteFile(dst, out.Bytes(), 0o600); err != nil {
@@ -160,6 +186,46 @@ func past(line []byte, seq uint64) bool {
 	}
 
 	return json.Unmarshal(line, &rec) == nil && rec.Data.Item.Sequence > seq
+}
+
+// operations are the operation states a line records: an operation line's,
+// or the snapshots a tool-call status item carries.
+func operations(line []byte) []operation.Operation {
+	var rec struct {
+		Data struct {
+			Operation  *operation.Operation
+			Operations []operation.Operation
+		} `json:"data"`
+	}
+	switch {
+	case bytes.HasPrefix(line, []byte(`{"type":"operation"`)):
+		if json.Unmarshal(line, &rec) == nil && rec.Data.Operation != nil {
+			return []operation.Operation{*rec.Data.Operation}
+		}
+	case bytes.HasPrefix(line, []byte(`{"type":"item"`)) && bytes.Contains(line, []byte(`"Operations":`)):
+		if json.Unmarshal(line, &rec) == nil {
+			return rec.Data.Operations
+		}
+	}
+
+	return nil
+}
+
+// logLine writes a record of the session file, as localfile's encodeRecord
+// does (the fork's copy in internal/engine/embedded writes the same).
+func logLine(out *bytes.Buffer, kind string, v any) error {
+	data, err := json.Marshal(v)
+	if err == nil {
+		data, err = json.Marshal(struct {
+			Type string         `json:"type"`
+			Data jsontext.Value `json:"data"`
+		}{kind, data})
+	}
+	if err == nil {
+		out.Write(append(data, '\n'))
+	}
+
+	return err
 }
 
 // Sessions are the IDs of the session files in dir, or the one file named.

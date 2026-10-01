@@ -1,7 +1,13 @@
 package evalrun_test
 
 import (
+	"bufio"
+	"bytes"
 	"context"
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -64,6 +70,48 @@ func TestWrite_PrintsNumbersOnly(t *testing.T) {
 	for _, secret := range []string{"helper", "TestHelper", "main.go", "fix the build"} {
 		assert.NotContains(t, out, secret, "the tables carry no session content")
 	}
+}
+
+// TestCut_CancelsOpenOperations cuts a session while its command, which
+// appends to a file, has not ended: the capture sees the call canceled and
+// never runs the command again (it used to, in the session's own
+// workspace).
+func TestCut_CancelsOpenOperations(t *testing.T) {
+	const id = "a5ad5bba-0726-41cd-bf5d-1d5d4f7b12c6"
+	src, err := os.ReadFile(filepath.Join(fixtureDir, id+".session.jsonl"))
+	require.NoError(t, err)
+	lines := bytes.SplitAfter(src, []byte("\n"))[:7] // through item 6: the first command, ready to run
+	root, dir := t.TempDir(), t.TempDir()
+	recorded := regexp.MustCompile(`"Directory":"([^"]*)/workspace"`).FindSubmatch(lines[6])
+	require.NotNil(t, recorded)
+	cut := bytes.ReplaceAll(bytes.Join(lines, nil), recorded[1], []byte(root))
+	cut = bytes.ReplaceAll(cut, []byte("cat main.go docs/notes.md"), []byte("echo ran >> stamp.txt"))
+	stamp := filepath.Join(root, "workspace", "stamp.txt")
+	require.NoError(t, os.MkdirAll(filepath.Dir(stamp), 0o700))
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "state", "sessions", "operations", id), 0o700), "the recorded home's")
+	require.NoError(t, os.WriteFile(stamp, []byte("ran\n"), 0o600), "the session's own run")
+	require.NoError(t, os.WriteFile(filepath.Join(dir, id+".session.jsonl"), cut, 0o600))
+
+	_, err = evalrun.Capture(context.Background(), t.TempDir(), dir, id, evalrun.Point{Seq: 6})
+	require.NoError(t, err)
+	b, err := os.ReadFile(stamp)
+	require.NoError(t, err)
+	assert.Equal(t, "ran\n", string(b), "the capture did not run the command again")
+
+	dst := filepath.Join(t.TempDir(), id+".session.jsonl")
+	require.NoError(t, evalrun.Cut(filepath.Join(dir, id+".session.jsonl"), dst, 6))
+	f, err := os.Open(dst)
+	require.NoError(t, err)
+	defer f.Close()
+	var last struct {
+		Type string
+		Data struct{ Operation struct{ Status string } }
+	}
+	for sc := bufio.NewScanner(f); sc.Scan(); {
+		require.NoError(t, json.Unmarshal(sc.Bytes(), &last))
+	}
+	assert.Equal(t, "operation", last.Type)
+	assert.Equal(t, "canceled", last.Data.Operation.Status)
 }
 
 // testLog writes the evaluation's progress, such as why a cut was skipped,
