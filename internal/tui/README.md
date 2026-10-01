@@ -53,7 +53,7 @@ A session event:
 
 A streamed answer changes with each batch, so it costs at most one render of its markdown per frame, about 60 a second.
 
-A frame: `View` calls `render.Screen`. The transcript is virtualized: it renders items from the bottom up until the window is full. Each item's lines are cached by key, version, width, and view; items that change with time (a running tool, a pending turn) are drawn fresh each frame. A 100 ms tick runs only while something moves on screen. The state's clock is `Deps.Now`, set on each tick and before each key or paste, so a first esc or ctrl+c after the screen sat still is timed from the key, and a test can drive the clock.
+A frame: `View` calls `render.Screen`. The transcript is virtualized: it renders items from the bottom up until the window is full. Each item's lines are cached by key, version, width, and view; items that change with time (a running tool, a pending turn) are drawn fresh each frame. A 100 ms tick runs only while something moves on screen: a run, a status, a subagent, a `!` command, or a `/review`. The state's clock is `Deps.Now`, set on each tick and before each key or paste, so a first esc or ctrl+c after the screen sat still is timed from the key, and a test can drive the clock.
 
 Effects made before the first session opens (the startup prompt, for example) are held and run once it opens.
 <!-- /memoria:section -->

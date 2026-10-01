@@ -344,7 +344,7 @@ func (m Model) now() Model {
 
 // afterChange keeps the clock ticking while anything moves on screen.
 func (m *Model) afterChange() tea.Cmd {
-	moving := m.st.Busy || m.st.Live != nil || m.st.Status != "" || m.st.AgentsRunning() || m.st.ShellRunning()
+	moving := m.st.Busy || m.st.Live != nil || m.st.Status != "" || m.st.AgentsRunning() || m.st.ShellRunning() || m.st.ReviewRunning()
 	if v := m.st.View; v != nil {
 		moving = moving || v.St.Busy || v.St.Live != nil // the viewed agent's spinner
 	}

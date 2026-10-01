@@ -24,3 +24,15 @@ func TestTick_StartsWithTheBatchThatStartsARun(t *testing.T) {
 	assert.True(t, next.(Model).st.Busy)
 	assert.True(t, next.(Model).ticking, "the tick is scheduled")
 }
+
+// TestTick_RunsWhileAReviewRuns: /review's spinner and timer move while the
+// reviewer works, with no other event to redraw the screen (issue #3).
+func TestTick_RunsWhileAReviewRuns(t *testing.T) {
+	m := New(context.Background(), Deps{Now: time.Now})
+	next, _ := m.Update(eventsMsg{gen: m.gen, events: []core.Event{
+		session.ReviewStarted{At: time.Now(), ID: "r1"},
+	}})
+
+	assert.False(t, next.(Model).st.Busy)
+	assert.True(t, next.(Model).ticking, "the tick is scheduled")
+}
