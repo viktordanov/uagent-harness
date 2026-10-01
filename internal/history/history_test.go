@@ -139,7 +139,8 @@ func TestAppendKeepsANewestEntryLargerThanTheCap(t *testing.T) {
 }
 
 // TestConcurrentAppendsNeverInterleave appends from goroutines that open
-// the file each time, as separate uah processes do: every line is whole.
+// the file each time: every line is whole, and no writer runs out of lock
+// tries however long the others hold the file.
 func TestConcurrentAppendsNeverInterleave(t *testing.T) {
 	f := newFile(t, 0)
 	const writers, each = 8, 25

@@ -17,6 +17,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -47,6 +48,10 @@ const (
 	// does not trim again (Codex's HISTORY_SOFT_CAP_RATIO).
 	softCap = 0.8
 )
+
+// appending orders this process's appends, so the file lock and its ten
+// tries only arbitrate between processes.
+var appending sync.Mutex
 
 // Entry is one prompt.
 type Entry struct {
@@ -111,6 +116,8 @@ func (f File) Append(entries ...Entry) error {
 	if err := private(file); err != nil {
 		return err
 	}
+	appending.Lock()
+	defer appending.Unlock()
 	unlock, err := lock(file, syscall.LOCK_EX)
 	if err != nil {
 		return err
