@@ -83,12 +83,14 @@ func TestRun(t *testing.T) {
 
 	t.Run("a timeout stops it", func(t *testing.T) {
 		slow := *r
-		slow.Timeout = 100 * time.Millisecond
+		// The timeout also covers starting the shell, which under load can
+		// take longer than 100 ms: then it is killed before it prints.
+		slow.Timeout = time.Second
 		res := slow.Run(t.Context(), usershell.Request{Command: "echo started; sleep 10"})
 
 		assert.True(t, res.TimedOut)
 		assert.Equal(t, usershell.ExitNotRun, res.ExitCode)
-		assert.Equal(t, "command timed out after 100 milliseconds\nstarted\n", res.Output)
+		assert.Equal(t, "command timed out after 1000 milliseconds\nstarted\n", res.Output)
 		assert.Less(t, res.Duration, 5*time.Second)
 	})
 
