@@ -34,8 +34,6 @@ type patchOpts struct {
 	mode        sandbox.Mode
 	interactive bool
 	hooks       []hooks.Hook
-	// experiments is UAH_EXPERIMENTS.
-	experiments string
 }
 
 // applyPatch is a model that applies the patch, its input the raw patch,
@@ -60,7 +58,7 @@ func newPatchEnv(t *testing.T, o patchOpts, replies func(ws, outside string) []f
 		require.NoError(t, err)
 	}
 	eng := embedded.New(embedded.Config{
-		StateDir: e.StateDir, Provider: "openai", Getenv: withExperiments(e.getenv, o.experiments), Hooks: runner,
+		StateDir: e.StateDir, Provider: "openai", Getenv: e.getenv, Hooks: runner,
 		Sandbox: &policy, SandboxDir: filepath.Join(e.StateDir, "sandbox"),
 		Approver: approval.New(approval.Config{}),
 	})

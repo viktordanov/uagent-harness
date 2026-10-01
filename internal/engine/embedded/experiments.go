@@ -9,16 +9,10 @@ const experimentsEnv = "UAH_EXPERIMENTS"
 
 // experiments are the switches UAH_EXPERIMENTS turns on.
 type experiments struct {
-	// wakeHold60s has a call still running wake the model after a minute,
-	// not five (wake.go).
-	wakeHold60s bool
-	// wakeReleaseQuick releases the results that are in ten seconds after a
-	// turn while its long calls still run, so the model can work beside them
-	// (wake.go).
-	wakeReleaseQuick bool
-	// autoVerify runs a quick project check after each patch that applies
-	// and adds its result to the patch's output (autoverify.go).
-	autoVerify bool
+	// preambleWake gives the runner's preamble the wake policy's words: a
+	// turn's results arrive together, and a call still running after the
+	// hold wakes the model with its output so far (wake.go).
+	preambleWake bool
 	// primedFirstTurn gives a new session's first request a compact
 	// workspace context: the files, git status, and the AGENTS.md
 	// includes (primed.go).
@@ -32,12 +26,8 @@ func readExperiments(getenv func(string) string) experiments {
 	var x experiments
 	for name := range strings.SplitSeq(getenv(experimentsEnv), ",") {
 		switch strings.TrimSpace(name) {
-		case "wake-hold-60s":
-			x.wakeHold60s = true
-		case "wake-release-quick":
-			x.wakeReleaseQuick = true
-		case "auto-verify":
-			x.autoVerify = true
+		case "preamble-wake":
+			x.preambleWake = true
 		case "primed-first-turn":
 			x.primedFirstTurn = true
 		case "effort-by-turn":

@@ -10,10 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uagent/core"
-
 	"github.com/viktordanov/uah/internal/engine/embedded"
-	"github.com/viktordanov/uah/internal/sandbox"
 	"github.com/viktordanov/uah/internal/session"
 	"github.com/viktordanov/uah/testing/fakellm"
 )
@@ -34,61 +31,30 @@ func (e *env) experimentEngine(names string) *embedded.Engine {
 	return embedded.New(embedded.Config{StateDir: e.StateDir, Provider: "openai", Getenv: withExperiments(e.getenv, names)})
 }
 
-// TestAutoVerify_ChecksTheGoModule: with auto-verify, a patch to a Go
-// module that no longer builds comes back with go build's verdict and
-// output, labelled, in the same tool output; without it, with the summary
-// alone.
-func TestAutoVerify_ChecksTheGoModule(t *testing.T) {
-	if _, err := exec.LookPath("go"); err != nil {
-		t.Skip("no go toolchain")
-	}
+// TestPreambleWake: with preamble-wake, the system message starts with the
+// preamble that describes the wake policy, and the rest of it is the same;
+// without it, with the runner's.
+func TestPreambleWake(t *testing.T) {
+	systems := map[bool]string{}
 	for _, on := range []bool{true, false} {
+		e := newEnv(t, fakellm.Reply{Text: "done"})
 		names := ""
 		if on {
-			names = "auto-verify"
+			names = "preamble-wake"
 		}
-		e := newPatchEnv(t, patchOpts{mode: sandbox.FullAccess, experiments: names}, func(ws, _ string) []fakellm.Reply {
-			require.NoError(t, os.WriteFile(filepath.Join(ws, "go.mod"), []byte("module example.com/m\n\ngo 1.22\n"), 0o644))
-
-			return applyPatch("*** Add File: main.go\n+package main\n+\n+func main() { undefinedName() }")
-		})
-		assert.Equal(t, core.StatusOK, e.ev.finished().Status)
-
-		out := e.lastOutput()
-		assert.True(t, strings.HasPrefix(out, "Success. Updated the following files:\nA main.go\n"), out)
-		if !on {
-			assert.Equal(t, "Success. Updated the following files:\nA main.go\n", out)
-
-			continue
-		}
-		assert.Contains(t, out, "Automatic check after the edit: go build ./... → exit 1")
-		assert.Contains(t, out, "undefined: undefinedName")
-		assert.Contains(t, out, "do not run it again")
+		s, ev := e.open(t, e.experimentEngine(names), "")
+		_, err := s.Submit("hello")
+		require.NoError(t, err)
+		ev.finished()
+		systems[on] = e.llm.Requests()[0].System
 	}
-}
-
-// TestAutoVerify_PassingCheckAndNothingToCheck: a Python file that compiles
-// reports exit 0 and leaves no __pycache__ in the workspace; a text file
-// has nothing to check.
-func TestAutoVerify_PassingCheckAndNothingToCheck(t *testing.T) {
-	if _, err := exec.LookPath("python3"); err != nil {
-		t.Skip("no python3")
-	}
-	e := newPatchEnv(t, patchOpts{mode: sandbox.FullAccess, experiments: "auto-verify"}, func(string, string) []fakellm.Reply {
-		return []fakellm.Reply{
-			{Calls: []fakellm.Call{{Name: "apply_patch", Args: "*** Begin Patch\n*** Add File: a.py\n+print('hi')\n*** End Patch\n", Custom: true}}},
-			{Calls: []fakellm.Call{{Name: "apply_patch", Args: "*** Begin Patch\n*** Add File: notes.txt\n+hi\n*** End Patch\n", Custom: true}}},
-			{Text: "done"},
-		}
-	})
-	assert.Equal(t, core.StatusOK, e.ev.finished().Status)
-
-	reqs := e.llm.Requests()
-	require.Len(t, reqs, 3)
-	first := reqs[1].ToolOutputs[0]
-	assert.Contains(t, first, `python3 -m py_compile 'a.py' → exit 0`)
-	assert.NoDirExists(t, filepath.Join(e.Workspace, "__pycache__"))
-	assert.Equal(t, "Success. Updated the following files:\nA notes.txt\n", reqs[2].ToolOutputs[1])
+	assert.Contains(t, systems[true], "Their results arrive together")
+	assert.Contains(t, systems[true], "A call still running after 5 minutes wakes you with its output so far")
+	assert.NotContains(t, systems[true], "placeholder")
+	assert.Contains(t, systems[false], "a call still running shows a placeholder")
+	_, rest, _ := strings.Cut(systems[true], "I believe in you!")
+	_, restOff, _ := strings.Cut(systems[false], "I believe in you!")
+	assert.Equal(t, restOff, rest, "only the preamble changes")
 }
 
 // TestPrimedFirstTurn: a new session's first request carries the workspace

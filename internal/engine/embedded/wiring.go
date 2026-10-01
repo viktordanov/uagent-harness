@@ -132,7 +132,7 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 	sw.images = w.e.pastedImages
 	sw.stream, sw.text, sw.diag = w.emit, opts.Stream, w.l.Stderr
 	sw.effortByTurn = w.e.experiments.effortByTurn
-	operations := operation.NewLocalOperationManager(runCtx, newMCPJobs(runCtx, w.e.cfg.MCP), newAgentJobs(runCtx, w.e.cfg.Subagents, string(s.id)), newPatchJobs(runCtx, w.verifier(req))) //nolint:contextcheck // on Linux, the sandbox probes bwrap once per process, with its own timeout
+	operations := operation.NewLocalOperationManager(runCtx, newMCPJobs(runCtx, w.e.cfg.MCP), newAgentJobs(runCtx, w.e.cfg.Subagents, string(s.id)), newPatchJobs(runCtx))
 	first := compaction.Trigger("")
 	switch {
 	case opts.Clear:
@@ -151,7 +151,7 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 	}
 	a.compactor, a.mode = comp, w.mode
 
-	builder := newContextBuilder(registry, model, req)
+	builder := newContextBuilder(registry, model, req, w.e.experiments.builderOptions())
 	for _, t := range w.hostedTools(req.Provider, req.SessionID) {
 		builder.AddTool(t)
 	}
@@ -167,7 +167,7 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 		LLM:                   comp,
 		Tools:                 registry,
 		Operations:            operations,
-		Wake:                  w.e.experiments.wakePolicy(),
+		Wake:                  wakePolicy(),
 	})
 	w.launch(runCtx, a, coord, obs, func() { s.store.RemoveObserver(observerID) })
 
@@ -259,9 +259,10 @@ func newAgent(ctx context.Context, cancel context.CancelFunc, sw *switcher, rest
 }
 
 // newContextBuilder returns the builder with the model, the system prompt
-// (uah's default base instructions when the request has none), and the registry's skills and tools.
-func newContextBuilder(registry tool.Registry, model string, req core.Request) contextbuilder.Builder {
-	builder := contextbuilder.NewBuilder(registry.Skills()...)
+// (uah's default base instructions when the request has none), the registry's skills and tools, and
+// the runner's preamble that opts choose.
+func newContextBuilder(registry tool.Registry, model string, req core.Request, opts contextbuilder.Options) contextbuilder.Builder {
+	builder := contextbuilder.NewBuilderWithOptions(opts, registry.Skills()...)
 	builder.SetModel(llm.Model{ID: model, ReasoningEffort: reasoningEffort(req.Effort)})
 	prompt := req.SystemPrompt
 	if prompt == "" {
