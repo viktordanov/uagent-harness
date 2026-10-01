@@ -5,11 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"math"
 	"path/filepath"
 	"slices"
 	"strings"
-	"sync"
 
 	"github.com/google/uuid"
 	"github.com/unreallabsai/unreal-agent/harness/inbox"
@@ -22,10 +20,9 @@ import (
 )
 
 // runStore is the session a run records to.
-// The store leaves out what the session's rewinds cut (cutStore), reads
-// the file once for the run's start (snapshotStore), writes fewer
-// operation records (checkpointStore), and syncs the file in groups
-// (logStore).
+// The store leaves out what the session's rewinds cut (cutStore), writes
+// fewer operation records (checkpointStore), and reads the file once for
+// the run's start and syncs it in groups (logStore).
 type runStore struct {
 	store    sessionstore.Store
 	id       session.ID
@@ -57,13 +54,13 @@ func (w *wiring) openStore(ctx context.Context, req core.Request, messages []cor
 	var early []sessionstore.Item
 	if !slices.ContainsFunc(restored.Operations, func(op operation.Operation) bool { return !finalOperation(op.Status) }) {
 		first := log.AddObserver(func(_ session.ID, it sessionstore.Item) { early = append(early, it) })
-		err = recordInputs(ctx, log, id, messages, req.Effort) // the first append reads the file, as the coordinator's first write did
+		err = recordInputs(ctx, log, id, messages, req.Effort) // the first append reads the file for the run
 		log.RemoveObserver(first)
 		if err != nil {
 			return runStore{}, err
 		}
 	}
-	cut, err := withCuts(withSnapshot(log, id), w.l.SessionsDir, string(id))
+	cut, err := withCuts(log, w.l.SessionsDir, string(id))
 	if err != nil {
 		return runStore{}, err
 	}
@@ -114,42 +111,4 @@ func openSession(ctx context.Context, store *localfile.Store, requested string) 
 	}
 
 	return id, sessionstore.ResumeState{Snapshot: snapshot}, nil
-}
-
-// snapshotStore serves the usage seed's and the coordinator's restore's
-// pages of the session from one read of the file, where localfile reads the
-// whole file per page. Once the run records an item, reads go to the file.
-type snapshotStore struct {
-	sessionstore.Store
-
-	id    session.ID
-	mu    sync.Mutex
-	items []sessionstore.Item
-	stale bool
-}
-
-func withSnapshot(store sessionstore.Store, id session.ID) *snapshotStore {
-	s := &snapshotStore{Store: store, id: id}
-	store.AddObserver(func(session.ID, sessionstore.Item) { s.mu.Lock(); s.items, s.stale = nil, true; s.mu.Unlock() })
-
-	return s
-}
-
-func (s *snapshotStore) Items(ctx context.Context, id session.ID, after sessionstore.Sequence, limit int) (sessionstore.Page, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.items == nil && !s.stale && id == s.id {
-		page, err := s.Store.Items(ctx, id, sessionstore.BeforeFirst, math.MaxInt)
-		if err != nil {
-			return page, err //nolint:wrapcheck // the store's errors pass through
-		}
-		s.items = page.Items
-	}
-	if s.stale || id != s.id || limit <= 0 {
-		return s.Store.Items(ctx, id, after, limit) //nolint:wrapcheck // as above
-	}
-	rest := s.items[min(after, sessionstore.Sequence(len(s.items))):] // item i has sequence i+1
-	n := min(limit, len(rest))
-
-	return sessionstore.Page{Items: append([]sessionstore.Item(nil), rest[:n]...), NextAfter: after + sessionstore.Sequence(n), More: n < len(rest)}, nil
 }

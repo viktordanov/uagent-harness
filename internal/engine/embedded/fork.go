@@ -57,7 +57,7 @@ func (e *Engine) Fork(ctx context.Context, parentID, childID, callID string) err
 		return fmt.Errorf("failed to create session %q: %w", childID, err)
 	}
 	path := filepath.Join(dir, childID+".session.jsonl")
-	if err := replay(ctx, store, path, session.ID(childID), items[:cut]); err != nil {
+	if err := replay(path, items[:cut]); err != nil {
 		_ = os.Remove(path)
 
 		return err
@@ -134,14 +134,15 @@ func forkPoint(items []sessionstore.Item, callID string) (cut int, at time.Time,
 }
 
 // replay appends the parent's items to the child in one write, in the lines
-// the store's Append methods write (localfile's encodeRecord), and reads it
-// back to check them. The store resumes an operation from the state its
+// the store's Append methods write (localfile's encodeRecord;
+// TestLogStore_WritesAsLocalfile pins the encoding, so the file is not
+// read back). The store resumes an operation from the state its
 // first tool-call status recorded, kept current by operation lines the
 // copy leaves out, so each is followed by an operation line with the last
 // status the parent's items show: the child's run never starts the parent's
 // work again. A tool call whose operation had not ended is recorded as
 // canceled.
-func replay(ctx context.Context, store *localfile.Store, path string, id session.ID, items []sessionstore.Item) error {
+func replay(path string, items []sessionstore.Item) error {
 	last, saved, now := lastOperations(items), map[operation.ID]bool{}, time.Now().UTC()
 	var prev session.TurnID
 	var out []byte
@@ -190,9 +191,6 @@ func replay(ctx context.Context, store *localfile.Store, path string, id session
 	if err == nil {
 		_, err = f.Write(out)
 		err = errors.Join(err, f.Sync(), f.Close())
-	}
-	if err == nil {
-		_, err = store.Inspect(ctx, id)
 	}
 	if err != nil {
 		return fmt.Errorf("failed to copy the parent's history: %w", err)

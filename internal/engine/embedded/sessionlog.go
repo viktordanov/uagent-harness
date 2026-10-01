@@ -62,6 +62,12 @@ func SessionSyncs() int64 { return sessionSyncs.Load() }
 // It refuses what localfile would refuse on the way to a line its reader
 // could not apply: a turn out of order, a response or status for a turn
 // not the session's own, a state for an unknown operation.
+//
+// Its one read of the file, at the first write or read, builds that check
+// and serves the usage seed's and the coordinator's restore's pages, where
+// localfile decodes the whole file per page and again for its first
+// append. The items it writes join them, until it has served a page: the
+// next item it writes sends later reads to the file.
 type logStore struct {
 	*localfile.Store
 
@@ -77,7 +83,9 @@ type logStore struct {
 	order     []sessionstore.ObserverID
 	timer     *time.Timer
 	closed    bool
-	err       error // a write or sync failed: the file's end is unknown
+	items     []sessionstore.Item // the history, while pages come from it
+	served    bool                // a page came from items
+	err       error               // a write or sync failed: the file's end is unknown
 
 	syncMu sync.Mutex
 	synced int64
@@ -175,15 +183,20 @@ func (l *logStore) append(ctx context.Context, id session.ID, kind sessionstore.
 			return nil, err
 		}
 		h.seq++
+		if s, ok := data.(sessionstore.ToolCallStatus); ok {
+			s.Operations = ops
+			item.Data = s
+		}
+		if l.served {
+			l.items = nil
+		} else if l.items != nil {
+			l.items = append(l.items, item)
+		}
 
 		return line, nil
 	}, durable)
 	if err != nil {
 		return err
-	}
-	if s, ok := data.(sessionstore.ToolCallStatus); ok {
-		s.Operations = ops
-		item.Data = s
 	}
 	for _, o := range l.order {
 		l.observers[o](id, item)
@@ -253,12 +266,32 @@ func (l *logStore) open(ctx context.Context, id session.ID) error {
 
 		return fmt.Errorf("failed to open the session file: %w", err)
 	}
-	l.f, l.size, l.head = f, size, newLogHead(items)
+	l.f, l.size, l.head, l.items = f, size, newLogHead(items), items
 	l.syncMu.Lock()
 	l.synced = size
 	l.syncMu.Unlock()
 
 	return nil
+}
+
+// Items serves the run's session from the items read at the start, until
+// they are stale.
+func (l *logStore) Items(ctx context.Context, id session.ID, after sessionstore.Sequence, limit int) (sessionstore.Page, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if id == l.id && limit > 0 && !l.served && !l.closed {
+		if err := l.open(ctx, id); err != nil {
+			return sessionstore.Page{}, err
+		}
+	}
+	if id != l.id || limit <= 0 || l.items == nil {
+		return l.Store.Items(ctx, id, after, limit) //nolint:wrapcheck // localfile's errors pass through
+	}
+	l.served = true
+	rest := l.items[min(after, sessionstore.Sequence(len(l.items))):] // item i has sequence i+1
+	n := min(limit, len(rest))
+
+	return sessionstore.Page{Items: append([]sessionstore.Item(nil), rest[:n]...), NextAfter: after + sessionstore.Sequence(n), More: n < len(rest)}, nil
 }
 
 // committedSize is the size of the file up to its last line end.

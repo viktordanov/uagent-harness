@@ -12,10 +12,11 @@ import (
 	"github.com/unreallabsai/unreal-agent/harness/sessionstore/localfile"
 )
 
-// TestSnapshotStore_PagesAsTheFile: the snapshot's pages and the usage it
-// gives are the file's, for any cursor and limit, and a recorded item
-// sends later reads to the file.
-func TestSnapshotStore_PagesAsTheFile(t *testing.T) {
+// TestLogStore_PagesAsTheFile: the log store's pages and the usage it
+// gives are the file's, for any cursor and limit, from one read of the
+// file with the items it writes before the first page; once it has served
+// a page, an item it writes sends later reads to the file.
+func TestLogStore_PagesAsTheFile(t *testing.T) {
 	const id = "a5ad5bba-0726-41cd-bf5d-1d5d4f7b12c6"
 	dir := t.TempDir()
 	b, err := os.ReadFile(filepath.Join("..", "..", "compaction", "evalrun", "testdata", "sessions", id+".session.jsonl"))
@@ -23,9 +24,13 @@ func TestSnapshotStore_PagesAsTheFile(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(dir, id+".session.jsonl"), b, 0o600))
 	file, err := localfile.New(dir)
 	require.NoError(t, err)
-	snap := withSnapshot(file, id)
+	snap := newLogStore(file, filepath.Join(dir, id+".session.jsonl"), id)
+	t.Cleanup(func() { _ = snap.Close() })
 
 	items, err := allItems(t.Context(), file, id)
+	require.NoError(t, err)
+	require.NoError(t, snap.AppendTurn(t.Context(), id, session.Turn{ID: "before", PreviousTurnID: lastTurn(items)}))
+	items, err = allItems(t.Context(), file, id)
 	require.NoError(t, err)
 	n := sessionstore.Sequence(len(items))
 	for _, after := range []sessionstore.Sequence{0, 1, 50, n - 1, n, n + 5} {
@@ -44,7 +49,7 @@ func TestSnapshotStore_PagesAsTheFile(t *testing.T) {
 	assert.Equal(t, wantUsage, gotUsage)
 	assert.Positive(t, gotUsage)
 
-	require.NoError(t, snap.AppendTurn(t.Context(), id, session.Turn{ID: "next", PreviousTurnID: lastTurn(items)}))
+	require.NoError(t, snap.AppendTurn(t.Context(), id, session.Turn{ID: "next", PreviousTurnID: "before"}))
 	page, err := snap.Items(t.Context(), id, n, 10)
 	require.NoError(t, err)
 	require.Len(t, page.Items, 1, "the recorded turn")

@@ -88,7 +88,7 @@ func TestReplay_AsAppendedOneByOne(t *testing.T) {
 			require.NoError(t, err)
 		}
 		replayEach(t, store, before, items[:cut])
-		require.NoError(t, replay(t.Context(), store, filepath.Join(dir, string(after)+".session.jsonl"), after, items[:cut]))
+		require.NoError(t, replay(filepath.Join(dir, string(after)+".session.jsonl"), items[:cut]))
 
 		fresh, err := localfile.New(dir) // no cached write state
 		require.NoError(t, err)
