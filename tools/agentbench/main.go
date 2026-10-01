@@ -52,6 +52,8 @@ func run() error {
 	keep := fs.Bool("keep", false, "keep each run's workspace")
 	var uahEnv envList
 	fs.Var(&uahEnv, "uah-env", "KEY=VALUE added to uah's environment, such as UAH_EXPERIMENTS=freeform-patch (repeatable; needs -variant)")
+	var uahConfig envList
+	fs.Var(&uahConfig, "uah-config", "a top-level line added to uah's generated config file, such as 'model_instructions_file = \"/path\"' (repeatable; needs -variant)")
 	variant := fs.String("variant", "", "label of the uah runs, part of their results key, so they sit beside the control runs (no -variant) in one results file and the report compares them")
 	priceIn := fs.Float64("price-in", 1.25, "USD per million uncached input tokens, for the cost estimate")
 	priceCached := fs.Float64("price-cached", 0.125, "USD per million cached input tokens")
@@ -118,7 +120,7 @@ func run() error {
 	cfg := bench.Config{
 		Tasks: tasks, Repeat: *repeat, Model: *model, Effort: *effort, Parallel: *parallel, Timeout: *timeout,
 		MaxRuns: *maxRuns, Work: *work, Out: *out, UAH: *uahBin, Codex: *codexBin, Price: price, Mode: *mode, Keep: *keep, Log: os.Stderr,
-		UAHEnv: uahEnv, Variant: *variant,
+		UAHEnv: uahEnv, UAHConfig: uahConfig, Variant: *variant,
 	}
 	if err := harnesses(ctx, &cfg, *harness, root); err != nil {
 		return err
@@ -154,8 +156,8 @@ func harnesses(ctx context.Context, cfg *bench.Config, harness, root string) err
 	if cfg.Mode != bench.ModeAuto && cfg.Mode != bench.ModeWorkspace {
 		return fmt.Errorf("bad -mode %q (want auto or workspace)", cfg.Mode)
 	}
-	if len(cfg.UAHEnv) > 0 && cfg.Variant == "" {
-		return errors.New("-uah-env needs -variant, so its runs do not count as the control's")
+	if len(cfg.UAHEnv)+len(cfg.UAHConfig) > 0 && cfg.Variant == "" {
+		return errors.New("-uah-env and -uah-config need -variant, so their runs do not count as the control's")
 	}
 	switch harness {
 	case "both":
@@ -179,7 +181,8 @@ func harnesses(ctx context.Context, cfg *bench.Config, harness, root string) err
 	return nil
 }
 
-// envList is a repeatable KEY=VALUE flag.
+// envList is a repeatable KEY=VALUE flag; a -uah-config line is one too
+// (key = value).
 type envList []string
 
 func (l *envList) String() string { return strings.Join(*l, " ") }

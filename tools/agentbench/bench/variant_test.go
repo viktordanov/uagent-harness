@@ -3,6 +3,7 @@ package bench_test
 import (
 	"testing"
 
+	"github.com/BurntSushi/toml"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -46,4 +47,24 @@ func TestReportVariant(t *testing.T) {
 	assert.Contains(t, md, "| **all runs** | 1/1 / 1/1 | 400.0 | 200.0 | 0.50 |")
 	assert.Contains(t, md, "| md-revise | 1/1 | 0/1 | 400.0 | 100.0 | 4.00 |", "uah against Codex is the control's")
 	assert.Contains(t, md, "| md-revise | uah+freeform-patch | 1 |", "the runs table names the variant")
+}
+
+// TestUAHConfigFile: -uah-config's lines are top-level keys beside the
+// permission mode; a table or a line that is not TOML is refused.
+func TestUAHConfigFile(t *testing.T) {
+	line := `model_instructions_file = "/tmp/uah-agentbench/prompts/runner.md"`
+	conf, err := bench.UAHConfigFile(bench.ModeAuto, []string{line})
+	require.NoError(t, err)
+	var got map[string]any
+	_, err = toml.Decode(conf, &got)
+	require.NoError(t, err)
+	assert.Equal(t, map[string]any{"model_instructions_file": "/tmp/uah-agentbench/prompts/runner.md", "permission_mode": "auto"}, got)
+
+	conf, err = bench.UAHConfigFile(bench.ModeWorkspace, nil)
+	require.NoError(t, err)
+	assert.Empty(t, conf, "the control's file is as before")
+	_, err = bench.UAHConfigFile(bench.ModeAuto, []string{"[mcp_servers.x]"})
+	require.Error(t, err)
+	_, err = bench.UAHConfigFile(bench.ModeAuto, []string{"key = "})
+	require.Error(t, err)
 }

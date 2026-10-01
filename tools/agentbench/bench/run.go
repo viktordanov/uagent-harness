@@ -12,6 +12,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/BurntSushi/toml"
 )
 
 // Harness names.
@@ -44,12 +46,14 @@ type Config struct {
 	// Mode is the permission mode of both: ModeAuto or ModeWorkspace.
 	Mode string
 	// UAHEnv is KEY=VALUE pairs added to uah's environment, such as
-	// UAH_EXPERIMENTS; Variant labels the uah runs they make, so they and
-	// the control runs (no variant) share a results file.
-	UAHEnv  []string
-	Variant string
-	Keep    bool
-	Log     io.Writer
+	// UAH_EXPERIMENTS, and UAHConfig lines added to its configuration
+	// file; Variant labels the uah runs they make, so they and the control
+	// runs (no variant) share a results file.
+	UAHEnv    []string
+	UAHConfig []string
+	Variant   string
+	Keep      bool
+	Log       io.Writer
 }
 
 // Key names a run; a results file holds each key once.
@@ -97,8 +101,10 @@ type Result struct {
 	Metrics   Metrics     `json:"metrics"`
 	DiffStat  string      `json:"diff_stat,omitempty"`
 	Error     string      `json:"error,omitempty"`
-	// Env is what -uah-env added to the harness's environment.
-	Env []string `json:"env,omitempty"`
+	// Env is what -uah-env added to the harness's environment, and
+	// UAHConfig what -uah-config added to its configuration file.
+	Env       []string `json:"env,omitempty"`
+	UAHConfig []string `json:"uah_config,omitempty"`
 	// Artifacts is the run's directory: the stamped event stream, stderr,
 	// the timeline, the diff, and uah's state.
 	Artifacts string `json:"artifacts"`
@@ -179,7 +185,7 @@ func Execute(ctx context.Context, cfg Config) error {
 	if len(todo) == 0 {
 		return nil
 	}
-	env, err := newEnv(cfg.Work, cfg.Mode)
+	env, err := newEnv(cfg.Work, cfg.Mode, cfg.Variant, cfg.UAHConfig)
 	if err != nil {
 		return err
 	}
@@ -234,7 +240,7 @@ type runEnv struct {
 	work      string
 	tmp       string
 	uahHome   string
-	uahConfig string // uah's user configuration: the permission mode only
+	uahConfig string // uah's user configuration: the permission mode and -uah-config's lines
 	codexHome string // the user's, for a run with a fake home
 	base      []string
 }
@@ -243,7 +249,7 @@ type runEnv struct {
 // user's, without variables that would steer either harness away from its
 // defaults, with a temporary directory both sandboxes let commands write
 // (and the Go build cache in it), and no network for Go.
-func newEnv(work, mode string) (*runEnv, error) {
+func newEnv(work, mode, variant string, extra []string) (*runEnv, error) {
 	e := &runEnv{work: work, tmp: filepath.Join(work, "tmp"), uahHome: filepath.Join(work, "uah-home"), codexHome: os.Getenv("CODEX_HOME")}
 	if e.codexHome == "" {
 		home, err := os.UserHomeDir()
@@ -257,10 +263,14 @@ func newEnv(work, mode string) (*runEnv, error) {
 			return nil, err
 		}
 	}
-	e.uahConfig = filepath.Join(work, "uah-"+cmp.Or(mode, ModeWorkspace)+".toml")
-	conf := ""
-	if mode == ModeAuto {
-		conf = "permission_mode = \"auto\"\n"
+	name := "uah-" + cmp.Or(mode, ModeWorkspace)
+	if len(extra) > 0 {
+		name += "-" + variant // another variant's lines must not reach these runs
+	}
+	e.uahConfig = filepath.Join(work, name+".toml")
+	conf, err := UAHConfigFile(mode, extra)
+	if err != nil {
+		return nil, err
 	}
 	if err := os.WriteFile(e.uahConfig, []byte(conf), 0o644); err != nil {
 		return nil, err
@@ -283,6 +293,28 @@ func newEnv(work, mode string) (*runEnv, error) {
 	)
 
 	return e, nil
+}
+
+// UAHConfigFile is the configuration file a uah run gets: the permission
+// mode, and the extra lines. Each extra line is a top-level key: a table
+// would take the keys after it, so one is refused.
+func UAHConfigFile(mode string, extra []string) (string, error) {
+	var b strings.Builder
+	for _, line := range extra {
+		if strings.HasPrefix(strings.TrimSpace(line), "[") {
+			return "", fmt.Errorf("-uah-config %q: only top-level keys, not tables", line)
+		}
+		b.WriteString(line + "\n")
+	}
+	if mode == ModeAuto {
+		b.WriteString("permission_mode = \"auto\"\n")
+	}
+	var check map[string]any
+	if _, err := toml.Decode(b.String(), &check); err != nil {
+		return "", fmt.Errorf("-uah-config: %w", err)
+	}
+
+	return b.String(), nil
 }
 
 func dropEnv(name string) bool {
@@ -341,7 +373,7 @@ func runOne(ctx context.Context, cfg Config, env *runEnv, t Task, k Key) (res Re
 	limit := cmpDur(time.Duration(t.Timeout), cfg.Timeout)
 	inv := invocation(cfg, env, fx, t, k, ws, art)
 	if k.Harness == HarnessUAH {
-		res.Env = cfg.UAHEnv
+		res.Env, res.UAHConfig = cfg.UAHEnv, cfg.UAHConfig
 	}
 	out, err := launch(ctx, inv, limit, art)
 	res.ExitCode, res.Status = out.exit, out.status
