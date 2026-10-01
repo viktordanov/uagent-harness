@@ -571,7 +571,7 @@ The configuration reference, design records for the harness, the TUI, state stor
 [`tools`](tools/README.md) lists every harness that measures uah, with how to run each and where its results go. `go run ./tools/perf` is the performance harness ([tools/perf](tools/perf/README.md)); compare a change with its baseline with `go run ./tools/perf -baseline tools/perf/baseline.json`:
 
 <!-- memoria:import src="tools/README.md#summary" -->
-The harnesses that measure uah rather than test it: the performance harness (`go run ./tools/perf`), the compaction evaluation, and the TUI framework benchmark, with what each measures, how to run it, and where its results go.
+The harnesses that measure uah rather than test it: the performance harness (`go run ./tools/perf`), the agent benchmark against Codex (`go run ./tools/agentbench`), the compaction evaluation, and the TUI framework benchmark, with what each measures, how to run it, and where its results go.
 <!-- /memoria:import -->
 <!-- /memoria:section -->
 
