@@ -66,12 +66,8 @@ func (m *Manager) spawn(ctx context.Context, call engine.AgentCall, a spawnArgs)
 // forkDepthNote tells a fork at the depth limit what errDepth would.
 const forkDepthNote = "You are a forked agent at the agent depth limit: spawn_agent and resume_agent fail here. Solve the task yourself."
 
-// firstNote follows a new child's task in its first message, after any
-// history it forked, so its system prompt and its fork's prefix stay its
-// parent's, for the cache: Codex's note that its final answer reaches its
-// parent, and for a fork, which keeps its parent's agent tools, that it
-// cannot spawn. It is part of the task's message, not a message of its
-// own: the runner may ask the model as soon as the first of two arrives.
+// firstNote ends a new child's first message, so its system prompt and prefix stay its parent's
+// (one message: the runner may ask the model as soon as the first of two arrives).
 func (m *Manager) firstNote(c *child) string {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -302,7 +298,6 @@ func (m *Manager) wait(ctx context.Context, parentID string, ids []string, timeo
 	for {
 		m.mu.Lock()
 		out := map[string]Status{}
-		var withdraw []func()
 		for _, id := range ids {
 			c, ok := m.find(parentID, id)
 			switch {
@@ -311,15 +306,12 @@ func (m *Manager) wait(ctx context.Context, parentID string, ids []string, timeo
 			case c.status.Final():
 				out[id] = c.status
 				if w := c.unhold(); w != nil {
-					withdraw = append(withdraw, w)
+					m.outboxOf(parentID).push(w) // it waits on the parent's session
 				}
 			}
 		}
 		changed := m.changed
 		m.mu.Unlock()
-		for _, w := range withdraw {
-			w()
-		}
 		if len(out) > 0 {
 			return out, false, nil
 		}

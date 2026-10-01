@@ -58,8 +58,7 @@ type Manager struct {
 	tmpl     session.Options
 	parents  map[string]engine.AgentParent
 	children map[string]*child
-	// parentIDs remembers the parents read from sidecars (parentOf), and
-	// forks the agent records' fork_context (forked).
+	// parentIDs and forks remember the sidecars' parents and records' forks.
 	parentIDs map[string]string
 	forks     map[string]bool
 	// outboxes deliver each parent's updates in order (notify, forward).
@@ -207,8 +206,7 @@ func (m *Manager) parentOf(id string) string {
 }
 
 // forked reports whether a session is a child started with fork_context,
-// from the live children and then the agent records, each read once. It
-// holds m.mu.
+// from the live children and then the agent records. It holds m.mu.
 func (m *Manager) forked(id string) bool {
 	if c, ok := m.children[id]; ok {
 		return c.forked
@@ -259,8 +257,8 @@ func (m *Manager) role(name string) (Role, error) {
 // the model, effort, and instructions the spawn
 // call, the role, and the configured defaults override, in that order.
 // Its system prompt is the parent's, then the role's instructions; Codex's
-// note that its final answer reaches the parent goes before its task
-// instead (firstNote), so the prompt and the parent's share a cache.
+// note that its final answer reaches the parent follows its task instead
+// (firstNote), so the prompt and the parent's share a cache.
 // Hooks are the same, in a runner of its own. It holds m.mu.
 func (m *Manager) childOptions(p engine.AgentParent, c *child, role Role, rec record, resumed bool) session.Options {
 	opts := m.tmpl

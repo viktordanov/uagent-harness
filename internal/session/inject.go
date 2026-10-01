@@ -18,8 +18,7 @@ type evDo func()
 // It is not sent into a live run: the runner cancels its model request
 // when a message arrives, so a notification would throw away a paid
 // request. A parent that needs a child's status at once waits for it with
-// wait_agent, and withdraw takes the message back if it has not gone yet,
-// as when that wait returns what it says.
+// wait_agent, and withdraw takes the message back while it is held.
 func (s *Session) Inject(text string) (withdraw func()) {
 	id := uuid.NewString()
 	s.post(evDo(func() { s.onInject(id, text) }))

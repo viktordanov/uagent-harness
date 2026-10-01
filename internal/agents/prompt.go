@@ -11,9 +11,8 @@ import (
 // OpenAI, licensed under the Apache License, Version 2.0
 // (http://www.apache.org/licenses/LICENSE-2.0). Changes: the `items`
 // inputs are left out, the forked-workspace and upload wording is dropped
-// because children share the parent's workspace, wait_agent does not
-// promise a completion notification and says a long timeout costs nothing,
-// and fork_context names what keeps the cache.
+// because children share the parent's workspace, wait_agent promises no
+// completion notification, and both say what costs or keeps the cache.
 const spawnGuidance = `Spawn a sub-agent for a well-scoped task. Returns the spawned agent id plus the user-facing nickname when available. The agent works in the background in your workspace, with your sandbox and approvals. Spawned agents inherit your current model by default. Do not set the ` + "`model`" + ` field unless the user explicitly asks for a different model.
 
 Do not spawn sub-agents unless the user or applicable AGENTS.md/skill instructions explicitly ask for sub-agents, delegation, or parallel agent work.

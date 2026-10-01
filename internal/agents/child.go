@@ -48,9 +48,7 @@ type child struct {
 	// waiters counts the parent's wait_agent calls pending on this child;
 	// their result tells the parent, so no notification is sent.
 	waiters int
-	// held withdraws the parent's held notification, and waited is the
-	// gen a wait_agent returned the final status of, so the parent learns
-	// it once (unhold).
+	// held takes back the parent's held notification; waited is the gen a wait returned (unhold).
 	held           func()
 	waited         int
 	pending, early map[string]bool
@@ -342,8 +340,7 @@ func (m *Manager) completionNote(c *child, current bool) string {
 	return note
 }
 
-// hold keeps the withdraw of the child's notification for gen, or uses it
-// at once when a wait_agent already returned that status.
+// hold keeps the withdraw of gen's notification, or uses it if a wait returned that status.
 func (m *Manager) hold(c *child, gen int, withdraw func()) {
 	m.mu.Lock()
 	returned := c.waited >= gen
@@ -356,9 +353,7 @@ func (m *Manager) hold(c *child, gen int, withdraw func()) {
 	}
 }
 
-// unhold returns the withdraw of the child's held notification, nil if
-// none, since a wait_agent returns its final status; the caller runs it
-// without m.mu, as it waits on the parent's session. It holds m.mu.
+// unhold takes the held notification's withdraw, as a wait returns the status. It holds m.mu.
 func (c *child) unhold() func() {
 	w := c.held
 	c.waited, c.held = c.gen, nil
