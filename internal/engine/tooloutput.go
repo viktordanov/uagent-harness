@@ -67,7 +67,7 @@ type toolStatusItem struct {
 // the runner writes it, and returns the output of a shell command that
 // failed or of an MCP call that finished.
 func ToolOutputFromItem(line []byte) (ToolOutput, bool) {
-	if !bytes.Contains(line, []byte(`"tool_call_status"`)) {
+	if !bytes.Contains(line, []byte(`"tool_call_status"`)) || !mayHaveOutput(line) {
 		return ToolOutput{}, false
 	}
 	var item toolStatusItem
@@ -101,6 +101,29 @@ func ToolOutputFromItem(line []byte) (ToolOutput, bool) {
 	}
 
 	return ToolOutput{}, false
+}
+
+// mayHaveOutput tells, without parsing, whether an item as encoding/json
+// writes it can have a ToolOutput: an MCP call's plan type, a terminal
+// error, or a nonzero exit code (a JSON number never starts 0 unless it is
+// 0). Most status items are of commands running or done well, with their
+// whole output, which a parse would copy for nothing.
+func mayHaveOutput(line []byte) bool {
+	return bytes.Contains(line, []byte(MCPPlanType)) || followedByOther(line, `"TerminalError":"`, '"') || followedByOther(line, `"ExitCode":`, '0')
+}
+
+// followedByOther reports whether a byte other than b follows any key in line.
+func followedByOther(line []byte, key string, b byte) bool {
+	for {
+		i := bytes.Index(line, []byte(key))
+		if i < 0 {
+			return false
+		}
+		line = line[i+len(key):]
+		if len(line) > 0 && line[0] != b {
+			return true
+		}
+	}
 }
 
 // head is the first outputKeep bytes of s, cut at a rune.

@@ -49,3 +49,24 @@ func TestToolOutputFromItem(t *testing.T) {
 	_, ok = engine.ToolOutputFromItem(item(`{"ID":"o","Type":"remote_job","Status":"completed","State":{"Plan":{"Type":"uah.apply_patch"}}}`))
 	assert.False(t, ok, "a patch is PatchApplied's")
 }
+
+// TestToolOutputFromItem_Skips: the quick test before the parse passes
+// every item with an output, whatever the key order, and none of a
+// command that succeeded or still runs.
+func TestToolOutputFromItem_Skips(t *testing.T) {
+	for _, op := range []string{
+		`{"Type":"shell","State":{"Result":{"Out":"","Err":"x","ExitCode":-1},"TerminalError":""}}`,
+		`{"Type":"shell","State":{"PendingExitCode":0,"Result":{"ExitCode":10}}}`,
+		`{"Type":"shell","State":{"Result":null,"TerminalError":"killed"}}`,
+	} {
+		_, ok := engine.ToolOutputFromItem(item(op))
+		assert.True(t, ok, op)
+	}
+	for _, op := range []string{
+		`{"Type":"shell","State":{"PendingExitCode":1,"Result":{"Out":"\"ExitCode\":1","ExitCode":0},"TerminalError":""}}`,
+		`{"Type":"shell","State":{"PendingExitCode":null,"Result":null,"TerminalError":""}}`,
+	} {
+		_, ok := engine.ToolOutputFromItem(item(op))
+		assert.False(t, ok, op)
+	}
+}
