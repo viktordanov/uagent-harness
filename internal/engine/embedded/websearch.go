@@ -7,7 +7,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/unreallabsai/unreal-agent/harness/llm"
+	"github.com/viktordanov/unreal-agent/harness/llm"
 )
 
 // Web search is the provider's hosted tool (docs/design/web-search.md).

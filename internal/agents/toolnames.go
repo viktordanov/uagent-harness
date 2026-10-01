@@ -6,7 +6,7 @@ import (
 	"slices"
 	"strings"
 
-	rtool "github.com/unreallabsai/unreal-agent/harness/tool"
+	rtool "github.com/viktordanov/unreal-agent/harness/tool"
 
 	"github.com/viktordanov/uah/internal/mcp"
 	"github.com/viktordanov/uah/internal/patch"

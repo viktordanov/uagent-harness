@@ -7,8 +7,8 @@ import (
 	"io"
 	"sync"
 
-	"github.com/unreallabsai/unreal-agent/harness/session"
-	"github.com/unreallabsai/unreal-agent/harness/sessionstore"
+	"github.com/viktordanov/unreal-agent/harness/session"
+	"github.com/viktordanov/unreal-agent/harness/sessionstore"
 
 	"github.com/viktordanov/uagent/core"
 

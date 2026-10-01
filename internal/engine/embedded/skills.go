@@ -6,7 +6,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/unreallabsai/unreal-agent/harness/tool"
+	"github.com/viktordanov/unreal-agent/harness/tool"
 
 	"github.com/viktordanov/uah/internal/config"
 	"github.com/viktordanov/uah/internal/instructions"

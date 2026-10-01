@@ -3,7 +3,7 @@ package compaction
 import (
 	"strings"
 
-	"github.com/unreallabsai/unreal-agent/harness/llm"
+	"github.com/viktordanov/unreal-agent/harness/llm"
 )
 
 // Settings are the configurable parts of compaction. The zero value turns

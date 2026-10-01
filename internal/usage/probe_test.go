@@ -15,10 +15,10 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/unreallabsai/unreal-agent/harness/llm"
-	"github.com/unreallabsai/unreal-agent/harness/llm/clients/openaicodex"
-	"github.com/unreallabsai/unreal-agent/harness/llm/responsesapi"
-	"github.com/unreallabsai/unreal-agent/harness/primitives"
+	"github.com/viktordanov/unreal-agent/harness/llm"
+	"github.com/viktordanov/unreal-agent/harness/llm/clients/openaicodex"
+	"github.com/viktordanov/unreal-agent/harness/llm/responsesapi"
+	"github.com/viktordanov/unreal-agent/harness/primitives"
 
 	"github.com/viktordanov/uah/internal/engine/codexauth"
 	"github.com/viktordanov/uah/internal/llmcall"

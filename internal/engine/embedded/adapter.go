@@ -7,7 +7,7 @@ import (
 	"io"
 	"sync"
 
-	"github.com/unreallabsai/unreal-agent/harness/llm"
+	"github.com/viktordanov/unreal-agent/harness/llm"
 
 	"github.com/viktordanov/uagent/core"
 )

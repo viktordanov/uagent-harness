@@ -20,12 +20,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/unreallabsai/unreal-agent/harness/llm"
-	"github.com/unreallabsai/unreal-agent/harness/llm/clients/fireworks"
-	"github.com/unreallabsai/unreal-agent/harness/llm/clients/ollama"
-	"github.com/unreallabsai/unreal-agent/harness/llm/clients/openaicodex"
-	"github.com/unreallabsai/unreal-agent/harness/llm/responsesapi"
-	"github.com/unreallabsai/unreal-agent/harness/primitives"
+	"github.com/viktordanov/unreal-agent/harness/llm"
+	"github.com/viktordanov/unreal-agent/harness/llm/clients/fireworks"
+	"github.com/viktordanov/unreal-agent/harness/llm/clients/ollama"
+	"github.com/viktordanov/unreal-agent/harness/llm/clients/openaicodex"
+	"github.com/viktordanov/unreal-agent/harness/llm/responsesapi"
+	"github.com/viktordanov/unreal-agent/harness/primitives"
 
 	"github.com/viktordanov/uah/internal/engine/codexauth"
 )

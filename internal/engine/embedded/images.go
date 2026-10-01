@@ -4,8 +4,8 @@ import (
 	"encoding/json/v2"
 	"fmt"
 
-	"github.com/unreallabsai/unreal-agent/harness/llm"
-	"github.com/unreallabsai/unreal-agent/harness/tool"
+	"github.com/viktordanov/unreal-agent/harness/llm"
+	"github.com/viktordanov/unreal-agent/harness/tool"
 
 	"github.com/viktordanov/uah/internal/images"
 )

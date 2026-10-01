@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/unreallabsai/unreal-agent/harness/llm/clients/openaicodex"
+	"github.com/viktordanov/unreal-agent/harness/llm/clients/openaicodex"
 
 	"github.com/viktordanov/uah/internal/engine/codexauth"
 )

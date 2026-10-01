@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/unreallabsai/unreal-agent/harness/llm"
 	"github.com/urfave/cli/v3"
+	"github.com/viktordanov/unreal-agent/harness/llm"
 
 	"github.com/viktordanov/uah/internal/compaction/eval"
 	"github.com/viktordanov/uah/internal/compaction/evalrun"

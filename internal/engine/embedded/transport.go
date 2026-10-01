@@ -16,7 +16,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/unreallabsai/unreal-agent/harness/primitives"
+	"github.com/viktordanov/unreal-agent/harness/primitives"
 
 	"github.com/viktordanov/uah/internal/engine"
 )

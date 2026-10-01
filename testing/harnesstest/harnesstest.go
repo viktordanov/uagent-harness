@@ -41,7 +41,7 @@ func RealRunner(tb testing.TB) string {
 			return
 		}
 		runnerPath = filepath.Join(dir, "unreal-agent-runner")
-		build := exec.CommandContext(context.Background(), "go", "build", "-o", runnerPath, "github.com/unreallabsai/unreal-agent/cmd/unreal-agent-runner")
+		build := exec.CommandContext(context.Background(), "go", "build", "-o", runnerPath, "github.com/viktordanov/unreal-agent/cmd/unreal-agent-runner")
 		if out, err := build.CombinedOutput(); err != nil {
 			errRunner = fmt.Errorf("build unreal-agent-runner: %w\n%s", err, out)
 		}

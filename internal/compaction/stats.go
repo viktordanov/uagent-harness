@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/unreallabsai/unreal-agent/harness/llm"
+	"github.com/viktordanov/unreal-agent/harness/llm"
 )
 
 // Strategy names how a compaction shrank the context.

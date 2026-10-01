@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/unreallabsai/unreal-agent/harness/llm"
+	"github.com/viktordanov/unreal-agent/harness/llm"
 )
 
 // Elision replaces old tool outputs with short stubs before a summary is

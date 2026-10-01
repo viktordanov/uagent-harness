@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/unreallabsai/unreal-agent/harness/llm/clients/openaicodex"
+	"github.com/viktordanov/unreal-agent/harness/llm/clients/openaicodex"
 )
 
 // Creds are the credentials for the ChatGPT backend. Never log them.

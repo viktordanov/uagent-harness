@@ -11,7 +11,7 @@
 
 <p align="center"><img src="docs/assets/uah.png" alt="The uah TUI: a flaky test found and fixed with a diff, then two subagents reviewing in parallel" width="900"></p>
 
-uah (unreal agent harness) is a terminal coding agent that works like Codex, running on [unreal-agent](https://github.com/unreallabsai/unreal-agent) through [uagent](https://github.com/viktordanov/uagent).
+uah (unreal agent harness) is a terminal coding agent that works like Codex, running on [unreal-agent](https://github.com/unreallabsai/unreal-agent) ([a fork](internal/engine/README.md#the-runner-fork) with two performance fixes, until upstream merges them) through [uagent](https://github.com/viktordanov/uagent).
 
 ```sh
 brew install viktordanov/tap/uah

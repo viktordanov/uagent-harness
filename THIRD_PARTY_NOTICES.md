@@ -41,7 +41,7 @@ Many other parts follow Codex's behavior (configuration keys, rules, approvals, 
 
 ## unreal-agent
 
-<https://github.com/unreallabsai/unreal-agent>, v0.1.1. Used as a library throughout; adapted in uah:
+<https://github.com/unreallabsai/unreal-agent>, v0.1.1. Used as a library throughout, through the fork <https://github.com/viktordanov/unreal-agent> (v0.3.2: upstream v0.2.0 with two performance fixes, under the MIT License below); adapted in uah:
 
 | uah | From unreal-agent |
 | --- | --- |

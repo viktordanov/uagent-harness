@@ -3,7 +3,7 @@ package compaction
 import (
 	"encoding/json/v2"
 
-	"github.com/unreallabsai/unreal-agent/harness/llm"
+	"github.com/viktordanov/unreal-agent/harness/llm"
 )
 
 // imageBytes is Codex's estimate for one image (RESIZED_IMAGE_BYTES_ESTIMATE

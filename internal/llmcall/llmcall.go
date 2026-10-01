@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/unreallabsai/unreal-agent/harness/llm"
+	"github.com/viktordanov/unreal-agent/harness/llm"
 )
 
 // DefaultTimeout bounds a call whose Request sets no timeout.

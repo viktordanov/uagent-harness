@@ -3,7 +3,7 @@ package agents
 import (
 	"encoding/json"
 
-	"github.com/unreallabsai/unreal-agent/harness/operation"
+	"github.com/viktordanov/unreal-agent/harness/operation"
 
 	"github.com/viktordanov/uah/internal/engine"
 )
