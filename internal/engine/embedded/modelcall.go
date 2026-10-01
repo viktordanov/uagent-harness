@@ -36,6 +36,7 @@ type callKey struct{}
 // them to emit, merged when they pile up.
 type modelCall struct {
 	ctx        context.Context
+	stop       context.CancelCauseFunc // ends the request, and the runner's retries, with an error
 	kind       string
 	emit       func(core.Event)
 	text       bool        // stream the text deltas
@@ -51,6 +52,7 @@ type modelCall struct {
 	streamed bool            // text went out since the last reset
 	retrying bool            // a Reconnecting event is showing
 	lost     bool            // the last attempt lost its connection
+	notFound time.Duration   // the wait for a host that does not resolve
 	final    map[string]bool // the message items that are the final answer
 	outputs  attemptOutputs
 	tool     toolCall
@@ -85,7 +87,8 @@ type attemptDiag struct {
 // observe gives a request its modelCall; the func it returns sends what is
 // left, so every event precedes the runner's final events for the response.
 func (s *switcher) observe(ctx context.Context, kind string) (context.Context, func(error) error) {
-	c := &modelCall{ctx: ctx, kind: kind, emit: s.stream, max: s.max, diag: s.diag, wake: make(chan struct{}, 1), done: make(chan struct{}), final: map[string]bool{}}
+	ctx, stop := context.WithCancelCause(ctx)
+	c := &modelCall{ctx: ctx, stop: stop, kind: kind, emit: s.stream, max: s.max, diag: s.diag, wake: make(chan struct{}, 1), done: make(chan struct{}), final: map[string]bool{}}
 	if kind == kindTurn {
 		c.text, c.log = s.text, s.searches
 	}
@@ -109,7 +112,7 @@ func (s *switcher) observe(ctx context.Context, kind string) (context.Context, f
 		}
 	}()
 
-	return context.WithValue(ctx, callKey{}, c), func(err error) error { defer s.callEnded(); return c.end(err) }
+	return context.WithValue(ctx, callKey{}, c), func(err error) error { defer s.callEnded(); defer stop(nil); return c.end(err) }
 }
 
 // callEnded counts a request out; the last one out closes idle.
@@ -274,7 +277,7 @@ func (c *modelCall) end(err error) error {
 		result = "failed"
 		c.resetLocked()
 	}
-	if c.ctx.Err() != nil {
+	if c.ctx.Err() != nil && !errors.Is(context.Cause(c.ctx), errNoSuchHost) {
 		result = "canceled"
 	}
 	c.writeLocked(result)
@@ -287,6 +290,9 @@ func (c *modelCall) end(err error) error {
 	close(c.wake)
 	c.mu.Unlock()
 	<-c.done
+	if cause := context.Cause(c.ctx); errors.Is(cause, errNoSuchHost) {
+		return cause // the request stopped itself (transport.go)
+	}
 	if gaveUp {
 		return &connectionLostError{attempts: c.max, err: err}
 	}

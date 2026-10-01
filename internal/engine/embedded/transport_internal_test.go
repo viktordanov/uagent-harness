@@ -177,6 +177,54 @@ func TestModelCall_WaitsForTheNetwork(t *testing.T) {
 	assert.True(t, ended[0].OK)
 }
 
+// TestModelCall_NoSuchHost: a host that does not resolve is waited for as
+// the network is, notFoundWait in all, then the request fails at once, in
+// its first attempt, with no such host; one that resolves in time goes.
+func TestModelCall_NoSuchHost(t *testing.T) {
+	srv := fakellm.New(t, fakellm.Reply{Text: "back"})
+	addr := strings.TrimPrefix(srv.URL, "http://")
+	var mu sync.Mutex
+	resolves := false
+	old := dialContext
+	dialContext = func(ctx context.Context, network, _ string) (net.Conn, error) {
+		mu.Lock()
+		defer mu.Unlock()
+		if !resolves {
+			return nil, &net.OpError{Op: "dial", Net: network, Err: &net.DNSError{Err: "no such host", Name: "model.test", IsNotFound: true}}
+		}
+
+		return (&net.Dialer{}).DialContext(ctx, network, addr)
+	}
+	t.Cleanup(func() { dialContext = old })
+	setLimit(t, &offlineWait, 10*time.Millisecond)
+	setLimit(t, &notFoundWait, 50*time.Millisecond)
+
+	var diag bytes.Buffer
+	start := time.Now()
+	events, err := ask(t, "http://model.test", 0, &diag)
+	require.Error(t, err)
+	assert.Equal(t, "no such host: model.test", err.Error())
+	assert.Less(t, time.Since(start), time.Second, "no retries after the wait")
+	waits := only[engine.Reconnecting](events)
+	require.Len(t, waits, 3, "10, 20, and the last 20 ms")
+	for _, w := range waits {
+		assert.True(t, w.Offline)
+		assert.Equal(t, 1, w.Attempt)
+	}
+	ended := only[engine.ReconnectEnded](events)
+	require.Len(t, ended, 1)
+	assert.False(t, ended[0].OK)
+	assert.Contains(t, diag.String(), `"result":"failed"`)
+	assert.Empty(t, srv.Requests())
+
+	setLimit(t, &notFoundWait, time.Minute)
+	go func() { time.Sleep(30 * time.Millisecond); mu.Lock(); resolves = true; mu.Unlock() }()
+	events, err = ask(t, "http://model.test", 0, nil)
+	require.NoError(t, err)
+	assert.NotEmpty(t, only[engine.Reconnecting](events))
+	assert.Len(t, srv.Requests(), 1)
+}
+
 // TestModelCall_ToolProgress: an apply_patch being written reports its
 // file and size, and a progress without a tool once it is written.
 func TestModelCall_ToolProgress(t *testing.T) {

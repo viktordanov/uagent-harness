@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"math/rand/v2"
 	"net"
@@ -21,13 +22,15 @@ import (
 )
 
 // A model request's limits, which tests shorten: the wait for headers, for
-// the next data line (as Codex's stream idle timeout), and first for the
-// network. The runner allows 30 minutes without a byte per attempt
-// (responsesapi/adapter.go in v0.1.1), which bounds the network wait.
+// the next data line (as Codex's stream idle timeout), first for the
+// network, and in all for a host that does not resolve. The runner allows
+// 30 minutes without a byte per attempt (responsesapi/adapter.go in
+// v0.1.1), which bounds the network wait.
 var (
 	responseHeaderTimeout = 2 * time.Minute
 	streamIdleTimeout     = 5 * time.Minute
 	offlineWait           = 5 * time.Second
+	notFoundWait          = 30 * time.Second
 	dialContext           = (&net.Dialer{Timeout: 30 * time.Second, KeepAliveConfig: net.KeepAliveConfig{
 		Enable: true, Idle: 30 * time.Second, Interval: 10 * time.Second, Count: 3,
 	}}).DialContext
@@ -117,10 +120,27 @@ func loopback(host string) bool {
 	return host == "localhost" || ip != nil && ip.IsLoopback()
 }
 
+// errNoSuchHost ends a request whose host did not resolve for notFoundWait.
+var errNoSuchHost = errors.New("no such host")
+
 // waitForNetwork reports a wait of about wait ±10% within the same
-// attempt, and whether it ended before ctx did.
+// attempt, and whether it ended before ctx did. A name that does not
+// resolve may be offline (macOS reports no network so) or a typo, so the
+// request waits notFoundWait for it in all, then ends with no such host:
+// the runner would retry the error with nothing new to learn.
 func (c *modelCall) waitForNetwork(ctx context.Context, err error, wait time.Duration) bool {
 	wait += time.Duration((rand.Float64()*0.2 - 0.1) * float64(wait)) //nolint:gosec // jitter
+	if dns, ok := errors.AsType[*net.DNSError](err); ok && dns.IsNotFound {
+		c.mu.Lock()
+		wait = min(wait, notFoundWait-c.notFound)
+		c.notFound += max(wait, 0)
+		c.mu.Unlock()
+		if wait <= 0 {
+			c.stop(fmt.Errorf("%w: %s", errNoSuchHost, dns.Name))
+
+			return false
+		}
+	}
 	c.mu.Lock()
 	c.retrying, c.a.NetworkWaitMS = true, c.a.NetworkWaitMS+wait.Milliseconds()
 	c.pushLocked(engine.Reconnecting{At: time.Now(), Attempt: c.a.Attempt, MaxAttempts: c.max, Delay: wait, Reason: "waiting for network: " + err.Error(), Offline: true})
