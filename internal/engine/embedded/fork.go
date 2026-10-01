@@ -6,6 +6,7 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"slices"
@@ -95,12 +96,13 @@ func (e *Engine) cacheKey(sessionID string) string {
 
 func (e *Engine) sessionsDir() string { return filepath.Join(e.cfg.StateDir, "sessions") }
 
-// allItems reads a session's whole history.
+// allItems reads a session's whole history, in one page: localfile reads
+// the whole file for each.
 func allItems(ctx context.Context, store sessionstore.Store, id session.ID) ([]sessionstore.Item, error) {
 	var items []sessionstore.Item
 	after := sessionstore.BeforeFirst
 	for {
-		page, err := store.Items(ctx, id, after, 512)
+		page, err := store.Items(ctx, id, after, math.MaxInt)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read session %q: %w", id, err)
 		}

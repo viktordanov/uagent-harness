@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -19,7 +21,8 @@ import (
 )
 
 // runStore is the session a run records to, and the log that copies its output.
-// The store leaves out what the session's rewinds cut (cutStore).
+// The store leaves out what the session's rewinds cut (cutStore) and reads
+// the file once for the run's start (snapshotStore).
 type runStore struct {
 	store    sessionstore.Store
 	id       session.ID
@@ -48,7 +51,7 @@ func (w *wiring) openStore(ctx context.Context, req core.Request, messages []cor
 			return runStore{}, fmt.Errorf("failed to open session %q: %w", id, err)
 		}
 	}
-	cut, err := withCuts(store, w.l.SessionsDir, string(id))
+	cut, err := withCuts(withSnapshot(store, id), w.l.SessionsDir, string(id))
 	if err != nil {
 		return runStore{}, err
 	}
@@ -80,6 +83,57 @@ func openSession(ctx context.Context, store *localfile.Store, requested string) 
 	}
 
 	return id, sessionstore.ResumeState{Snapshot: snapshot}, nil
+}
+
+// snapshotStore serves the run's reads of its session from one read of the
+// file: the usage seed and the coordinator's restore each page through the
+// whole history, and localfile reads the whole file for each page. Once the
+// run records an item, reads go to the file.
+type snapshotStore struct {
+	*localfile.Store
+
+	id    session.ID
+	mu    sync.Mutex
+	items []sessionstore.Item
+	read  bool // items holds the history
+	stale bool // an item was recorded since
+}
+
+func withSnapshot(store *localfile.Store, id session.ID) *snapshotStore {
+	s := &snapshotStore{Store: store, id: id}
+	store.AddObserver(func(id session.ID, _ sessionstore.Item) {
+		if id == s.id {
+			s.mu.Lock()
+			s.items, s.stale = nil, true
+			s.mu.Unlock()
+		}
+	})
+
+	return s
+}
+
+// Items pages as localfile does.
+func (s *snapshotStore) Items(ctx context.Context, id session.ID, after sessionstore.Sequence, limit int) (sessionstore.Page, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if id != s.id || s.stale || limit <= 0 {
+		return s.Store.Items(ctx, id, after, limit) //nolint:wrapcheck // the store's errors pass through
+	}
+	if !s.read {
+		page, err := s.Store.Items(ctx, id, sessionstore.BeforeFirst, math.MaxInt)
+		if err != nil {
+			return page, err //nolint:wrapcheck // the store's errors pass through
+		}
+		s.items, s.read = page.Items, true
+	}
+	start := min(uint64(after), uint64(len(s.items)))
+	end := min(start+uint64(limit), uint64(len(s.items)))
+	page := sessionstore.Page{Items: append([]sessionstore.Item(nil), s.items[start:end]...), NextAfter: after, More: end < uint64(len(s.items))}
+	if n := len(page.Items); n > 0 {
+		page.NextAfter = page.Items[n-1].Sequence
+	}
+
+	return page, nil
 }
 
 // openDatetimeLog opens the runner's per-invocation copy of its output.

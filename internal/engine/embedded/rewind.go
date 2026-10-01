@@ -159,7 +159,7 @@ func (c *compactor) settleLocked(input []llm.Item) {
 // file, which may be a cut one: a new turn's PreviousTurnID is set to the
 // file's latest turn, which Items saw.
 type cutStore struct {
-	*localfile.Store
+	sessionstore.Store
 
 	cuts compaction.Cuts
 
@@ -168,7 +168,7 @@ type cutStore struct {
 }
 
 // withCuts puts the session's rewinds in front of the store.
-func withCuts(store *localfile.Store, dir, id string) (sessionstore.Store, error) {
+func withCuts(store sessionstore.Store, dir, id string) (sessionstore.Store, error) {
 	cuts, err := compaction.OpenRewinds(dir, id).Records()
 	if err != nil {
 		return nil, err
