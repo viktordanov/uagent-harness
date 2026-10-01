@@ -215,3 +215,7 @@ As a scale, each smoke pass (two tasks, both harnesses, effort low, 4 runs) took
 
 `go test ./tools/agentbench/...` makes no model calls. It parses a recorded uah stream and a stamped Codex stream of the same prompt (two commands in parallel, then an answer) and checks the requests, calls, tokens, and metrics; checks the metrics' arithmetic and the `behavior` counts on synthetic timelines; loads every task; dry-runs every task not tagged `slow` (about 5 s with a warm build cache, which it keeps in `$TMPDIR/uah-agentbench-test`; `-short` skips it); and checks the plan's order, a variant's keys, its configuration file, and the report's variant table.
 <!-- /memoria:section -->
+
+## History
+
+`history/` keeps the results of each experiment worth keeping, one JSON line per run, with local paths shortened to `~` and `$TMPDIR`. [Agent tuning](../../docs/design/agent-tuning.md) explains each file and what was decided from it. Copy a results file there after an experiment and add its section to that record.

@@ -32,6 +32,7 @@ Design:
 23. [Prompt history and a taller composer](design/prompt-history.md): how Codex stores prompts in `history.jsonl`, recalls them with ↑ and ↓, and searches them with ctrl+r, what Claude Code does, and how uah does the same with Codex's file format plus each prompt's workspace, shows each folder only its own prompts as Claude Code does, resolves the key conflicts, and grows the composer to half the window.
 24. [Tool calls in the transcript](design/tool-calls.md): the owner's pick from the gallery (R6 with spacing b), the port of Codex's command classifier, where the error lines and MCP results come from, and how an approval finds its call.
 25. [Send keys](design/keys.md): how Codex and Claude Code bind send-now and queue, what the terminal reports about ctrl+enter and shift+enter (tmux measured), and why uah binds enter to send before the next model request and tab to queue in every terminal, as Codex does.
+26. [Agent tuning](design/agent-tuning.md): every agent-benchmark measurement of uah against Codex, the experiments (freeform `apply_patch`, async prompts, wake policies), what was decided, and the release-note summary.
 
 Reference:
 
