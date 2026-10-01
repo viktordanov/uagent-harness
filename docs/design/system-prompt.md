@@ -96,12 +96,12 @@ The block follows `model_instructions_file` too, and it stays with `--no-instruc
 
 ## Subagents
 
-A child gets its parent's system prompt, environment included, then one note from Codex's `multi_agent.role.subagent` text (`instructions.SubagentNote`):
+A child gets its parent's system prompt, environment included, byte for byte, so its requests reuse the parent's prompt cache. One note from Codex's `multi_agent.role.subagent` text (`instructions.SubagentNote`) goes to it as a message just before its first task, as Codex puts role text in developer instructions rather than in the base instructions:
 
 > When you provide a response in the final channel, that content is immediately delivered back to your parent agent.
 > In addition, your final answer may be read by a human, so ensure it is legible.
 
-Then a role's instructions follow. The rest of Codex's role text names Codex's v2 tools (`followup_task`, `send_message`), which uah does not offer. A grandchild does not get the note twice. A fork gets no note: it keeps its parent's system prompt byte for byte, so that its first request reuses the parent's prompt cache (`internal/agents/fork_test.go`).
+A role's instructions follow the system prompt. The rest of Codex's role text names Codex's v2 tools (`followup_task`, `send_message`), which uah does not offer. A fork gets no note: its history and system prompt are its parent's, so that its first request reuses the parent's prompt cache (`internal/agents/fork_test.go`). `TestParity_ChildSharesTheParentsSystemPrompt` pins the same prompt and the note.
 
 ## Decisions
 

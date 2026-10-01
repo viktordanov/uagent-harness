@@ -90,8 +90,8 @@ command = "grep -o '\"session_id\":\"[^\"]*\"' >> `+stops+`"
 	assert.Contains(t, root.System, "Use tabs in Go files.")
 	assert.Contains(t, root.System, instructions.DefaultPrompt, "uah's default base instructions reach the model")
 	assert.Contains(t, root.System, "<cwd>"+e.Workspace+"</cwd>", "and so does the environment")
-	assert.Equal(t, strings.TrimRight(root.System, "\n")+"\n\n"+instructions.SubagentNote, child.System,
-		"the parent's system prompt, then Codex's note that the final answer reaches the parent")
+	assert.Equal(t, root.System, child.System, "the parent's system prompt, byte for byte, for the cache")
+	assert.Equal(t, instructions.SubagentNote, child.UserTexts[0], "Codex's note that the final answer reaches the parent goes before the task")
 	assert.Equal(t, [3]string{root.Model, root.Effort, root.ServiceTier}, [3]string{child.Model, child.Effort, child.ServiceTier})
 	assert.Equal(t, "priority", child.ServiceTier)
 	rootTools := maps.Clone(root.Tools)

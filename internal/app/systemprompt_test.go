@@ -72,8 +72,8 @@ func TestSetup_ModelInstructionsFile(t *testing.T) {
 		return slices.ContainsFunc(r.UserTexts, func(u string) bool { return strings.HasPrefix(u, "CHILD-S") })
 	})
 	require.GreaterOrEqual(t, child, 0)
-	assert.Equal(t, strings.TrimRight(root.System, "\n")+"\n\n"+instructions.SubagentNote, reqs[child].System,
-		"a subagent gets the same system prompt and Codex's subagent note")
+	assert.Equal(t, root.System, reqs[child].System, "a subagent gets the same system prompt")
+	assert.Equal(t, instructions.SubagentNote, reqs[child].UserTexts[0], "and Codex's subagent note before its task")
 
 	u, ok := s.ContextUsage()
 	require.True(t, ok)
