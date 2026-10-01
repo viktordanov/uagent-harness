@@ -22,7 +22,7 @@ Everything lives under uagent's state directory (`~/.local/state/unreal-agent`),
 
 | Path | Written by | Contents | Role |
 | --- | --- | --- | --- |
-| `sessions/<id>.session.jsonl` | the runner | Every input, turn, model response, and tool status of a session, append-only | The conversation. The runner replays it on resume. |
+| `sessions/<id>.session.jsonl` | the runner | Every input, turn, model response, and tool status of a session, append-only, and operation records with each operation's latest state. uah's embedded engine (`checkpointStore`) writes a command's `process` and `read_out` states only, the phases a resume cannot repeat, and its terminal state after the tool status that carries it, without the output the status already has | The conversation. The runner replays it on resume. |
 | `sessions/operations/<id>/<op>/out`, `err` | the runner | Full output of each background command | Tool output |
 | `sessions/<id>.lock` | uagent | An advisory lock while a run is live | Keeps one runner per session |
 | `runs/<run-id>/request.json` | uagent | The request sent to the runner | Run record |
