@@ -14,6 +14,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -122,14 +123,32 @@ type Request struct {
 	Authorization string
 }
 
+// Arrival is when a request reached the server, before its body was read:
+// the moment the harness had built and sent it. Bytes is the body's size,
+// and Parse how long the server took to read it. It is kept apart from
+// Request, which tests compare.
+type Arrival struct {
+	At    time.Time
+	Bytes int
+	Parse time.Duration
+}
+
 // Server serves the script. When the script runs out, it answers "done".
 type Server struct {
 	URL string
+	// Light, set before the first request, leaves request bodies unparsed:
+	// a request is empty (its Arrival is kept), and routes never match. A performance harness sets it so the fake model costs little
+	// next to what it measures.
+	Light bool
+
+	srv   *httptest.Server
+	conns atomic.Int64
 
 	mu       sync.Mutex
 	replies  []Reply
 	routes   []route
 	requests []Request
+	arrivals []Arrival
 	seen     chan int
 }
 
@@ -170,12 +189,44 @@ func (s *Server) next(req Request) Reply {
 // New starts a server that closes with the test.
 func New(tb testing.TB, replies ...Reply) *Server {
 	tb.Helper()
-	s := &Server{replies: replies, seen: make(chan int, 1024)}
-	srv := httptest.NewServer(http.HandlerFunc(s.serve))
-	tb.Cleanup(srv.Close)
-	s.URL = srv.URL
+	s := Start(replies...)
+	tb.Cleanup(s.Close)
 
 	return s
+}
+
+// Start starts a server outside a test, such as in tools/perf; Close
+// stops it.
+func Start(replies ...Reply) *Server {
+	s := &Server{replies: replies, seen: make(chan int, 1024)}
+	s.srv = httptest.NewUnstartedServer(http.HandlerFunc(s.serve))
+	s.srv.Config.ConnState = func(_ net.Conn, state http.ConnState) {
+		switch state {
+		case http.StateNew:
+			s.conns.Add(1)
+		case http.StateClosed, http.StateHijacked:
+			s.conns.Add(-1)
+		default:
+		}
+	}
+	s.srv.Start()
+	s.URL = s.srv.URL
+
+	return s
+}
+
+// Conns is how many client connections are open, idle ones included.
+func (s *Server) Conns() int { return int(s.conns.Load()) }
+
+// Close stops the server and closes its connections.
+func (s *Server) Close() { s.srv.Close() }
+
+// Script appends replies to the main script, so a long-lived server can
+// serve one run after another.
+func (s *Server) Script(replies ...Reply) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.replies = append(s.replies, replies...)
 }
 
 // Requests returns the requests so far.
@@ -186,10 +237,19 @@ func (s *Server) Requests() []Request {
 	return append([]Request(nil), s.requests...)
 }
 
+// Arrivals returns when each request so far arrived, in order.
+func (s *Server) Arrivals() []Arrival {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return append([]Arrival(nil), s.arrivals...)
+}
+
 // Seen receives the number of each request as it arrives (1 for the first).
 func (s *Server) Seen() <-chan int { return s.seen }
 
 func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
+	arrived := time.Now()
 	if !strings.HasSuffix(r.URL.Path, "/responses") {
 		http.NotFound(w, r)
 
@@ -201,10 +261,15 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 
 		return
 	}
-	req := parseRequest(body)
+	var req Request
+	if !s.Light {
+		req = parseRequest(body)
+	}
 	req.Authorization = r.Header.Get("Authorization")
+	arrival := Arrival{At: arrived, Bytes: len(body), Parse: time.Since(arrived)}
 	s.mu.Lock()
 	s.requests = append(s.requests, req)
+	s.arrivals = append(s.arrivals, arrival)
 	n := len(s.requests)
 	reply := s.next(req)
 	s.mu.Unlock()
