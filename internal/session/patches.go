@@ -3,6 +3,7 @@ package session
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -14,20 +15,47 @@ import (
 	"github.com/viktordanov/uah/internal/engine"
 )
 
-// withPatches adds the diff of each applied apply_patch call to its run as
-// engine.PatchApplied, and the output of each failed command and finished
-// MCP call as engine.ToolOutput, after the call's ToolFinished, so a
-// reloaded transcript shows them. Both come from the call's finished
-// operation in the run's events file, the same item the live engine read
-// them from.
-func withPatches(runs []LoadedRun) []LoadedRun {
-	for i := range runs {
-		for _, p := range runCallEvents(runs[i].Record.Dir) {
-			runs[i].Events = insertAfterCall(runs[i].Events, p)
+// loadEvents reads a run's events, as harness.LoadEvents does, and adds
+// the diff of each applied apply_patch call as engine.PatchApplied, and
+// the output of each failed command and finished MCP call as
+// engine.ToolOutput, after the call's ToolFinished, so a reloaded
+// transcript shows them. Both come from the call's finished operation in
+// the same file, the item the live engine read them from, so the file is
+// read once. br is reset to the file, so runs share its buffer.
+func loadEvents(br *bufio.Reader, runDir string) ([]core.Event, error) {
+	f, err := os.Open(filepath.Join(runDir, harness.EventsFile))
+	if err != nil {
+		return nil, fmt.Errorf("failed to open events: %w", err)
+	}
+	defer f.Close()
+	br.Reset(f)
+	decoder := harness.NewDecoder()
+	var events []core.Event
+	var calls []callEvent
+	patched, output := map[string]bool{}, map[string]bool{}
+	for {
+		line, err := br.ReadBytes('\n')
+		events = append(events, decoder.Decode(line)...)
+		if p, ok := engine.PatchFromItem(line); ok && !patched[p.CallID] {
+			patched[p.CallID] = true
+			calls = append(calls, callEvent{p, p.CallID})
+		}
+		if o, ok := engine.ToolOutputFromItem(line); ok && !output[o.CallID] {
+			output[o.CallID] = true
+			calls = append(calls, callEvent{o, o.CallID})
+		}
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("failed to read events: %w", err)
 		}
 	}
+	for _, c := range calls {
+		events = insertAfterCall(events, c)
+	}
 
-	return runs
+	return events, nil
 }
 
 // insertAfterCall puts ev after its call's ToolFinished, or else in time
@@ -53,31 +81,4 @@ type callEvent struct {
 	core.Event
 
 	callID string
-}
-
-// runCallEvents reads a run's applied patches and tool outputs, once per
-// call each; an unreadable file has none.
-func runCallEvents(runDir string) []callEvent {
-	f, err := os.Open(filepath.Join(runDir, harness.EventsFile))
-	if err != nil {
-		return nil
-	}
-	defer f.Close()
-	var out []callEvent
-	patched, output := map[string]bool{}, map[string]bool{}
-	r := bufio.NewReaderSize(f, 1<<20)
-	for {
-		line, err := r.ReadBytes('\n')
-		if p, ok := engine.PatchFromItem(line); ok && !patched[p.CallID] {
-			patched[p.CallID] = true
-			out = append(out, callEvent{p, p.CallID})
-		}
-		if o, ok := engine.ToolOutputFromItem(line); ok && !output[o.CallID] {
-			output[o.CallID] = true
-			out = append(out, callEvent{o, o.CallID})
-		}
-		if errors.Is(err, io.EOF) || err != nil {
-			return out
-		}
-	}
 }

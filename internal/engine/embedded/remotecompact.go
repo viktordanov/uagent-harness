@@ -81,7 +81,8 @@ var compactionTrigger = []byte(`{"type":"compaction_trigger"}`)
 // that asks for one. Other requests pass unchanged.
 func (c *modelCall) rewriteBody(req *http.Request) (*http.Request, error) {
 	item, hasItem := req.Context().Value(remoteItemsKey{}).(remoteItem)
-	if c.log == nil && !hasItem && c.remote == nil || req.Body == nil || req.Header.Get("Content-Encoding") != "" {
+	searches := c.log != nil && len(c.log.snapshot()) > 0 // else the body would be read and copied for nothing
+	if !searches && !hasItem && c.remote == nil || req.Body == nil || req.Header.Get("Content-Encoding") != "" {
 		return req, nil
 	}
 	body, err := io.ReadAll(req.Body)
@@ -89,7 +90,7 @@ func (c *modelCall) rewriteBody(req *http.Request) (*http.Request, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to read the request body: %w", err)
 	}
-	if c.log != nil {
+	if searches {
 		body = c.log.apply(body)
 	}
 	if hasItem {

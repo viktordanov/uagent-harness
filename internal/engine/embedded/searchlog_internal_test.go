@@ -2,6 +2,10 @@ package embedded
 
 import (
 	"bytes"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -46,4 +50,21 @@ func TestSearchLogApply(t *testing.T) {
 	assert.Equal(t, body, other.apply(body), "no anchor")
 	l := &searchLog{records: []searchRecord{{Before: "msg_1", Item: []byte(`{"id":"ws"}`)}}}
 	assert.Equal(t, `{"input":[{"id":"ws"},{"type":"message","id":"msg_1"}]}`, string(l.apply(body)))
+}
+
+// TestRewriteBodyNoSearches: with no search recorded, a turn's request
+// goes out as it is, its body not read; with one, the body has it.
+func TestRewriteBodyNoSearches(t *testing.T) {
+	body := `{"input":[{"type":"message","id":"msg_1"}]}`
+	req := httptest.NewRequest(http.MethodPost, "/responses", strings.NewReader(body))
+	got, err := (&modelCall{log: &searchLog{}}).rewriteBody(req)
+	require.NoError(t, err)
+	assert.Same(t, req, got)
+
+	l := &searchLog{records: []searchRecord{{Before: "msg_1", Item: []byte(`{"id":"ws"}`)}}}
+	got, err = (&modelCall{log: l}).rewriteBody(req)
+	require.NoError(t, err)
+	sent, err := io.ReadAll(got.Body)
+	require.NoError(t, err)
+	assert.Equal(t, `{"input":[{"id":"ws"},{"type":"message","id":"msg_1"}]}`, string(sent))
 }

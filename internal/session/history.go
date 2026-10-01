@@ -1,6 +1,7 @@
 package session
 
 import (
+	"bufio"
 	"fmt"
 	"path/filepath"
 	"slices"
@@ -122,18 +123,19 @@ func Load(stateDir, id string) ([]LoadedRun, error) {
 		return nil, fmt.Errorf("failed to load session: %w", err)
 	}
 	var runs []LoadedRun
+	br := bufio.NewReaderSize(nil, 1<<20) // one buffer for every run's events file
 	for _, r := range slices.Backward(records) {
 		if r.Result.Request.SessionID != id {
 			continue
 		}
-		loaded := LoadedRun{Record: r}
-		if err := harness.LoadEvents(r.Dir, func(e core.Event) { loaded.Events = append(loaded.Events, e) }); err != nil {
+		events, err := loadEvents(br, r.Dir)
+		if err != nil {
 			return nil, fmt.Errorf("failed to load run %s: %w", r.Result.Request.RunID, err)
 		}
-		runs = append(runs, loaded)
+		runs = append(runs, LoadedRun{Record: r, Events: events})
 	}
 
-	runs, err = withCompactions(stateDir, id, withPatches(runs))
+	runs, err = withCompactions(stateDir, id, runs)
 	if err != nil {
 		return nil, err
 	}

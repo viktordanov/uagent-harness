@@ -147,7 +147,7 @@ func (b sandboxedBash) TranslateResult(callID string, status tool.CallStatus, op
 		return result, err //nolint:wrapcheck // the coordinator wraps tool errors
 	}
 	state, derr := operation.DecodeShellState(ops[0])
-	if derr != nil || state.Result == nil || !sandbox.Denied(state.Result.ExitCode, state.Result.Out+"\n"+state.Result.Err) {
+	if derr != nil || state.Result == nil || state.Result.ExitCode == 0 || !sandbox.Denied(state.Result.ExitCode, state.Result.Out+"\n"+state.Result.Err) {
 		return result, nil
 	}
 	for mode, box := range b.boxes {
