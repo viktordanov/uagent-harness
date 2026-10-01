@@ -567,6 +567,12 @@ The configuration reference, design records for the harness, the TUI, state stor
 <!-- /memoria:import -->
 
 [`bench/tui`](bench/tui/README.md) is a separate Go module with the benchmark behind choosing Bubble Tea v2. `go test -run '^$' -bench Markdown -benchmem ./internal/tui/render` measures the Markdown renderer. `uah compaction eval [session file or directory]`, a hidden command, compares the compaction strategies on recorded sessions and prints tables of numbers only; its tests hold the strategies to their bounds on a synthetic session ([internal/compaction](internal/compaction/README.md#measuring-compaction)).
+
+[`tools`](tools/README.md) lists every harness that measures uah, with how to run each and where its results go. `go run ./tools/perf` is the performance harness ([tools/perf](tools/perf/README.md)); compare a change with its baseline with `go run ./tools/perf -baseline tools/perf/baseline.json`:
+
+<!-- memoria:import src="tools/README.md#summary" -->
+The harnesses that measure uah rather than test it: the performance harness (`go run ./tools/perf`), the compaction evaluation, and the TUI framework benchmark, with what each measures, how to run it, and where its results go.
+<!-- /memoria:import -->
 <!-- /memoria:section -->
 
 ---
