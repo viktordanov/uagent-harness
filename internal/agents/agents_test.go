@@ -21,41 +21,35 @@ import (
 	"github.com/viktordanov/uah/testing/fakellm"
 )
 
-// TestAgents_SpawnWaitAnswer spawns a child, waits for it without holding
-// up the parent, and gets its answer; the child cannot spawn and is hidden
-// from the resume picker.
+// TestAgents_SpawnWaitAnswer spawns a child, waits for it beside a command
+// in the same turn, and gets its answer with the command's; the child
+// cannot spawn and is hidden from the resume picker.
 func TestAgents_SpawnWaitAnswer(t *testing.T) {
 	gate := make(chan struct{})
-	var placeholder string
-	var timedOut bool
-	var mgr *agents.Manager
-	var parentID string
+	var childID string
 	e := newEnv(t, agents.Config{},
 		fakellm.Reply{Calls: []fakellm.Call{call("spawn_agent", `{"message":"CHILD-A count the files"}`)}},
 		fakellm.Reply{From: func(req fakellm.Request) fakellm.Reply {
-			return fakellm.Reply{Commands: []string{"echo side"}, Calls: []fakellm.Call{call("wait_agent", `{"targets":["`+ids(req)[0]+`"]}`)}}
-		}},
-		fakellm.Reply{From: func(req fakellm.Request) fakellm.Reply {
-			placeholder = strings.Join(req.ToolOutputs, "\n")
-			_, timedOut, _ = mgr.Wait(context.Background(), parentID, ids(req), 50*time.Millisecond)
-			close(gate)
+			childID = ids(req)[0]
 
-			return fakellm.Reply{Text: "waiting for the agent"}
+			return fakellm.Reply{Commands: []string{"echo side"}, Calls: []fakellm.Call{call("wait_agent", `{"targets":["`+childID+`"]}`)}}
 		}},
 		fakellm.Reply{Text: "the agent counted"},
 	)
 	e.llm.Route("CHILD-A", fakellm.Reply{Gate: gate, Text: "forty-two"})
 	s, ev := e.open(t, false)
-	mgr, parentID = e.mgr, s.ID()
 
 	_, err := s.Submit("delegate")
 	require.NoError(t, err)
+	awaitRequests(t, e, "CHILD-A", 1)
+	require.Eventually(t, func() bool { return e.mgr.Waiting(s.ID(), childID) == 1 }, waitTimeout, time.Millisecond)
+	_, timedOut, _ := e.mgr.Wait(context.Background(), s.ID(), []string{childID}, 50*time.Millisecond)
+	close(gate)
 	result := ev.finished()
 
 	assert.Equal(t, core.StatusOK, result.Status)
 	assert.Equal(t, "the agent counted", result.Answer)
-	assert.Contains(t, placeholder, "side", "the command ran while the wait was pending")
-	assert.Contains(t, placeholder, "Tool call is still running", "the wait did not hold up the coordinator")
+	assert.Contains(t, lastOutputs(e), "side", "the command ran beside the wait, and its result waited for the turn's other call")
 	assert.True(t, timedOut, "a wait on a running child times out")
 	assert.Contains(t, lastOutputs(e), `{"status":{"`)
 	assert.Contains(t, lastOutputs(e), `":{"completed":"forty-two"}},"timed_out":false}`)

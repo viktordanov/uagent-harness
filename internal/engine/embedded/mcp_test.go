@@ -69,8 +69,7 @@ func TestEmbedded_MCPTools(t *testing.T) {
 	assert.Equal(t, core.StatusOK, result.Status)
 	assert.Equal(t, "done", result.Answer)
 	reqs := e.llm.Requests()
-	require.GreaterOrEqual(t, len(reqs), 3, "results arrive as calls finish")
-	assert.Contains(t, strings.Join(reqs[1].ToolOutputs, "\n"), "Tool call is still running", "the slow call did not hold up the model")
+	require.Len(t, reqs, 2, "the turn's results arrive together, the slow call's too")
 	last := reqs[len(reqs)-1]
 	assert.Contains(t, reqs[0].Tools["mcp__test__echo"], `"text"`, "the model gets the MCP input schema")
 	assert.Contains(t, reqs[0].Tools, "Bash")

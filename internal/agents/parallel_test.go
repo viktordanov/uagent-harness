@@ -45,11 +45,12 @@ func awaitRequests(t *testing.T, e *env, prefix string, n int) {
 // TestAgents_ParallelCalls runs the agent calls of one model turn at the
 // same time, each as its own remote job: three spawns start three
 // children that all ask the model before any answers, and of two waits in
-// one turn, the second returns while the first still blocks.
+// one turn, the second returns while the first still blocks; the turn's
+// results arrive together.
 func TestAgents_ParallelCalls(t *testing.T) {
 	gates := map[string]chan struct{}{"CHILD-P0": make(chan struct{}), "CHILD-P1": make(chan struct{}), "CHILD-P2": make(chan struct{})}
 	waited := make(chan []string, 1)
-	var early string
+	var outputs string
 	e := newEnv(t, agents.Config{MaxThreads: 3},
 		fakellm.Reply{Calls: []fakellm.Call{
 			call("spawn_agent", `{"message":"CHILD-P0 one"}`),
@@ -66,11 +67,10 @@ func TestAgents_ParallelCalls(t *testing.T) {
 			}}
 		}},
 		fakellm.Reply{From: func(req fakellm.Request) fakellm.Reply {
-			early = strings.Join(req.ToolOutputs, "\n")
+			outputs = strings.Join(req.ToolOutputs, "\n")
 
-			return fakellm.Reply{Text: "one wait came back"}
+			return fakellm.Reply{Text: "both came back"}
 		}},
-		fakellm.Reply{Text: "both came back"}, // the first wait's result starts one more turn
 	)
 	for prefix, g := range gates {
 		e.llm.Route(prefix, fakellm.Reply{Gate: g, Text: "answer from " + prefix})
@@ -88,7 +88,8 @@ func TestAgents_ParallelCalls(t *testing.T) {
 		return e.mgr.Waiting(s.ID(), targets[0]) == 1 && e.mgr.Waiting(s.ID(), targets[1]) == 1
 	}, waitTimeout, time.Millisecond)
 	close(gates[second]) // the second wait's child answers first
-	awaitRequests(t, e, "fan out", 3)
+	require.Eventually(t, func() bool { return e.mgr.Waiting(s.ID(), targets[1]) == 0 }, waitTimeout, time.Millisecond)
+	require.Equal(t, 1, e.mgr.Waiting(s.ID(), targets[0]), "the first wait still blocks")
 	close(gates[first])
 	assert.Equal(t, "both came back", ev.finished().Answer)
 	for prefix, g := range gates {
@@ -97,8 +98,8 @@ func TestAgents_ParallelCalls(t *testing.T) {
 		}
 	}
 
-	assert.Contains(t, early, `{"completed":"answer from `+second+`"}`, "the second wait returned")
-	assert.Contains(t, early, "Tool call is still running", "while the first still waited: the calls do not queue behind each other")
+	assert.Contains(t, outputs, `{"completed":"answer from `+second+`"}`, "the second wait returned")
+	assert.Contains(t, outputs, `{"completed":"answer from `+first+`"}`, "the first wait returned")
 }
 
 // taskPrefix is the CHILD-Pn prefix of the child's task, from its agent
