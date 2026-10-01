@@ -1,6 +1,7 @@
 package embedded_test
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,9 +17,11 @@ import (
 
 // TestEmbedded_ResumesAtEachSkippedPhase: the session file of a run that
 // stopped at a shell phase the store leaves out ends at the record before
-// it, ready or read_out, and one that stopped while it held the terminal
-// state ends at the status. Resumed from there, the command has run once
-// and the model gets the whole output, as without the stop.
+// it, ready or read_out; one that stopped while it held the terminal
+// state ends at read_out, or at the status if that was written. Resumed
+// from there, the command has run once and the model gets the whole
+// output, as without the stop. After a whole run, no operation is left
+// that the harness would take as running and kill the group of.
 func TestEmbedded_ResumesAtEachSkippedPhase(t *testing.T) {
 	// Both outputs are over the read limit, so the shell reads their tails.
 	const cmd = `echo ran >> ran.txt; seq 1 40000; seq 1 40000 | sed s/^/e/ >&2`
@@ -73,6 +76,7 @@ func TestEmbedded_ResumesAtEachSkippedPhase(t *testing.T) {
 	resumed, err := store.Resume(t.Context(), session.ID(id))
 	require.NoError(t, err)
 	assert.Empty(t, resumed.Operations, "the terminal record ends the operation")
+	assert.Empty(t, liveGroups(t, full), "the harness kills no process group at the run's end")
 	opDirs, err := filepath.Glob(filepath.Join(e.StateDir, "sessions", "operations", "*", "*"))
 	require.NoError(t, err)
 	require.Len(t, opDirs, 1)
@@ -89,6 +93,7 @@ func TestEmbedded_ResumesAtEachSkippedPhase(t *testing.T) {
 		{"read_out_tail", readOut, "all"},
 		{"read_err", readOut, "all"},
 		{"read_err_tail", readOut, "all"},
+		{"held", readOut, "all"},   // the terminal state held, its status not yet written
 		{"completed", done, "all"}, // its status written, its terminal record not
 	} {
 		t.Run(tc.phase, func(t *testing.T) {
@@ -121,4 +126,46 @@ func TestEmbedded_ResumesAtEachSkippedPhase(t *testing.T) {
 			assert.True(t, want[0] == got[len(got)-1], "the model gets the whole output")
 		})
 	}
+}
+
+// liveGroups are the process groups uagent's liveOperationGroups would
+// signal: each operation's last nonzero group whose last record is not
+// terminal.
+func liveGroups(t *testing.T, file []byte) []int {
+	t.Helper()
+	type state struct {
+		status string
+		group  int
+	}
+	latest := map[string]state{}
+	for line := range strings.Lines(string(file)) {
+		var rec struct {
+			Type string
+			Data struct {
+				Operation struct {
+					ID, Status string
+					State      struct{ ProcessGroupID int }
+				}
+			}
+		}
+		require.NoError(t, json.Unmarshal([]byte(line), &rec))
+		if rec.Type != "operation" {
+			continue
+		}
+		op := rec.Data.Operation
+		st := latest[op.ID]
+		st.status = op.Status
+		if op.State.ProcessGroupID != 0 {
+			st.group = op.State.ProcessGroupID
+		}
+		latest[op.ID] = st
+	}
+	var live []int
+	for _, st := range latest {
+		if st.group > 1 && st.status != "completed" && st.status != "failed" && st.status != "canceled" {
+			live = append(live, st.group)
+		}
+	}
+
+	return live
 }
