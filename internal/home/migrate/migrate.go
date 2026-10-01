@@ -73,13 +73,14 @@ func Old(getenv func(string) string, userHome string) Paths {
 func (p Paths) Pending() bool { return !exists(p.Home) && p.HasOld() }
 
 // HasOld reports whether the old configuration directory exists or the old
-// state directory holds something uah copies.
+// state directory holds something uah copies. Sessions alone do not count:
+// unreal-agent-runner v0.2.0 keeps its own there by default.
 func (p Paths) HasOld() bool {
 	if isDir(p.Config) {
 		return true
 	}
 	for _, name := range append([]string{"uah.db"}, stateEntries...) {
-		if exists(filepath.Join(p.State, name)) {
+		if name != "sessions" && exists(filepath.Join(p.State, name)) {
 			return true
 		}
 	}

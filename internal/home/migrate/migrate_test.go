@@ -174,6 +174,21 @@ func TestAuto_Skips(t *testing.T) {
 		assert.False(t, migrated)
 		assert.NoDirExists(t, filepath.Join(userHome, ".uah"))
 	})
+	t.Run("only a runner's sessions", func(t *testing.T) {
+		userHome := t.TempDir()
+		t.Setenv("HOME", userHome)
+		t.Setenv(home.Env, "")
+		p := migrate.Old(func(string) string { return "" }, userHome)
+		write(t, filepath.Join(p.State, "sessions", "s1.session.jsonl"), "{}\n")
+		assert.False(t, p.HasOld())
+		migrated, err := migrate.Auto(context.Background(), func(string) string { return "" })
+		require.NoError(t, err)
+		assert.False(t, migrated)
+		assert.NoDirExists(t, p.Home)
+
+		write(t, filepath.Join(p.State, "runs", "r1", "request.json"), "{}")
+		assert.True(t, p.HasOld())
+	})
 }
 
 func TestOld_Variables(t *testing.T) {

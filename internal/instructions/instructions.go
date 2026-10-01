@@ -19,8 +19,9 @@ import (
 // DefaultMaxBytes caps the assembled instructions, as Codex does.
 const DefaultMaxBytes = 32 * 1024
 
-// RunnerHostPrompt is unreal-agent-runner v0.1.1's default host prompt
-// (cmd/internal/agentrunner/run.go), kept verbatim. uah's default before
+// RunnerHostPrompt is unreal-agent-runner's default host prompt
+// (cmd/internal/agentrunner/run.go, unchanged from v0.1.1 to v0.2.0), kept
+// verbatim. uah's default before
 // DefaultPrompt; `uah prompts init` writes it as system-runner.md.
 const RunnerHostPrompt = `You are an AI agent running inside an isolated sandbox container.
 
