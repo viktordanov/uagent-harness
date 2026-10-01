@@ -47,9 +47,9 @@ Each scenario builds its session in a fresh scratch home, measures one block, an
 
 | Scenario | Per size | Block | Its own measurements |
 | --- | --- | --- | --- |
-| `load` | yes | Resume the session as `uah resume` does (index already built) and send one message, to the first request and the end of the run | `open_ms`, `first_request_ms` (message to the request's arrival at the fake model), `history_ms` (`session.Load`, the TUI's transcript, outside the block), `index_ms` (building the SQLite index, outside the block) |
+| `load` | yes | Resume the session as `uah resume` does (index already built) and send one message, to the first request and the end of the run | `open_ms`, `first_request_ms` (message to the request's arrival at the fake model), `session_syncs`, `history_ms` (`session.Load`, the TUI's transcript, outside the block), `index_ms` (building the SQLite index, outside the block) |
 | `tui` | yes | Start the TUI on the session; wait for the first frame of the resumed transcript; page up 20 times, then down 20 times | `first_frame_ms` (the view after the TUI takes the opened session), `first_paint_ms` (the renderer's first write after it), `scroll_p50_ms`, `scroll_p95_ms`, `scroll_max_ms` (a key to its view), `view_*_ms` (the model's View), `term_kb` |
-| `turn` | yes | Resume the session and run the workload turn headless | `turn_ms`, `first_request_ms`, `events`, `events_per_s`, `records_appended` (records the turn added to the session file), `requests`, `request_mb` |
+| `turn` | yes | Resume the session and run the workload turn headless | `turn_ms`, `first_request_ms`, `events`, `events_per_s`, `records_appended` (records the turn added to the session file), `session_syncs` (the syncs of session files), `requests`, `request_mb` |
 | `spawn` | yes | Resume the session; the model spawns one child, waits, and finishes | `child_first_request_ms` (the parent's reply to the child's first request, once the fake model has read it; see `server_ms`) |
 | `fork` | yes | The same with `fork_context`: the child copies the whole history | `child_first_request_ms` |
 | `tui-turn` | no | The workload turn typed into the TUI, until the answer shows and the footer is idle | `turn_ms`, `views`, `view_*_ms`, `term_kb`, `term_writes` |
@@ -79,7 +79,7 @@ Every scenario reports the same columns for its block:
 | `state_growth_mb` | How much the scratch home grew |
 | `wakeups` | macOS: idle and interrupt wakeups; Linux: voluntary context switches |
 
-The number of `fsync` calls is not measurable from inside the process. `records_appended` stands in for it: the session store writes and syncs each record on its own.
+`session_syncs` (the `turn` and `load` scenarios) counts the engine's syncs of session files in the block, from `embedded.SessionSyncs`; the engine syncs a group of records at once ([state.md](../../docs/design/state.md)), so it is lower than `records_appended`. Other `fsync` calls, such as the run record's, are not counted.
 
 The fake model runs in the same process. Scenarios without subagents set `fakellm.Server.Light`, so it reads each request's bytes and parses nothing; the subagent scenarios need the parsed requests to route children, and `server_ms` reports the fake model's own time.
 <!-- /memoria:section -->

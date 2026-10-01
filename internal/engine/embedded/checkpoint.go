@@ -10,8 +10,9 @@ import (
 	"github.com/unreallabsai/unreal-agent/harness/sessionstore"
 )
 
-// checkpointStore writes fewer operation records: each is a line and an
-// fsync, and a shell command's phases carry its output up to three times.
+// checkpointStore writes fewer operation records: each is a line, one that
+// is not terminal is a sync too (logStore), and a shell command's phases
+// carry its output up to three times.
 // See docs/design/state.md.
 //
 // It drops the shell phases a resume repeats harmlessly: the creates (a

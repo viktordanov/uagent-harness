@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/fs"
 	"math"
+	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
@@ -22,8 +23,9 @@ import (
 
 // runStore is the session a run records to.
 // The store leaves out what the session's rewinds cut (cutStore), reads
-// the file once for the run's start (snapshotStore), and writes fewer
-// operation records (checkpointStore).
+// the file once for the run's start (snapshotStore), writes fewer
+// operation records (checkpointStore), and syncs the file in groups
+// (logStore).
 type runStore struct {
 	store    sessionstore.Store
 	id       session.ID
@@ -50,16 +52,18 @@ func (w *wiring) openStore(ctx context.Context, req core.Request, messages []cor
 	if err != nil {
 		return runStore{}, err
 	}
+	log := newLogStore(store, filepath.Join(w.l.SessionsDir, string(id)+".session.jsonl"), id)
+	w.closers = append(w.closers, log.Close) // after the checkpoints' flush
 	var early []sessionstore.Item
 	if !slices.ContainsFunc(restored.Operations, func(op operation.Operation) bool { return !finalOperation(op.Status) }) {
-		first := store.AddObserver(func(_ session.ID, it sessionstore.Item) { early = append(early, it) })
-		err = recordInputs(ctx, store, id, messages, req.Effort) // the first append reads the file, as the coordinator's first write did
-		store.RemoveObserver(first)
+		first := log.AddObserver(func(_ session.ID, it sessionstore.Item) { early = append(early, it) })
+		err = recordInputs(ctx, log, id, messages, req.Effort) // the first append reads the file, as the coordinator's first write did
+		log.RemoveObserver(first)
 		if err != nil {
 			return runStore{}, err
 		}
 	}
-	cut, err := withCuts(withSnapshot(store, id), w.l.SessionsDir, string(id))
+	cut, err := withCuts(withSnapshot(log, id), w.l.SessionsDir, string(id))
 	if err != nil {
 		return runStore{}, err
 	}
@@ -116,7 +120,7 @@ func openSession(ctx context.Context, store *localfile.Store, requested string) 
 // pages of the session from one read of the file, where localfile reads the
 // whole file per page. Once the run records an item, reads go to the file.
 type snapshotStore struct {
-	*localfile.Store
+	sessionstore.Store
 
 	id    session.ID
 	mu    sync.Mutex
@@ -124,7 +128,7 @@ type snapshotStore struct {
 	stale bool
 }
 
-func withSnapshot(store *localfile.Store, id session.ID) *snapshotStore {
+func withSnapshot(store sessionstore.Store, id session.ID) *snapshotStore {
 	s := &snapshotStore{Store: store, id: id}
 	store.AddObserver(func(session.ID, sessionstore.Item) { s.mu.Lock(); s.items, s.stale = nil, true; s.mu.Unlock() })
 

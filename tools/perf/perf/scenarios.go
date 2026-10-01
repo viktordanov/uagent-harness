@@ -16,6 +16,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/viktordanov/uah/internal/engine/embedded"
 	"github.com/viktordanov/uah/internal/session"
 	"github.com/viktordanov/uah/internal/store"
 	"github.com/viktordanov/uah/testing/fakellm"
@@ -139,11 +140,12 @@ func (r *run) load(t target) ([]Named, error) {
 			return err
 		}
 		x.Extra["open_ms"] = ms(time.Since(start))
-		submitted := time.Now()
+		submitted, syncs := time.Now(), embedded.SessionSyncs()
 		if _, err := Turn(s, "Where were we?"); err != nil {
 			return err
 		}
 		x.Extra["first_request_ms"] = firstRequest(e.LLM, submitted)
+		x.Extra["session_syncs"] = float64(embedded.SessionSyncs() - syncs)
 		requestStats(x, e.LLM)
 
 		return nil
@@ -300,7 +302,7 @@ func (r *run) turn(t target) ([]Named, error) {
 	file := sessionFile(e, fx.SessionID)
 	records := lineCount(file)
 	sample, err := r.probe(name, e).Measure(func(x *Sample) error {
-		start := time.Now()
+		start, syncs := time.Now(), embedded.SessionSyncs()
 		events, err := Turn(s, "Check the handler again and note what changed.")
 		if err != nil {
 			return err
@@ -311,6 +313,7 @@ func (r *run) turn(t target) ([]Named, error) {
 		x.Extra["events"] = float64(len(events))
 		x.Extra["events_per_s"] = float64(len(events)) / took.Seconds()
 		x.Extra["records_appended"] = float64(lineCount(file) - records)
+		x.Extra["session_syncs"] = float64(embedded.SessionSyncs() - syncs)
 		requestStats(x, e.LLM)
 
 		return nil

@@ -147,10 +147,7 @@ func replay(ctx context.Context, store *localfile.Store, path string, id session
 	var out []byte
 	var n sessionstore.Sequence
 	for _, item := range items {
-		rec := struct {
-			Item       sessionstore.Item
-			Operations []operation.Operation `json:",omitempty"`
-		}{Item: item}
+		rec := itemRecord{Item: item}
 		var ended []operation.Operation
 		switch d := item.Data.(type) {
 		case inbox.Input, sessionstore.ModelResponse:

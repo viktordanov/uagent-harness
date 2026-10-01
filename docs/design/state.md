@@ -6,6 +6,8 @@ Update, 2026-09-29: the sidecar also keeps what finds a session and tells that i
 
 Update, 2026-09-30: the sidecar also keeps the session's unsent messages, `queued`, so quitting while messages wait loses none; resuming queues them again (ledger item 80; see [sessions](../../internal/session/README.md#messages-queue-steer-interrupt)).
 
+Update, 2026-10-01: the embedded engine writes the session file itself, in the runner's format, and syncs it in groups, not after each record (ledger item 88; see [syncing the session file](#syncing-the-session-file)).
+
 Status: built, 2026-09-24. The sidecar (with `source`) and the index (`internal/store`, `<state>/uah.db`) are implemented. As built, the index has no `sessions` table: sessions are folded from the `runs` rows at query time, the same way the file scan folds them, and a test checks the two agree. Listing falls back to the file scan when the index cannot be opened. `/status` draws a 12-week activity heatmap from it, and `uah sessions --search` uses its full-text table.
 
 1. [What is stored today](#what-is-stored-today)
@@ -22,7 +24,7 @@ Everything lives under uagent's state directory (`~/.local/state/unreal-agent`),
 
 | Path | Written by | Contents | Role |
 | --- | --- | --- | --- |
-| `sessions/<id>.session.jsonl` | the runner | Every input, turn, model response, and tool status of a session, append-only, and operation records with each operation's latest state. uah's embedded engine (`checkpointStore`) writes a command's `process` and `read_out` states only, the phases a resume cannot repeat, and its terminal state after the tool status that carries it, without the output the status already has | The conversation. The runner replays it on resume. |
+| `sessions/<id>.session.jsonl` | the runner | Every input, turn, model response, and tool status of a session, append-only, and operation records with each operation's latest state. uah's embedded engine (`checkpointStore`) writes a command's `process` and `read_out` states only, the phases a resume cannot repeat, and its terminal state after the tool status that carries it, without the output the status already has, and syncs the file in groups (below) | The conversation. The runner replays it on resume. |
 | `sessions/operations/<id>/<op>/out`, `err` | the runner | Full output of each background command | Tool output |
 | `sessions/<id>.lock` | uagent | An advisory lock while a run is live | Keeps one runner per session |
 | `runs/<run-id>/request.json` | uagent | The request sent to the runner | Run record |
@@ -35,6 +37,20 @@ Everything lives under uagent's state directory (`~/.local/state/unreal-agent`),
 | `sessions/<id>.websearch.jsonl` | uah (embedded engine) | One line per hosted web search the runner dropped: the item and the output item it came before | Puts the search back into later requests; see [web search](web-search.md) |
 | `logs/uah-tui.log` | uah | TUI diagnostics | Diagnostics |
 | `history.jsonl` (in the home, also with `--state-dir`) | uah (TUI) | One line per prompt sent, in Codex's format, private (0600) and capped by `[history] max_bytes` | ↑ and ctrl+r recall it; see [prompt history](prompt-history.md) |
+
+### Syncing the session file
+
+The runner's `localfile` store opens the session file, appends a record, and syncs it (`F_FULLFSYNC` on macOS) for each record: about 2 to 3 ms each, 51 times in a turn of six commands and a patch. uah's embedded engine writes the run's records itself (`logStore`, `internal/engine/embedded/sessionlog.go`). The lines are byte for byte the ones `localfile` writes, and reads still go to `localfile`. Each record is written to the file at once, so a crash of uah loses nothing: the next reader sees every record. Only a crash of the system loses records, the ones after the last sync. So the engine syncs the file only where such a loss matters:
+
+| Record | Synced | Why |
+| --- | --- | --- |
+| An operation state that is not terminal | Before the call returns | It is the write-ahead point of the operation's next step. For a command, these are `process` (written after the start, so a resume does not start it again), `process` with the process group (the harness kills the groups of operations that are still running), and `read_out` (the exit code; after it, a resume reads the output again) |
+| A tool status that ends an operation other than a command | Before the call returns | It has the result. Without it, a resume from the state before reports the call as interrupted (a patch, an MCP call, or an agent call is never repeated) and the result is lost. A command needs no such sync: its exit code is in `read_out` |
+| A model response with no tool call | Before the call returns | It ends the turn |
+| Any other record: inputs, turns, responses with tool calls, other tool statuses, terminal states | With the next sync, or 100 ms after it is written | A resume that does not have it repeats nothing that the synced records show as started. Without a call's first tool status, a resume runs the call. The call starts after that status, and its next state is synced; the runner starts an operation before it saves that state, so a crash between the two runs it again, with or without this policy. Without a command's terminal state, a resume continues from `read_out` and reads the output again |
+| Everything | When the run ends | |
+
+A sync covers every record written before it, so callers that wait for one share it. A turn of the performance harness syncs 21 times instead of 51, and takes 382 ms instead of 495 ms (small session); a resumed session sends its first request after 8 ms instead of 28 ms. Tests: `TestLogStore_WritesAsLocalfile` writes a recorded session through both stores and compares the files; `TestEmbedded_ResumesAfterACrashAtEachSync` cuts the file after each sync of a run, resumes it, and checks that the command never runs again, that the model gets the whole output when the exit code was synced, and that no process group is left to kill.
 
 There is no database. Listing sessions reads every `summary.json` and the first `request.json` of each session: the cost grows with the number of runs, and there is no search.
 
