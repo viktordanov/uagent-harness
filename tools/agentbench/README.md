@@ -54,6 +54,8 @@ go run ./tools/agentbench -remeasure                # parse the saved runs again
 | `-out` | `tools/agentbench/results/<model>-<effort>-<mode>.jsonl` | the results file |
 | `-work` | `$TMPDIR/uah-agentbench` | the scratch directory |
 | `-keep` | off | keep each run's workspace |
+| `-uah-env` | none | `KEY=VALUE` added to uah's environment, after the variables the harness drops; repeatable; needs `-variant` |
+| `-variant` | none | a label for the uah runs, part of their results key; see [variants](#variants) |
 | `-price-in`, `-price-cached`, `-price-out` | 1.25, 0.125, 10 | US dollars per million tokens, for the cost estimate |
 
 The plan runs each repeat over every task, alternating which harness goes first, so neither always meets a warmer cache or a quieter hour. **Resume** is the default: a run whose key (task, harness, model, effort, repeat) is in the results file is skipped, except one that ended in `error` (the harness could not start it, for example). Stop with ctrl+c and start the same command again to continue. The results file and the run directories are in `tools/agentbench/results/`, which git ignores.
@@ -68,6 +70,17 @@ Each run appends one line to the results file and leaves a directory next to it,
 - `uah-state/` (uah only): the session files, the subagents' sessions, and each run's `stderr.log` diagnostics.
 
 At the end the command writes `<results>.md`, the [report](#metrics-and-the-report).
+
+### Variants
+
+A variant is uah with something changed, such as an [experiment](../../internal/engine/README.md#experiments), run against uah as it is (the control). `-variant NAME` labels the uah runs; the label is part of the results key, so the variant's runs and the control's share one results file without replacing each other, while Codex's runs keep their keys and are shared by both. `-uah-env KEY=VALUE` passes the change; each result records it in `env`, and its directory is `uah+NAME-<model>-<effort>-<repeat>`. For the freeform `apply_patch` experiment:
+
+```sh
+go run ./tools/agentbench -harness uah -repeat 3                                                    # the control
+go run ./tools/agentbench -harness uah -repeat 3 -uah-env UAH_EXPERIMENTS=freeform-patch -variant freeform-patch
+```
+
+The report then has `uah+freeform-patch` as a harness of its own in the per-harness tables, and a table of the variant against the control per task.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="tasks" files="bench/task.go bench/fixture.go bench/dry.go" -->
@@ -153,7 +166,7 @@ Both streams become one `Timeline` (`timeline.json`), with times in milliseconds
 **Codex** reports neither model requests nor per-request tokens, and its events carry no times. The harness stamps each line as it reads it (Codex writes a line per event), and the parser infers requests: the model is busy from a turn's start, or from the end of the last running command, until the next command starts or the turn completes. A gap shorter than 300 ms is not a request but Codex running the next call of the same response, one after another. A patch (`file_change`), which has no start event, ends the request that issued it. A command that starts while another still runs (Codex hands the model a long command before it ends) follows a request from the last event to it, so Codex's overlap is counted where its events show it. Tokens are the turns' totals (`inferred` is `["requests", "request_tokens"]`). Codex's model time is an estimate: a request that ends in a message with no call, while a command runs, is not seen.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="metrics" files="bench/timeline.go bench/behavior.go bench/report.go" -->
+<!-- memoria:section id="metrics" files="bench/timeline.go bench/behavior.go bench/report.go bench/report_variant.go" -->
 ## Metrics and the report
 
 Each result line holds the run's `metrics`:
@@ -185,7 +198,7 @@ The mining of the owner's sessions (P7) found the model is about 89% of the wall
 | `approval_waits`, `approval_wait_ms` | every call that started 300 ms or more after it was issued, which in uah means it waited for an approval (an escalation, or a patch outside the workspace), and the total wait |
 | `aborted`, `aborted_ms` | requests that did not complete (canceled, failed, or cut off by the limit) and the model time they took |
 
-The report has, per model and effort: a table per harness (runs, pass rate, medians of the times and counts, token totals, total cost); a table per harness of `behavior` summed over its runs; a table per task with uah against Codex (pass counts, median wall times and their ratio, uah's overlap, each one's most concurrent calls, median input tokens, median cost); and every run, with its status, the split of its wall time, its longest call, and the size of its diff. A run's status is `done` (exit 0), `failed` (non-zero), `timeout`, or `error`; a timed-out run does not pass, even if its check does.
+The report has, per model and effort: a table per harness (runs, pass rate, medians of the times and counts, token totals, total cost); a table per harness of `behavior` summed over its runs; a table per task with uah against Codex (pass counts, median wall times and their ratio, uah's overlap, each one's most concurrent calls, median input tokens, median cost); for each [variant](#variants), a table per task and over all its runs against the control (pass counts, median wall times and their ratio, requests, output tokens, and patch tokens); and every run, with its status, the split of its wall time, its longest call, and the size of its diff. A run's status is `done` (exit 0), `failed` (non-zero), `timeout`, or `error`; a timed-out run does not pass, even if its check does.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="cost" files="main.go bench/timeline.go" -->
@@ -196,8 +209,8 @@ The estimate is uncached input, cached input, and output tokens at the `-price-*
 As a scale, each smoke pass (two tasks, both harnesses, effort low, 4 runs) took 40 to 95 s a run, about 510,000 input tokens (85% cached) and 3,000 to 5,000 output tokens in all: under $0.20 at the default rates. A full pass of 35 tasks × 2 harnesses × 3 repeats is 210 runs (raise `-max-runs`): at low effort about 27 million input tokens, $10, and 4 hours at `-parallel 1`; at high effort expect two to four times the tokens and the time.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="test" files="bench/bench_test.go bench/testdata/uah.jsonl bench/testdata/codex.jsonl" -->
+<!-- memoria:section id="test" files="bench/bench_test.go bench/variant_test.go bench/testdata/uah.jsonl bench/testdata/codex.jsonl" -->
 ## The test
 
-`go test ./tools/agentbench/...` makes no model calls. It parses a recorded uah stream and a stamped Codex stream of the same prompt (two commands in parallel, then an answer) and checks the requests, calls, tokens, and metrics; checks the metrics' arithmetic and the `behavior` counts on synthetic timelines; loads every task; dry-runs every task not tagged `slow` (about 5 s with a warm build cache, which it keeps in `$TMPDIR/uah-agentbench-test`; `-short` skips it); and checks the plan's order.
+`go test ./tools/agentbench/...` makes no model calls. It parses a recorded uah stream and a stamped Codex stream of the same prompt (two commands in parallel, then an answer) and checks the requests, calls, tokens, and metrics; checks the metrics' arithmetic and the `behavior` counts on synthetic timelines; loads every task; dry-runs every task not tagged `slow` (about 5 s with a warm build cache, which it keeps in `$TMPDIR/uah-agentbench-test`; `-short` skips it); and checks the plan's order, a variant's keys, and the report's variant table.
 <!-- /memoria:section -->

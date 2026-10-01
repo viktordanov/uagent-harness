@@ -50,6 +50,9 @@ func run() error {
 	uahBin := fs.String("uah", "", "uah binary (default: built from this tree into the scratch directory)")
 	codexBin := fs.String("codex", "codex", "codex binary")
 	keep := fs.Bool("keep", false, "keep each run's workspace")
+	var uahEnv envList
+	fs.Var(&uahEnv, "uah-env", "KEY=VALUE added to uah's environment, such as UAH_EXPERIMENTS=freeform-patch (repeatable; needs -variant)")
+	variant := fs.String("variant", "", "label of the uah runs, part of their results key, so they sit beside the control runs (no -variant) in one results file and the report compares them")
 	priceIn := fs.Float64("price-in", 1.25, "USD per million uncached input tokens, for the cost estimate")
 	priceCached := fs.Float64("price-cached", 0.125, "USD per million cached input tokens")
 	priceOut := fs.Float64("price-out", 10, "USD per million output tokens (reasoning included)")
@@ -115,6 +118,7 @@ func run() error {
 	cfg := bench.Config{
 		Tasks: tasks, Repeat: *repeat, Model: *model, Effort: *effort, Parallel: *parallel, Timeout: *timeout,
 		MaxRuns: *maxRuns, Work: *work, Out: *out, UAH: *uahBin, Codex: *codexBin, Price: price, Mode: *mode, Keep: *keep, Log: os.Stderr,
+		UAHEnv: uahEnv, Variant: *variant,
 	}
 	if err := harnesses(ctx, &cfg, *harness, root); err != nil {
 		return err
@@ -144,11 +148,14 @@ func writeReport(out string, price bench.Price) error {
 	return nil
 }
 
-// harnesses checks the mode, sets the harnesses to run, and builds uah from this tree
+// harnesses checks the mode and the variant, sets the harnesses to run, and builds uah from this tree
 // unless -uah names a binary.
 func harnesses(ctx context.Context, cfg *bench.Config, harness, root string) error {
 	if cfg.Mode != bench.ModeAuto && cfg.Mode != bench.ModeWorkspace {
 		return fmt.Errorf("bad -mode %q (want auto or workspace)", cfg.Mode)
+	}
+	if len(cfg.UAHEnv) > 0 && cfg.Variant == "" {
+		return errors.New("-uah-env needs -variant, so its runs do not count as the control's")
 	}
 	switch harness {
 	case "both":
@@ -168,6 +175,20 @@ func harnesses(ctx context.Context, cfg *bench.Config, harness, root string) err
 	if err := build.Run(); err != nil {
 		return fmt.Errorf("build uah: %w", err)
 	}
+
+	return nil
+}
+
+// envList is a repeatable KEY=VALUE flag.
+type envList []string
+
+func (l *envList) String() string { return strings.Join(*l, " ") }
+
+func (l *envList) Set(v string) error {
+	if name, _, ok := strings.Cut(v, "="); !ok || name == "" {
+		return fmt.Errorf("want KEY=VALUE, got %q", v)
+	}
+	*l = append(*l, v)
 
 	return nil
 }

@@ -9,7 +9,9 @@ import (
 )
 
 // Report is the markdown report of results: per model and effort, a
-// summary per harness, a uah-against-Codex table per task, and every run.
+// summary per harness (a uah variant counts as its own harness), a
+// uah-against-Codex table per task, each variant against the control per
+// task, and every run.
 func Report(results []Result, price Price) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "# Agent benchmark report\n\nGenerated %s from %d runs. Times are medians in seconds over a task's runs; cost is estimated at $%.2f / $%.3f / $%.2f per million input / cached / output tokens.\n",
@@ -30,6 +32,7 @@ func Report(results []Result, price Price) string {
 		summary(&b, rs)
 		behaviorTable(&b, rs)
 		perTask(&b, rs)
+		variantTables(&b, rs)
 		perRun(&b, rs)
 	}
 	b.WriteString("\nCodex reports no model requests or per-request tokens: its requests are inferred from the gaps between its commands (see tools/agentbench/README.md), so its model, overlap, and request counts are estimates.\n")
@@ -37,24 +40,28 @@ func Report(results []Result, price Price) string {
 	return b.String()
 }
 
+// harnesses are the runs' harness labels: uah, its variants, then Codex.
 func harnesses(rs []Result) []string {
 	var hs []string
 	for _, r := range rs {
-		if !slices.Contains(hs, r.Harness) {
-			hs = append(hs, r.Harness)
+		if !slices.Contains(hs, r.Label()) {
+			hs = append(hs, r.Label())
 		}
 	}
-	slices.SortFunc(hs, func(a, b string) int { return cmp.Compare(order(a), order(b)) })
+	slices.SortFunc(hs, func(a, b string) int { return cmp.Or(cmp.Compare(order(a), order(b)), cmp.Compare(a, b)) })
 
 	return hs
 }
 
-func order(h string) int {
-	if h == HarnessUAH {
+func order(label string) int {
+	switch {
+	case label == HarnessUAH:
 		return 0
+	case strings.HasPrefix(label, HarnessUAH+"+"):
+		return 1
+	default:
+		return 2
 	}
-
-	return 1
 }
 
 func pick(rs []Result, keep func(Result) bool) []Result {
@@ -100,7 +107,7 @@ func s(ms int64) float64 { return float64(ms) / 1000 }
 func summary(b *strings.Builder, rs []Result) {
 	b.WriteString("\n### Per harness\n\n| Harness | Runs | Passed | Wall | Model | Tools | Overlap | Model only | Tools only | Idle | Requests | Calls | Max conc. | Input tok. | Cached | Output tok. | Cost (total) |\n| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |\n")
 	for _, h := range harnesses(rs) {
-		hr := pick(rs, func(r Result) bool { return r.Harness == h })
+		hr := pick(rs, func(r Result) bool { return r.Label() == h })
 		var tok Tokens
 		var cost float64
 		for _, r := range hr {
@@ -128,6 +135,7 @@ func perTask(b *strings.Builder, rs []Result) {
 	if !slices.Contains(hs, HarnessUAH) || !slices.Contains(hs, HarnessCodex) {
 		return
 	}
+	rs = pick(rs, func(r Result) bool { return r.Variant == "" })
 	b.WriteString("\n### uah against Codex, per task\n\nA wall ratio below 1 means uah was faster; tokens are median input tokens per run.\n\n| Task | uah passed | Codex passed | uah wall | Codex wall | Wall ratio | uah overlap | uah max conc. | Codex max conc. | uah tokens | Codex tokens | uah cost | Codex cost |\n| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |\n")
 	var tasks []string
 	for _, r := range rs {
@@ -161,7 +169,7 @@ func perRun(b *strings.Builder, rs []Result) {
 	b.WriteString("\n### Runs\n\n| Task | Harness | # | Status | Passed | Wall | Model only | Tools only | Overlap | Idle | Wait | Req. | Calls | Subagents | Max / avg conc. | Longest call | Tokens in / cached / out | Cost | Diff |\n| --- | --- | ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- |\n")
 	rs = slices.Clone(rs)
 	slices.SortFunc(rs, func(x, y Result) int {
-		return cmp.Or(cmp.Compare(x.Task, y.Task), cmp.Compare(order(x.Harness), order(y.Harness)), cmp.Compare(x.Repeat, y.Repeat))
+		return cmp.Or(cmp.Compare(x.Task, y.Task), cmp.Compare(order(x.Label()), order(y.Label())), cmp.Compare(x.Label(), y.Label()), cmp.Compare(x.Repeat, y.Repeat))
 	})
 	for _, r := range rs {
 		m := r.Metrics
@@ -170,7 +178,7 @@ func perRun(b *strings.Builder, rs []Result) {
 			status += " (" + oneLine(r.Error, 60) + ")"
 		}
 		fmt.Fprintf(b, "| %s | %s | %d | %s | %v | %.1f | %.1f | %.1f | %.1f | %.1f | %.1f | %d | %d | %d | %d / %.1f | %.1fs %s | %d / %d / %d | $%.3f | %s |\n",
-			r.Task, r.Harness, r.Repeat, status, r.Passed, s(m.WallMS), s(m.ModelOnlyMS), s(m.ToolOnlyMS), s(m.OverlapMS), s(m.IdleMS), s(m.WaitMS),
+			r.Task, r.Label(), r.Repeat, status, r.Passed, s(m.WallMS), s(m.ModelOnlyMS), s(m.ToolOnlyMS), s(m.OverlapMS), s(m.IdleMS), s(m.WaitMS),
 			m.Requests, m.ToolCalls, m.Subagents, m.MaxConcurrent, m.AvgConcurrent, s(m.LongestCallMS), "`"+oneLine(m.LongestCall, 40)+"`",
 			m.Tokens.Input, m.Tokens.Cached, m.Tokens.Output, m.CostUSD, r.DiffStat)
 	}
@@ -193,7 +201,7 @@ func behaviorTable(b *strings.Builder, rs []Result) {
 		var t Behavior
 		efforts := map[string]int{}
 		var medians []float64
-		for _, r := range pick(rs, func(r Result) bool { return r.Harness == h }) {
+		for _, r := range pick(rs, func(r Result) bool { return r.Label() == h }) {
 			x := r.Metrics.Behavior
 			t.OutputReasoning += x.OutputReasoning
 			t.OutputPatch += x.OutputPatch

@@ -43,21 +43,37 @@ type Config struct {
 	Price Price
 	// Mode is the permission mode of both: ModeAuto or ModeWorkspace.
 	Mode string
-	Keep bool
-	Log  io.Writer
+	// UAHEnv is KEY=VALUE pairs added to uah's environment, such as
+	// UAH_EXPERIMENTS; Variant labels the uah runs they make, so they and
+	// the control runs (no variant) share a results file.
+	UAHEnv  []string
+	Variant string
+	Keep    bool
+	Log     io.Writer
 }
 
 // Key names a run; a results file holds each key once.
 type Key struct {
 	Task    string `json:"task"`
 	Harness string `json:"harness"`
+	// Variant is a uah run's -variant label; "" is the control.
+	Variant string `json:"variant,omitempty"`
 	Model   string `json:"model"`
 	Effort  string `json:"effort"`
 	Repeat  int    `json:"repeat"`
 }
 
 func (k Key) String() string {
-	return fmt.Sprintf("%s/%s/%s-%s/%d", k.Task, k.Harness, k.Model, k.Effort, k.Repeat)
+	return fmt.Sprintf("%s/%s/%s-%s/%d", k.Task, k.Label(), k.Model, k.Effort, k.Repeat)
+}
+
+// Label is the harness with its variant: "uah", "uah+freeform-patch".
+func (k Key) Label() string {
+	if k.Variant == "" {
+		return k.Harness
+	}
+
+	return k.Harness + "+" + k.Variant
 }
 
 // Run statuses.
@@ -81,6 +97,8 @@ type Result struct {
 	Metrics   Metrics     `json:"metrics"`
 	DiffStat  string      `json:"diff_stat,omitempty"`
 	Error     string      `json:"error,omitempty"`
+	// Env is what -uah-env added to the harness's environment.
+	Env []string `json:"env,omitempty"`
 	// Artifacts is the run's directory: the stamped event stream, stderr,
 	// the timeline, the diff, and uah's state.
 	Artifacts string `json:"artifacts"`
@@ -98,7 +116,11 @@ func Plan(cfg Config) []Key {
 				hs = []string{hs[1], hs[0]}
 			}
 			for _, h := range hs {
-				keys = append(keys, Key{Task: t.Name, Harness: h, Model: cfg.Model, Effort: cfg.Effort, Repeat: r})
+				k := Key{Task: t.Name, Harness: h, Model: cfg.Model, Effort: cfg.Effort, Repeat: r}
+				if h == HarnessUAH {
+					k.Variant = cfg.Variant
+				}
+				keys = append(keys, k)
 			}
 		}
 	}
@@ -276,7 +298,7 @@ func dropEnv(name string) bool {
 // runOne runs one key end to end and never returns without a result.
 func runOne(ctx context.Context, cfg Config, env *runEnv, t Task, k Key) (res Result) {
 	res = Result{Key: k}
-	art := filepath.Join(strings.TrimSuffix(cfg.Out, filepath.Ext(cfg.Out)), k.Task, fmt.Sprintf("%s-%s-%s-%d", k.Harness, k.Model, k.Effort, k.Repeat))
+	art := filepath.Join(strings.TrimSuffix(cfg.Out, filepath.Ext(cfg.Out)), k.Task, fmt.Sprintf("%s-%s-%s-%d", k.Label(), k.Model, k.Effort, k.Repeat))
 	res.Artifacts = art
 	defer func() {
 		if res.Error != "" && res.Status == "" {
@@ -318,6 +340,9 @@ func runOne(ctx context.Context, cfg Config, env *runEnv, t Task, k Key) (res Re
 	}
 	limit := cmpDur(time.Duration(t.Timeout), cfg.Timeout)
 	inv := invocation(cfg, env, fx, t, k, ws, art)
+	if k.Harness == HarnessUAH {
+		res.Env = cfg.UAHEnv
+	}
 	out, err := launch(ctx, inv, limit, art)
 	res.ExitCode, res.Status = out.exit, out.status
 	if err != nil {

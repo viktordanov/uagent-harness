@@ -62,7 +62,9 @@ func invocation(cfg Config, env *runEnv, fx *Fixture, t Task, k Key, ws, art str
 			args = append(args, "--sandbox", "workspace-write", "--ask", "never")
 		}
 
-		return harnessRun{name: cfg.UAH, args: append(args, prompt), env: append(runEnv, "UAH_HOME="+env.uahHome), dir: ws}
+		runEnv = append(runEnv, "UAH_HOME="+env.uahHome)
+
+		return harnessRun{name: cfg.UAH, args: append(args, prompt), env: append(runEnv, cfg.UAHEnv...), dir: ws}
 	}
 }
 
