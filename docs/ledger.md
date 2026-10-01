@@ -382,6 +382,7 @@ Done: items 13–27. `/context`, shell completion, module READMEs and a root REA
 
 Ideas that come up while working go here, not into the items.
 
+- Non-OpenAI providers (OpenRouter, Fireworks, Ollama) get `apply_patch` as a freeform custom tool too (row 90), which those endpoints may not support; untested, since the owner does not use them. If one fails, give that provider no `apply_patch` (it edits through shell commands) rather than bringing back the function tool.
 - After round 5: rewrite the repository history as agreed with the owner on 2026-09-29 (generic names in design records; tags moved; old history backed up locally).
 - Flaky test: `TestTUI_CtrlEnterSendsTheQueue` timed out once in CI (1eaf812, 2026-09-29) waiting for the first model request; it passes 30 times alone and 6 times with the package on 2 CPUs locally. Look again if it recurs.
 - Stop reading `~/.codex/AGENTS.md` and `~/.codex/skills` by default; `uah import codex` copies them into `~/.uah` once, visibly, and an opt-in `codex_home = true` keeps live sharing. Repository `AGENTS.md` and `.agents/skills` stay (owner, 2026-09-25).
