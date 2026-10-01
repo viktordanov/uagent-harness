@@ -2,6 +2,9 @@ package embedded
 
 import (
 	"context"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -25,10 +28,10 @@ var _ engine.Forker = (*Engine)(nil)
 
 // Fork creates the session childID from the parent's history as it was
 // when the model made the call callID: every item before the turn that
-// made it that no rewind cut, replayed through the runner's session store,
-// and the compactions that applied to it. The child's first run adds its messages
-// after them, so its first model request starts with the items of the
-// parent's request that made the call.
+// made it that no rewind cut, written in one go as the runner's session
+// store writes them, and the compactions that applied to it. The child's
+// first run adds its messages after them, so its first model request
+// starts with the items of the parent's request that made the call.
 //
 // The runner's own Store.Fork (v0.1.1) is not used: it drops the operation
 // snapshots of inherited tool calls, so their results would be missing from
@@ -54,8 +57,9 @@ func (e *Engine) Fork(ctx context.Context, parentID, childID, callID string) err
 	if _, err := store.Create(ctx, session.ID(childID)); err != nil {
 		return fmt.Errorf("failed to create session %q: %w", childID, err)
 	}
-	if err := replay(ctx, store, session.ID(childID), items[:cut]); err != nil {
-		_ = os.Remove(filepath.Join(dir, childID+".session.jsonl"))
+	path := filepath.Join(dir, childID+".session.jsonl")
+	if err := replay(ctx, store, path, session.ID(childID), items[:cut]); err != nil {
+		_ = os.Remove(path)
 
 		return err
 	}
@@ -133,39 +137,72 @@ func forkPoint(items []sessionstore.Item, callID string) (cut int, at time.Time,
 	return 0, time.Time{}, fmt.Errorf("the call %q is not in the parent's history", callID)
 }
 
-// replay appends the parent's items to the child in order. A tool call
-// whose operation had not ended is recorded as canceled for the child, so
-// the child's run never starts the parent's work again.
-func replay(ctx context.Context, store sessionstore.Store, id session.ID, items []sessionstore.Item) error {
-	open := unfinished(items)
+// replay appends the parent's items to the child in order, in one write.
+// A tool call whose operation had not ended is recorded as canceled for the
+// child, so the child's run never starts the parent's work again. The lines
+// are the ones the store's Append methods write (localfile's encodeRecord),
+// and reading the child back checks them as a run's restore does.
+func replay(ctx context.Context, store *localfile.Store, path string, id session.ID, items []sessionstore.Item) error {
+	open, now := unfinished(items), time.Now().UTC()
 	var last session.TurnID
+	var out []byte
+	var n sessionstore.Sequence
 	for _, item := range items {
-		var err error
+		var ops []operation.Operation
 		switch d := item.Data.(type) {
-		case inbox.Input:
-			err = store.AppendInput(ctx, id, d)
+		case inbox.Input, sessionstore.ModelResponse:
 		case session.Turn:
 			d.PreviousTurnID, last = last, d.ID // a rewind may have cut the turn before it
-			err = store.AppendTurn(ctx, id, d)
-		case sessionstore.ModelResponse:
-			err = store.AppendModelResponse(ctx, id, d)
+			item.Data = d
 		case sessionstore.ToolCallStatus:
-			d.Operations = slices.Clone(d.Operations)
-			for i, op := range d.Operations {
+			ops, d.Operations = slices.Clone(d.Operations), nil
+			for i, op := range ops {
 				if open[op.ID] {
-					d.Operations[i].Status = operation.StatusCanceled
+					ops[i].Status = operation.StatusCanceled
 				}
 			}
-			err = store.AppendToolCallStatus(ctx, id, d)
+			item.Data = d
 		default: // a fork of the runner's own: its inherited calls have no results to keep
 			continue
+		}
+		n++
+		item.Sequence, item.RecordedAt = n, now
+		data, err := json.Marshal(struct {
+			Item       sessionstore.Item
+			Operations []operation.Operation `json:",omitempty"`
+		}{item, ops})
+		if err == nil {
+			data, err = json.Marshal(struct {
+				Type string         `json:"type"`
+				Data jsontext.Value `json:"data"`
+			}{"item", data})
 		}
 		if err != nil {
 			return fmt.Errorf("failed to copy the parent's history: %w", err)
 		}
+		out = append(append(out, data...), '\n')
+	}
+	if err := appendSynced(path, out); err != nil {
+		return fmt.Errorf("failed to copy the parent's history: %w", err)
+	}
+	if _, err := store.Inspect(ctx, id); err != nil {
+		return fmt.Errorf("failed to copy the parent's history: %w", err)
 	}
 
 	return nil
+}
+
+// appendSynced appends data to the file and syncs it.
+func appendSynced(path string, data []byte) error {
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND, 0)
+	if err != nil {
+		return err //nolint:wrapcheck // the caller wraps it
+	}
+	if _, err = f.Write(data); err == nil {
+		err = f.Sync()
+	}
+
+	return errors.Join(err, f.Close())
 }
 
 // unfinished are the operations whose last recorded state is not final.
