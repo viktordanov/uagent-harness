@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"slices"
 	"strings"
@@ -154,7 +153,7 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 	for _, t := range w.hostedTools(req.Provider, req.SessionID) {
 		builder.AddTool(t)
 	}
-	obs := &observer{sessionID: s.id, out: io.MultiWriter(s.log, w.l.Stdout), cancel: cancel, emit: w.emit}
+	obs := &observer{sessionID: s.id, out: w.l.Stdout, cancel: cancel, emit: w.emit}
 	observerID := s.store.AddObserver(obs.observe)
 	coord := coordinator.New(coordinator.Dependencies{
 		ToolHeartbeatInterval: toolHeartbeatInterval,

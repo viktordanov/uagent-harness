@@ -25,7 +25,6 @@ Everything lives under uagent's state directory (`~/.local/state/unreal-agent`),
 | `sessions/<id>.session.jsonl` | the runner | Every input, turn, model response, and tool status of a session, append-only | The conversation. The runner replays it on resume. |
 | `sessions/operations/<id>/<op>/out`, `err` | the runner | Full output of each background command | Tool output |
 | `sessions/<id>.lock` | uagent | An advisory lock while a run is live | Keeps one runner per session |
-| `logs/<time>.jsonl` | the runner | A copy of its stdout for each invocation | Runner log |
 | `runs/<run-id>/request.json` | uagent | The request sent to the runner | Run record |
 | `runs/<run-id>/events.jsonl` | uagent | The runner's stdout, byte for byte | Run record; the harness rebuilds transcripts from these |
 | `runs/<run-id>/summary.json` | uagent | Status (`running` until the run ends), settings, statistics, answer | Run record; history lists read these |

@@ -6,11 +6,8 @@ import (
 	"fmt"
 	"io/fs"
 	"math"
-	"os"
-	"path/filepath"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/unreallabsai/unreal-agent/harness/session"
@@ -20,19 +17,19 @@ import (
 	"github.com/viktordanov/uagent/core"
 )
 
-// runStore is the session a run records to, and the log that copies its output.
+// runStore is the session a run records to.
 // The store leaves out what the session's rewinds cut (cutStore) and reads
 // the file once for the run's start (snapshotStore).
 type runStore struct {
 	store    sessionstore.Store
 	id       session.ID
 	restored sessionstore.ResumeState
-	log      *os.File
 }
 
-// openStore opens the session store, the requested session, and the
-// per-invocation log. The log is added to the closers. A forked session's
-// first run puts its messages in the store first (see seedFork).
+// openStore opens the session store and the requested session. A forked
+// session's first run puts its messages in the store first (see seedFork).
+// The run's output goes to runs/<id>/events.jsonl only: the runner's copy
+// in logs/<time>.jsonl was byte for byte the same, and nothing read it.
 func (w *wiring) openStore(ctx context.Context, req core.Request, messages []core.UserInput) (runStore, error) {
 	store, err := localfile.New(w.l.SessionsDir)
 	if err != nil {
@@ -55,13 +52,8 @@ func (w *wiring) openStore(ctx context.Context, req core.Request, messages []cor
 	if err != nil {
 		return runStore{}, err
 	}
-	logFile, err := openDatetimeLog(w.l.LogsDir, time.Now())
-	if err != nil {
-		return runStore{}, err
-	}
-	w.closers = append(w.closers, logFile.Close)
 
-	return runStore{store: cut, id: id, restored: restored, log: logFile}, nil
+	return runStore{store: cut, id: id, restored: restored}, nil
 }
 
 // openSession resumes the session, or creates it when it does not exist.
@@ -121,17 +113,4 @@ func (s *snapshotStore) Items(ctx context.Context, id session.ID, after sessions
 	n := min(limit, len(rest))
 
 	return sessionstore.Page{Items: append([]sessionstore.Item(nil), rest[:n]...), NextAfter: after + sessionstore.Sequence(n), More: n < len(rest)}, nil
-}
-
-// openDatetimeLog opens the runner's per-invocation copy of its output.
-func openDatetimeLog(dir string, now time.Time) (*os.File, error) {
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return nil, fmt.Errorf("failed to create the log directory: %w", err)
-	}
-	f, err := os.OpenFile(filepath.Join(dir, now.UTC().Format("20060102-150405")+".jsonl"), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open the session log: %w", err)
-	}
-
-	return f, nil
 }

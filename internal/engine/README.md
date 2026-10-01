@@ -107,7 +107,7 @@ This audit (items 33 and 51 of the ledger) lists each behavior and the code that
 The embedded engine is a uagent `harness.Backend`. uagent still owns the run: the guards, the session lock, the run record, and the output stream. The backend (`wiring.go`) reproduces unreal-agent-runner v0.1.1's `Run` (`cmd/internal/agentrunner/run.go`) in the same order:
 
 1. The provider client and the model (`client.go`, `providers.go`, a copy of the runner's provider table). `clients.go` builds each provider's Responses client as the runner's does, but over an HTTP client uah makes, so the engine can watch its retries (below). The ChatGPT credentials for openai-codex come from `codexauth`, which the model catalog (`internal/models`) and the usage reader share: the codex client's transport sets them on each request and refreshes them ([below](#the-chatgpt-login)).
-2. The session store and the per-invocation log (`store.go`).
+2. The session store (`store.go`).
 3. The tool registry (`tools.go`, below).
 4. The operation manager with the remote job handlers.
 5. The inbox, with the initial effort, the messages, and "stop when idle" (`agent.go`).
