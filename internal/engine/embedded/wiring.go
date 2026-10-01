@@ -165,6 +165,7 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 		LLM:                   comp,
 		Tools:                 registry,
 		Operations:            operations,
+		Wake:                  w.e.experiments.wakePolicy(),
 	})
 	w.launch(runCtx, a, coord, obs, func() { s.store.RemoveObserver(observerID) })
 

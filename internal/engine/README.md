@@ -121,10 +121,11 @@ The session store is the runner's own, under `<state>/sessions`, and uagent writ
 
 ### The runner fork
 
-uah builds on [github.com/viktordanov/unreal-agent](https://github.com/viktordanov/unreal-agent), a fork of [unreallabsai/unreal-agent](https://github.com/unreallabsai/unreal-agent): upstream v0.2.0 with two performance fixes and custom tools (v0.4.0), under its own module path so that `go install github.com/viktordanov/uah/cmd/uah@latest` works without a `replace` directive. The fork's `main` is upstream `main`, the fixes, custom tools, and the rename; each change alone is on its branches `pr/request-encoding`, `pr/resume-write-state`, and `pr/custom-tools`, proposed upstream.
+uah builds on [github.com/viktordanov/unreal-agent](https://github.com/viktordanov/unreal-agent), a fork of [unreallabsai/unreal-agent](https://github.com/unreallabsai/unreal-agent): upstream v0.2.0 with two performance fixes, custom tools (v0.4.0), and experimental wake policies (v0.5.0-rc.1, on the branch `wake`), under its own module path so that `go install github.com/viktordanov/uah/cmd/uah@latest` works without a `replace` directive. The fork's `main` is upstream `main`, the fixes, custom tools, and the rename; each change alone is on its branches `pr/request-encoding`, `pr/resume-write-state`, and `pr/custom-tools`, proposed upstream.
 
 - **Request encoding.** The Responses client encodes each history item once, writes the encoded items into the request without re-encoding the history, and keeps the previous request's encodings, so a run's next request encodes only its new items. The request bytes are unchanged (a test compares them with the old encoder). The encodings of the last request stay in memory between requests, about the size of one request body. On the large fixture (48 MB), `turn/large` went from 2.58 GB allocated and 1.30 s to 0.86 GB and 0.77 s; see the [ledger](../../docs/ledger.md) item P5.
 - **Custom tools.** `llm.ToolCustom` offers a Responses API custom tool, whose input is free text, optionally sampled from a grammar (`llm.ToolGrammar`). A `custom_tool_call` becomes an `llm.ToolCall` with `Custom` set and the raw input in `Arguments`; it goes back as a `custom_tool_call`, and the adapter sends a tool result as a `custom_tool_call_output` when its call was custom. Function tools encode as before. `apply_patch` is one.
+- **Wake policies.** `coordinator.Dependencies.Wake` holds experimental rules for when tool results wake the model; each is off at its zero value, so the coordinator wakes as upstream's does. Only the [wake experiments](#experiments) set them.
 - **Resume.** `localfile.Store.Resume` keeps its decoded state with the file's identity, size, and modification time. While the file is unchanged, history pages come from it until a page reaches the end, and the first write's state comes from it, where every page and the first append decoded the file again. `load/large`'s first request went from 454 to 292 ms.
 
 To go back to upstream once it has merged both fixes and tagged a release, from the repository root:
@@ -202,7 +203,7 @@ On openai and openai-codex (`Provider.RemoteCompaction`), with `remote_compactio
 
 `wiring.tools` builds the registry in layers; the last layer is the outermost:
 
-1. The runner's Bash and ViewImage translators. With a sandbox configured, Bash is `sandboxedBash` (`sandboxtool.go`), which asks the approver how each command runs. See [the permission pipeline](../approval/README.md).
+1. The runner's Bash and ViewImage translators. With a sandbox configured, Bash is `sandboxedBash` (`sandboxtool.go`), which asks the approver how each command runs. See [the permission pipeline](../approval/README.md). Under the [wake-foreground experiment](#experiments), `foregroundRegistry` (`wake.go`) adds `background` to Bash's schema and describes the wait.
 2. `sandboxRegistry` (`sandboxschema.go`) adds `sandbox_permissions` and `justification` to Bash's schema when the model can ask for escalation.
 3. Skills from the Codex skill folders (`skills.go`), through the runner's `SkillUse` tool.
 4. MCP tools (`mcptool.go`), named `mcp__<server>__<tool>`.
@@ -254,10 +255,22 @@ A job that had already started before the run stopped fails with "interrupted" w
 The runner stays unchanged: uah reproduces its wiring instead of patching it, and the equivalence test below keeps the two in step.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="experiments" files="embedded/experiments.go" -->
+<!-- memoria:section id="experiments" files="embedded/experiments.go embedded/wake.go embedded/wake_test.go embedded/wake_internal_test.go" -->
 ## Experiments
 
-An experiment is a switch for an A/B benchmark (`tools/agentbench -uah-env`), not a setting: it has no config key and may go away. The environment variable `UAH_EXPERIMENTS` names the experiments to turn on, separated by commas; the engine reads it once, through `Config.Getenv`, in `embedded/experiments.go`, and a subagent's run gets its parent's engine and so the same switches. An unknown name is ignored. No experiment runs now.
+An experiment is a switch for an A/B benchmark (`tools/agentbench -uah-env`), not a setting: it has no config key and may go away. The environment variable `UAH_EXPERIMENTS` names the experiments to turn on, separated by commas; the engine reads it once, through `Config.Getenv`, in `embedded/experiments.go`, and a subagent's run gets its parent's engine and so the same switches. An unknown name is ignored.
+
+By default a finished tool call wakes the model once the coordinator's one-second grace period after the turn ends, so a model that waits on a slow command is woken by each quick one and sees the slow one as a placeholder. The `wake-*` experiments set the coordinator's wake policy (`wake.go`, the [runner fork](#the-runner-fork)'s `coordinator.WakePolicy`) to try other wakes; they combine, and an inbox input, such as a user message or a heartbeat, always wakes the model:
+
+| Experiment | What changes |
+| --- | --- |
+| `wake-no-placeholder` | A turn's results wait until every call the turn issued has finished, also a result that is ready at once, so the model never sees a placeholder for its latest calls. A call from an earlier turn still wakes the model when it finishes |
+| `wake-debounce` | A result that lands while other calls run waits up to 2 s for more, or until no call runs, and they arrive in one turn |
+| `wake-foreground` | The turn waits for its Bash calls up to 30 s, the longest `yield_time_ms` Codex's `exec_command` allows (its default is 10 s; codex-rs `main`, checked 2026-10-02). A command still running then continues in the background, and the model wakes with the tail of its output so far (`bash.Progress`). Bash takes `background: true` for a command not to wait on; other tools keep the grace period. A first version took Codex's `yield_time_ms`, and the model set 1000 on 40% of its commands, long tests included, as it does with Codex |
+| `wake-foreground-long` | `wake-foreground` with a 5-minute yield, the longest wait of Codex's `write_stdin` on a running command. In the first quick test, a 50 s test suite outlived the 30 s yield and the model polled it until it finished |
+| `wake-all-done` | A turn that issues no calls while calls run sleeps until every running call has finished, or one has failed: an error, a failed or canceled operation, or a nonzero exit code |
+
+`wake_test.go` runs a quick and a slow command with and without `wake-foreground`: by default the quick one's result wakes the model while the slow one runs; with it, the turn waits for both, and Bash offers `background`. `wake_internal_test.go` checks the policy and the yield each name sets and which calls wait; the fork's `coordinator/wake_test.go` checks when each rule wakes the model.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="tests" files="embedded/embedded_test.go embedded/patch_test.go embedded/patch_tool_test.go embedded/approval_test.go embedded/compact_test.go embedded/compact_settings_test.go embedded/context_test.go embedded/mcp_test.go embedded/mcpjobs_internal_test.go embedded/sandbox_test.go embedded/mode_test.go embedded/images_test.go embedded/clients_test.go embedded/reconnect_test.go embedded/transport_internal_test.go embedded/stream_test.go embedded/stream_internal_test.go embedded/rewind_test.go embedded/rewind_internal_test.go embedded/fork_internal_test.go embedded/store_internal_test.go embedded/sessionlog_test.go embedded/sessionlog_internal_test.go embedded/codexlogin_test.go codexauth/codexauth_test.go codexauth/login_test.go codexauth/file_internal_test.go embedded/websearch_test.go embedded/searchlog_internal_test.go embedded/compact_remote_test.go embedded/remotecompact_internal_test.go embedded/compact_probe_test.go embedded/remote_probe_test.go" -->

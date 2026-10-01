@@ -39,6 +39,9 @@ func (w *wiring) tools(ctx context.Context, req core.Request, sessionID session.
 	}
 	skills, skillErrs := discoverSkills(req.Workspace, w.getenv)
 	registry := tool.NewRegistry(translators, toolNames(req, len(skills) > 0)...)
+	if w.e.experiments.wakeForeground > 0 {
+		registry = foregroundRegistry{Registry: registry, yield: w.e.experiments.wakeForeground}
+	}
 	if sandboxed && b.available() {
 		registry = w.withSandbox(registry, req)
 	}
