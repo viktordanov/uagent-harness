@@ -1,0 +1,34 @@
+# tooly configuration (tooly 2.x)
+
+editor = "vim"
+default_branch = "main"
+color = true
+
+[log]
+level = "info"
+file = "~/.local/state/tooly/tooly.log"
+
+# Hooks run on tooly's events, in order. `event` is one of pre_command,
+# post_command, pre_commit, or pre_push.
+
+[[hooks]]
+name = "fmt"
+event = "pre_commit"
+run = "gofmt -l ."
+fail_on_output = true
+
+[[hooks]]
+name = "history"
+event = "post_command"
+run = "printf '%s\\t%s\\n' \"$(date +%s)\" \"$TOOLY_COMMAND\" >> ~/.local/state/tooly/history.tsv"
+
+[[hooks]]
+name = "notify"
+event = "post_command"
+run = "osascript -e 'display notification \"tooly finished\" with title \"tooly\"'"
+
+[[hooks]]
+name = "tests"
+event = "pre_push"
+run = "go test ./..."
+timeout = "5m"

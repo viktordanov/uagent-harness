@@ -1,18 +1,16 @@
 package bench
 
 import (
-	"bufio"
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 )
 
@@ -43,8 +41,10 @@ type Config struct {
 	UAH   string // the uah binary
 	Codex string // the codex binary
 	Price Price
-	Keep  bool
-	Log   io.Writer
+	// Mode is the permission mode of both: ModeAuto or ModeWorkspace.
+	Mode string
+	Keep bool
+	Log  io.Writer
 }
 
 // Key names a run; a results file holds each key once.
@@ -157,7 +157,7 @@ func Execute(ctx context.Context, cfg Config) error {
 	if len(todo) == 0 {
 		return nil
 	}
-	env, err := newEnv(cfg.Work)
+	env, err := newEnv(cfg.Work, cfg.Mode)
 	if err != nil {
 		return err
 	}
@@ -209,22 +209,39 @@ func sec(ms int64) float64 { return float64(ms) / 1000 }
 
 // runEnv is what every run shares.
 type runEnv struct {
-	work    string
-	tmp     string
-	uahHome string
-	base    []string
+	work      string
+	tmp       string
+	uahHome   string
+	uahConfig string // uah's user configuration: the permission mode only
+	codexHome string // the user's, for a run with a fake home
+	base      []string
 }
 
 // newEnv makes the shared directories and the base environment: the
 // user's, without variables that would steer either harness away from its
 // defaults, with a temporary directory both sandboxes let commands write
 // (and the Go build cache in it), and no network for Go.
-func newEnv(work string) (*runEnv, error) {
-	e := &runEnv{work: work, tmp: filepath.Join(work, "tmp"), uahHome: filepath.Join(work, "uah-home")}
+func newEnv(work, mode string) (*runEnv, error) {
+	e := &runEnv{work: work, tmp: filepath.Join(work, "tmp"), uahHome: filepath.Join(work, "uah-home"), codexHome: os.Getenv("CODEX_HOME")}
+	if e.codexHome == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return nil, err
+		}
+		e.codexHome = filepath.Join(home, ".codex")
+	}
 	for _, d := range []string{e.tmp, e.uahHome, filepath.Join(work, "runs")} {
 		if err := os.MkdirAll(d, 0o755); err != nil {
 			return nil, err
 		}
+	}
+	e.uahConfig = filepath.Join(work, "uah-"+cmp.Or(mode, ModeWorkspace)+".toml")
+	conf := ""
+	if mode == ModeAuto {
+		conf = "permission_mode = \"auto\"\n"
+	}
+	if err := os.WriteFile(e.uahConfig, []byte(conf), 0o644); err != nil {
+		return nil, err
 	}
 	for _, kv := range os.Environ() {
 		name, _, _ := strings.Cut(kv, "=")
@@ -285,14 +302,22 @@ func runOne(ctx context.Context, cfg Config, env *runEnv, t Task, k Key) (res Re
 	if !cfg.Keep {
 		defer os.RemoveAll(scratch)
 	}
+	fx, err := t.StartFixture(ctx, scratch, env.base)
+	if err != nil {
+		res.Error = err.Error()
+
+		return res
+	}
+	defer fx.Stop()
+	runEnv := append(slicesClone(env.base), fx.Env...)
 	ws := filepath.Join(scratch, "ws")
-	if err := t.Prepare(ctx, ws); err != nil {
+	if err := t.Prepare(ctx, ws, runEnv); err != nil {
 		res.Error = err.Error()
 
 		return res
 	}
 	limit := cmpDur(time.Duration(t.Timeout), cfg.Timeout)
-	inv := invocation(cfg, env, t, k, ws, art)
+	inv := invocation(cfg, env, fx, t, k, ws, art)
 	out, err := launch(ctx, inv, limit, art)
 	res.ExitCode, res.Status = out.exit, out.status
 	if err != nil {
@@ -305,8 +330,15 @@ func runOne(ctx context.Context, cfg Config, env *runEnv, t Task, k Key) (res Re
 			res.Error = strings.TrimSpace(res.Error + "; parse: " + perr.Error())
 		}
 	}
+	if res.Status == StatusFailed && res.Metrics.Turns == 0 {
+		// The harness never took the prompt: a bad flag, a login, a
+		// crash. Resume runs it again.
+		res.Status = StatusError
+		b, _ := os.ReadFile(filepath.Join(art, "stderr.txt"))
+		res.Error = strings.TrimSpace(res.Error + "; harness: " + oneLine(string(b), 200))
+	}
 	res.DiffStat = saveDiff(ctx, ws, filepath.Join(art, "diff.patch"))
-	chk, err := t.RunCheck(ctx, ws, filepath.Join(scratch, "check"), env.base)
+	chk, err := t.RunCheck(ctx, ws, filepath.Join(scratch, "check"), runEnv, fx)
 	res.Check = chk
 	if err != nil {
 		res.Error = strings.TrimSpace(res.Error + "; " + err.Error())
@@ -316,42 +348,6 @@ func runOne(ctx context.Context, cfg Config, env *runEnv, t Task, k Key) (res Re
 	res.Passed = chk.Passed && res.Status != StatusTimeout
 
 	return res
-}
-
-// harnessRun is how one harness is started.
-type harnessRun struct {
-	name string
-	args []string
-	env  []string
-	dir  string
-}
-
-func invocation(cfg Config, env *runEnv, t Task, k Key, ws, art string) harnessRun {
-	switch k.Harness {
-	case HarnessCodex:
-		return harnessRun{
-			name: cfg.Codex,
-			args: []string{
-				"exec", "--json", "--ephemeral", "--ignore-user-config", "--skip-git-repo-check",
-				"-m", k.Model, "-c", "model_reasoning_effort=" + k.Effort, "-c", `approval_policy="never"`,
-				"-s", "workspace-write", "-C", ws, t.Prompt,
-			},
-			env: env.base,
-			dir: ws,
-		}
-	default:
-		state := filepath.Join(art, "uah-state")
-
-		return harnessRun{
-			name: cfg.UAH,
-			args: []string{
-				"exec", "--json", "--model", k.Model, "--effort", k.Effort, "--sandbox", "workspace-write", "--ask", "never",
-				"--state-dir", state, "--workspace", ws, t.Prompt,
-			},
-			env: append(slicesClone(env.base), "UAH_HOME="+env.uahHome),
-			dir: ws,
-		}
-	}
 }
 
 // measure parses the run's artifacts into its timeline (saved as
@@ -370,6 +366,11 @@ func measure(res *Result, price Price) error {
 	}
 	if err != nil {
 		return err
+	}
+	if res.Harness == HarnessCodex {
+		for i := range tl.Requests {
+			tl.Requests[i].Effort = res.Effort // set once for the session
+		}
 	}
 	wall := time.Duration(res.Metrics.WallMS) * time.Millisecond
 	tl.End = res.StartedAt.Add(wall)
@@ -406,104 +407,4 @@ func Remeasure(path string, price Price) error {
 	}
 
 	return os.Rename(tmp, path)
-}
-
-func slicesClone(s []string) []string { return append([]string(nil), s...) }
-
-// launched is what a finished harness process left.
-type launched struct {
-	start  time.Time
-	wall   time.Duration
-	exit   int
-	status string
-	stream string // stdout, each line stamped with the time it was read
-}
-
-// launch runs the harness with stdin closed, stamping each stdout line
-// with the time it arrived, and stops its process group at the limit.
-func launch(ctx context.Context, h harnessRun, limit time.Duration, art string) (launched, error) {
-	l := launched{stream: filepath.Join(art, "stream.jsonl")}
-	stream, err := os.Create(l.stream)
-	if err != nil {
-		return l, err
-	}
-	defer stream.Close()
-	stderr, err := os.Create(filepath.Join(art, "stderr.txt"))
-	if err != nil {
-		return l, err
-	}
-	defer stderr.Close()
-	runCtx, cancel := context.WithTimeout(ctx, limit)
-	defer cancel()
-	cmd := exec.CommandContext(runCtx, h.name, h.args...)
-	cmd.Dir, cmd.Env, cmd.Stderr = h.dir, h.env, stderr
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	cmd.Cancel = func() error {
-		_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGTERM)
-		time.AfterFunc(5*time.Second, func() { _ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL) })
-
-		return nil
-	}
-	cmd.WaitDelay = 15 * time.Second
-	pipe, err := cmd.StdoutPipe()
-	if err != nil {
-		return l, err
-	}
-	l.start = time.Now()
-	if err := cmd.Start(); err != nil {
-		return l, fmt.Errorf("start %s: %w", h.name, err)
-	}
-	w := bufio.NewWriter(stream)
-	sc := bufio.NewScanner(pipe)
-	sc.Buffer(make([]byte, 0, 1<<16), 64<<20)
-	for sc.Scan() {
-		_, _ = w.WriteString(time.Now().UTC().Format(time.RFC3339Nano) + "\t")
-		_, _ = w.Write(sc.Bytes())
-		_ = w.WriteByte('\n')
-	}
-	_ = w.Flush()
-	err = cmd.Wait()
-	l.wall = time.Since(l.start)
-	// The rest of the process group (a background command the agent
-	// left) goes with it.
-	_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
-	l.exit = cmd.ProcessState.ExitCode()
-	switch {
-	case runCtx.Err() != nil && ctx.Err() == nil:
-		l.status = StatusTimeout
-
-		return l, nil
-	case err == nil:
-		l.status = StatusDone
-	default:
-		if _, ok := errors.AsType[*exec.ExitError](err); !ok {
-			return l, err
-		}
-		l.status = StatusFailed
-	}
-
-	return l, nil
-}
-
-// saveDiff stages everything in ws, writes the diff from the task's commit,
-// and returns its stat.
-func saveDiff(ctx context.Context, ws, path string) string {
-	git := func(args ...string) string {
-		cmd := exec.CommandContext(ctx, "git", args...)
-		cmd.Dir = ws
-		out, _ := cmd.Output()
-
-		return string(out)
-	}
-	git("add", "-A")
-	_ = os.WriteFile(path, []byte(git("diff", "--cached")), 0o644)
-
-	return strings.TrimSpace(git("diff", "--cached", "--shortstat"))
-}
-
-func writeJSON(path string, v any) {
-	b, err := json.MarshalIndent(v, "", "  ")
-	if err == nil {
-		_ = os.WriteFile(path, b, 0o644)
-	}
 }

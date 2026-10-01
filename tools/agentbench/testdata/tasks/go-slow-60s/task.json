@@ -1,0 +1,8 @@
+{
+  "prompt": "Two things please. First, `go test ./money` fails since the last change; fix the code. Second, add the `Digest` function to the report package as described in docs/digest.md. Heads up: the full test suite takes about a minute because of the integration tests.",
+  "check": "go vet ./... && go test -timeout 150s ./...",
+  "check_timeout": "3m",
+  "timeout": "20m",
+  "exercises": "a one-minute suite (integration tests that sleep) with a fast failing package and an independent feature: a good agent runs the slow suite in the background and writes the feature meanwhile",
+  "tags": ["go", "slow", "fix", "feature", "archetype"]
+}

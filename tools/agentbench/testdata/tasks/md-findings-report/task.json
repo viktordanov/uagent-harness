@@ -1,0 +1,6 @@
+{
+  "prompt": "We need the findings write-up for INC-2291. Everything we have is in sources/ (timeline, metrics export, both engineers' notes, the config diff, alerts, support summary). Write docs/FINDINGS.md for engineering leadership: summary, root cause, a timeline, customer impact with real numbers computed from the metrics export (total failed requests, peak p99, how long it lasted), what went well and badly, and the action items with owners. Aim for 10–25 KB.",
+  "check": "sh check_findings.sh",
+  "exercises": "a 10–25 KB findings document from eight sources: read them all (parallel reads), compute impact from a CSV, separate the root cause from a red herring, and keep the owners right",
+  "tags": ["docs", "investigate", "archetype"]
+}

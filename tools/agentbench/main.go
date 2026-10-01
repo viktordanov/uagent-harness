@@ -37,12 +37,13 @@ func run() error {
 	repeat := fs.Int("repeat", 1, "runs of each task per harness")
 	model := fs.String("model", "gpt-6.1-sol", "model for both harnesses")
 	effort := fs.String("effort", "high", "reasoning effort for both harnesses: low, medium, high, xhigh, max, ultra")
+	mode := fs.String("mode", bench.ModeAuto, "permission mode of both: auto (a reviewer model decides what needs approval, as the owner runs uah) or workspace (the workspace-write sandbox, approvals refused)")
 	parallel := fs.Int("parallel", 1, "runs at once (mind the rate limits)")
 	timeout := fs.Duration("timeout", 15*time.Minute, "wall-clock limit of a run, unless the task sets one")
 	maxRuns := fs.Int("max-runs", 60, "refuse to start more runs than this")
 	dry := fs.Bool("dry", false, "validate the tasks without model calls: each check must fail on the untouched repository and pass on the reference solution")
 	list := fs.Bool("list", false, "list the tasks and exit")
-	out := fs.String("out", "", "results file, JSON lines; runs already in it are skipped (default: tools/agentbench/results/<model>-<effort>.jsonl)")
+	out := fs.String("out", "", "results file, JSON lines; runs already in it are skipped (default: tools/agentbench/results/<model>-<effort>-<mode>.jsonl)")
 	reportOnly := fs.Bool("report", false, "only write the markdown report of the results file")
 	remeasure := fs.Bool("remeasure", false, "parse every run in the results file again (after a change to the parsers, the metrics, or the prices), then write the report")
 	work := fs.String("work", filepath.Join(os.TempDir(), "uah-agentbench"), "scratch directory: workspaces, the shared Go build cache, uah's home")
@@ -64,7 +65,7 @@ func run() error {
 		return err
 	}
 	if *out == "" {
-		*out = filepath.Join(root, "tools", "agentbench", "results", *model+"-"+*effort+".jsonl")
+		*out = filepath.Join(root, "tools", "agentbench", "results", *model+"-"+*effort+"-"+*mode+".jsonl")
 	}
 	price := bench.Price{Input: *priceIn, Cached: *priceCached, Output: *priceOut}
 	if *remeasure {
@@ -113,7 +114,7 @@ func run() error {
 	}
 	cfg := bench.Config{
 		Tasks: tasks, Repeat: *repeat, Model: *model, Effort: *effort, Parallel: *parallel, Timeout: *timeout,
-		MaxRuns: *maxRuns, Work: *work, Out: *out, UAH: *uahBin, Codex: *codexBin, Price: price, Keep: *keep, Log: os.Stderr,
+		MaxRuns: *maxRuns, Work: *work, Out: *out, UAH: *uahBin, Codex: *codexBin, Price: price, Mode: *mode, Keep: *keep, Log: os.Stderr,
 	}
 	if err := harnesses(ctx, &cfg, *harness, root); err != nil {
 		return err
@@ -143,9 +144,12 @@ func writeReport(out string, price bench.Price) error {
 	return nil
 }
 
-// harnesses sets the harnesses to run and builds uah from this tree
+// harnesses checks the mode, sets the harnesses to run, and builds uah from this tree
 // unless -uah names a binary.
 func harnesses(ctx context.Context, cfg *bench.Config, harness, root string) error {
+	if cfg.Mode != bench.ModeAuto && cfg.Mode != bench.ModeWorkspace {
+		return fmt.Errorf("bad -mode %q (want auto or workspace)", cfg.Mode)
+	}
 	switch harness {
 	case "both":
 		cfg.Harnesses = []string{bench.HarnessUAH, bench.HarnessCodex}

@@ -1,0 +1,6 @@
+{
+  "prompt": "I want to filter the task list by status. Add a `status` query parameter to GET /api/tasks (one of todo, doing, done; anything else should be a 400 with a JSON error, and no parameter keeps listing everything). On the web side, `tasksURL(status)` in web/app.js should add the filter when a status is given, and add a `statusOptions()` helper for the filter dropdown that returns `{value, label}` objects: an \"All\" entry with an empty value first, then one per status. Wire the dropdown into index.html. Keep the existing tests passing and add tests for the new behavior.",
+  "check": "go test ./... && node --test web/*.test.js",
+  "exercises": "a feature across a Go HTTP API and a plain-JS front end: handler validation, store filter, URL builder, options helper; tests on both sides",
+  "tags": ["go", "javascript", "feature", "archetype"]
+}

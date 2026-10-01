@@ -79,6 +79,9 @@ func ParseCodex(stream io.Reader, start time.Time) (*Timeline, error) {
 			tl.Tokens = tl.Tokens.Add(Tokens{Input: e.Usage.Input, Cached: e.Usage.Cached, Output: e.Usage.Output, Reasoning: e.Usage.Reasoning})
 		case "turn.failed", eventError:
 			p.closeSeg(now)
+			if n := len(tl.Requests); n > 0 {
+				tl.Requests[n-1].Stop = "failed"
+			}
 			tl.Errors = append(tl.Errors, cmpOr(e.Error.Message, e.Message))
 		}
 		if strings.HasPrefix(e.Type, "item.") {
@@ -106,6 +109,7 @@ type codexParser struct {
 	turnFirst bool
 	batch     int   // the request whose tool calls are starting, or -1
 	lastItem  int64 // the last item event
+	text      int   // assistant text not yet given to a request
 }
 
 // closeSeg ends the open segment at at. A gap too short for a request is
@@ -117,12 +121,14 @@ func (p *codexParser) closeSeg(at int64) {
 	p.segStart, p.turnFirst = -1, false
 }
 
+// request adds a request; the text written since the last one is its.
 func (p *codexParser) request(start, end int64) {
-	p.tl.Requests = append(p.tl.Requests, Request{StartMS: start, EndMS: end})
-	p.batch = len(p.tl.Requests) - 1
+	p.tl.Requests = append(p.tl.Requests, Request{StartMS: start, EndMS: end, Stop: "complete", TextBytes: p.text})
+	p.batch, p.text = len(p.tl.Requests)-1, 0
 }
 
 func (p *codexParser) addCall(c Call) {
+	c.Request = p.batch
 	p.tl.Calls = append(p.tl.Calls, c)
 	if p.batch >= 0 {
 		p.tl.Requests[p.batch].ToolCalls++
@@ -150,6 +156,7 @@ func (p *codexParser) completed(e codexEvent, now int64) {
 	switch {
 	case e.Item.Type == "agent_message":
 		p.tl.Answer = e.Item.Text
+		p.text += len(e.Item.Text)
 	case !isCodexTool(e.Item.Type):
 	case p.hasStarted(e.Item.ID):
 		finishCodexCall(&p.tl.Calls[p.calls[e.Item.ID]], e, now)
@@ -197,7 +204,10 @@ func codexCall(e codexEvent, at int64) Call {
 		args = e.Item.Query
 	}
 
-	return Call{ID: e.Item.ID, Name: name, Kind: callKind(e.Item.Type), Args: summarize(args), IssuedMS: at, StartMS: at, EndMS: -1}
+	c := newCall(e.Item.ID, name, args, at, -1)
+	c.Kind, c.EndMS = callKind(e.Item.Type), -1
+
+	return c
 }
 
 func finishCodexCall(c *Call, e codexEvent, at int64) {

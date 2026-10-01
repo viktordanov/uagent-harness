@@ -1,0 +1,21 @@
+2026-09-14T13:58:41Z deploy-bot     checkout-api release 2026.09.14-1 approved by r.shah (PR #4412 "checkout: tune db settings for new region")
+2026-09-14T14:02:10Z deploy-bot     checkout-api 2026.09.14-1 rolling out to prod-eu (12 pods)
+2026-09-14T14:04:55Z deploy-bot     checkout-api 2026.09.14-1 rollout complete, 12/12 pods ready
+2026-09-14T14:06:30Z alertmanager   FIRING CheckoutApi5xxRateHigh severity=page (5xx ratio 1.2% > 1%)
+2026-09-14T14:07:02Z pagerduty      incident INC-2291 triggered, assigned to Ana Petrova (SRE on call)
+2026-09-14T14:09:48Z slack #inc-2291 ana.petrova: ack, looking. p99 climbing on checkout-api, db looks idle?
+2026-09-14T14:14:20Z slack #inc-2291 ana.petrova: postgres CPU 18%, connections 240 total across services. not the db itself
+2026-09-14T14:19:05Z alertmanager   FIRING RedisLatencyHigh severity=warn (sessions-cache p99 41ms)
+2026-09-14T14:20:31Z slack #inc-2291 ana.petrova: redis latency alert too, checking if related
+2026-09-14T14:24:12Z alertmanager   RESOLVED RedisLatencyHigh
+2026-09-14T14:24:40Z slack #inc-2291 ana.petrova: redis blip was the nightly sessions compaction, unrelated (same as every day 14:15-14:25)
+2026-09-14T14:27:16Z slack #inc-2291 ravi.shah: joining. 4412 touched db settings, checking the diff
+2026-09-14T14:31:02Z slack #inc-2291 ana.petrova: pool wait time metric shows 4-9s waits for a connection, pods only hold 20 conns each
+2026-09-14T14:33:47Z slack #inc-2291 ravi.shah: found it, max_open_conns went 200 -> 20 in the prod-eu overlay. meant to be max_idle_conns
+2026-09-14T14:35:10Z slack #inc-2291 ana.petrova: decision: roll back to 2026.09.13-2 rather than hotfix
+2026-09-14T14:41:22Z deploy-bot     checkout-api rollback to 2026.09.13-2 requested by a.petrova
+2026-09-14T14:44:58Z deploy-bot     checkout-api 2026.09.13-2 rolling out to prod-eu (12 pods)
+2026-09-14T14:47:35Z deploy-bot     checkout-api 2026.09.13-2 rollout complete, 12/12 pods ready
+2026-09-14T14:51:00Z alertmanager   RESOLVED CheckoutApi5xxRateHigh
+2026-09-14T14:58:12Z slack #inc-2291 ana.petrova: error rate back to baseline, p99 ~200ms. monitoring 30 min
+2026-09-14T15:29:40Z pagerduty      incident INC-2291 resolved by Ana Petrova

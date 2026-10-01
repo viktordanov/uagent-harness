@@ -1,0 +1,8 @@
+# watchr: rebuilds on file changes.
+paths = ["./"]
+ignore = [".git", "node_modules"]
+
+[[hooks]]
+name = "notify"
+event = "rebuilt"
+run = "osascript -e 'display notification \"rebuilt\" with title \"watchr\"'"

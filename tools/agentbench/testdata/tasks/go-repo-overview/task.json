@@ -1,0 +1,6 @@
+{
+  "prompt": "I'm new to this repo. Write an ARCHITECTURE.md at the root that explains each package and what it owns, how a POST /v1/events request flows through the code end to end (including what happens when a webhook delivery fails), and where I'd add support for sending SMS notifications in addition to webhooks. Be specific: name the types and functions involved.",
+  "check": "sh check_architecture.sh",
+  "exercises": "a repository overview: read about 15 files across four packages (wide parallel reads) and write an accurate ARCHITECTURE.md with the request flow, retries, and an extension point",
+  "tags": ["go", "docs", "investigate", "archetype"]
+}

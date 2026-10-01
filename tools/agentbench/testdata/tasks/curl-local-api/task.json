@@ -1,0 +1,12 @@
+{
+  "prompt": "Our inventory API is running at {{URL}}. Use curl to pull all the items (follow the pages until `next` is null) plus the details for every item flagged `audit: true`, then write data/items.json (all items as the API returns them, one JSON array sorted by id) and data/audit.json (the details responses, one JSON array sorted by id).",
+  "check": "python3 .check/verify.py",
+  "service": "cd service && go run .",
+  "exercises": "many curl calls against a local HTTP API (five pages, then a details call per flagged item) that need network access outside the sandbox, so each harness has to escalate; then merge and sort JSON",
+  "tags": [
+    "network",
+    "escalation",
+    "archetype"
+  ],
+  "solution_script": "set -e\nmkdir -p data .fetch\npage=1\nwhile [ \"$page\" != \"None\" ]; do\n  curl -sf \"$SERVICE_URL/v1/items?page=$page\" > .fetch/page-$page.json\n  page=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))[\"next\"])' .fetch/page-$page.json)\ndone\npython3 - <<'PY'\nimport glob, json\nitems = sorted((i for f in glob.glob(\".fetch/page-*.json\") for i in json.load(open(f))[\"items\"]), key=lambda i: i[\"id\"])\njson.dump(items, open(\"data/items.json\", \"w\"), indent=2)\nopen(\".fetch/audit-ids\", \"w\").write(\"\\n\".join(str(i[\"id\"]) for i in items if i[\"audit\"]))\nPY\nfor id in $(cat .fetch/audit-ids); do curl -sf \"$SERVICE_URL/v1/items/$id/details\" > .fetch/details-$id.json; done\npython3 - <<'PY'\nimport glob, json\ndetails = sorted((json.load(open(f)) for f in glob.glob(\".fetch/details-*.json\")), key=lambda d: d[\"id\"])\njson.dump(details, open(\"data/audit.json\", \"w\"), indent=2)\nPY\nrm -rf .fetch\n"
+}

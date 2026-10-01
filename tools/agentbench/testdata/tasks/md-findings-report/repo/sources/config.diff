@@ -1,0 +1,23 @@
+diff --git a/deploy/overlays/prod-eu/checkout-api.yaml b/deploy/overlays/prod-eu/checkout-api.yaml
+index 3c1e2a0..9b47d18 100644
+--- a/deploy/overlays/prod-eu/checkout-api.yaml
++++ b/deploy/overlays/prod-eu/checkout-api.yaml
+@@ -14,11 +14,11 @@ spec:
+       containers:
+         - name: checkout-api
+           env:
+             - name: DB_HOST
+               value: pg-prod-eu.internal
+-            - name: DB_MAX_OPEN_CONNS        # max_open_conns
+-              value: "200"
+-            - name: DB_MAX_IDLE_CONNS        # max_idle_conns
+-              value: "50"
++            - name: DB_MAX_OPEN_CONNS        # max_open_conns
++              value: "20"
++            - name: DB_MAX_IDLE_CONNS        # max_idle_conns
++              value: "50"
+             - name: DB_CONN_MAX_LIFETIME
+-              value: "30m"
++              value: "15m"
+             - name: HTTP_TIMEOUT
+               value: "10s"

@@ -36,6 +36,13 @@ type Request struct {
 	EndMS     int64  `json:"end_ms"`
 	Tokens    Tokens `json:"tokens"`
 	ToolCalls int    `json:"tool_calls"`
+	// Effort is the reasoning effort the request ran at.
+	Effort string `json:"effort,omitempty"`
+	// Stop is how the response ended ("complete", or a cancel or
+	// failure); "" when it never ended.
+	Stop string `json:"stop,omitempty"`
+	// TextBytes is the length of the assistant text it wrote.
+	TextBytes int `json:"text_bytes,omitempty"`
 }
 
 // Call is one tool call: issued by the model, started, finished.
@@ -50,6 +57,12 @@ type Call struct {
 	EndMS    int64  `json:"end_ms"`
 	OK       bool   `json:"ok"`
 	Detail   string `json:"detail,omitempty"`
+	// Request is the index of the request that issued it, or -1.
+	Request int `json:"request"`
+	// ArgsBytes is the length of its arguments as the model wrote them.
+	ArgsBytes int `json:"args_bytes"`
+	// Escalated says the call asked to run outside the sandbox.
+	Escalated bool `json:"escalated,omitempty"`
 }
 
 // Tokens are a request's or a run's token counts. Input includes Cached,
@@ -137,6 +150,10 @@ type Metrics struct {
 
 	Tokens  Tokens  `json:"tokens"`
 	CostUSD float64 `json:"cost_usd"`
+
+	// Behavior is what the session mining found costs time: see
+	// behavior.go.
+	Behavior Behavior `json:"behavior"`
 }
 
 // Price is a model's price in US dollars per million tokens.
@@ -242,6 +259,7 @@ func (tl *Timeline) Compute(wall time.Duration, price Price) Metrics {
 		m.AvgConcurrent = float64(busySum) / float64(m.ToolMS)
 	}
 	m.MaxConcurrent = maxConcurrent(events)
+	m.Behavior = tl.behavior()
 	if len(firsts) > 0 {
 		slices.Sort(firsts)
 		m.FirstByteMS = firsts[len(firsts)/2]

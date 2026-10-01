@@ -1,0 +1,4 @@
+# Legacy tooly 1.x settings. tooly 2.0 migrated these to
+# ~/.config/tooly/config.toml and no longer reads this file.
+editor=nano
+color=auto

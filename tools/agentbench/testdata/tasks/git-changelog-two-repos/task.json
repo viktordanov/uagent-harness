@@ -1,0 +1,7 @@
+{
+  "prompt": "Write CHANGELOG.md at the top of this folder covering what changed in app and lib between v1.2.0 and v1.3.0, grouped by repo and then by Features / Fixes. Skip chores.",
+  "check": "python3 .check/verify.py",
+  "setup": "sh \"$TASK_DIR/setup.sh\"",
+  "exercises": "release notes from git history across two local repositories: tags, ranges, and conventional commit subjects, read with several independent git commands",
+  "tags": ["git", "docs", "archetype"]
+}

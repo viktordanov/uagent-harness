@@ -1,0 +1,12 @@
+{
+  "prompt": "tooly keeps popping up a desktop notification after every command and it's driving me nuts. Its config is somewhere under my home directory; find it and remove that notification hook. Keep the other hooks as they are.",
+  "check": "python3 .check/verify.py",
+  "fake_home": true,
+  "solution_script": "python3 - <<'PY'\nimport os, re\np = os.path.join(os.environ[\"HOME\"], \".config/tooly/config.toml\")\ns = open(p).read()\ns = re.sub(r'\\n\\[\\[hooks\\]\\]\\nname = \"notify\"\\n(?:[^\\[\\n].*\\n)*', \"\\n\", s)\nopen(p, \"w\").write(s)\nPY\n",
+  "exercises": "config surgery outside the workspace: find the active config under ~ among a legacy file and another tool's look-alike hook, remove one TOML table, keep everything else; writing there needs an escalation",
+  "tags": [
+    "config",
+    "escalation",
+    "archetype"
+  ]
+}

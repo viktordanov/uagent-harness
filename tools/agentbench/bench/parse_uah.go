@@ -29,6 +29,9 @@ type uahEvent struct {
 	Text       string    `json:"text"`
 	Final      bool      `json:"final"`
 	Message    string    `json:"message"`
+	Stop       string    `json:"stop"`
+	Mode       string    `json:"mode"`
+	Effort     string    `json:"effort"`
 	Usage      struct {
 		Input     int64 `json:"input"`
 		Cached    int64 `json:"cached_input"`
@@ -82,6 +85,7 @@ type uahParser struct {
 	// byte is not seen yet, else -1.
 	pendingFirst int
 	turnStart    time.Time
+	effort       string // the effort of the next request
 }
 
 // model reads the session's and the model's events, reporting whether e
@@ -91,6 +95,12 @@ func (p *uahParser) model(e uahEvent) bool {
 	switch e.Type {
 	case "session_opened":
 		p.session = e.ID
+	case "run_started":
+		p.effort = e.Effort
+	case "control_input":
+		if e.Mode == "settings" && e.Effort != "" {
+			p.effort = e.Effort
+		}
 	case "user_message":
 		tl.Turns++
 	case "turn_started":
@@ -105,17 +115,19 @@ func (p *uahParser) model(e uahEvent) bool {
 		end := e.At
 		begin := end.Add(-time.Duration(e.DurationMS) * time.Millisecond)
 		tok := Tokens{Input: e.Usage.Input, Cached: e.Usage.Cached, Output: e.Usage.Output, Reasoning: e.Usage.Reasoning}
-		if n := len(tl.Requests); p.pendingFirst == -1 && n > 0 && tl.Requests[n-1].EndMS == 0 {
-			r := &tl.Requests[n-1]
-			r.StartMS, r.EndMS, r.Tokens = ms(start, begin), ms(start, end), tok
-		} else {
-			tl.Requests = append(tl.Requests, Request{StartMS: ms(start, begin), EndMS: ms(start, end), Tokens: tok})
+		if n := len(tl.Requests); p.pendingFirst != -1 || n == 0 || tl.Requests[n-1].EndMS != 0 {
+			tl.Requests = append(tl.Requests, Request{})
 		}
+		r := &tl.Requests[len(tl.Requests)-1]
+		r.StartMS, r.EndMS, r.Tokens, r.Stop, r.Effort = ms(start, begin), ms(start, end), tok, e.Stop, p.effort
 		p.pendingFirst = -1
 		tl.Tokens = tl.Tokens.Add(tok)
 	case "assistant_message":
 		if e.Final {
 			tl.Answer = e.Text
+		}
+		if n := len(tl.Requests); n > 0 {
+			tl.Requests[n-1].TextBytes += len(e.Text)
 		}
 	case eventError, "run_failed":
 		tl.Errors = append(tl.Errors, cmpOr(e.Message, e.Text, e.Detail))
@@ -133,9 +145,11 @@ func (p *uahParser) tool(e uahEvent) {
 	case "tool_called":
 		p.calls[e.CallID] = len(tl.Calls)
 		at := ms(start, e.At)
-		tl.Calls = append(tl.Calls, Call{ID: e.CallID, Name: e.Name, Kind: callKind(e.Name), Args: summarize(e.Arguments), IssuedMS: at, StartMS: at, EndMS: -1})
-		if n := len(tl.Requests); n > 0 {
-			tl.Requests[n-1].ToolCalls++
+		c := newCall(e.CallID, e.Name, e.Arguments, at, len(tl.Requests)-1)
+		c.EndMS = -1
+		tl.Calls = append(tl.Calls, c)
+		if c.Request >= 0 {
+			tl.Requests[c.Request].ToolCalls++
 		}
 	case "tool_started":
 		if i, ok := p.calls[e.CallID]; ok {
@@ -145,6 +159,14 @@ func (p *uahParser) tool(e uahEvent) {
 		if i, ok := p.calls[e.CallID]; ok {
 			tl.Calls[i].EndMS, tl.Calls[i].OK, tl.Calls[i].Detail = ms(start, e.At), e.OK, e.Detail
 		}
+	}
+}
+
+// newCall is a call issued at at by request req, started at once.
+func newCall(id, name, args string, at int64, req int) Call {
+	return Call{
+		ID: id, Name: name, Kind: callKind(name), Args: summarize(args), IssuedMS: at, StartMS: at, EndMS: at,
+		Request: req, ArgsBytes: len(args), Escalated: strings.Contains(args, `"require_escalated"`),
 	}
 }
 
@@ -213,6 +235,7 @@ type (
 	sfResponse struct {
 		TurnID   string
 		Response struct {
+			Stop   string
 			Output []struct {
 				Type string
 				Data json.RawMessage
@@ -273,15 +296,20 @@ func addSession(tl *Timeline, agent string, items []sessionfile.Item) {
 			}
 			u := r.Response.Usage
 			tok := Tokens{Input: u.InputTokens, Cached: u.CachedInputTokens, Output: u.OutputTokens, Reasoning: u.ReasoningTokens}
-			req := Request{Agent: agent, StartMS: ms(tl.Start, turnAt), EndMS: at, Tokens: tok}
+			req := Request{Agent: agent, StartMS: ms(tl.Start, turnAt), EndMS: at, Tokens: tok, Stop: r.Response.Stop}
 			for _, o := range r.Response.Output {
 				var c sfToolCall
-				if o.Type != "tool_call" || json.Unmarshal(o.Data, &c) != nil {
-					continue
+				var m struct{ Text string }
+				switch {
+				case o.Type == "message" && json.Unmarshal(o.Data, &m) == nil:
+					req.TextBytes += len(m.Text)
+				case o.Type == "tool_call" && json.Unmarshal(o.Data, &c) == nil:
+					req.ToolCalls++
+					calls[c.CallID] = len(tl.Calls)
+					call := newCall(c.CallID, c.Name, c.Arguments, at, len(tl.Requests))
+					call.Agent, call.OK = agent, true
+					tl.Calls = append(tl.Calls, call)
 				}
-				req.ToolCalls++
-				calls[c.CallID] = len(tl.Calls)
-				tl.Calls = append(tl.Calls, Call{Agent: agent, ID: c.CallID, Name: c.Name, Kind: callKind(c.Name), Args: summarize(c.Arguments), IssuedMS: at, StartMS: at, EndMS: at, OK: true})
 			}
 			tl.Requests = append(tl.Requests, req)
 			tl.Tokens = tl.Tokens.Add(tok)

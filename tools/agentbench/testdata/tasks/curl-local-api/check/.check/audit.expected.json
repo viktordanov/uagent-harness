@@ -1,0 +1,44 @@
+[
+  {
+    "id": 101,
+    "supplier": "Coastal Parts",
+    "last_counted": "2026-03-18",
+    "bin": "F-21"
+  },
+  {
+    "id": 105,
+    "supplier": "Acme Supply",
+    "last_counted": "2026-07-22",
+    "bin": "D-25"
+  },
+  {
+    "id": 133,
+    "supplier": "Bolt Bros",
+    "last_counted": "2026-08-22",
+    "bin": "B-13"
+  },
+  {
+    "id": 137,
+    "supplier": "Coastal Parts",
+    "last_counted": "2026-03-26",
+    "bin": "F-17"
+  },
+  {
+    "id": 161,
+    "supplier": "Coastal Parts",
+    "last_counted": "2026-09-22",
+    "bin": "F-01"
+  },
+  {
+    "id": 165,
+    "supplier": "Acme Supply",
+    "last_counted": "2026-04-26",
+    "bin": "D-05"
+  },
+  {
+    "id": 193,
+    "supplier": "Bolt Bros",
+    "last_counted": "2026-05-26",
+    "bin": "B-33"
+  }
+]

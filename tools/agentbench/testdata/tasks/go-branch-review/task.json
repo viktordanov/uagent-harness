@@ -1,0 +1,7 @@
+{
+  "prompt": "Please review the current branch (feature/quotas) against main before I merge it. Look for real bugs, not style. Write your findings to REVIEW.md: one entry per problem with the file, the line, what goes wrong, and a suggested fix. Use subagents if it helps.",
+  "setup": "sh \"$TASK_DIR/setup.sh\"",
+  "check": "sh check_review.sh",
+  "exercises": "a branch review against a base: read the git diff of two commits, find three planted bugs (an off-by-one at the limit, a missing lock, a swallowed error) across three files; splits across subagents",
+  "tags": ["go", "review", "subagents", "archetype"]
+}

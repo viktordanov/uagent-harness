@@ -1,0 +1,12 @@
+[
+ "```ini\n[OpsPortal]\nurl = https://ops.example.internal\nteam = payments\nregion = eu-west\n```",
+ "```sh\nopsportal login --sso\nopsportal whoami   # prints your OpsPortal role\n```",
+ "```sh\nopsportal keys create --name ci-deployer --scope deploy\nopsportal keys list\n```",
+ "```yaml\nOpsPortal:\n  api_key_env: OPSPORTAL_API_KEY\n  scopes: [deploy, read]\n```",
+ "```sh\nopsportal deploy --service checkout --version 2026.09.14-1\nopsportal deploy status checkout\n```",
+ "```sh\nopsportal rollback checkout --to 2026.09.13-2\n```",
+ "```yaml\nalerts:\n  - name: OpsPortalSyncLag\n    expr: opsportal_sync_lag_seconds > 300\n    for: 10m\n```",
+ "```sh\nopsportal backup run --project payments\nopsportal backup list --since 7d\n```",
+ "```json\n{\n  \"integration\": \"slack\",\n  \"OpsPortalChannel\": \"#ops-deploys\"\n}\n```",
+ "```sh\nopsportal deploy cancel checkout --reason stuck\n```"
+]

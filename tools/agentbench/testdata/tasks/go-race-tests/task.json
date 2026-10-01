@@ -1,0 +1,7 @@
+{
+  "prompt": "`go test -race ./...` fails in this repo: the race detector reports data races in a few packages. Fix the races in the code so the suite passes under -race. Don't change the tests.",
+  "check": "go vet ./... && go test -race -count=1 ./...",
+  "check_timeout": "4m",
+  "exercises": "three unrelated data races in three packages (a map, a shared slice, a flag and counter) surfaced by go test -race; fix each without touching the tests",
+  "tags": ["go", "fix", "concurrency", "archetype"]
+}

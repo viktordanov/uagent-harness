@@ -50,6 +50,19 @@ type Task struct {
 	Tags []string `json:"tags,omitempty"`
 	// Delete lists files the reference solution removes.
 	Delete []string `json:"solution_delete,omitempty"`
+	// Setup is a shell script run in the workspace after its first
+	// commit, with TASK_DIR set: to make git history, for example.
+	Setup string `json:"setup,omitempty"`
+	// SolutionScript runs in the workspace after solution/ is laid over
+	// it, for a solution that is not only files.
+	SolutionScript string `json:"solution_script,omitempty"`
+	// Service is a shell command run in the task's directory for the
+	// whole run, with PORT set; {{URL}} in the prompt and the check, and
+	// SERVICE_URL, are its address.
+	Service string `json:"service,omitempty"`
+	// FakeHome gives the run its own HOME, filled from home/, so a task
+	// may edit files under ~ without touching the user's.
+	FakeHome bool `json:"fake_home,omitempty"`
 }
 
 // Duration is a time.Duration written as "90s" in JSON.
@@ -130,8 +143,9 @@ func LoadTask(dir string) (Task, error) {
 }
 
 // Prepare copies the task's repository to ws and commits it, so the agent
-// starts in a clean git repository and its changes show in git.
-func (t Task) Prepare(ctx context.Context, ws string) error {
+// starts in a clean git repository and its changes show in git, then runs
+// the task's setup.
+func (t Task) Prepare(ctx context.Context, ws string, env []string) error {
 	if err := copyTree(filepath.Join(t.Dir, repoDir), ws); err != nil {
 		return err
 	}
@@ -146,19 +160,30 @@ func (t Task) Prepare(ctx context.Context, ws string) error {
 			return fmt.Errorf("git %s: %w: %s", args[0], err, out)
 		}
 	}
+	if t.Setup != "" {
+		if err := runScript(ctx, t.Setup, ws, env); err != nil {
+			return fmt.Errorf("setup: %w", err)
+		}
+	}
 
 	return nil
 }
 
-// ApplySolution lays the reference solution over ws.
-func (t Task) ApplySolution(ws string) error {
+// ApplySolution lays the reference solution over ws and runs its script.
+func (t Task) ApplySolution(ctx context.Context, ws string, env []string) error {
 	for _, d := range t.Delete {
 		if err := os.Remove(filepath.Join(ws, d)); err != nil {
 			return err
 		}
 	}
+	if err := copyTree(filepath.Join(t.Dir, solutionDir), ws); err != nil {
+		return err
+	}
+	if t.SolutionScript != "" {
+		return runScript(ctx, t.SolutionScript, ws, env)
+	}
 
-	return copyTree(filepath.Join(t.Dir, solutionDir), ws)
+	return nil
 }
 
 // CheckResult is the outcome of a task's check.
@@ -172,8 +197,8 @@ const checkOutputTail = 4000
 
 // RunCheck copies ws to scratch, lays check/ over the copy, and runs the
 // check there, so hidden tests replace whatever the agent wrote and ws
-// stays as the agent left it.
-func (t Task) RunCheck(ctx context.Context, ws, scratch string, env []string) (CheckResult, error) {
+// stays as the agent left it. env includes the fixture's variables.
+func (t Task) RunCheck(ctx context.Context, ws, scratch string, env []string, fx *Fixture) (CheckResult, error) {
 	if err := os.RemoveAll(scratch); err != nil {
 		return CheckResult{}, err
 	}
@@ -188,7 +213,7 @@ func (t Task) RunCheck(ctx context.Context, ws, scratch string, env []string) (C
 	limit := cmpDur(time.Duration(t.CheckTimeout), defaultCheckTimeout)
 	ctx, cancel := context.WithTimeout(ctx, limit)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "sh", "-c", t.Check)
+	cmd := exec.CommandContext(ctx, "sh", "-c", fx.Expand(t.Check))
 	cmd.Dir = scratch
 	cmd.Env = env
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}

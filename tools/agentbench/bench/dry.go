@@ -25,7 +25,7 @@ func (v Validation) OK() bool { return v.Error == "" && !v.Untouched.Passed && v
 // Validate dry-runs each task, parallel at once, with no model calls. It
 // uses the same environment as a run, so it also warms the Go build cache.
 func Validate(ctx context.Context, tasks []Task, work string, parallel int) ([]Validation, error) {
-	env, err := newEnv(work)
+	env, err := newEnv(work, ModeWorkspace)
 	if err != nil {
 		return nil, err
 	}
@@ -53,23 +53,31 @@ func validate(ctx context.Context, t Task, env *runEnv) Validation {
 		return v
 	}
 	defer os.RemoveAll(scratch)
+	fx, err := t.StartFixture(ctx, scratch, env.base)
+	if err != nil {
+		v.Error = err.Error()
+
+		return v
+	}
+	defer fx.Stop()
+	runEnv := append(slicesClone(env.base), fx.Env...)
 	ws := filepath.Join(scratch, "ws")
-	if err := t.Prepare(ctx, ws); err != nil {
+	if err := t.Prepare(ctx, ws, runEnv); err != nil {
 		v.Error = err.Error()
 
 		return v
 	}
-	if v.Untouched, err = t.RunCheck(ctx, ws, filepath.Join(scratch, "check"), env.base); err != nil {
+	if v.Untouched, err = t.RunCheck(ctx, ws, filepath.Join(scratch, "check"), runEnv, fx); err != nil {
 		v.Error = err.Error()
 
 		return v
 	}
-	if err := t.ApplySolution(ws); err != nil {
+	if err := t.ApplySolution(ctx, ws, runEnv); err != nil {
 		v.Error = "solution: " + err.Error()
 
 		return v
 	}
-	if v.Solved, err = t.RunCheck(ctx, ws, filepath.Join(scratch, "check"), env.base); err != nil {
+	if v.Solved, err = t.RunCheck(ctx, ws, filepath.Join(scratch, "check"), runEnv, fx); err != nil {
 		v.Error = err.Error()
 	}
 

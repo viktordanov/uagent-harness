@@ -28,6 +28,7 @@ func Report(results []Result, price Price) string {
 		rs := groups[g]
 		fmt.Fprintf(&b, "\n## %s\n", g)
 		summary(&b, rs)
+		behaviorTable(&b, rs)
 		perTask(&b, rs)
 		perRun(&b, rs)
 	}
@@ -183,4 +184,53 @@ func oneLine(v string, n int) string {
 	}
 
 	return v
+}
+
+// behaviorTable sums each harness's Behavior over its runs.
+func behaviorTable(b *strings.Builder, rs []Result) {
+	b.WriteString("\n### Where the model time goes, per harness\n\nOutput tokens split by what they wrote (patch, tool arguments, and text by bytes written; Codex's split is rough), then sums over the runs: requests spent on a startup ritual and their time, patch-only requests followed by a separate command request, escalations with the total and median approval latency, and requests that did not complete.\n\n| Harness | Reasoning | Patch | Tool args | Text | Ritual req. (s) | Patch then verify | Escalations (refused) | Review s (median) | Approval waits (s) | Aborted (s) | Requests by effort |\n| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |\n")
+	for _, h := range harnesses(rs) {
+		var t Behavior
+		efforts := map[string]int{}
+		var medians []float64
+		for _, r := range pick(rs, func(r Result) bool { return r.Harness == h }) {
+			x := r.Metrics.Behavior
+			t.OutputReasoning += x.OutputReasoning
+			t.OutputPatch += x.OutputPatch
+			t.OutputToolArgs += x.OutputToolArgs
+			t.OutputText += x.OutputText
+			t.RitualRequests += x.RitualRequests
+			t.RitualMS += x.RitualMS
+			t.PatchThenVerify += x.PatchThenVerify
+			t.Escalations += x.Escalations
+			t.EscalationsRefused += x.EscalationsRefused
+			t.ReviewMS += x.ReviewMS
+			t.ApprovalWaits += x.ApprovalWaits
+			t.ApprovalWaitMS += x.ApprovalWaitMS
+			t.Aborted += x.Aborted
+			t.AbortedMS += x.AbortedMS
+			for e, n := range x.Efforts {
+				efforts[e] += n
+			}
+			if x.Escalations > 0 {
+				medians = append(medians, s(x.ReviewMedianMS))
+			}
+		}
+		out := max(1, t.OutputReasoning+t.OutputPatch+t.OutputToolArgs+t.OutputText)
+		pct := func(n int64) string { return fmt.Sprintf("%d (%.0f%%)", n, 100*float64(n)/float64(out)) }
+		slices.Sort(medians)
+		med := 0.0
+		if len(medians) > 0 {
+			med = medians[len(medians)/2]
+		}
+		var es []string
+		for e, n := range efforts {
+			es = append(es, fmt.Sprintf("%s %d", e, n))
+		}
+		slices.Sort(es)
+		fmt.Fprintf(b, "| %s | %s | %s | %s | %s | %d (%.1f) | %d | %d (%d) | %.1f (%.1f) | %d (%.1f) | %d (%.1f) | %s |\n",
+			h, pct(t.OutputReasoning), pct(t.OutputPatch), pct(t.OutputToolArgs), pct(t.OutputText),
+			t.RitualRequests, s(t.RitualMS), t.PatchThenVerify, t.Escalations, t.EscalationsRefused, s(t.ReviewMS), med, t.ApprovalWaits, s(t.ApprovalWaitMS),
+			t.Aborted, s(t.AbortedMS), strings.Join(es, ", "))
+	}
 }

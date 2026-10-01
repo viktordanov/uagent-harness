@@ -1,0 +1,14 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Tasks</title></head>
+<body>
+  <ul id="tasks"></ul>
+  <script type="module">
+    import { tasksURL, renderRow } from './app.js';
+    const res = await fetch(tasksURL());
+    const tasks = await res.json();
+    document.getElementById('tasks').innerHTML =
+      tasks.map((t) => `<li>${renderRow(t)}</li>`).join('');
+  </script>
+</body>
+</html>

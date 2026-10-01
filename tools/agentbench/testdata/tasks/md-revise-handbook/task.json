@@ -1,0 +1,6 @@
+{
+  "prompt": "A round of edits to docs/handbook.md, please:\n\n1. The product was renamed from OpsPortal to Control Center. Update the prose and headings everywhere, but leave code samples alone: the CLI, config keys, and metric names still use the old identifiers.\n2. Add a \"Rotating credentials\" section right after \"Managing API keys\": when to rotate, the steps, and an example.\n3. The numbered list under \"Incident escalation\" skips a number; fix the numbering without changing the steps.\n4. In the support tiers table, Gold's response time is now 4 hours and Platinum's is 1 hour.\n5. Remove the deprecated SOAP API section; nobody uses it anymore.\n\nKeep the contents list at the top in sync.",
+  "check": "python3 check_handbook.py",
+  "exercises": "iterative revision of a 38 KB markdown file: five independent edits (a rename that must skip code blocks, a new section, renumbering, a table, a removal) that batch into few patches",
+  "tags": ["docs", "edit", "archetype"]
+}

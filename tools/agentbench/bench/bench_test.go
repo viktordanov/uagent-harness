@@ -66,8 +66,8 @@ func TestParseCodex(t *testing.T) {
 	// From the turn's start to the first command, and from the last
 	// command's end to the turn's end.
 	require.Len(t, tl.Requests, 2)
-	assert.Equal(t, bench.Request{StartMS: 14, EndMS: 8028, ToolCalls: 2}, tl.Requests[0])
-	assert.Equal(t, bench.Request{StartMS: 8049, EndMS: 11063}, tl.Requests[1])
+	assert.Equal(t, bench.Request{StartMS: 14, EndMS: 8028, ToolCalls: 2, Stop: "complete", TextBytes: 37}, tl.Requests[0])
+	assert.Equal(t, bench.Request{StartMS: 8049, EndMS: 11063, Stop: "complete", TextBytes: 4}, tl.Requests[1])
 	require.Len(t, tl.Calls, 2)
 	assert.Equal(t, "shell", tl.Calls[0].Name)
 	assert.Equal(t, "/bin/zsh -lc ls", tl.Calls[0].Args)
@@ -156,9 +156,9 @@ func TestParseCodexSerialCalls(t *testing.T) {
 	tl, err := bench.ParseCodex(strings.NewReader(stream), time.Date(2026, 10, 1, 10, 0, 0, 0, time.UTC))
 	require.NoError(t, err)
 	assert.Equal(t, []bench.Request{
-		{StartMS: 0, EndMS: 2000, ToolCalls: 2},
-		{StartMS: 2700, EndMS: 5000, ToolCalls: 1},
-		{StartMS: 5000, EndMS: 7000},
+		{StartMS: 0, EndMS: 2000, ToolCalls: 2, Stop: "complete"},
+		{StartMS: 2700, EndMS: 5000, ToolCalls: 1, Stop: "complete"},
+		{StartMS: 5000, EndMS: 7000, Stop: "complete", TextBytes: 2},
 	}, tl.Requests)
 	require.Len(t, tl.Calls, 3)
 	assert.False(t, tl.Calls[1].OK)
@@ -177,11 +177,42 @@ func TestParseCodexBackgroundCall(t *testing.T) {
 	tl, err := bench.ParseCodex(strings.NewReader(stream), time.Date(2026, 10, 1, 10, 0, 0, 0, time.UTC))
 	require.NoError(t, err)
 	assert.Equal(t, []bench.Request{
-		{StartMS: 0, EndMS: 2000, ToolCalls: 1},
-		{StartMS: 2000, EndMS: 6000, ToolCalls: 1},
-		{StartMS: 30000, EndMS: 32000},
+		{StartMS: 0, EndMS: 2000, ToolCalls: 1, Stop: "complete"},
+		{StartMS: 2000, EndMS: 6000, ToolCalls: 1, Stop: "complete"},
+		{StartMS: 30000, EndMS: 32000, Stop: "complete"},
 	}, tl.Requests)
 	m := tl.Compute(32*time.Second, price)
 	assert.Equal(t, int64(4000), m.OverlapMS)
 	assert.Equal(t, 2, m.MaxConcurrent)
+}
+
+func TestBehavior(t *testing.T) {
+	tl := &bench.Timeline{
+		Requests: []bench.Request{
+			{StartMS: 0, EndMS: 1000, Effort: "high", Stop: "complete", Tokens: bench.Tokens{Output: 10}},
+			{StartMS: 1100, EndMS: 3000, Effort: "high", Stop: "complete", Tokens: bench.Tokens{Output: 110, Reasoning: 10}},
+			{StartMS: 3100, EndMS: 4000, Effort: "medium", Stop: "complete", Tokens: bench.Tokens{Output: 20}, TextBytes: 100},
+			{StartMS: 5000, EndMS: 5500, Effort: "medium", Stop: "canceled"},
+		},
+		Calls: []bench.Call{
+			{Name: "SkillUse", Request: 0, ArgsBytes: 0},
+			{Name: "apply_patch", Request: 1, ArgsBytes: 300, OK: true},
+			{Name: "Bash", Args: `{"command":"go test ./...","sandbox_permissions":"require_escalated"}`, Request: 2, ArgsBytes: 100, IssuedMS: 4000, StartMS: 4600, EndMS: 4900, Escalated: true, OK: true},
+		},
+	}
+	b := tl.Compute(6*time.Second, price).Behavior
+	assert.Equal(t, 1, b.RitualRequests)
+	assert.Equal(t, int64(1100), b.RitualMS)
+	assert.Equal(t, 1, b.PatchThenVerify)
+	assert.Equal(t, 1, b.Escalations)
+	assert.Equal(t, int64(600), b.ReviewMS)
+	assert.Equal(t, 1, b.ApprovalWaits)
+	assert.Equal(t, int64(600), b.ApprovalWaitMS)
+	assert.Equal(t, 1, b.Aborted)
+	assert.Equal(t, int64(500), b.AbortedMS)
+	assert.Equal(t, map[string]int{"high": 2, "medium": 2}, b.Efforts)
+	assert.Equal(t, int64(10), b.OutputReasoning)
+	assert.Equal(t, int64(100), b.OutputPatch)
+	assert.Equal(t, int64(10), b.OutputToolArgs)
+	assert.Equal(t, int64(20), b.OutputText)
 }
