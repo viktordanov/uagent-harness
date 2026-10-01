@@ -5,11 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/viktordanov/uah/internal/engine"
 	"github.com/viktordanov/uah/internal/instructions"
 	"github.com/viktordanov/uah/internal/session"
+	"github.com/viktordanov/uah/internal/sessionfile"
 )
 
 // Codex's refusals for spawn_agent.
@@ -79,6 +82,26 @@ func (m *Manager) firstNote(c *child) string {
 	}
 
 	return ""
+}
+
+// hasNote reports whether a child's messages carry its note. A child
+// spawned while the note was in the system prompt has it in none, and its
+// next message gets it (noteDue). An unreadable file counts as having it.
+func hasNote(dir, id string) bool {
+	_, page, err := sessionfile.Read(filepath.Join(dir, id+".session.jsonl"), sessionfile.BeforeFirst, 0)
+	if err != nil {
+		return true
+	}
+	for _, it := range page.Items {
+		var in sessionfile.Input
+		if it.Kind == sessionfile.KindInput && it.Decode(&in) == nil && in.Kind == sessionfile.InputExternal {
+			if text, err := in.Text(); err == nil && strings.Contains(text, instructions.SubagentNote) {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 // spawnRole is the new child's role and record. A fork keeps the parent's
@@ -398,12 +421,16 @@ func (m *Manager) resume(_ context.Context, parentID, id string) (Status, error)
 	if err != nil {
 		role = Role{} // the role file is gone: the default agent with the child's model
 	}
+	due := !rec.Fork && !hasNote(dir, id)
 	c, err = m.start(parentID, id, role, rec, true) //nolint:contextcheck // children outlive the call that started them
 	if err != nil {
 		return Status{State: engine.AgentNotFound}, err
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if due && c.gen == 0 {
+		c.noteDue = instructions.SubagentNote
+	}
 
 	return c.status, nil
 }

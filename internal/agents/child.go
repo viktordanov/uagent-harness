@@ -60,6 +60,10 @@ type child struct {
 	// closed; cancel ends it and a new one follows.
 	asks   context.Context
 	cancel context.CancelFunc
+	// noteDue is the role note a resumed child's next message ends with:
+	// the child was spawned while the note was in the system prompt
+	// (hasNote).
+	noteDue string
 	// stopStreak counts SubagentStop hooks that kept the child going.
 	stopStreak int
 	// log are the session's events since it opened, and subs the views
@@ -130,6 +134,9 @@ func (m *Manager) submit(c *child, message string, when session.When) (string, e
 		c.started = time.Now()
 	}
 	c.status = Status{State: engine.AgentRunning}
+	if c.noteDue != "" {
+		message, c.noteDue = message+"\n\n"+c.noteDue, ""
+	}
 	s := c.s
 	m.mu.Unlock()
 	m.notify(c)

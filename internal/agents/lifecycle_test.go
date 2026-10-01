@@ -1,7 +1,11 @@
 package agents_test
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -188,6 +192,59 @@ func TestAgents_ResumeAcrossProcesses(t *testing.T) {
 	assert.Equal(t, []string{"CHILD-R first task\n\n" + instructions.SubagentNote, "second task"}, last.UserTexts, "the child resumed its own history")
 	resumed := ev.agentState(engine.AgentCompleted)
 	assert.Equal(t, "Ada", resumed.Nickname, "the child keeps its nickname")
+}
+
+// TestAgents_ResumeAddsAMissingNote resumes a child spawned while the note
+// was in the system prompt, so none of its messages has it: the next
+// message ends with it, once. A fork never had it and gets none.
+func TestAgents_ResumeAddsAMissingNote(t *testing.T) {
+	for _, fork := range []bool{false, true} {
+		t.Run(fmt.Sprint("fork=", fork), func(t *testing.T) {
+			e := newEnv(t, agents.Config{},
+				fakellm.Reply{Calls: []fakellm.Call{call("spawn_agent", fmt.Sprintf(`{"message":"CHILD-N first task","fork_context":%t}`, fork))}},
+				callWith("wait_agent", `{"targets":["ID"]}`),
+				fakellm.Reply{Text: "first done"},
+				callWith("resume_agent", `{"id":"ID"}`),
+				callWith("send_input", `{"target":"ID","message":"second task"}`),
+				callWith("wait_agent", `{"targets":["ID"]}`),
+				callWith("send_input", `{"target":"ID","message":"third task"}`),
+				callWith("wait_agent", `{"targets":["ID"]}`),
+				fakellm.Reply{Text: "all done"},
+			)
+			e.llm.Route("CHILD-N", fakellm.Reply{Text: "1"}, fakellm.Reply{Text: "2"}, fakellm.Reply{Text: "3"})
+			s, ev := e.open(t, false)
+			_, err := s.Submit("delegate")
+			require.NoError(t, err)
+			assert.Equal(t, "first done", ev.finished().Answer)
+			parentID := s.ID()
+			require.NoError(t, s.Close())
+			files, err := filepath.Glob(filepath.Join(e.sessionsDir(), "subagent-*.session.jsonl"))
+			require.NoError(t, err)
+			require.Len(t, files, 1)
+			note, err := json.Marshal("\n\n" + instructions.SubagentNote)
+			require.NoError(t, err)
+			b, err := os.ReadFile(files[0])
+			require.NoError(t, err)
+			require.NoError(t, os.WriteFile(files[0], bytes.ReplaceAll(b, note[1:len(note)-1], nil), 0o600), "as spawned before the note left the system prompt")
+
+			e.mgr = agents.New(e.cfg) // a new process
+			s, ev = e.openID(t, parentID, false)
+			_, err = s.Submit("again")
+			require.NoError(t, err)
+			assert.Equal(t, "all done", ev.finished().Answer)
+			var last fakellm.Request
+			for _, r := range e.llm.Requests() {
+				if isChild(r) {
+					last = r
+				}
+			}
+			second := "second task\n\n" + instructions.SubagentNote // the note once, with the next message
+			if fork {
+				second = "second task" // a fork never had it
+			}
+			assert.Equal(t, []string{second, "third task"}, last.UserTexts[len(last.UserTexts)-2:])
+		})
+	}
 }
 
 // TestAgents_ResumeOnlyOwnChildren refuses to resume a session that is not
