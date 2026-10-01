@@ -36,6 +36,9 @@ func rewindDeps(t *testing.T, replies ...fakellm.Reply) (bubble.Deps, *fakellm.S
 	return bubble.Deps{
 		Open: func(ctx context.Context, id string) (*session.Session, []session.LoadedRun, error) {
 			s, err := session.Open(ctx, eng, session.Options{ID: id, Settings: settings, Interactive: true})
+			if err == nil {
+				t.Cleanup(func() { _ = s.Close() }) // a run still writing would keep the temporary folder from going
+			}
 
 			return s, nil, err
 		},
