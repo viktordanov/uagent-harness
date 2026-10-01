@@ -156,7 +156,7 @@ The runner's client reads the SSE stream and drops its deltas, and nothing in th
 
 Progress: a turn request also reports `engine.ModelProgress`: its phase from `httptrace` (connecting, sending with the bytes sent, waiting, streaming, done), and the tool call the model is writing, from `response.output_item.added` and the argument deltas (`response.function_call_arguments.delta`, `response.custom_tool_call_input.delta`), with its size and, for `apply_patch`, the file its last header names (`patch.LastFile`). Progress goes out at most every 200 ms while a call is written, else once a second while data flows, and a queued one replaces the one before. Direct calls report no progress.
 
-A new attempt after text streamed, or a request that fails or is canceled after it, sends `engine.StreamReset`: that text is void. `switcher.direct()` streams no text, so compaction summaries and the auto-reviewer never stream, and a subagent's session never asks. The [streaming design](../../docs/design/streaming.md) has the research and the reasons.
+A new attempt after text streamed, or a request that fails or is canceled after it, sends `engine.StreamReset`: that text is void. The coordinator does not wait for a request it cancels, so the run's goroutine waits, up to 5 s, for the switcher's requests in flight to end (`switcher.settle`): their events, a stopped answer's `StreamReset` among them, come before `RunFinished`. `switcher.direct()` streams no text, so compaction summaries and the auto-reviewer never stream, and a subagent's session never asks. The [streaming design](../../docs/design/streaming.md) has the research and the reasons.
 
 ### Web search
 

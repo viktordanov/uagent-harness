@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/viktordanov/uagent/core"
@@ -89,6 +90,7 @@ func (s *switcher) observe(ctx context.Context, kind string) (context.Context, f
 		c.text, c.log = s.text, s.searches
 	}
 	c.remote, _ = ctx.Value(remoteCallKey{}).(*remoteCall)
+	s.calls.Add(1)
 	go func() {
 		defer close(c.done)
 		for open := true; open; {
@@ -103,7 +105,19 @@ func (s *switcher) observe(ctx context.Context, kind string) (context.Context, f
 		}
 	}()
 
-	return context.WithValue(ctx, callKey{}, c), c.end
+	return context.WithValue(ctx, callKey{}, c), func(err error) error { defer s.calls.Done(); return c.end(err) }
+}
+
+// settle waits, at most d, for the requests in flight to end and send their
+// events. The coordinator does not wait for a request it cancels, so without
+// this a stopped run could finish before the request's StreamReset.
+func (s *switcher) settle(d time.Duration) {
+	ended := make(chan struct{})
+	go func() { s.calls.Wait(); close(ended) }()
+	select {
+	case <-ended:
+	case <-time.After(d):
+	}
 }
 
 // pushLocked queues an event, merged into the one before when it can be.
@@ -224,9 +238,15 @@ func (c *modelCall) failLocked(reason string, lost bool, e apiError, h http.Head
 	}
 }
 
+// canceledEndDelay delays the end of a canceled request, for a test.
+var canceledEndDelay atomic.Int64
+
 // end ends the request: a failed one's text is void, since the runner
 // records nothing, and one whose every attempt lost its connection says so.
 func (c *modelCall) end(err error) error {
+	if c.ctx.Err() != nil {
+		time.Sleep(time.Duration(canceledEndDelay.Load()))
+	}
 	if err == nil {
 		c.record()
 	}

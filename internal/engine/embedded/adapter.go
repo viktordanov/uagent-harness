@@ -44,6 +44,8 @@ type switcher struct {
 	// max is the attempt limit; diag gets the diagnostics (modelcall.go).
 	max  int
 	diag io.Writer
+	// calls counts the model requests in flight (modelcall.go).
+	calls sync.WaitGroup
 }
 
 // variant is what a client is built for: priority processing, and effort

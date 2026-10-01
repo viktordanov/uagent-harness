@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -11,6 +12,7 @@ import (
 	"github.com/viktordanov/uagent/core"
 
 	"github.com/viktordanov/uah/internal/engine"
+	"github.com/viktordanov/uah/internal/engine/embedded"
 	"github.com/viktordanov/uah/internal/session"
 	"github.com/viktordanov/uah/testing/fakellm"
 )
@@ -158,9 +160,11 @@ func TestEmbedded_StreamResetsOnReconnect(t *testing.T) {
 }
 
 // TestEmbedded_StreamResetsOnInterrupt: a request stopped while its answer
-// streams records nothing, so its text is void.
+// streams records nothing, so its text is void, before the run finishes,
+// even when the canceled request ends late. Not parallel: it slows every
+// canceled request.
 func TestEmbedded_StreamResetsOnInterrupt(t *testing.T) {
-	t.Parallel()
+	embedded.SlowCanceledCalls(t, 300*time.Millisecond)
 	hold := make(chan struct{})
 	t.Cleanup(func() { close(hold) })
 	e := newEnv(t, fakellm.Reply{Deltas: []string{"half an ", "answer"}, Hold: hold})

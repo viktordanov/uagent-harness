@@ -274,6 +274,7 @@ func (w *wiring) launch(ctx context.Context, a *agent, coord coordinator.Coordin
 	w.closers = nil
 	go func() {
 		err := runCoordinator(ctx, coord)
+		a.llm.settle(5 * time.Second) // a canceled request ends promptly
 		detach()
 		if oerr := obs.err(); oerr != nil {
 			err = oerr
