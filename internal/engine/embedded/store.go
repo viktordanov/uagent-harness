@@ -18,8 +18,9 @@ import (
 )
 
 // runStore is the session a run records to.
-// The store leaves out what the session's rewinds cut (cutStore) and reads
-// the file once for the run's start (snapshotStore).
+// The store leaves out what the session's rewinds cut (cutStore), reads
+// the file once for the run's start (snapshotStore), and writes fewer
+// operation records (checkpointStore).
 type runStore struct {
 	store    sessionstore.Store
 	id       session.ID
@@ -53,7 +54,7 @@ func (w *wiring) openStore(ctx context.Context, req core.Request, messages []cor
 		return runStore{}, err
 	}
 
-	return runStore{store: cut, id: id, restored: restored}, nil
+	return runStore{store: &checkpointStore{Store: cut}, id: id, restored: restored}, nil
 }
 
 // openSession resumes the session, or creates it when it does not exist.

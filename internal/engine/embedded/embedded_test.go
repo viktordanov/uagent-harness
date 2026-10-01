@@ -370,7 +370,9 @@ func kinds(all []core.Event) []string {
 	return out
 }
 
-// sessionItemKinds lists the "type" of each session file line.
+// sessionItemKinds lists the "type" of each session file line but the
+// operation records, which the embedded engine writes fewer of
+// (checkpointStore).
 func sessionItemKinds(t *testing.T, path string) []string {
 	t.Helper()
 	data, err := os.ReadFile(path)
@@ -387,7 +389,9 @@ func sessionItemKinds(t *testing.T, path string) []string {
 			continue
 		}
 		rest := line[i+8:]
-		out = append(out, rest[:strings.IndexByte(rest, '"')])
+		if kind := rest[:strings.IndexByte(rest, '"')]; kind != "operation" {
+			out = append(out, kind)
+		}
 	}
 
 	return out
