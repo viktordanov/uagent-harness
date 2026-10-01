@@ -130,19 +130,19 @@ A session with an operation that never finished is skipped: resuming it would ca
 | `spawn/small` | 131 | 63.4 | 22.9 | 15.3 | -1 | 0 | child_first_request_ms 53.5 |
 | `spawn/medium` | 322 | 279 | 415 | 67.4 | -1 | 0 | child_first_request_ms 51.9 |
 | `spawn/large` | 1,125 | 1,161 | 2,016 | 277 | -1 | 0 | child_first_request_ms 53.2 |
-| `fork/small` | 280 | 93.1 | 32.3 | 15.6 | -1 | 0 | child_first_request_ms 65.9, disk_written_mb 0.82 |
-| `fork/medium` | 4,319 | 1,802 | 660 | 89.1 | -1 | 0 | child_first_request_ms 281, disk_written_mb 17.1 |
-| `fork/large` | 33,074 | 15,528 | 3,337 | 367 | -1 | 0 | child_first_request_ms 1,763, disk_written_mb 87.2 |
+| `fork/small` | 136 | 48.7 | 32.0 | 14.6 | -1 | 0 | child_first_request_ms 59.6, disk_written_mb 0.48 |
+| `fork/medium` | 421 | 430 | 648 | 80.2 | -1 | 0 | child_first_request_ms 175, disk_written_mb 3.64 |
+| `fork/large` | 1,558 | 1,822 | 3,253 | 357 | -1 | 0 | child_first_request_ms 603, disk_written_mb 16.5 |
 | `tui-turn/small` | 862 | 205 | 38.1 | 24.8 | 3 | 1 | view_p95_ms 0.24 |
 | `idle/tui` | 3,001 | 37.7 | 0.01 | 0 | -1 | 1 | cpu_ms_per_s 12.6, updates_per_s 0, wakeups_per_s 326 |
 | `agents/small` | 332 | 220 | 39.1 | 28.1 | -1 | 0 | fork_ms 184 |
 | `leak/5-runs` | 792 | 248 | 85.0 | 24.0 | 0 | 0 | goroutines_left 0 |
 
-A fork still takes 33 s on the large fixture although its child's first request comes after 1.8 s: the forked child resumes the parent's shell operations from the copied history and starts them again (here they fail, since the fixture has no sandbox shell). The numbers before 1eafd1f, on 1eaf678, were: load/large first request 3,308 ms, turn/large 4,050 ms with 5.9 GB allocated, fork/large first child request 23,293 ms, and two goroutines and one connection left per closed session.
+The fork rows are from `-count 3 -run fork` after ledger item 84, with the rest unchanged. Before it, a fork took 33 s on the large fixture (child's first request 1.8 s): the forked child resumed the parent's shell operations from the copied history and started them again, which also emptied the parent's saved command outputs, so its state_growth_mb (5.3 then, 16.2 now: the child's session file) was low. The numbers before 1eafd1f, on 1eaf678, were: load/large first request 3,308 ms, turn/large 4,050 ms with 5.9 GB allocated, fork/large first child request 23,293 ms, and two goroutines and one connection left per closed session.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="test" files="perf/perf_test.go perf/race_test.go perf/norace_test.go" -->
+<!-- memoria:section id="test" files="perf/perf_test.go perf/race_test.go perf/norace_test.go perf/fork_internal_test.go" -->
 ## The test
 
-`go test ./tools/perf/...` runs every scenario on the small fixture once, about 13 seconds (20 under `-race`), and checks generous ceilings: about ten times the baseline, five times more under the race detector. It catches a large regression, such as the TUI's clock running while idle, a turn that allocates ten times as much, or goroutines left by every session, without failing on a slow machine. `go test -short` skips it.
+`go test ./tools/perf/...` runs every scenario on the small fixture once, about 13 seconds (20 under `-race`), and checks generous ceilings: about ten times the baseline, five times more under the race detector. It catches a large regression, such as the TUI's clock running while idle, a turn that allocates ten times as much, or goroutines left by every session, without failing on a slow machine. `go test -short` skips it. `TestForkRerun` forks a session whose parent appended to a file with a command and checks that the file still has one line: a fork's first run must not start the parent's work again.
 <!-- /memoria:section -->

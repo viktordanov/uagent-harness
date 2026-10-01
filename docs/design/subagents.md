@@ -156,7 +156,7 @@ Built 2026-09-24 on unreal-agent-runner v0.1.1, against Codex rust-v0.156.1. Fiv
 
 ### Open items
 
-1. **The runner's `Store.Fork`** (v0.1.1) drops the operation snapshots of inherited tool calls ("TODO: Preserve status snapshots in forked history without making inherited operations dispatchable"), so uah replays the items itself, with an operation record of each copied operation's last state so that none is dispatchable. Once the runner keeps them, `Fork` can use it.
+1. **The runner's `Store.Fork`** (v0.1.1) drops the operation snapshots of inherited tool calls ("TODO: Preserve status snapshots in forked history without making inherited operations dispatchable"), so uah replays the items itself, with an operation record of each copied operation's last status so that none is dispatchable. Once the runner keeps them, `Fork` can use it.
 2. **A tool call still running** when the parent made the spawn call is canceled for the child, so the child's request differs from the parent's at that item.
 3. **The fork's first run** is marked in memory: a process that exits between the spawn and the child's first run (which follows at once) leaves a child that asks the model without its message when resumed.
 4. **Stopping a child from its view.** esc returns; the view has no interrupt of its own yet.

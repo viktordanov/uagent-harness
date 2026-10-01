@@ -18,7 +18,7 @@ import (
 )
 
 // replayEach is the fork's replay before it wrote in one go: one Append
-// through the store per item, and a SaveOperation with the last state of
+// through the store per item, and a SaveOperation with the last status of
 // each operation its first status started.
 func replayEach(t *testing.T, store sessionstore.Store, id session.ID, items []sessionstore.Item) {
 	t.Helper()
@@ -44,7 +44,8 @@ func replayEach(t *testing.T, store sessionstore.Store, id session.ID, items []s
 			err = store.AppendToolCallStatus(t.Context(), id, d)
 			for _, op := range d.Operations {
 				if l := last[op.ID]; err == nil && !saved[op.ID] && finalOperation(l.Status) && l.Status != op.Status {
-					err = store.SaveOperation(t.Context(), id, l)
+					op.Status, op.State = l.Status, nil
+					err = store.SaveOperation(t.Context(), id, op)
 				}
 				saved[op.ID] = true
 			}

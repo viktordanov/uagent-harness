@@ -144,7 +144,7 @@ func forkPoint(items []sessionstore.Item, callID string) (cut int, at time.Time,
 // back to check them. The store resumes an operation from the state its
 // first tool-call status recorded, kept current by operation lines the
 // copy leaves out, so each is followed by an operation line with the last
-// state the parent's items show: the child's run never starts the parent's
+// status the parent's items show: the child's run never starts the parent's
 // work again. A tool call whose operation had not ended is recorded as
 // canceled.
 func replay(ctx context.Context, store *localfile.Store, path string, id session.ID, items []sessionstore.Item) error {
@@ -172,7 +172,8 @@ func replay(ctx context.Context, store *localfile.Store, path string, id session
 			}
 			for _, op := range rec.Operations {
 				if l := last[op.ID]; !saved[op.ID] && finalOperation(l.Status) && l.Status != op.Status {
-					ended = append(ended, l)
+					op.Status, op.State = l.Status, nil // the item has the state; an ended operation's is never read
+					ended = append(ended, op)
 				}
 				saved[op.ID] = true
 			}
