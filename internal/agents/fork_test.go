@@ -1,6 +1,7 @@
 package agents_test
 
 import (
+	"encoding/json/v2"
 	"os"
 	"path/filepath"
 	"slices"
@@ -150,4 +151,39 @@ func TestFork_ResumedForkKeepsItsTools(t *testing.T) {
 
 	assert.Len(t, m.Attach(engine.AgentParent{SessionID: "forked"}), 5)
 	assert.Empty(t, m.Attach(engine.AgentParent{SessionID: "plain"}))
+}
+
+// TestFork_DoesNotRunTheParentsWorkAgain forks a parent that ran a command
+// and applied a patch, and that has a command still running when it
+// spawns: the child gets them as history only, so each ran once.
+func TestFork_DoesNotRunTheParentsWorkAgain(t *testing.T) {
+	patch, err := json.Marshal(map[string]string{"input": "*** Begin Patch\n*** Update File: notes.txt\n@@\n a\n+b\n*** End Patch"})
+	require.NoError(t, err)
+	e := newEnv(t, agents.Config{},
+		fakellm.Reply{Commands: []string{"echo ran >> stamp.txt"}, Calls: []fakellm.Call{call("apply_patch", string(patch))}},
+		fakellm.Reply{
+			Commands: []string{"sleep 1; echo late >> stamp.txt"},
+			Calls:    []fakellm.Call{call("spawn_agent", `{"message":"CHILD-AGAIN look","fork_context":true}`)},
+		},
+		callWith("wait_agent", `{"targets":["ID"]}`),
+		fakellm.Reply{Text: "done"},
+	)
+	e.llm.Route("CHILD-AGAIN", fakellm.Reply{Text: "nothing to do"})
+	require.NoError(t, os.WriteFile(filepath.Join(e.Workspace, "notes.txt"), []byte("a\n"), 0o600))
+	s, ev := e.open(t, false)
+
+	_, err = s.Submit("work, then fork")
+	require.NoError(t, err)
+	assert.Equal(t, "done", ev.finished().Answer)
+
+	assert.Contains(t, lastOutputs(e), `{"completed":"nothing to do"}`)
+	fileText := func(t *testing.T, name string) string {
+		t.Helper()
+		b, err := os.ReadFile(filepath.Join(e.Workspace, name))
+		require.NoError(t, err)
+
+		return string(b)
+	}
+	assert.Equal(t, "ran\nlate\n", fileText(t, "stamp.txt"), "each command ran once")
+	assert.Equal(t, "a\nb\n", fileText(t, "notes.txt"), "the patch applied once")
 }

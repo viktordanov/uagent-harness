@@ -18,29 +18,36 @@ import (
 )
 
 // replayEach is the fork's replay before it wrote in one go: one Append
-// through the store per item.
+// through the store per item, and a SaveOperation with the last state of
+// each operation its first status started.
 func replayEach(t *testing.T, store sessionstore.Store, id session.ID, items []sessionstore.Item) {
 	t.Helper()
-	open := unfinished(items)
-	var last session.TurnID
+	last, saved := lastOperations(items), map[operation.ID]bool{}
+	var prev session.TurnID
 	for _, item := range items {
 		var err error
 		switch d := item.Data.(type) {
 		case inbox.Input:
 			err = store.AppendInput(t.Context(), id, d)
 		case session.Turn:
-			d.PreviousTurnID, last = last, d.ID
+			d.PreviousTurnID, prev = prev, d.ID
 			err = store.AppendTurn(t.Context(), id, d)
 		case sessionstore.ModelResponse:
 			err = store.AppendModelResponse(t.Context(), id, d)
 		case sessionstore.ToolCallStatus:
 			d.Operations = slices.Clone(d.Operations)
 			for i, op := range d.Operations {
-				if open[op.ID] {
+				if !finalOperation(last[op.ID].Status) {
 					d.Operations[i].Status = operation.StatusCanceled
 				}
 			}
 			err = store.AppendToolCallStatus(t.Context(), id, d)
+			for _, op := range d.Operations {
+				if l := last[op.ID]; err == nil && !saved[op.ID] && finalOperation(l.Status) && l.Status != op.Status {
+					err = store.SaveOperation(t.Context(), id, l)
+				}
+				saved[op.ID] = true
+			}
 		default:
 			continue
 		}
@@ -52,7 +59,8 @@ func replayEach(t *testing.T, store sessionstore.Store, id session.ID, items []s
 // one-append-per-item replay did, on a recorded session cut at its end, at
 // a turn, and in the middle of a tool call (whose operation is canceled):
 // the same items apart from when they were recorded, and the same resume
-// state.
+// state, with no operation to resume: the child's run starts none of the
+// parent's work again.
 func TestReplay_AsAppendedOneByOne(t *testing.T) {
 	const parent = "a5ad5bba-0726-41cd-bf5d-1d5d4f7b12c6"
 	dir := t.TempDir()
@@ -86,6 +94,7 @@ func TestReplay_AsAppendedOneByOne(t *testing.T) {
 		want, got := readBack(t, fresh, before), readBack(t, fresh, after)
 		assert.Equal(t, want, got)
 		assert.Len(t, got.items, cut)
+		assert.Empty(t, got.resume.Operations, "no operation runs again")
 		if cut == midTool {
 			s, _ := got.items[cut-1].Data.(sessionstore.ToolCallStatus)
 			require.NotEmpty(t, s.Operations)

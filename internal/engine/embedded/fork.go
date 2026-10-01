@@ -141,11 +141,15 @@ func forkPoint(items []sessionstore.Item, callID string) (cut int, at time.Time,
 
 // replay appends the parent's items to the child in one write, in the lines
 // the store's Append methods write (localfile's encodeRecord), and reads it
-// back to check them. A tool call whose operation had not ended is recorded
-// as canceled, so the child's run never starts the parent's work again.
+// back to check them. The store resumes an operation from the state its
+// first tool-call status recorded, kept current by operation lines the
+// copy leaves out, so each is followed by an operation line with the last
+// state the parent's items show: the child's run never starts the parent's
+// work again. A tool call whose operation had not ended is recorded as
+// canceled.
 func replay(ctx context.Context, store *localfile.Store, path string, id session.ID, items []sessionstore.Item) error {
-	open, now := unfinished(items), time.Now().UTC()
-	var last session.TurnID
+	last, saved, now := lastOperations(items), map[operation.ID]bool{}, time.Now().UTC()
+	var prev session.TurnID
 	var out []byte
 	var n sessionstore.Sequence
 	for _, item := range items {
@@ -153,17 +157,24 @@ func replay(ctx context.Context, store *localfile.Store, path string, id session
 			Item       sessionstore.Item
 			Operations []operation.Operation `json:",omitempty"`
 		}{Item: item}
+		var ended []operation.Operation
 		switch d := item.Data.(type) {
 		case inbox.Input, sessionstore.ModelResponse:
 		case session.Turn:
-			d.PreviousTurnID, last = last, d.ID // a rewind may have cut the turn before it
+			d.PreviousTurnID, prev = prev, d.ID // a rewind may have cut the turn before it
 			rec.Item.Data = d
 		case sessionstore.ToolCallStatus:
 			rec.Operations, d.Operations = slices.Clone(d.Operations), nil
 			for i, op := range rec.Operations {
-				if open[op.ID] {
+				if !finalOperation(last[op.ID].Status) {
 					rec.Operations[i].Status = operation.StatusCanceled
 				}
+			}
+			for _, op := range rec.Operations {
+				if l := last[op.ID]; !saved[op.ID] && finalOperation(l.Status) && l.Status != op.Status {
+					ended = append(ended, l)
+				}
+				saved[op.ID] = true
 			}
 			rec.Item.Data = d
 		default: // a fork of the runner's own: its inherited calls have no results to keep
@@ -171,17 +182,17 @@ func replay(ctx context.Context, store *localfile.Store, path string, id session
 		}
 		n++
 		rec.Item.Sequence, rec.Item.RecordedAt = n, now
-		data, err := json.Marshal(rec)
-		if err == nil {
-			data, err = json.Marshal(struct {
-				Type string         `json:"type"`
-				Data jsontext.Value `json:"data"`
-			}{"item", data})
+		line, err := logLine("item", rec)
+		out = append(out, line...)
+		for _, op := range ended {
+			if err == nil {
+				line, err = logLine("operation", struct{ Operation operation.Operation }{op})
+				out = append(out, line...)
+			}
 		}
 		if err != nil {
 			return fmt.Errorf("failed to copy the parent's history: %w", err)
 		}
-		out = append(append(out, data...), '\n')
 	}
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND, 0)
 	if err == nil {
@@ -198,18 +209,32 @@ func replay(ctx context.Context, store *localfile.Store, path string, id session
 	return nil
 }
 
-// unfinished are the operations whose last recorded state is not final.
-func unfinished(items []sessionstore.Item) map[operation.ID]bool {
-	open := map[operation.ID]bool{}
+// logLine is a record of the session file, as localfile's encodeRecord
+// writes it.
+func logLine(kind string, v any) ([]byte, error) {
+	data, err := json.Marshal(v)
+	if err == nil {
+		data, err = json.Marshal(struct {
+			Type string         `json:"type"`
+			Data jsontext.Value `json:"data"`
+		}{kind, data})
+	}
+
+	return append(data, '\n'), err
+}
+
+// lastOperations are the operations' last states the items record.
+func lastOperations(items []sessionstore.Item) map[operation.ID]operation.Operation {
+	last := map[operation.ID]operation.Operation{}
 	for _, item := range items {
 		if s, ok := item.Data.(sessionstore.ToolCallStatus); ok {
 			for _, op := range s.Operations {
-				open[op.ID] = !finalOperation(op.Status)
+				last[op.ID] = op
 			}
 		}
 	}
 
-	return open
+	return last
 }
 
 func finalOperation(s operation.Status) bool {
