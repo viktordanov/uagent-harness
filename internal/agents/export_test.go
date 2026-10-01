@@ -48,3 +48,6 @@ func (m *Manager) Waiting(parentID, id string) int {
 
 	return 0
 }
+
+// ForkDepthNote is what a fork at the depth limit is told before its task.
+const ForkDepthNote = forkDepthNote

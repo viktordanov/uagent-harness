@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/viktordanov/uah/internal/engine"
+	"github.com/viktordanov/uah/internal/instructions"
 	"github.com/viktordanov/uah/internal/session"
 )
 
@@ -43,6 +44,9 @@ func (m *Manager) spawn(ctx context.Context, call engine.AgentCall, a spawnArgs)
 			return spawnResult{}, err
 		}
 	}
+	if note := m.firstNote(c); note != "" {
+		c.s.Inject(note)
+	}
 	m.startHooks(ctx, c)
 	if _, err := m.submit(c, a.Message, session.SendAfterRun); err != nil {
 		m.discard(c)
@@ -56,6 +60,26 @@ func (m *Manager) spawn(ctx context.Context, call engine.AgentCall, a spawnArgs)
 	}
 
 	return spawnResult{AgentID: c.id, Nickname: c.nickname}, nil
+}
+
+// forkDepthNote tells a fork at the depth limit what errDepth would.
+const forkDepthNote = "You are a forked agent at the agent depth limit: spawn_agent and resume_agent fail here. Solve the task yourself."
+
+// firstNote goes to a new child before its task, after any history it
+// forked, so its system prompt and its fork's prefix stay its parent's, for
+// the cache: Codex's note that its final answer reaches its parent, and
+// for a fork, which keeps its parent's agent tools, that it cannot spawn.
+func (m *Manager) firstNote(c *child) string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	switch {
+	case !c.forked:
+		return instructions.SubagentNote
+	case m.depth(c.id) >= m.cfg.MaxDepth:
+		return forkDepthNote
+	}
+
+	return ""
 }
 
 // spawnRole is the new child's role and record. A fork keeps the parent's

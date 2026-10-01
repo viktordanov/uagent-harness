@@ -1,7 +1,6 @@
 package agents_test
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -18,7 +17,8 @@ import (
 // root session opened with, differing only in its ID, its sidecar's source
 // and parent, approvals through the parent, a hook runner of its own with
 // the same hooks, and no streaming. The settings are the parent run's,
-// with Codex's subagent note after the default base instructions.
+// with the default base instructions as the root's: Codex's subagent note
+// goes before the child's task instead.
 func TestParity_ChildOptions(t *testing.T) {
 	runner, err := hooks.New([]hooks.Hook{{Event: hooks.Stop, Command: "true", Source: hooks.SourceUser}}, nil, "")
 	require.NoError(t, err)
@@ -41,8 +41,29 @@ func TestParity_ChildOptions(t *testing.T) {
 	assert.NotSame(t, runner, child.Hooks, "a runner of its own, so its results stay its own")
 	assert.Equal(t, runner.Hooks(), child.Hooks.Hooks())
 	assert.False(t, child.Stream, "a child's text does not stream")
-	assert.Equal(t, strings.TrimRight(instructions.DefaultPrompt, "\n")+"\n\n"+instructions.SubagentNote, child.Settings.SystemPrompt)
+	assert.Equal(t, instructions.DefaultPrompt, child.Settings.SystemPrompt)
 	root.Settings.SystemPrompt = child.Settings.SystemPrompt
 	child.ID, child.Source, child.Parent, child.Ask, child.Hooks, child.Stream = root.ID, root.Source, root.Parent, root.Ask, root.Hooks, root.Stream
 	assert.Equal(t, root, child)
+}
+
+// TestParity_ChildSharesTheParentsSystemPrompt pins that a child's model
+// requests carry its parent's system prompt byte for byte, for the cache,
+// and that Codex's subagent note reaches the child once, before its task.
+func TestParity_ChildSharesTheParentsSystemPrompt(t *testing.T) {
+	e := newEnv(t, agents.Config{},
+		fakellm.Reply{Calls: []fakellm.Call{call("spawn_agent", `{"message":"CHILD-P task"}`)}},
+		callWith("wait_agent", `{"targets":["ID"]}`),
+		fakellm.Reply{Text: "done"},
+	)
+	e.llm.Route("CHILD-P", fakellm.Reply{Text: "child answer"})
+	s, ev := e.open(t, false)
+	_, err := s.Submit("delegate")
+	require.NoError(t, err)
+	assert.Equal(t, "done", ev.finished().Answer)
+
+	parent, child := parentRequest(t, e, 0), requestWith(t, e, "CHILD-P")
+	assert.Equal(t, parent.System, child.System, "the child's system prompt is its parent's")
+	assert.NotContains(t, child.System, instructions.SubagentNote)
+	assert.Equal(t, []string{instructions.SubagentNote, "CHILD-P task"}, child.UserTexts)
 }

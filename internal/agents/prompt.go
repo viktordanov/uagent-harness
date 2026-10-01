@@ -11,8 +11,9 @@ import (
 // OpenAI, licensed under the Apache License, Version 2.0
 // (http://www.apache.org/licenses/LICENSE-2.0). Changes: the `items`
 // inputs are left out, the forked-workspace and upload wording is dropped
-// because children share the parent's workspace, and wait_agent does not
-// promise a completion notification.
+// because children share the parent's workspace, wait_agent does not
+// promise a completion notification and says a long timeout costs nothing,
+// and fork_context names what keeps the cache.
 const spawnGuidance = `Spawn a sub-agent for a well-scoped task. Returns the spawned agent id plus the user-facing nickname when available. The agent works in the background in your workspace, with your sandbox and approvals. Spawned agents inherit your current model by default. Do not set the ` + "`model`" + ` field unless the user explicitly asks for a different model.
 
 Do not spawn sub-agents unless the user or applicable AGENTS.md/skill instructions explicitly ask for sub-agents, delegation, or parallel agent work.
@@ -69,7 +70,7 @@ const (
 	spawnSchema = `{"type":"object","properties":{` +
 		`"message":{"type":"string","description":"Initial plain-text task for the new agent."},` +
 		`"agent_type":{"type":"string","description":"Agent type override for the new agent. Omit to inherit the parent agent type with a full-history fork; otherwise, ` + "`default`" + ` is used. The types are listed in the tool description."},` +
-		`"fork_context":{"type":"boolean","description":"True forks the current thread history into the new agent; false or omitted starts with only the initial prompt."},` +
+		`"fork_context":{"type":"boolean","description":"True forks the current thread history into the new agent; false or omitted starts with only the initial prompt. A forked agent reuses your prompt cache only with your model and reasoning effort, so omit model and reasoning_effort when forking."},` +
 		`"model":{"type":"string","description":"Model override for the new agent. Omit unless an explicit override is needed."},` +
 		`"reasoning_effort":{"type":"string","enum":["low","medium","high","xhigh","max","ultra"],"description":"Reasoning effort override for the new agent. Omit to inherit the parent effort."}` +
 		`},"required":["message"],"additionalProperties":false}`
@@ -93,7 +94,7 @@ const (
 // The other tools' descriptions, Codex's v1.
 const (
 	sendDescription   = "Send a message to an existing agent. Use interrupt=true to redirect work immediately. You should reuse the agent by send_input if you believe your assigned task is highly dependent on the context of a previous task."
-	waitDescription   = "Wait for agents to reach a final status. Completed statuses may include the agent's final message. Returns empty status when timed out. Other work continues while you wait."
+	waitDescription   = "Wait for agents to reach a final status. Completed statuses may include the agent's final message. Returns empty status when timed out. Other work continues while you wait. It returns as soon as an agent finishes, so a long timeout costs nothing: prefer the default or a longer timeout to short polls, which waste turns."
 	closeDescription  = "Close an agent and any open descendants when they are no longer needed, and return the target agent's previous status before shutdown was requested. Completed agents remain open and count toward the concurrency limit until closed. Don't keep agents open for too long if they are not needed anymore."
 	resumeDescription = "Resume a previously closed agent by id so it can receive send_input and wait_agent calls. Agents from an earlier session of this conversation must be resumed before other calls reach them."
 )

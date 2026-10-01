@@ -58,8 +58,10 @@ type Manager struct {
 	tmpl     session.Options
 	parents  map[string]engine.AgentParent
 	children map[string]*child
-	// parentIDs remembers the parents read from sidecars (parentOf).
+	// parentIDs remembers the parents read from sidecars (parentOf), and
+	// forks the agent records' fork_context (forked).
 	parentIDs map[string]string
+	forks     map[string]bool
 	// outboxes deliver each parent's updates in order (notify, forward).
 	outboxes map[string]*outbox
 	// changed is closed and replaced whenever a child's status changes.
@@ -77,7 +79,7 @@ func New(cfg Config) *Manager {
 
 	return &Manager{
 		cfg:     cfg,
-		parents: map[string]engine.AgentParent{}, children: map[string]*child{}, parentIDs: map[string]string{}, outboxes: map[string]*outbox{}, changed: make(chan struct{}),
+		parents: map[string]engine.AgentParent{}, children: map[string]*child{}, parentIDs: map[string]string{}, forks: map[string]bool{}, outboxes: map[string]*outbox{}, changed: make(chan struct{}),
 	}
 }
 
@@ -205,14 +207,19 @@ func (m *Manager) parentOf(id string) string {
 }
 
 // forked reports whether a session is a child started with fork_context,
-// from the live children and then the agent records. It holds m.mu.
+// from the live children and then the agent records, each read once. It
+// holds m.mu.
 func (m *Manager) forked(id string) bool {
 	if c, ok := m.children[id]; ok {
 		return c.forked
 	}
+	if fork, ok := m.forks[id]; ok {
+		return fork
+	}
 	rec, err := readRecord(m.tmpl.SessionsDir, id)
+	m.forks[id] = err == nil && rec.Fork
 
-	return err == nil && rec.Fork
+	return m.forks[id]
 }
 
 // openIn counts the open children in root's tree. It holds m.mu.
@@ -251,9 +258,9 @@ func (m *Manager) role(name string) (Role, error) {
 // through the parent, the parent run's permission mode as it is now, and
 // the model, effort, and instructions the spawn
 // call, the role, and the configured defaults override, in that order.
-// Its system prompt is the parent's, then Codex's note that its final
-// answer reaches the parent (once, and not in a fork), then the role's
-// instructions.
+// Its system prompt is the parent's, then the role's instructions; Codex's
+// note that its final answer reaches the parent goes before its task
+// instead (firstNote), so the prompt and the parent's share a cache.
 // Hooks are the same, in a runner of its own. It holds m.mu.
 func (m *Manager) childOptions(p engine.AgentParent, c *child, role Role, rec record, resumed bool) session.Options {
 	opts := m.tmpl
@@ -273,11 +280,6 @@ func (m *Manager) childOptions(p engine.AgentParent, c *child, role Role, rec re
 	s.Model = first(rec.Model, role.Model, m.cfg.Model, s.Model)
 	s.Effort = first(rec.Effort, role.Effort, m.cfg.Effort, s.Effort)
 	s.SystemPrompt = first(s.SystemPrompt, instructions.DefaultPrompt)
-	// A fork keeps its parent's prompt byte for byte, for the cache; a
-	// grandchild's parent has the note already.
-	if !rec.Fork && !strings.Contains(s.SystemPrompt, instructions.SubagentNote) {
-		s.SystemPrompt = strings.TrimRight(s.SystemPrompt, "\n") + "\n\n" + instructions.SubagentNote
-	}
 	if role.DeveloperInstructions != "" {
 		s.SystemPrompt += "\n\n" + strings.TrimSpace(role.DeveloperInstructions)
 	}
