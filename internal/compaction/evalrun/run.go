@@ -188,7 +188,7 @@ func laterCalls(path string) (callsAt, error) {
 			var c sessionfile.ToolCall
 			if o.Type == sessionfile.OutputToolCall && o.Decode(&c) == nil {
 				out.seqs = append(out.seqs, it.Sequence)
-				out.calls = append(out.calls, llm.ToolCall{CallID: c.CallID, Name: c.Name, Arguments: c.Arguments})
+				out.calls = append(out.calls, llm.ToolCall{CallID: c.CallID, Name: c.Name, Arguments: c.Arguments, Custom: c.Custom})
 			}
 		}
 	}

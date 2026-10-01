@@ -96,11 +96,13 @@ type Reasoning struct {
 	Summary []string
 }
 
-// ToolCall is a tool_call output; Arguments are JSON text.
+// ToolCall is a tool_call output; Arguments are JSON text, or a custom
+// tool call's raw input (a freeform apply_patch's patch).
 type ToolCall struct {
 	CallID    string
 	Name      string
 	Arguments string
+	Custom    bool
 }
 
 // Usage is the response's tokens. InputTokens includes the cached ones and

@@ -45,6 +45,7 @@ type deltaEvent struct {
 
 const (
 	typeMessage    = "message"
+	typeCustomCall = "custom_tool_call"
 	eventItemAdded = "response.output_item.added"
 )
 
@@ -108,17 +109,8 @@ func streamPieces(w http.ResponseWriter, r *http.Request, n int, reply Reply) bo
 				pace(reply.Pace)
 				send(deltaEvent{Type: "response.output_text.delta", OutputIndex: index, ItemID: item.ID, Delta: piece})
 			}
-		default: // a function call opens when searches precede it or its arguments stream
-			if len(reply.Searches)+len(reply.ArgDeltas) > 0 {
-				send(deltaEvent{Type: eventItemAdded, OutputIndex: index, Item: &outputItem{ID: item.ID, Type: item.Type, CallID: item.CallID, Name: item.Name}})
-			}
-			for _, piece := range reply.ArgDeltas {
-				pace(reply.Pace)
-				send(deltaEvent{Type: "response.function_call_arguments.delta", OutputIndex: index, ItemID: item.ID, Delta: piece})
-			}
-			if len(reply.ArgDeltas) > 0 {
-				send(deltaEvent{Type: "response.output_item.done", OutputIndex: index, Item: &item})
-			}
+		default:
+			streamCall(send, index, item, reply)
 		}
 	}
 	if reply.Hold != nil {
@@ -130,6 +122,25 @@ func streamPieces(w http.ResponseWriter, r *http.Request, n int, reply Reply) bo
 	}
 
 	return true
+}
+
+// streamCall writes a tool call, which opens when searches precede it or
+// its arguments (a custom call's input) stream.
+func streamCall(send func(deltaEvent), index int, item outputItem, reply Reply) {
+	if len(reply.Searches)+len(reply.ArgDeltas) > 0 {
+		send(deltaEvent{Type: eventItemAdded, OutputIndex: index, Item: &outputItem{ID: item.ID, Type: item.Type, CallID: item.CallID, Name: item.Name}})
+	}
+	delta := "response.function_call_arguments.delta"
+	if item.Type == typeCustomCall {
+		delta = "response.custom_tool_call_input.delta"
+	}
+	for _, piece := range reply.ArgDeltas {
+		pace(reply.Pace)
+		send(deltaEvent{Type: delta, OutputIndex: index, ItemID: item.ID, Delta: piece})
+	}
+	if len(reply.ArgDeltas) > 0 {
+		send(deltaEvent{Type: "response.output_item.done", OutputIndex: index, Item: &item})
+	}
 }
 
 func pace(d time.Duration) {

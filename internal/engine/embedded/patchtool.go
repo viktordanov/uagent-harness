@@ -31,20 +31,28 @@ type patchPlan struct {
 
 // patchRegistry offers Codex's apply_patch tool and resolves its name even
 // when it is not offered, so a session with past calls resumes on any model.
+// The translator takes a call in either form, so a session resumes across
+// the freeform-patch experiment too.
 type patchRegistry struct {
 	tool.Registry
 
-	offered bool
-	gate    patchGate
+	offered, freeform bool
+	gate              patchGate
 }
 
-func withPatch(r tool.Registry, offered bool, gate patchGate) tool.Registry {
-	return patchRegistry{Registry: r, offered: offered, gate: gate}
+func withPatch(r tool.Registry, offered, freeform bool, gate patchGate) tool.Registry {
+	return patchRegistry{Registry: r, offered: offered, freeform: freeform, gate: gate}
 }
 
 func (r patchRegistry) StaticDefinitions() []tool.Definition {
 	defs := r.Registry.StaticDefinitions()
-	if r.offered {
+	switch {
+	case r.offered && r.freeform:
+		defs = append(defs, tool.Definition{Tool: llm.Tool{
+			Type: llm.ToolCustom, Name: patch.ToolName, Description: patch.FreeformDescription,
+			Grammar: &llm.ToolGrammar{Syntax: "lark", Definition: patch.Grammar},
+		}})
+	case r.offered:
 		defs = append(defs, tool.Definition{Tool: llm.Tool{Type: llm.ToolFunction, Name: patch.ToolName, Description: patch.Description, Parameters: patch.Parameters()}})
 	}
 
@@ -90,6 +98,10 @@ func (t patchTranslator) Translate(ctx tool.Context, call llm.ToolCall) tool.Cal
 		return tool.ErrorStatus(fmt.Sprintf("tool %q is not available in this session", patch.ToolName), 0)
 	}
 	text, err := patch.ParseArgs(call.Arguments)
+	if err != nil && call.Custom {
+		// A freeform call's input is the patch; Parse says what is wrong with it.
+		text, err = call.Arguments, nil
+	}
 	if err != nil {
 		return tool.ErrorStatus(err.Error(), 0)
 	}

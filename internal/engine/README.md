@@ -16,7 +16,8 @@ The embedded engine runs unreal-agent-runner's packages inside uah, so messages,
 5. [The ChatGPT login](#the-chatgpt-login)
 6. [Remote jobs](#remote-jobs)
 7. [Extending the engine](#extending-the-engine)
-8. [Tests](#tests)
+8. [Experiments](#experiments)
+9. [Tests](#tests)
 <!-- /memoria:section -->
 
 <!-- memoria:section id="interface" files="engine.go events.go subagents.go patch.go tooloutput.go embedded/scope.go" -->
@@ -120,9 +121,10 @@ The session store is the runner's own, under `<state>/sessions`, and uagent writ
 
 ### The runner fork
 
-uah builds on [github.com/viktordanov/unreal-agent](https://github.com/viktordanov/unreal-agent), a fork of [unreallabsai/unreal-agent](https://github.com/unreallabsai/unreal-agent): upstream v0.2.0 with two performance fixes (v0.3.2), under its own module path so that `go install github.com/viktordanov/uah/cmd/uah@latest` works without a `replace` directive. The fork's `main` is upstream `main`, the fixes, and the rename; the fixes alone are on its branches `pr/request-encoding` and `pr/resume-write-state`, proposed upstream.
+uah builds on [github.com/viktordanov/unreal-agent](https://github.com/viktordanov/unreal-agent), a fork of [unreallabsai/unreal-agent](https://github.com/unreallabsai/unreal-agent): upstream v0.2.0 with two performance fixes and custom tools (v0.4.0), under its own module path so that `go install github.com/viktordanov/uah/cmd/uah@latest` works without a `replace` directive. The fork's `main` is upstream `main`, the fixes, custom tools, and the rename; each change alone is on its branches `pr/request-encoding`, `pr/resume-write-state`, and `pr/custom-tools`, proposed upstream.
 
 - **Request encoding.** The Responses client encodes each history item once, writes the encoded items into the request without re-encoding the history, and keeps the previous request's encodings, so a run's next request encodes only its new items. The request bytes are unchanged (a test compares them with the old encoder). The encodings of the last request stay in memory between requests, about the size of one request body. On the large fixture (48 MB), `turn/large` went from 2.58 GB allocated and 1.30 s to 0.86 GB and 0.77 s; see the [ledger](../../docs/ledger.md) item P5.
+- **Custom tools.** `llm.ToolCustom` offers a Responses API custom tool, whose input is free text, optionally sampled from a grammar (`llm.ToolGrammar`). A `custom_tool_call` becomes an `llm.ToolCall` with `Custom` set and the raw input in `Arguments`; it goes back as a `custom_tool_call`, and the adapter sends a tool result as a `custom_tool_call_output` when its call was custom. Function tools encode as before. Only the [freeform-patch experiment](#experiments) uses it.
 - **Resume.** `localfile.Store.Resume` keeps its decoded state with the file's identity, size, and modification time. While the file is unchanged, history pages come from it until a page reaches the end, and the first write's state comes from it, where every page and the first append decoded the file again. `load/large`'s first request went from 454 to 292 ms.
 
 To go back to upstream once it has merged both fixes and tagged a release, from the repository root:
@@ -250,6 +252,18 @@ A job that had already started before the run stopped fails with "interrupted" w
 | A session-level query | An optional interface in `engine.go`, implemented by the embedded engine and probed by `internal/session` |
 
 The runner stays unchanged: uah reproduces its wiring instead of patching it, and the equivalence test below keeps the two in step.
+<!-- /memoria:section -->
+
+<!-- memoria:section id="experiments" files="embedded/experiments.go embedded/patchtool.go embedded/sse.go embedded/patch_freeform_test.go" -->
+## Experiments
+
+An experiment is a switch for an A/B benchmark (`tools/agentbench -uah-env`), not a setting: it has no config key and may go away. The environment variable `UAH_EXPERIMENTS` names the experiments to turn on, separated by commas; the engine reads it once, through `Config.Getenv`, in `embedded/experiments.go`, and a subagent's run gets its parent's engine and so the same switches. An unknown name is ignored.
+
+| Experiment | What changes |
+| --- | --- |
+| `freeform-patch` | `apply_patch` is offered as Codex offers it: a custom tool with Codex's freeform description and its Lark grammar (`patch.FreeformDescription`, `patch.Grammar`), whose input is the raw patch, not a JSON object with the patch escaped in `input`. The translator, the hook input, the approval request, the tool line, `uah sessions show`, and the compaction ledger read both forms (`patch.ParseArgs`); the progress line reads the raw deltas (`response.custom_tool_call_input.delta`) with `patch.LastFile`. The session file keeps the call as custom, so a rewound or resumed session sends it back as a `custom_tool_call` with a `custom_tool_call_output`, also from an engine without the experiment |
+
+`patch_freeform_test.go` runs `freeform-patch` end to end: the offered definition, the patch applied and its diff, the wire items of the next request, an invalid input's message, hooks and the approver's input, and a rewind and a resume; it also checks that the function tool stays the default.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="tests" files="embedded/embedded_test.go embedded/approval_test.go embedded/compact_test.go embedded/compact_settings_test.go embedded/context_test.go embedded/mcp_test.go embedded/mcpjobs_internal_test.go embedded/sandbox_test.go embedded/mode_test.go embedded/images_test.go embedded/clients_test.go embedded/reconnect_test.go embedded/transport_internal_test.go embedded/stream_test.go embedded/stream_internal_test.go embedded/rewind_test.go embedded/rewind_internal_test.go embedded/fork_internal_test.go embedded/store_internal_test.go embedded/sessionlog_test.go embedded/sessionlog_internal_test.go embedded/codexlogin_test.go codexauth/codexauth_test.go codexauth/login_test.go codexauth/file_internal_test.go embedded/websearch_test.go embedded/searchlog_internal_test.go embedded/compact_remote_test.go embedded/remotecompact_internal_test.go embedded/compact_probe_test.go embedded/remote_probe_test.go" -->

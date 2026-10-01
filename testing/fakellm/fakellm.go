@@ -68,7 +68,7 @@ type Reply struct {
 	Reasoning []string
 	Pace      time.Duration
 	Hold      <-chan struct{}
-	// ArgDeltas stream each function call's arguments in these pieces.
+	// ArgDeltas stream each call's arguments (a custom call's input) in these pieces.
 	ArgDeltas []string
 	// Searches are hosted web searches, streamed and listed before the
 	// other output items, as the provider runs them.
@@ -88,10 +88,12 @@ type Search struct {
 	Pattern string
 }
 
-// Call is a function call to a tool by name, with JSON arguments.
+// Call is a function call to a tool by name, with JSON arguments, or with
+// Custom a custom tool call, whose Args are its raw input.
 type Call struct {
-	Name string
-	Args string
+	Name   string
+	Args   string
+	Custom bool
 }
 
 // Request is what the harness sent, reduced to what tests check.
@@ -353,6 +355,7 @@ type (
 		CallID    string        `json:"call_id,omitempty"`
 		Name      string        `json:"name,omitempty"`
 		Arguments string        `json:"arguments,omitempty"`
+		Input     string        `json:"input,omitempty"`
 		Role      string        `json:"role,omitempty"`
 		Phase     string        `json:"phase,omitempty"`
 		Content   []contentPart `json:"content,omitempty"`
@@ -415,10 +418,14 @@ func response(n int, reply Reply) responseBody {
 	}
 	named = append(named, reply.Calls...)
 	for i, call := range named {
-		output = append(output, outputItem{
+		item := outputItem{
 			ID: fmt.Sprintf("fc-%d-%d", n, i), Type: "function_call", Status: completed,
 			CallID: fmt.Sprintf("call-%d-%d", n, i), Name: call.Name, Arguments: call.Args,
-		})
+		}
+		if call.Custom {
+			item.ID, item.Type, item.Arguments, item.Input = fmt.Sprintf("ctc-%d-%d", n, i), typeCustomCall, "", call.Args
+		}
+		output = append(output, item)
 	}
 	if len(reply.Reasoning) > 0 {
 		output = append(output, reasoningItem(n, reply))

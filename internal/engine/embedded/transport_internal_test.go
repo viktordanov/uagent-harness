@@ -253,6 +253,29 @@ func TestModelCall_ToolProgress(t *testing.T) {
 	assert.True(t, written, "cleared once written")
 }
 
+// TestModelCall_FreeformToolProgress: a freeform apply_patch arrives raw,
+// so a quote in its file's name stays in the name.
+func TestModelCall_FreeformToolProgress(t *testing.T) {
+	input := "*** Begin Patch\n*** Add File: say \"hi\".go\n+package a\n*** End Patch"
+	cut := strings.Index(input, ".go\n") + len(".go\n")
+	srv := fakellm.New(t, fakellm.Reply{
+		Calls:     []fakellm.Call{{Name: "apply_patch", Args: input, Custom: true}},
+		ArgDeltas: []string{input[:20], input[20:cut], input[cut:]},
+		Pace:      100 * time.Millisecond,
+	})
+	events, err := ask(t, srv.URL, 0, nil)
+	require.NoError(t, err)
+	var targets []string
+	for _, p := range only[engine.ModelProgress](events) {
+		if p.Tool == "apply_patch" && p.Target != "" {
+			targets = append(targets, p.Target)
+			assert.Positive(t, p.ToolBytes)
+		}
+	}
+	require.NotEmpty(t, targets)
+	assert.Equal(t, `say "hi".go`, targets[len(targets)-1])
+}
+
 // TestModelTransport: both kinds of model client, keyed and codex (under
 // the login's transport), have the timeouts and share an engine's
 // transport; a loopback server gets no header timeout.

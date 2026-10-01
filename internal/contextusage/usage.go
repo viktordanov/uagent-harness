@@ -107,6 +107,9 @@ func Analyze(req llm.Request, reported, window int64, auto compaction.Settings, 
 		if strings.HasPrefix(t.Name, "mcp__") {
 			cat = MCPTools
 		}
+		if t.Grammar != nil {
+			schema = append(schema, t.Grammar.Definition...)
+		}
 		add(cat, t.Name, t.Name+t.Description+string(schema))
 	}
 	u := Usage{Model: req.Model.ID, Window: window}

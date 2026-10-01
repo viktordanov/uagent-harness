@@ -64,8 +64,12 @@ type Args struct {
 // ErrNoInput is arguments without a patch.
 var ErrNoInput = errors.New("the arguments must be a JSON object with the patch in \"input\"")
 
-// ParseArgs reads the tool's arguments.
+// ParseArgs reads the tool's arguments: the function tool's {"input":
+// patch}, or a freeform call's input, which is the patch itself.
 func ParseArgs(arguments string) (string, error) {
+	if IsFreeform(arguments) {
+		return arguments, nil
+	}
 	var a Args
 	if err := json.Unmarshal([]byte(arguments), &a); err != nil || strings.TrimSpace(a.Input) == "" {
 		return "", ErrNoInput
@@ -145,4 +149,10 @@ func Describe(arguments string) string {
 	}
 
 	return strings.Join(names, ", ")
+}
+
+// IsFreeform reports whether arguments are a freeform call's patch rather
+// than the function tool's JSON: a patch starts with its begin marker.
+func IsFreeform(arguments string) bool {
+	return strings.HasPrefix(strings.TrimSpace(arguments), beginPatch)
 }

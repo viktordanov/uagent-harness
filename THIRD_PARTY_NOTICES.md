@@ -12,6 +12,7 @@ Adapted in uah:
 | --- | --- |
 | `internal/patch/parse.go`, `update.go`, `apply.go`, and their tests | `codex-rs/apply-patch` (the patch grammar, parser, context matching, and applier) |
 | `internal/patch/tool.go` | The `apply_patch` tool description (`codex-rs/core/gpt_5_1_prompt.md`, `core/assets/tools/apply_patch.lark`) |
+| `internal/patch/apply_patch.lark`, `internal/patch/freeform.go` | The freeform `apply_patch` tool's Lark grammar and description at `rust-v0.159.1`, verbatim (`codex-rs/core/assets/tools/apply_patch.lark`, `codex-rs/core/src/tools/handlers/apply_patch_spec.rs`) |
 | `internal/sandbox/seatbelt/base.sbpl`, `network.sbpl`, `internal/sandbox/seatbelt.go` | `codex-rs/sandboxing` (the Seatbelt profiles and their assembly) |
 | `internal/sandbox/bwrap.go` | `codex-rs/linux-sandbox/src/bwrap.rs` |
 | `internal/sandbox/env.go` | `codex-rs/protocol/src/shell_environment.rs`, `codex-rs/config/src/shell_environment_policy.rs` |
@@ -41,7 +42,7 @@ Many other parts follow Codex's behavior (configuration keys, rules, approvals, 
 
 ## unreal-agent
 
-<https://github.com/unreallabsai/unreal-agent>, v0.1.1. Used as a library throughout, through the fork <https://github.com/viktordanov/unreal-agent> (v0.3.2: upstream v0.2.0 with two performance fixes, under the MIT License below); adapted in uah:
+<https://github.com/unreallabsai/unreal-agent>, v0.1.1. Used as a library throughout, through the fork <https://github.com/viktordanov/unreal-agent> (v0.4.0: upstream v0.2.0 with two performance fixes and custom tools, under the MIT License below); adapted in uah:
 
 | uah | From unreal-agent |
 | --- | --- |

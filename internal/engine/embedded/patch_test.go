@@ -35,6 +35,8 @@ type patchOpts struct {
 	mode        sandbox.Mode
 	interactive bool
 	hooks       []hooks.Hook
+	// freeform runs the freeform-patch experiment.
+	freeform bool
 }
 
 // applyPatch is a model that applies the patch, then finishes.
@@ -57,8 +59,18 @@ func newPatchEnv(t *testing.T, o patchOpts, replies func(ws, outside string) []f
 		runner, err = hooks.New(o.hooks, nil, e.Workspace)
 		require.NoError(t, err)
 	}
+	getenv := e.getenv
+	if o.freeform {
+		getenv = func(key string) string {
+			if key == "UAH_EXPERIMENTS" {
+				return "other, freeform-patch"
+			}
+
+			return e.getenv(key)
+		}
+	}
 	eng := embedded.New(embedded.Config{
-		StateDir: e.StateDir, Provider: "openai", Getenv: e.getenv, Hooks: runner,
+		StateDir: e.StateDir, Provider: "openai", Getenv: getenv, Hooks: runner,
 		Sandbox: &policy, SandboxDir: filepath.Join(e.StateDir, "sandbox"),
 		Approver: approval.New(approval.Config{}),
 	})

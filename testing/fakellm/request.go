@@ -37,13 +37,13 @@ func parseRequest(body []byte) Request {
 		req.ToolNames = append(req.ToolNames, t.Name)
 	}
 	for _, in := range raw.Input {
-		if in.Type == "function_call_output" {
+		if in.Type == "function_call_output" || in.Type == "custom_tool_call_output" {
 			req.ToolOutputs = append(req.ToolOutputs, strings.Join(texts(in.Output), ""))
 			req.ToolImages = append(req.ToolImages, images(in.Output)...)
 
 			continue
 		}
-		if in.Type == "function_call" {
+		if in.Type == "function_call" || in.Type == typeCustomCall {
 			req.CallIDs = append(req.CallIDs, in.CallID)
 
 			continue

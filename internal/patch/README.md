@@ -48,7 +48,7 @@ Errors are Codex's, for example `invalid hunk at line 5, Expected update hunk to
 
 An update finds each chunk as Codex does (`seek_sequence.rs`). It looks after the `@@` context line and after the previous chunk, and tries four matches in turn: exact, then without trailing whitespace, then without surrounding whitespace, then with typographic dashes, quotes, and spaces made ASCII. The matched lines are replaced by the chunk's new lines, and the file ends with a newline. This is Codex's default mode: line endings become LF, and a context line takes the patch's text.
 
-Relative paths resolve against the working directory. `Paths` lists every path a patch writes, move destinations included, for the sandbox check. `LastFile` names the file of the last complete file header in the tail of a patch still being written, raw or JSON-escaped, for the status line while the model writes an `apply_patch` call.
+Relative paths resolve against the working directory. `Paths` lists every path a patch writes, move destinations included, for the sandbox check. `LastFile` names the file of the last complete file header in the tail of a patch still being written, raw (a freeform call's, where only the line's end ends the path) or JSON-escaped, for the status line while the model writes an `apply_patch` call.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="diff" files="diff.go plain.go" -->
@@ -59,16 +59,16 @@ Relative paths resolve against the working directory. `Paths` lists every path a
 A diff keeps at most 2,000 lines per file and counts the rest in `Omitted`, so a large new file does not bloat the session file. `Plain` writes diffs as text for `uah sessions show`.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="tool" files="tool.go" -->
+<!-- memoria:section id="tool" files="tool.go freeform.go apply_patch.lark" -->
 ## The tool
 
-Codex offers `apply_patch` as a freeform (custom) tool with a Lark grammar to the models whose catalog entry has `apply_patch_tool_type`. The runner's Responses adapter sends only function tools, so uah offers Codex's function form: one `input` string, with Codex's instructions and grammar in the description (`Description`, `Parameters`).
+Codex offers `apply_patch` as a freeform (custom) tool with a Lark grammar to the models whose catalog entry has `apply_patch_tool_type`. uah offers Codex's function form: one `input` string, with Codex's instructions and grammar in the description (`Description`, `Parameters`). The `freeform-patch` experiment offers the freeform tool instead, with Codex's description and grammar verbatim (`FreeformDescription`, `Grammar` from `apply_patch.lark`); see [experiments](../engine/README.md#experiments). `ParseArgs` reads either form: a call's arguments that start with `*** Begin Patch` are the raw patch (`IsFreeform`), else the function form's JSON.
 
 Hooks see the call as Codex shows it to them: `tool_name` `apply_patch` and `tool_input` `{"command": "<patch>"}`, plus `file_path` and `file_paths` for Claude Code-style scripts (`HookInput`). A matcher of `apply_patch`, `Edit`, or `Write` matches it (`HookAliases`). A PreToolUse hook's `updatedInput` replaces the patch through its `command` (`FromHookInput`). `Describe` names the files for a tool line.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="tests" files="parse_test.go apply_test.go diff_test.go" -->
+<!-- memoria:section id="tests" files="parse_test.go apply_test.go diff_test.go freeform_test.go lastfile_test.go" -->
 ## Tests
 
-`parse_test.go` and `apply_test.go` port Codex's cases: every op, context and `@@` chunks, `*** End of File`, moves, the fuzzy matches, pure additions, and the error messages. `diff_test.go` pins line numbers, context, hunk breaks, and a large rewrite that stays bounded. `lastfile_test.go` covers `LastFile` on raw and escaped tails and an unfinished path. The engine's tests apply patches end to end (`internal/engine/embedded/patch_test.go`).
+`parse_test.go` and `apply_test.go` port Codex's cases: every op, context and `@@` chunks, `*** End of File`, moves, the fuzzy matches, pure additions, and the error messages. `diff_test.go` pins line numbers, context, hunk breaks, and a large rewrite that stays bounded. `lastfile_test.go` covers `LastFile` on raw and escaped tails and an unfinished path. `freeform_test.go` reads a raw patch through `ParseArgs`, `Describe`, and `HookInput`, and pins the grammar to Codex's file. The engine's tests apply patches end to end (`internal/engine/embedded/patch_test.go`).
 <!-- /memoria:section -->

@@ -15,10 +15,20 @@ import (
 	"github.com/viktordanov/uah/internal/session"
 )
 
-// TestPrintTranscript_Diff prints an applied patch as plain +/- lines.
+// TestPrintTranscript_Diff prints an applied patch as plain +/- lines,
+// from the function tool's arguments or a freeform call's raw patch.
 func TestPrintTranscript_Diff(t *testing.T) {
+	for _, args := range []string{
+		`{"input":"*** Begin Patch\n*** Update File: a.go\n@@\n-x\n+y\n*** End Patch"}`,
+		"*** Begin Patch\n*** Update File: a.go\n@@\n-x\n+y\n*** End Patch\n",
+	} {
+		printDiff(t, args)
+	}
+}
+
+func printDiff(t *testing.T, args string) {
+	t.Helper()
 	at := time.Date(2026, 9, 24, 12, 0, 0, 0, time.UTC)
-	args := `{"input":"*** Begin Patch\n*** Update File: a.go\n@@\n-x\n+y\n*** End Patch"}`
 	run := session.LoadedRun{
 		Record: uaharness.RunRecord{Result: core.Result{Request: core.Request{RunID: "r1"}, Status: core.StatusOK, StartedAt: at}},
 		Events: []core.Event{

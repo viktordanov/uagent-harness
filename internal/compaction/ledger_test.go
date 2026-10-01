@@ -67,6 +67,18 @@ func TestExtractFacts(t *testing.T) {
 	assert.Equal(t, []string{"subagent-1 (Ada)"}, f.Agents)
 }
 
+// TestExtractFacts_FreeformPatch: a freeform apply_patch call's input is
+// the raw patch, and its changes count as the function form's do.
+func TestExtractFacts_FreeformPatch(t *testing.T) {
+	call := llm.Item{Type: llm.ItemToolCall, Data: llm.ToolCall{CallID: "c1", Name: "apply_patch", Arguments: updatePatch + "\n", Custom: true}}
+	f := compaction.ExtractFacts([]llm.Item{call, result("c1", "Success. Updated the following files:\nM internal/a.go")})
+	assert.Equal(t, []compaction.FileChange{
+		{Path: "internal/a.go", Added: 1, Removed: 2},
+		{Path: "docs/b.md", Added: 2, Created: true},
+		{Path: "gone.txt", Deleted: true},
+	}, f.Changed)
+}
+
 func TestPathsIn(t *testing.T) {
 	assert.Equal(t, []string{"a.go", "b/c.go", "main.rs"}, compaction.PathsIn("cat a.go b/c.go main.rs"))
 	assert.Equal(t, []string{"internal/x/y.go"}, compaction.PathsIn(`sed -n '1,40p' internal/x/y.go`))

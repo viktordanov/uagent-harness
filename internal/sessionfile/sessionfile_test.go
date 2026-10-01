@@ -11,6 +11,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/viktordanov/unreal-agent/harness/llm"
 	"github.com/viktordanov/unreal-agent/harness/session"
 	"github.com/viktordanov/unreal-agent/harness/sessionstore"
 	"github.com/viktordanov/unreal-agent/harness/sessionstore/localfile"
@@ -219,4 +220,25 @@ func joinLines(lines [][]byte) []byte {
 	}
 
 	return out
+}
+
+// TestDecodeCustomToolCall: a freeform call's output, as the runner writes
+// it, decodes with its raw input and the Custom mark; a function call's has
+// no mark.
+func TestDecodeCustomToolCall(t *testing.T) {
+	for _, want := range []sessionfile.ToolCall{
+		{CallID: "c1", Name: "apply_patch", Arguments: "*** Begin Patch\n*** Add File: a\n+\"x\"\n*** End Patch\n", Custom: true},
+		{CallID: "c2", Name: "Bash", Arguments: `{"command":"ls"}`},
+	} {
+		item, err := json.Marshal(llm.Item{ProviderID: "p", Type: llm.ItemToolCall, Data: llm.ToolCall{
+			CallID: want.CallID, Name: want.Name, Arguments: want.Arguments, Custom: want.Custom,
+		}})
+		require.NoError(t, err)
+		var o sessionfile.Output
+		require.NoError(t, json.Unmarshal(item, &o))
+		require.Equal(t, sessionfile.OutputToolCall, o.Type)
+		var got sessionfile.ToolCall
+		require.NoError(t, o.Decode(&got))
+		assert.Equal(t, want, got)
+	}
 }

@@ -105,6 +105,8 @@ type Engine struct {
 	cacheKeys, scopes sync.Map
 	// transports are the model clients' connections, shared by every run.
 	transports transports
+	// experiments are what UAH_EXPERIMENTS turned on, read from Getenv.
+	experiments experiments
 }
 
 // Forget drops what the engine kept for a session that closed: the
@@ -131,7 +133,7 @@ func New(cfg Config) *Engine {
 	if cfg.Approver == nil {
 		cfg.Approver = approval.New(approval.Config{})
 	}
-	e := &Engine{cfg: cfg, models: catalog}
+	e := &Engine{cfg: cfg, models: catalog, experiments: readExperiments(cfg.Getenv)}
 	e.h = harness.New(harness.Config{
 		Backend: backend{e}, StateDir: cfg.StateDir, MaxDisk: cfg.MaxDisk, Logger: cfg.Logger, Getenv: cfg.Getenv,
 	})
