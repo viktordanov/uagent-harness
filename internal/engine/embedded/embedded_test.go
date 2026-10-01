@@ -270,6 +270,32 @@ func TestEmbedded_InterruptThenContinue(t *testing.T) {
 	assert.Equal(t, []string{"wait a while", "carry on"}, reqs[len(reqs)-1].UserTexts, "the session resumes after the hard stop")
 }
 
+// TestEmbedded_UnreadMessageGoesWithTheNext: a message the model never
+// answered, because the run was stopped, is stored unread; the next
+// message's run asks the model once, with both, and no request is
+// started and canceled first.
+func TestEmbedded_UnreadMessageGoesWithTheNext(t *testing.T) {
+	gate := make(chan struct{})
+	t.Cleanup(func() { close(gate) })
+	e := newEnv(t, fakellm.Reply{Text: "never", Gate: gate}, fakellm.Reply{Text: "both"}, fakellm.Reply{Text: "extra"})
+	s, ev := e.open(t, e.embedded(), "")
+
+	_, err := s.Submit("first")
+	require.NoError(t, err)
+	waitSeen(t, e.llm, 1)
+	require.NoError(t, s.Interrupt())
+	assert.Equal(t, core.StatusInterrupted, ev.finished().Status)
+	ev.idle()
+
+	_, err = s.Submit("second")
+	require.NoError(t, err)
+	result := ev.finished()
+	assert.Equal(t, "both", result.Answer)
+	reqs := e.llm.Requests()
+	require.Len(t, reqs, 2, "one request after the stop")
+	assert.Equal(t, []string{"first", "second"}, reqs[1].UserTexts)
+}
+
 // TestEmbedded_ResumesAProcessSession resumes a session the real runner
 // started, as the removed process engine left them: both write the
 // runner's session file and uagent's run records under the state

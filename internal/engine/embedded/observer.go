@@ -25,6 +25,8 @@ type observer struct {
 	cancel    context.CancelFunc
 	// emit, when set, receives engine.PatchApplied and engine.ToolOutput.
 	emit func(core.Event)
+	// early are the items recorded before the run started, written first.
+	early []sessionstore.Item
 
 	mu      sync.Mutex
 	failure error

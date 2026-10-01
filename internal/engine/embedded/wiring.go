@@ -143,7 +143,7 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 		return nil, err
 	}
 	w.closers = append(w.closers, comp.stop)
-	a, err := newAgent(runCtx, cancel, sw, s.restored, req.Effort, messages)
+	a, err := newAgent(runCtx, cancel, sw, s.restored, req.Effort, messages, s.early != nil)
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +153,7 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 	for _, t := range w.hostedTools(req.Provider, req.SessionID) {
 		builder.AddTool(t)
 	}
-	obs := &observer{sessionID: s.id, out: w.l.Stdout, cancel: cancel, emit: w.emit}
+	obs := &observer{sessionID: s.id, out: w.l.Stdout, cancel: cancel, emit: w.emit, early: s.early}
 	observerID := s.store.AddObserver(obs.observe)
 	coord := coordinator.New(coordinator.Dependencies{
 		ToolHeartbeatInterval: toolHeartbeatInterval,
@@ -225,19 +225,25 @@ func (w *wiring) remoteCompaction() bool {
 	return err == nil && p.RemoteCompaction && w.e.cfg.Compaction.Remote
 }
 
-// newAgent opens the inbox and submits the initial settings and messages.
-func newAgent(ctx context.Context, cancel context.CancelFunc, sw *switcher, restored sessionstore.ResumeState, effort string, messages []core.UserInput) (*agent, error) {
+// newAgent opens the inbox and submits the initial settings and messages,
+// unless openStore recorded them (recorded).
+func newAgent(ctx context.Context, cancel context.CancelFunc, sw *switcher, restored sessionstore.ResumeState, effort string, messages []core.UserInput, recorded bool) (*agent, error) {
 	inputs, err := inbox.New(ctx, restored.ExternalInputIDs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open the inbox: %w", err)
 	}
 	a := &agent{ctx: ctx, cancel: cancel, inputs: inputs, llm: sw, done: make(chan struct{})}
-	if err := a.SetEffort(effort); err != nil {
+	if err := sw.setUltra(effort == effortUltra); err != nil {
 		return nil, err
 	}
-	for _, m := range messages {
-		if err := a.Send(m); err != nil {
+	if !recorded {
+		if err := a.SetEffort(effort); err != nil {
 			return nil, err
+		}
+		for _, m := range messages {
+			if err := a.Send(m); err != nil {
+				return nil, err
+			}
 		}
 	}
 	// Stop when idle, as the runner does: messages sent before the agent is
@@ -272,6 +278,9 @@ func (w *wiring) launch(ctx context.Context, a *agent, coord coordinator.Coordin
 	closers := w.closers
 	w.closers = nil
 	go func() {
+		for _, it := range obs.early { // once the output is read
+			obs.observe(obs.sessionID, it)
+		}
 		err := runCoordinator(ctx, coord)
 		a.llm.settle(5 * time.Second) // a canceled request ends promptly
 		detach()

@@ -19,8 +19,6 @@ import (
 	"github.com/unreallabsai/unreal-agent/harness/sessionstore"
 	"github.com/unreallabsai/unreal-agent/harness/sessionstore/localfile"
 
-	"github.com/viktordanov/uagent/core"
-
 	"github.com/viktordanov/uah/internal/compaction"
 	"github.com/viktordanov/uah/internal/engine"
 )
@@ -67,12 +65,8 @@ func (e *Engine) Fork(ctx context.Context, parentID, childID, callID string) err
 	if err := copyCompactions(dir, parentID, childID, at); err != nil {
 		return err
 	}
-	if err := copySearches(dir, parentID, childID); err != nil {
-		return err
-	}
-	e.forks.Store(childID, true)
 
-	return nil
+	return copySearches(dir, parentID, childID)
 }
 
 // SetCacheKey makes the session's model requests use key as their prompt
@@ -260,34 +254,4 @@ func copyCompactions(dir, parentID, childID string, at time.Time) error {
 	}
 
 	return nil
-}
-
-// seedFork gives a forked session's first run its messages and effort in
-// the store, after the parent's history, before the coordinator restores
-// it. Restoring counts the inherited inputs as undelivered, so the
-// coordinator asks the model at once: the messages must already be there.
-// The inbox then drops them as seen.
-func (e *Engine) seedFork(ctx context.Context, store sessionstore.Store, id session.ID, messages []core.UserInput, effort string) (bool, error) {
-	if _, ok := e.forks.LoadAndDelete(string(id)); !ok {
-		return false, nil
-	}
-	control, err := controlInput(inbox.ControlMessage{Mode: inbox.UpdateSettings, Parameters: inbox.Settings{ReasoningEffort: reasoningEffort(effort)}})
-	if err != nil {
-		return false, err
-	}
-	inputs := []inbox.Input{control}
-	for _, m := range messages {
-		in, err := messageInput(m)
-		if err != nil {
-			return false, err
-		}
-		inputs = append(inputs, in)
-	}
-	for _, in := range inputs {
-		if err := store.AppendInput(ctx, id, in); err != nil {
-			return false, fmt.Errorf("failed to start the forked session: %w", err)
-		}
-	}
-
-	return true, nil
 }

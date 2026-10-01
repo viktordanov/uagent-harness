@@ -6,10 +6,13 @@ import (
 	"fmt"
 	"io/fs"
 	"math"
+	"slices"
 	"strings"
 	"sync"
 
 	"github.com/google/uuid"
+	"github.com/unreallabsai/unreal-agent/harness/inbox"
+	"github.com/unreallabsai/unreal-agent/harness/operation"
 	"github.com/unreallabsai/unreal-agent/harness/session"
 	"github.com/unreallabsai/unreal-agent/harness/sessionstore"
 	"github.com/unreallabsai/unreal-agent/harness/sessionstore/localfile"
@@ -25,12 +28,19 @@ type runStore struct {
 	store    sessionstore.Store
 	id       session.ID
 	restored sessionstore.ResumeState
+	// early are the items openStore recorded, for the run's observer.
+	early []sessionstore.Item
 }
 
-// openStore opens the session store and the requested session. A forked
-// session's first run puts its messages in the store first (see seedFork).
-// The run's output goes to runs/<id>/events.jsonl only: the runner's copy
-// in logs/<time>.jsonl was byte for byte the same, and nothing read it.
+// openStore opens the session store and the requested session. The run's
+// effort and messages go in the session first, unless an operation is
+// still to finish: the coordinator restores them with the session's unread
+// inputs (a stopped run's, or a fork's inherited ones) and asks the model
+// once, where it would ask at once for those alone and cancel the request
+// when the inbox brought the messages. With an operation to finish, the
+// messages go through the inbox, so the model is asked once its result is
+// in. The run's output goes to runs/<id>/events.jsonl only: the runner's
+// copy in logs/<time>.jsonl was byte for byte the same, and nothing read it.
 func (w *wiring) openStore(ctx context.Context, req core.Request, messages []core.UserInput) (runStore, error) {
 	store, err := localfile.New(w.l.SessionsDir)
 	if err != nil {
@@ -40,13 +50,13 @@ func (w *wiring) openStore(ctx context.Context, req core.Request, messages []cor
 	if err != nil {
 		return runStore{}, err
 	}
-	seeded, err := w.e.seedFork(ctx, store, id, messages, req.Effort)
-	if err != nil {
-		return runStore{}, err
-	}
-	if seeded {
-		if restored, err = store.Resume(ctx, id); err != nil {
-			return runStore{}, fmt.Errorf("failed to open session %q: %w", id, err)
+	var early []sessionstore.Item
+	if !slices.ContainsFunc(restored.Operations, func(op operation.Operation) bool { return !finalOperation(op.Status) }) {
+		first := store.AddObserver(func(_ session.ID, it sessionstore.Item) { early = append(early, it) })
+		err = recordInputs(ctx, store, id, messages, req.Effort) // the first append reads the file, as the coordinator's first write did
+		store.RemoveObserver(first)
+		if err != nil {
+			return runStore{}, err
 		}
 	}
 	cut, err := withCuts(withSnapshot(store, id), w.l.SessionsDir, string(id))
@@ -57,7 +67,28 @@ func (w *wiring) openStore(ctx context.Context, req core.Request, messages []cor
 	ck := &checkpointStore{Store: cut}
 	w.closers = append(w.closers, func() error { return ck.flush(context.WithoutCancel(ctx)) }) // after the coordinator
 
-	return runStore{store: ck, id: id, restored: restored}, nil
+	return runStore{store: ck, id: id, restored: restored, early: early}, nil
+}
+
+// recordInputs puts the run's effort and messages in the session, as the
+// inbox would.
+func recordInputs(ctx context.Context, store sessionstore.Store, id session.ID, messages []core.UserInput, effort string) error {
+	control, err := controlInput(inbox.ControlMessage{Mode: inbox.UpdateSettings, Parameters: inbox.Settings{ReasoningEffort: reasoningEffort(effort)}})
+	inputs := []inbox.Input{control}
+	for _, m := range messages {
+		in, merr := messageInput(m)
+		inputs, err = append(inputs, in), errors.Join(err, merr)
+	}
+	for _, in := range inputs {
+		if err == nil {
+			err = store.AppendInput(ctx, id, in)
+		}
+	}
+	if err != nil {
+		return fmt.Errorf("failed to record the run's messages: %w", err)
+	}
+
+	return nil
 }
 
 // openSession resumes the session, or creates it when it does not exist.

@@ -110,7 +110,7 @@ The embedded engine is a uagent `harness.Backend`. uagent still owns the run: th
 2. The session store (`store.go`).
 3. The tool registry (`tools.go`, below).
 4. The operation manager with the remote job handlers.
-5. The inbox, with the initial effort, the messages, and "stop when idle" (`agent.go`).
+5. The inbox, with "stop when idle" (`agent.go`). The initial effort and the messages go into the session before the coordinator restores it (`openStore`), so it asks the model once with them and any input a stopped run left unread; a session with an operation still to finish gets them through the inbox instead, so the model is asked once that result is in. The items are written to the run's output before the coordinator starts.
 6. The context builder with the host prompt (uah's default prompt when the request has none), the skills, and the tools.
 7. The coordinator, on its own goroutine. A panic in runner code becomes an error, so it cannot take down the TUI.
 
@@ -168,7 +168,7 @@ On openai and openai-codex (`Provider.RemoteCompaction`), with `remote_compactio
 
 ### Forked sessions
 
-`Fork` (`fork.go`) copies a parent's history into a new child session for `spawn_agent`'s `fork_context`: the items before the parent's turn that made the spawn call, written in one write as the runner store's append methods write them, then read back as a check (its own `Store.Fork` drops the operation snapshots of inherited tool calls; one append per item synced the file each time: 5.5 s for an 84 MB parent, now 0.4 s), as history only: the runner's store resumes an operation from the state its first tool-call status recorded, kept current by operation records the copy leaves out, so each copied operation gets an operation record with the last status the parent's items show (without its state) and unfinished ones are recorded as canceled (without that, the child's first run ran every command and patch of the parent again); and the parent's compactions until then. On the child's first run, `openStore` adds the run's messages and effort to the store before the coordinator restores it, because the coordinator asks the model at once for the copied inputs; the inbox then drops the messages as seen. [internal/agents](../agents/README.md#forking) describes the behavior.
+`Fork` (`fork.go`) copies a parent's history into a new child session for `spawn_agent`'s `fork_context`: the items before the parent's turn that made the spawn call, written in one write as the runner store's append methods write them, then read back as a check (its own `Store.Fork` drops the operation snapshots of inherited tool calls; one append per item synced the file each time: 5.5 s for an 84 MB parent, now 0.4 s), as history only: the runner's store resumes an operation from the state its first tool-call status recorded, kept current by operation records the copy leaves out, so each copied operation gets an operation record with the last status the parent's items show (without its state) and unfinished ones are recorded as canceled (without that, the child's first run ran every command and patch of the parent again); and the parent's compactions until then. On the child's first run, `openStore` adds the run's messages and effort to the store before the coordinator restores it, as on every run without an unfinished operation, because the coordinator asks the model at once for the copied inputs. [internal/agents](../agents/README.md#forking) describes the behavior.
 
 ### Going back to an earlier message
 
