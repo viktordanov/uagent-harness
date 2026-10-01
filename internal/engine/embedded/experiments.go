@@ -16,6 +16,16 @@ type experiments struct {
 	// turn while its long calls still run, so the model can work beside them
 	// (wake.go).
 	wakeReleaseQuick bool
+	// autoVerify runs a quick project check after each patch that applies
+	// and adds its result to the patch's output (autoverify.go).
+	autoVerify bool
+	// primedFirstTurn gives a new session's first request a compact
+	// workspace context: the files, git status, and the AGENTS.md
+	// includes (primed.go).
+	primedFirstTurn bool
+	// effortByTurn sends a request that only continues after tool results
+	// one effort level lower (effortturn.go).
+	effortByTurn bool
 }
 
 func readExperiments(getenv func(string) string) experiments {
@@ -26,6 +36,12 @@ func readExperiments(getenv func(string) string) experiments {
 			x.wakeHold60s = true
 		case "wake-release-quick":
 			x.wakeReleaseQuick = true
+		case "auto-verify":
+			x.autoVerify = true
+		case "primed-first-turn":
+			x.primedFirstTurn = true
+		case "effort-by-turn":
+			x.effortByTurn = true
 		}
 	}
 

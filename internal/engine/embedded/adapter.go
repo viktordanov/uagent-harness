@@ -41,6 +41,9 @@ type switcher struct {
 	// searches, when set, records the session's web searches and puts
 	// them back into later turn requests (searchlog.go).
 	searches *searchLog
+	// effortByTurn lowers the effort of a request that only continues
+	// after tool results (effortturn.go).
+	effortByTurn bool
 	// max is the attempt limit; diag gets the diagnostics (modelcall.go).
 	max  int
 	diag io.Writer
@@ -66,13 +69,25 @@ func newSwitcher(model string, v variant, maxAttempts int, build func(variant) (
 }
 
 func (s *switcher) Respond(ctx context.Context, req llm.Request, opts llm.RequestOptions) (llm.Response, error) {
+	_, compacting := ctx.Value(remoteCallKey{}).(*remoteCall)
 	s.mu.Lock()
-	client, model, ultra := s.clients[s.variant], s.model, s.variant.ultra
+	v, model := s.variant, s.model
+	lower := s.effortByTurn && !compacting && continuation(req.Input)
+	if lower {
+		req.Model.ReasoningEffort, v.ultra = lowerEffort(req.Model.ReasoningEffort, v.ultra), false
+	}
+	client, err := s.clientLocked(v)
 	s.mu.Unlock()
+	if err != nil {
+		return llm.Response{}, err
+	}
+	if lower && s.diag != nil {
+		_, _ = fmt.Fprintf(s.diag, "embedded: effort-by-turn: continuation at %s\n", req.Model.ReasoningEffort)
+	}
 	if model != "" {
 		req.Model.ID = model
 	}
-	if ultra {
+	if v.ultra {
 		req.Model.ReasoningEffort = "" // the client's extension sends ultra
 	}
 	if s.tools != nil {
@@ -87,7 +102,7 @@ func (s *switcher) Respond(ctx context.Context, req llm.Request, opts llm.Reques
 	ctx, done := s.observe(ctx, kindTurn)
 	resp, err := client.Respond(ctx, req, opts)
 	err = done(err)
-	if _, compacting := ctx.Value(remoteCallKey{}).(*remoteCall); err == nil && s.seen != nil && !compacting {
+	if err == nil && s.seen != nil && !compacting {
 		s.seen(req, resp.Usage)
 	}
 

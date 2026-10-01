@@ -97,6 +97,7 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 	if err != nil {
 		return nil, err
 	}
+	messages = w.primed(ctx, req, messages)
 	model, sw, err := w.client(req, opts)
 	if err != nil {
 		return nil, err
@@ -130,7 +131,8 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 	sw.tools = w.bashTools
 	sw.images = w.e.pastedImages
 	sw.stream, sw.text, sw.diag = w.emit, opts.Stream, w.l.Stderr
-	operations := operation.NewLocalOperationManager(runCtx, newMCPJobs(runCtx, w.e.cfg.MCP), newAgentJobs(runCtx, w.e.cfg.Subagents, string(s.id)), newPatchJobs(runCtx))
+	sw.effortByTurn = w.e.experiments.effortByTurn
+	operations := operation.NewLocalOperationManager(runCtx, newMCPJobs(runCtx, w.e.cfg.MCP), newAgentJobs(runCtx, w.e.cfg.Subagents, string(s.id)), newPatchJobs(runCtx, w.verifier(req))) //nolint:contextcheck // on Linux, the sandbox probes bwrap once per process, with its own timeout
 	first := compaction.Trigger("")
 	switch {
 	case opts.Clear:
