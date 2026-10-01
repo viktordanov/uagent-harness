@@ -114,29 +114,31 @@ A session with an operation that never finished is skipped: resuming it would ca
 <!-- memoria:section id="baseline" files="baseline.json" -->
 ## Baseline
 
-[baseline.json](baseline.json) is the report of `go run ./tools/perf -count 3` on main at 1eaf678 (v1.5.3), the medians of three runs on an Apple M4 Max (14 cores), macOS 27.2, Go 1.27.1, in the workspace-write sandbox. Compare a change with it on a similar machine: `go run ./tools/perf -baseline tools/perf/baseline.json`. Replace it, with a new commit and this paragraph, when a change moves the numbers on purpose.
+[baseline.json](baseline.json) is the report of `go run ./tools/perf -count 3` on main at 1eafd1f (one-write forks, run starts without paging, shared model connections, unreal-agent v0.2.0), the medians of three runs on an Apple M4 Max (14 cores), macOS 27.2, Go 1.27.1, in the workspace-write sandbox. Compare a change with it on a similar machine: `go run ./tools/perf -baseline tools/perf/baseline.json`. Replace it, with a new commit and this paragraph, when a change moves the numbers on purpose.
 
 | Scenario | Wall ms | CPU ms | Alloc MB | Peak heap MB | Goroutines left | Conns after | Its own |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `load/small` | 84.1 | 28.9 | 13.8 | 11.1 | 2 | 1 | first_request_ms 59.2 |
-| `load/medium` | 362 | 374 | 378 | 66.5 | 2 | 1 | first_request_ms 311 |
-| `load/large` | 3,414 | 3,651 | 4,790 | 284 | 2 | 1 | first_request_ms 3,308 |
-| `tui/small` | 25.1 | 19.0 | 10.6 | 12.0 | 0 | 0 | first_frame_ms 10.8, scroll_p95_ms 0.36 |
-| `tui/medium` | 61.0 | 81.0 | 88.5 | 17.1 | 0 | 0 | first_frame_ms 38.5, scroll_p95_ms 0.53 |
-| `tui/large` | 212 | 367 | 403 | 20.5 | 0 | 0 | first_frame_ms 196, scroll_p95_ms 0.43 |
-| `turn/small` | 689 | 85.9 | 34.0 | 12.5 | 2 | 1 | turn_ms 689, records_appended 75 |
-| `turn/medium` | 923 | 440 | 624 | 67.1 | 2 | 1 | turn_ms 921, records_appended 75 |
-| `turn/large` | 4,062 | 3,895 | 5,948 | 294 | 2 | 1 | turn_ms 4,050, records_appended 75 |
-| `spawn/small` | 182 | 44.6 | 23.9 | 13.6 | 3 | 2 | child_first_request_ms 85.9 |
-| `spawn/medium` | 462 | 406 | 565 | 68.9 | 3 | 2 | child_first_request_ms 72.0 |
-| `spawn/large` | 3,877 | 4,091 | 5,694 | 295 | 3 | 2 | child_first_request_ms 63.9 |
-| `fork/small` | 600 | 110 | 33.1 | 14.3 | 3 | 2 | child_first_request_ms 306, disk_written_mb 1.1 |
-| `fork/medium` | 10,317 | 2,054 | 866 | 81.1 | 3 | 2 | child_first_request_ms 4,533, disk_written_mb 27.6 |
-| `fork/large` | 52,028 | 17,946 | 9,092 | 377 | 3 | 2 | child_first_request_ms 23,293, disk_written_mb 138 |
-| `tui-turn/small` | 613 | 169 | 39.3 | 23.8 | 3 | 1 | view_p95_ms 0.2 |
-| `idle/tui` | 3,001 | 31.9 | 0.02 | 0 | -1 | 1 | cpu_ms_per_s 10.6, updates_per_s 0, wakeups_per_s 331 |
-| `agents/small` | 487 | 198 | 40.7 | 29.0 | 7 | 4 | fork_ms 307 |
-| `leak/5-runs` | 812 | 262 | 92.6 | 23.5 | 10 | 5 | goroutines_left 10 |
+| `load/small` | 36.5 | 15.4 | 12.0 | 10.1 | 0 | 0 | first_request_ms 27.1 |
+| `load/medium` | 159 | 160 | 229 | 66.9 | 0 | 0 | first_request_ms 128 |
+| `load/large` | 635 | 690 | 1,113 | 265 | 0 | 0 | first_request_ms 543 |
+| `tui/small` | 25.4 | 21.1 | 10.7 | 12.6 | 0 | 0 | first_frame_ms 6.27, scroll_p95_ms 0.43 |
+| `tui/medium` | 59.9 | 76.5 | 88.8 | 16.5 | 0 | 0 | first_frame_ms 40.5, scroll_p95_ms 0.36 |
+| `tui/large` | 177 | 296 | 403 | 20.8 | 1 | 0 | first_frame_ms 154, scroll_p95_ms 0.38 |
+| `turn/small` | 590 | 115 | 32.6 | 12.2 | 2 | 1 | turn_ms 590, records_appended 75.0 |
+| `turn/medium` | 704 | 325 | 475 | 68.0 | 2 | 1 | turn_ms 702, records_appended 75.0 |
+| `turn/large` | 1,409 | 1,141 | 2,270 | 267 | 2 | 1 | turn_ms 1,402, records_appended 75.0 |
+| `spawn/small` | 131 | 63.4 | 22.9 | 15.3 | -1 | 0 | child_first_request_ms 53.5 |
+| `spawn/medium` | 322 | 279 | 415 | 67.4 | -1 | 0 | child_first_request_ms 51.9 |
+| `spawn/large` | 1,125 | 1,161 | 2,016 | 277 | -1 | 0 | child_first_request_ms 53.2 |
+| `fork/small` | 280 | 93.1 | 32.3 | 15.6 | -1 | 0 | child_first_request_ms 65.9, disk_written_mb 0.82 |
+| `fork/medium` | 4,319 | 1,802 | 660 | 89.1 | -1 | 0 | child_first_request_ms 281, disk_written_mb 17.1 |
+| `fork/large` | 33,074 | 15,528 | 3,337 | 367 | -1 | 0 | child_first_request_ms 1,763, disk_written_mb 87.2 |
+| `tui-turn/small` | 862 | 205 | 38.1 | 24.8 | 3 | 1 | view_p95_ms 0.24 |
+| `idle/tui` | 3,001 | 37.7 | 0.01 | 0 | -1 | 1 | cpu_ms_per_s 12.6, updates_per_s 0, wakeups_per_s 326 |
+| `agents/small` | 332 | 220 | 39.1 | 28.1 | -1 | 0 | fork_ms 184 |
+| `leak/5-runs` | 792 | 248 | 85.0 | 24.0 | 0 | 0 | goroutines_left 0 |
+
+A fork still takes 33 s on the large fixture although its child's first request comes after 1.8 s: the forked child resumes the parent's shell operations from the copied history and starts them again (here they fail, since the fixture has no sandbox shell). The numbers before 1eafd1f, on 1eaf678, were: load/large first request 3,308 ms, turn/large 4,050 ms with 5.9 GB allocated, fork/large first child request 23,293 ms, and two goroutines and one connection left per closed session.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="test" files="perf/perf_test.go perf/race_test.go perf/norace_test.go" -->
