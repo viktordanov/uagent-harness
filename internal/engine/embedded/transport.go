@@ -47,39 +47,19 @@ func modelTransport(headerTimeout time.Duration) *http.Transport {
 	}
 }
 
-// transports are an engine's model transports, one per header timeout, so
-// its runs and their subagents reuse connections. A nil one makes a new
-// transport each time.
-type transports struct {
-	mu sync.Mutex
-	m  map[time.Duration]*http.Transport
-}
+// transports are an engine's model transports by header timeout, so its
+// runs and their subagents reuse connections; the engine closes their idle
+// ones when it closes (a run's client cannot reach them through
+// callTransport). A nil one makes a new transport each time.
+type transports struct{ m sync.Map }
 
 func (t *transports) get(headerTimeout time.Duration) *http.Transport {
 	if t == nil {
 		return modelTransport(headerTimeout)
 	}
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	if t.m == nil {
-		t.m = map[time.Duration]*http.Transport{}
-	}
-	if t.m[headerTimeout] == nil {
-		t.m[headerTimeout] = modelTransport(headerTimeout)
-	}
+	tr, _ := t.m.LoadOrStore(headerTimeout, modelTransport(headerTimeout))
 
-	return t.m[headerTimeout]
-}
-
-// closeIdle closes the idle connections, when the engine closes. A run's
-// client leaves them open for the next run (callTransport has no
-// CloseIdleConnections).
-func (t *transports) closeIdle() {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	for _, tr := range t.m {
-		tr.CloseIdleConnections()
-	}
+	return tr.(*http.Transport) //nolint:forcetypeassert // only transports are stored
 }
 
 // callTransport hands each attempt of an observed request to its modelCall.

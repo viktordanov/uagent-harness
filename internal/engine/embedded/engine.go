@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net/http"
 	"os"
 	"sync"
 
@@ -171,7 +172,7 @@ func (e *Engine) Close() error {
 	if e.cfg.MCP != nil {
 		errs = append(errs, e.cfg.MCP.Close())
 	}
-	e.transports.closeIdle()
+	e.transports.m.Range(func(_, tr any) bool { tr.(*http.Transport).CloseIdleConnections(); return true }) //nolint:forcetypeassert // as transports.get
 
 	return errors.Join(errs...)
 }

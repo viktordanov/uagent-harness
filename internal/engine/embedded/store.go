@@ -85,55 +85,42 @@ func openSession(ctx context.Context, store *localfile.Store, requested string) 
 	return id, sessionstore.ResumeState{Snapshot: snapshot}, nil
 }
 
-// snapshotStore serves the run's reads of its session from one read of the
-// file: the usage seed and the coordinator's restore each page through the
-// whole history, and localfile reads the whole file for each page. Once the
-// run records an item, reads go to the file.
+// snapshotStore serves the usage seed's and the coordinator's restore's
+// pages of the session from one read of the file, where localfile reads the
+// whole file per page. Once the run records an item, reads go to the file.
 type snapshotStore struct {
 	*localfile.Store
 
 	id    session.ID
 	mu    sync.Mutex
 	items []sessionstore.Item
-	read  bool // items holds the history
-	stale bool // an item was recorded since
+	stale bool
 }
 
 func withSnapshot(store *localfile.Store, id session.ID) *snapshotStore {
 	s := &snapshotStore{Store: store, id: id}
-	store.AddObserver(func(id session.ID, _ sessionstore.Item) {
-		if id == s.id {
-			s.mu.Lock()
-			s.items, s.stale = nil, true
-			s.mu.Unlock()
-		}
-	})
+	store.AddObserver(func(session.ID, sessionstore.Item) { s.mu.Lock(); s.items, s.stale = nil, true; s.mu.Unlock() })
 
 	return s
 }
 
-// Items pages as localfile does.
 func (s *snapshotStore) Items(ctx context.Context, id session.ID, after sessionstore.Sequence, limit int) (sessionstore.Page, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if id != s.id || s.stale || limit <= 0 {
-		return s.Store.Items(ctx, id, after, limit) //nolint:wrapcheck // the store's errors pass through
-	}
-	if !s.read {
+	if s.items == nil && !s.stale && id == s.id {
 		page, err := s.Store.Items(ctx, id, sessionstore.BeforeFirst, math.MaxInt)
 		if err != nil {
 			return page, err //nolint:wrapcheck // the store's errors pass through
 		}
-		s.items, s.read = page.Items, true
+		s.items = page.Items
 	}
-	start := min(uint64(after), uint64(len(s.items)))
-	end := min(start+uint64(limit), uint64(len(s.items)))
-	page := sessionstore.Page{Items: append([]sessionstore.Item(nil), s.items[start:end]...), NextAfter: after, More: end < uint64(len(s.items))}
-	if n := len(page.Items); n > 0 {
-		page.NextAfter = page.Items[n-1].Sequence
+	if s.stale || id != s.id || limit <= 0 {
+		return s.Store.Items(ctx, id, after, limit) //nolint:wrapcheck // as above
 	}
+	rest := s.items[min(after, sessionstore.Sequence(len(s.items))):] // item i has sequence i+1
+	n := min(limit, len(rest))
 
-	return page, nil
+	return sessionstore.Page{Items: append([]sessionstore.Item(nil), rest[:n]...), NextAfter: after + sessionstore.Sequence(n), More: n < len(rest)}, nil
 }
 
 // openDatetimeLog opens the runner's per-invocation copy of its output.
