@@ -116,31 +116,33 @@ A session with an operation that never finished is skipped: resuming it would ca
 <!-- memoria:section id="baseline" files="baseline.json" -->
 ## Baseline
 
-[baseline.json](baseline.json) is the report of `go run ./tools/perf -count 3` on main at 1eaf6a4 (session syncs in groups, one read of each events file on load, 30 frames a second, unreal-agent v0.4.6), with the `turn` scenario closing its session before the count, the medians of three runs on an Apple M4 Max (14 cores), macOS 27.2, Go 1.27.1, in the workspace-write sandbox. Compare a change with it on a similar machine: `go run ./tools/perf -baseline tools/perf/baseline.json`. Replace it, with a new commit and this paragraph, when a change moves the numbers on purpose.
+[baseline.json](baseline.json) is the report of `go run ./tools/perf -count 3` at 1eaf98d (main at 1eaf3cd on the [unreal-agent fork](../../internal/engine/README.md#the-runner-fork) v0.3.2: requests encode each history item once and reuse the last request's encodings, and a resumed session's file is decoded once per run start), with the `turn` scenario closing its session before the count, the medians of three runs on an Apple M4 Max (14 cores), macOS 27.2, Go 1.27.1, in the workspace-write sandbox. Compare a change with it on a similar machine: `go run ./tools/perf -baseline tools/perf/baseline.json`. Replace it, with a new commit and this paragraph, when a change moves the numbers on purpose.
 
 | Scenario | Wall ms | CPU ms | Alloc MB | Peak heap MB | Goroutines left | Conns after | Its own |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `load/small` | 17.9 | 15.8 | 14.2 | 10.5 | 0 | 0 | first_request_ms 7.12 |
-| `load/medium` | 125 | 144 | 207 | 48.0 | 0 | 0 | first_request_ms 97.0 |
-| `load/large` | 557 | 621 | 1,019 | 232 | 0 | 0 | first_request_ms 462, index_ms 39.7 |
-| `tui/small` | 42.2 | 18.3 | 7.10 | 10.7 | 0 | 0 | first_frame_ms 4.19, first_paint_ms 33.8, scroll_p95_ms 0.26 |
-| `tui/medium` | 42.7 | 35.2 | 17.6 | 12.3 | 0 | 0 | first_frame_ms 17.5, first_paint_ms 33.7, scroll_p95_ms 0.33 |
-| `tui/large` | 111 | 111 | 58.0 | 19.1 | 0 | 0 | first_frame_ms 78.6, first_paint_ms 101, scroll_p95_ms 0.36 |
-| `turn/small` | 361 | 72.5 | 38.6 | 13.2 | -1 | 0 | turn_ms 360, records_appended 51 |
-| `turn/medium` | 523 | 313 | 528 | 48.3 | -1 | 0 | turn_ms 523, records_appended 51 |
-| `turn/large` | 1,270 | 1,142 | 2,582 | 240 | -1 | 0 | turn_ms 1,265, records_appended 51 |
-| `spawn/small` | 58.8 | 37.0 | 30.2 | 15.3 | -1 | 0 | child_first_request_ms 19.5 |
-| `spawn/medium` | 292 | 311 | 464 | 78.0 | -1 | 0 | child_first_request_ms 22.2 |
-| `spawn/large` | 1,252 | 1,333 | 2,281 | 327 | -1 | 0 | child_first_request_ms 21.1 |
-| `fork/small` | 66.5 | 49.4 | 44.1 | 18.3 | -1 | 0 | child_first_request_ms 30.9, disk_written_mb 0.46 |
-| `fork/medium` | 375 | 465 | 723 | 112 | -1 | 0 | child_first_request_ms 147, disk_written_mb 4.93 |
-| `fork/large` | 1,676 | 2,045 | 3,630 | 471 | -1 | 0 | child_first_request_ms 662, disk_written_mb 23.9 |
-| `tui-turn/small` | 357 | 92.1 | 43.1 | 15.9 | 3 | 1 | view_p95_ms 0.34 |
-| `idle/tui` | 3,001 | 14.4 | 0 | 0 | -2 | 1 | cpu_ms_per_s 4.81, updates_per_s 0, wakeups_per_s 169 |
-| `agents/small` | 126 | 82.0 | 55.3 | 22.8 | -1 | 0 | fork_ms 86.8 |
-| `leak/5-runs` | 512 | 167 | 105 | 13.3 | 0 | 0 | goroutines_left 0 |
+| `load/small` | 17.8 | 13.5 | 9.86 | 8.47 | 0 | 0 | first_request_ms 5.99 |
+| `load/medium` | 92.8 | 104 | 120 | 44.1 | 0 | 0 | first_request_ms 65.8 |
+| `load/large` | 421 | 456 | 586 | 198 | 0 | 0 | first_request_ms 327, index_ms 42.7 |
+| `tui/small` | 45.7 | 24.2 | 7.10 | 9.15 | 0 | 0 | first_frame_ms 7.43, first_paint_ms 34.0, scroll_p95_ms 0.40 |
+| `tui/medium` | 43.2 | 36.1 | 17.6 | 12.5 | 0 | 0 | first_frame_ms 18.7, first_paint_ms 33.7, scroll_p95_ms 0.41 |
+| `tui/large` | 110 | 115 | 57.5 | 18.8 | 0 | 0 | first_frame_ms 85.2, first_paint_ms 101, scroll_p95_ms 0.35 |
+| `turn/small` | 359 | 54.9 | 19.0 | 12.8 | -1 | 0 | turn_ms 359, records_appended 51 |
+| `turn/medium` | 444 | 170 | 179 | 54.3 | -1 | 0 | turn_ms 442, records_appended 51 |
+| `turn/large` | 858 | 606 | 857 | 268 | -1 | 0 | turn_ms 852, records_appended 51 |
+| `spawn/small` | 61.6 | 29.2 | 17.1 | 13.4 | -1 | 0 | child_first_request_ms 22.6 |
+| `spawn/medium` | 226 | 219 | 203 | 93.0 | -1 | 0 | child_first_request_ms 25.3 |
+| `spawn/large` | 916 | 948 | 988 | 383 | -1 | 0 | child_first_request_ms 21.9 |
+| `fork/small` | 67.4 | 42.0 | 28.1 | 16.6 | -1 | 0 | child_first_request_ms 32.6, disk_written_mb 0.46 |
+| `fork/medium` | 296 | 338 | 389 | 104 | -1 | 0 | child_first_request_ms 126, disk_written_mb 4.93 |
+| `fork/large` | 1,348 | 1,575 | 1,979 | 558 | -1 | 0 | child_first_request_ms 564, disk_written_mb 24.0 |
+| `tui-turn/small` | 388 | 88.4 | 23.3 | 13.8 | 3 | 1 | view_p95_ms 0.35 |
+| `idle/tui` | 3,000 | 14.3 | 0 | 0 | -1 | 1 | cpu_ms_per_s 4.78, updates_per_s 0, wakeups_per_s 165 |
+| `agents/small` | 123 | 70.1 | 34.5 | 19.5 | -1 | 0 | fork_ms 81.8 |
+| `leak/5-runs` | 469 | 114 | 59.3 | 13.1 | 0 | 0 | goroutines_left 0 |
 
-Against the baseline before it (1eafd1f, with the fork rows after ledger item 84 and the TUI-turn and idle rows after item 86), a turn takes 360 ms instead of 590 on the small fixture and writes 51 records instead of 75, a load's first request comes in 7 ms instead of 27, the large TUI allocates 58 MB instead of 403, and the subagent scenarios take half the time. Three changes there are not regressions:
+Against the baseline before it (1eaf6a4), the runner fork cuts what the history costs by a third to two thirds: turn/large allocates 857 MB instead of 2,582 and takes 858 ms instead of 1,270, load/large's first request comes in 327 ms instead of 462, and fork/large allocates 1,979 MB instead of 3,630. Peak heap is up 10 to 20% on medium and large (turn/large 268 MB instead of 240) because the runner keeps the last request's item encodings between requests, about one request body. `child_cpu_ms` of turn/large (139 instead of 97) is the sandboxed commands' time, which no change here touched.
+
+Against 1eafd1f, the baseline before 1eaf6a4 (with the fork rows after ledger item 84 and the TUI-turn and idle rows after item 86), a turn takes 360 ms instead of 590 on the small fixture and writes 51 records instead of 75, a load's first request comes in 7 ms instead of 27, the large TUI allocates 58 MB instead of 403, and the subagent scenarios take half the time. Three changes there are not regressions:
 
 - The fixtures hold more turns (see [How fixtures are built](#how-fixtures-are-built)): fork/large writes 23.9 MB instead of 16.5 and peaks at 471 MB instead of 357, and small spawns and forks allocate about a third more. Per workload turn, the fork's copy is the same or smaller (0.13 MB on medium).
 - `first_paint_ms` on the small TUI is 33.8 instead of 17.1. The renderer writes on its frame ticker only, which starts with the program: the first write comes at the first tick after the first frame, at 33 ms at 30 frames a second (17 ms at 60). The first frame comes at 4 ms; Bubble Tea has no way to write a frame before its tick, and its ticker cannot pause, so the first paint waits one frame at most.
