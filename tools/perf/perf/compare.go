@@ -31,6 +31,10 @@ var floors = []struct {
 	{metricAllocs, 20_000},
 	{"wakeups", 200},
 	{"requests", 1},
+	// CPU time is a few samples of scheduler noise: a small turn's moves
+	// 80 to 125 ms between runs of one commit.
+	{metricCPU, 30},
+	{"child_cpu_ms", 30},
 	{"_ms", 5},
 	{"_mb", 1},
 	{"_kb", 64},

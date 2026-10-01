@@ -35,7 +35,7 @@ go run ./tools/perf -run leak -goroutines   # the stacks of the goroutines each 
 
 Each run prints a table and a line of each scenario's own measurements, and saves the report as JSON in `tools/perf/results/<time>.json` (`-out` names another file). `results/` is ignored by git. Profiles go next to the report in `<report>-profiles/` (`-profiles` names another folder): `<scenario>.cpu.pprof`, and `<scenario>.mem-before.pprof` and `<scenario>.mem.pprof`, whose difference is the scenario's allocations (`go tool pprof -base <scenario>.mem-before.pprof <scenario>.mem.pprof`).
 
-A comparison lists each metric that moved by more than `-threshold` (default 0.25, that is 25%) and by more than the metric's floor, as `REGRESSION` or `better`; `-all` lists every metric. The floors keep noise on small numbers out: 5 ms for times, 1 MB for sizes, 3 goroutines, 1 connection, 20,000 allocations, 200 wakeups. Metrics that depend on the scenarios before (`goroutines_before`, `goroutines_after`) or describe the run (`events`, `views`, `request_mb`, `server_ms`) are never compared.
+A comparison lists each metric that moved by more than `-threshold` (default 0.25, that is 25%) and by more than the metric's floor, as `REGRESSION` or `better`; `-all` lists every metric. The floors keep noise on small numbers out: 30 ms for `cpu_ms` and `child_cpu_ms` (a small turn's CPU time moves between 80 and 125 ms from run to run of one commit), 5 ms for other times, 1 MB for sizes, 3 goroutines, 1 connection, 20,000 allocations, 200 wakeups. Metrics that depend on the scenarios before (`goroutines_before`, `goroutines_after`) or describe the run (`events`, `views`, `request_mb`, `server_ms`) are never compared.
 
 Numbers vary with the machine and its load. Compare runs from one machine, with `-count 3` when the change is small.
 <!-- /memoria:section -->
@@ -133,16 +133,16 @@ A session with an operation that never finished is skipped: resuming it would ca
 | `fork/small` | 136 | 48.7 | 32.0 | 14.6 | -1 | 0 | child_first_request_ms 59.6, disk_written_mb 0.48 |
 | `fork/medium` | 421 | 430 | 648 | 80.2 | -1 | 0 | child_first_request_ms 175, disk_written_mb 3.64 |
 | `fork/large` | 1,558 | 1,822 | 3,253 | 357 | -1 | 0 | child_first_request_ms 603, disk_written_mb 16.5 |
-| `tui-turn/small` | 862 | 205 | 38.1 | 24.8 | 3 | 1 | view_p95_ms 0.24 |
-| `idle/tui` | 3,001 | 37.7 | 0.01 | 0 | -1 | 1 | cpu_ms_per_s 12.6, updates_per_s 0, wakeups_per_s 326 |
+| `tui-turn/small` | 585 | 105 | 37.8 | 15.4 | 3 | 1 | view_p95_ms 0.34 |
+| `idle/tui` | 3,000 | 13.1 | 0 | 0 | -1 | 1 | cpu_ms_per_s 4.37, updates_per_s 0, wakeups_per_s 165 |
 | `agents/small` | 332 | 220 | 39.1 | 28.1 | -1 | 0 | fork_ms 184 |
 | `leak/5-runs` | 792 | 248 | 85.0 | 24.0 | 0 | 0 | goroutines_left 0 |
 
-The fork rows are from `-count 3 -run fork` after ledger item 84, with the rest unchanged. Before it, a fork took 33 s on the large fixture (child's first request 1.8 s): the forked child resumed the parent's shell operations from the copied history and started them again, which also emptied the parent's saved command outputs, so its state_growth_mb (5.3 then, 16.2 now: the child's session file) was low. The numbers before 1eafd1f, on 1eaf678, were: load/large first request 3,308 ms, turn/large 4,050 ms with 5.9 GB allocated, fork/large first child request 23,293 ms, and two goroutines and one connection left per closed session.
+The fork rows are from `-count 3 -run fork` after ledger item 84, and the `tui-turn` and `idle/tui` rows from `-count 3 -run 'tui-turn|idle'` after item 86 (30 frames a second: 165 idle wakeups a second, from 326), with the rest unchanged. Before it, a fork took 33 s on the large fixture (child's first request 1.8 s): the forked child resumed the parent's shell operations from the copied history and started them again, which also emptied the parent's saved command outputs, so its state_growth_mb (5.3 then, 16.2 now: the child's session file) was low. The numbers before 1eafd1f, on 1eaf678, were: load/large first request 3,308 ms, turn/large 4,050 ms with 5.9 GB allocated, fork/large first child request 23,293 ms, and two goroutines and one connection left per closed session.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="test" files="perf/perf_test.go perf/race_test.go perf/norace_test.go perf/fork_internal_test.go" -->
 ## The test
 
-`go test ./tools/perf/...` runs every scenario on the small fixture once, about 13 seconds (20 under `-race`), and checks generous ceilings: about ten times the baseline, five times more under the race detector. It catches a large regression, such as the TUI's clock running while idle, a turn that allocates ten times as much, or goroutines left by every session, without failing on a slow machine. `go test -short` skips it. `TestForkRerun` forks a session whose parent appended to a file with a command and checks that the file still has one line: a fork's first run must not start the parent's work again.
+`go test ./tools/perf/...` runs every scenario on the small fixture once, about 13 seconds (20 under `-race`), and checks generous ceilings: about ten times the baseline, five times more under the race detector. The one tight ceiling is `idle/tui` `wakeups_per_s` below 250 with or without the race detector (about 165 on macOS, 140 on Linux under `-race`), which fails if the TUI goes back to 60 frames a second (about 320). It catches a large regression, such as the TUI's clock running while idle, a turn that allocates ten times as much, or goroutines left by every session, without failing on a slow machine. `go test -short` skips it. `TestForkRerun` forks a session whose parent appended to a file with a command and checks that the file still has one line: a fork's first run must not start the parent's work again.
 <!-- /memoria:section -->

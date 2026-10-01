@@ -70,7 +70,7 @@ func commit(ctx context.Context) string {
 // flatten is a sample's metrics by name.
 func flatten(s Sample) map[string]float64 {
 	m := map[string]float64{
-		"wall_ms": ms(s.Wall), "cpu_ms": ms(s.CPU), "child_cpu_ms": ms(s.ChildCPU),
+		"wall_ms": ms(s.Wall), metricCPU: ms(s.CPU), "child_cpu_ms": ms(s.ChildCPU),
 		"alloc_mb": mb(int64(s.AllocBytes)), metricAllocs: float64(s.Allocs), "peak_heap_mb": mb(int64(s.PeakHeap)), //nolint:gosec // sizes fit
 		metricGoroutinesBefore: float64(s.GoroutinesBefore), metricGoroutinesAfter: float64(s.GoroutinesAfter),
 		// Each connection still open holds one goroutine of the fake model's
@@ -145,6 +145,7 @@ func LoadReport(path string) (*Report, error) {
 // Metric names used in more than one place.
 const (
 	metricAllocs           = "allocs"
+	metricCPU              = "cpu_ms"
 	metricGoroutinesBefore = "goroutines_before"
 	metricGoroutinesAfter  = "goroutines_after"
 	metricGoroutinesLeft   = "goroutines_left"
@@ -154,7 +155,7 @@ const (
 // columns are the main table's metrics.
 var columns = []struct{ key, head string }{
 	{"wall_ms", "wall ms"},
-	{"cpu_ms", "cpu ms"},
+	{metricCPU, "cpu ms"},
 	{"alloc_mb", "alloc MB"},
 	{metricAllocs, "allocs"},
 	{"peak_heap_mb", "heap MB"},

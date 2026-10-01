@@ -51,7 +51,7 @@ A session event:
 2. Each batch arrives as one `eventsMsg`. `Update` reduces every event in order and runs the effects they return (a finished run reads the plan's usage), starts the tick if the batch left something moving, then waits for the next batch; exactly one wait is pending at a time, which keeps order.
 3. Each session gets a generation number. Batches from a closed session are drained and dropped.
 
-A streamed answer changes with each batch, so it costs at most one render of its markdown per frame, about 60 a second.
+A streamed answer changes with each batch, so it costs at most one render of its markdown per frame, at most 30 a second. Every program running the model (`uah` and the performance harness) takes `bubble.ProgramOptions`, which sets 30 frames a second. Bubble Tea checks the view at that rate even when nothing changes and has no way to pause it, so 30 halves the idle wakeups of its default 60 (about 165 a second against 320, `idle/tui`) and keeps a keystroke's echo within 33 ms.
 
 A frame: `View` calls `render.Screen`. The transcript is virtualized: it renders items from the bottom up until the window is full. Each item's lines are cached by key, version, width, and view; items that change with time (a running tool, a pending turn) are drawn fresh each frame. A 100 ms tick runs only while something moves on screen: a run, a status, a subagent, a `!` command, or a `/review`. The state's clock is `Deps.Now`, set on each tick and before each key or paste, so a first esc or ctrl+c after the screen sat still is timed from the key, and a test can drive the clock.
 

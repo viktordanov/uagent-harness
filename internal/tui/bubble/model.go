@@ -167,9 +167,19 @@ func (m Model) onBackground(msg tea.BackgroundColorMsg) Model {
 	return m
 }
 
+// frameRate is how often Bubble Tea checks the view for changes. It checks
+// even when idle, so 30 halves the idle wakeups of the default 60 and keeps
+// a keystroke's echo within 33 ms.
+const frameRate = 30
+
+// ProgramOptions are the options every program running the model uses.
+func ProgramOptions(ctx context.Context) []tea.ProgramOption {
+	return []tea.ProgramOption{tea.WithContext(ctx), tea.WithFPS(frameRate)}
+}
+
 // Run starts the program and blocks until it exits.
 func Run(ctx context.Context, deps Deps, opts ...tea.ProgramOption) (Exit, error) {
-	p := tea.NewProgram(New(ctx, deps), append([]tea.ProgramOption{tea.WithContext(ctx)}, opts...)...)
+	p := tea.NewProgram(New(ctx, deps), append(ProgramOptions(ctx), opts...)...)
 	final, err := p.Run()
 	fm, ok := final.(Model)
 	if !ok {

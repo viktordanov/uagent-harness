@@ -203,11 +203,11 @@ func StartTUI(ctx context.Context, e *Env, id string) *TUI {
 	t.probe = &probe{inner: bubble.New(ctx, deps), changed: make(chan struct{}, 1)}
 	in, input := io.Pipe() // input that never comes
 	t.input = input
-	t.p = tea.NewProgram(t.probe,
-		tea.WithContext(ctx), tea.WithInput(in), tea.WithOutput(t.term),
+	t.p = tea.NewProgram(t.probe, append(bubble.ProgramOptions(ctx),
+		tea.WithInput(in), tea.WithOutput(t.term),
 		tea.WithWindowSize(termWidth, termHeight), tea.WithColorProfile(colorprofile.TrueColor),
 		tea.WithEnvironment([]string{"TERM=xterm-256color"}), tea.WithoutSignalHandler(),
-	)
+	)...)
 	go func() {
 		_, err := t.p.Run()
 		t.done <- err

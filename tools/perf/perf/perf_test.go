@@ -26,6 +26,8 @@ type bound struct {
 	max              float64
 }
 
+const metricWakeupsPerS = "wakeups_per_s"
+
 var bounds = []bound{
 	{"load/small", "first_request_ms", 2_000},
 	{"load/small", "alloc_mb", 200},
@@ -40,6 +42,9 @@ var bounds = []bound{
 	// The TUI's clock stops when the turn ends: no update while idle.
 	{"idle/tui", "updates_per_s", 1},
 	{"idle/tui", "cpu_ms_per_s", 200},
+	// The renderer checks the view 30 times a second, about 165 wakeups (60
+	// would be about 320); timers, which the race detector does not slow.
+	{"idle/tui", metricWakeupsPerS, 250},
 	{"agents/small", "peak_goroutines", 1_000},
 	{"leak/5-runs", "goroutines_left", 50},
 	{"leak/5-runs", "conns_after", 20},
@@ -68,7 +73,11 @@ func TestPerf_SmallFixtures(t *testing.T) {
 		}
 		got, ok := r.Metrics[b.metric]
 		if assert.True(t, ok, "%s measured %s", b.scenario, b.metric) {
-			assert.LessOrEqual(t, got, b.max*slack, "%s %s", b.scenario, b.metric)
+			limit := b.max * slack
+			if b.metric == metricWakeupsPerS {
+				limit = b.max
+			}
+			assert.LessOrEqual(t, got, limit, "%s %s", b.scenario, b.metric)
 		}
 	}
 	if t.Failed() {
