@@ -46,8 +46,8 @@ func parentRequest(t *testing.T, e *env, n int) fakellm.Request {
 // assertSharedPrefix checks the cache evidence: the child's first request
 // has the parent's system prompt and tools, in order and byte for byte,
 // the parent's prompt cache key, and starts with every input item of the
-// parent's request that made the spawn call, followed by the note that it
-// cannot spawn and the child's message.
+// parent's request that made the spawn call, followed by the child's
+// message with the note that it cannot spawn.
 func assertSharedPrefix(t *testing.T, parent, child fakellm.Request, message string) {
 	t.Helper()
 	assert.Equal(t, parent.System, child.System, "the same system prompt")
@@ -62,9 +62,8 @@ func assertSharedPrefix(t *testing.T, parent, child fakellm.Request, message str
 	for i := range parent.Input {
 		assert.JSONEq(t, string(parent.Input[i]), string(child.Input[i]), "input item %d", i)
 	}
-	require.Greater(t, len(child.Input), len(parent.Input)+1)
-	assert.Contains(t, string(child.Input[len(parent.Input)]), agents.ForkDepthNote, "the note follows the parent's items")
-	assert.Contains(t, string(child.Input[len(parent.Input)+1]), message, "the child's message follows the note")
+	assert.Contains(t, string(child.Input[len(parent.Input)]), message, "the child's message follows the parent's items")
+	assert.Contains(t, string(child.Input[len(parent.Input)]), agents.ForkDepthNote, "and says it cannot spawn")
 }
 
 // TestFork_ChildStartsWithTheParentsRequest forks a child that then shares

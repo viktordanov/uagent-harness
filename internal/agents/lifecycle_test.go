@@ -185,7 +185,7 @@ func TestAgents_ResumeAcrossProcesses(t *testing.T) {
 			last = r
 		}
 	}
-	assert.Equal(t, []string{instructions.SubagentNote, "CHILD-R first task", "second task"}, last.UserTexts, "the child resumed its own history")
+	assert.Equal(t, []string{"CHILD-R first task\n\n" + instructions.SubagentNote, "second task"}, last.UserTexts, "the child resumed its own history")
 	resumed := ev.agentState(engine.AgentCompleted)
 	assert.Equal(t, "Ada", resumed.Nickname, "the child keeps its nickname")
 }

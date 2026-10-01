@@ -36,7 +36,7 @@ func TestAgents_ChildTakesTheParentsMode(t *testing.T) {
 	ev.finished()
 
 	reqs := e.llm.Requests()
-	i := slices.IndexFunc(reqs, func(r fakellm.Request) bool { return slices.Contains(r.UserTexts, "CHILD-RO look around") })
+	i := slices.IndexFunc(reqs, func(r fakellm.Request) bool { return isChild(r) })
 	require.GreaterOrEqual(t, i, 0)
 	var defs strings.Builder
 	for _, d := range reqs[i].ToolDefs {

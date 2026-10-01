@@ -1,6 +1,8 @@
 package session
 
 import (
+	"slices"
+
 	"github.com/google/uuid"
 
 	"github.com/viktordanov/uagent/core"
@@ -16,12 +18,20 @@ type evDo func()
 // It is not sent into a live run: the runner cancels its model request
 // when a message arrives, so a notification would throw away a paid
 // request. A parent that needs a child's status at once waits for it with
-// wait_agent.
-func (s *Session) Inject(text string) { s.post(evDo(func() { s.onInject(text) })) }
+// wait_agent, and withdraw takes the message back if it has not gone yet,
+// as when that wait returns what it says.
+func (s *Session) Inject(text string) (withdraw func()) {
+	id := uuid.NewString()
+	s.post(evDo(func() { s.onInject(id, text) }))
 
-func (s *Session) onInject(text string) {
+	return func() {
+		s.post(evDo(func() { s.held = slices.DeleteFunc(s.held, func(in core.UserInput) bool { return in.ID == id }) }))
+	}
+}
+
+func (s *Session) onInject(id, text string) {
 	if s.state == StateClosed {
 		return
 	}
-	s.held = append(s.held, core.UserInput{ID: uuid.NewString(), Text: text})
+	s.held = append(s.held, core.UserInput{ID: id, Text: text})
 }

@@ -102,8 +102,9 @@ type AgentParent struct {
 	// run ends, such as AgentUpdated.
 	Emit func(core.Event)
 	// Inject gives the parent's agent a message without a turn of its own,
-	// as a child's <subagent_notification> (nil: none).
-	Inject func(text string)
+	// as a child's <subagent_notification> (nil: none); withdraw takes it
+	// back if it has not gone yet.
+	Inject func(text string) (withdraw func())
 }
 
 // AgentTool is a tool a run is offered, with its JSON Schema parameters.

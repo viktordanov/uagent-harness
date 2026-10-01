@@ -73,7 +73,7 @@ func TestSetup_ModelInstructionsFile(t *testing.T) {
 	})
 	require.GreaterOrEqual(t, child, 0)
 	assert.Equal(t, root.System, reqs[child].System, "a subagent gets the same system prompt")
-	assert.Equal(t, instructions.SubagentNote, reqs[child].UserTexts[0], "and Codex's subagent note before its task")
+	assert.True(t, strings.HasSuffix(reqs[child].UserTexts[0], "\n\n"+instructions.SubagentNote), "and Codex's subagent note with its task")
 
 	u, ok := s.ContextUsage()
 	require.True(t, ok)

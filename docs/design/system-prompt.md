@@ -96,7 +96,7 @@ The block follows `model_instructions_file` too, and it stays with `--no-instruc
 
 ## Subagents
 
-A child gets its parent's system prompt, environment included, byte for byte, so its requests reuse the parent's prompt cache. One note from Codex's `multi_agent.role.subagent` text (`instructions.SubagentNote`) goes to it as a message just before its first task, as Codex puts role text in developer instructions rather than in the base instructions:
+A child gets its parent's system prompt, environment included, byte for byte, so its requests reuse the parent's prompt cache. One note from Codex's `multi_agent.role.subagent` text (`instructions.SubagentNote`) follows the task in its first message, as Codex puts role text in developer instructions rather than in the base instructions:
 
 > When you provide a response in the final channel, that content is immediately delivered back to your parent agent.
 > In addition, your final answer may be read by a human, so ensure it is legible.

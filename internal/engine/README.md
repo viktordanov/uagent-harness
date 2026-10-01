@@ -36,7 +36,7 @@ A model request is sent up to `core.Request.MaxAttempts` times, which the sessio
 | `Clear` | Drop the context before the run's first model request (a `/clear` sent while idle) |
 | `Ask` | How the run asks the user to approve an action. Nil means no one can answer, as in `uah run` |
 | `Notify` | Adds an engine event to the session's stream, also after the run ended, such as a subagent's progress |
-| `Inject` | Gives the agent a message without a turn of its own (`Session.Inject`): a subagent's `<subagent_notification>` to its parent, through `AgentParent.Inject` |
+| `Inject` | Gives the agent a message without a turn of its own (`Session.Inject`): a subagent's `<subagent_notification>` to its parent, through `AgentParent.Inject`; the returned withdraw takes it back while it is still held |
 | `Stream` | Report the model's text as it arrives, for the run's own turn requests: the TUI and `uah run --stream` set it through `session.Options.Stream` |
 
 Optional interfaces are the seams the session probes with a type assertion. The embedded engine implements each of them; a subagent's session gets the parent's engine without `Rewinder` and `MCPStarter`, so it cannot go back and connects no MCP server of its own (`session.ErrNoRewind`), and tests use engines without them:

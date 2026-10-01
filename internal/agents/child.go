@@ -47,7 +47,12 @@ type child struct {
 	notified int
 	// waiters counts the parent's wait_agent calls pending on this child;
 	// their result tells the parent, so no notification is sent.
-	waiters        int
+	waiters int
+	// held withdraws the parent's held notification, and waited is the
+	// gen a wait_agent returned the final status of, so the parent learns
+	// it once (unhold).
+	held           func()
+	waited         int
 	pending, early map[string]bool
 	// last is the last run's result; failed is a run that did not start;
 	// cause is the last error the run reported, such as the provider's.
@@ -297,7 +302,8 @@ func (m *Manager) notify(c *child) {
 	// The notification goes before the update: once the parent's session
 	// shows the child ended, a message sent after that carries the note.
 	if note != "" && parent.Inject != nil {
-		m.outboxOf(c.parent).push(func() { parent.Inject(note) })
+		gen := c.gen
+		m.outboxOf(c.parent).push(func() { m.hold(c, gen, parent.Inject(note)) })
 	}
 	if parent.Emit != nil && current {
 		m.outboxOf(c.parent).push(func() { parent.Emit(update) })
@@ -334,6 +340,30 @@ func (m *Manager) completionNote(c *child, current bool) string {
 	}
 
 	return note
+}
+
+// hold keeps the withdraw of the child's notification for gen, or uses it
+// at once when a wait_agent already returned that status.
+func (m *Manager) hold(c *child, gen int, withdraw func()) {
+	m.mu.Lock()
+	returned := c.waited >= gen
+	if !returned {
+		c.held = withdraw
+	}
+	m.mu.Unlock()
+	if returned && withdraw != nil {
+		withdraw()
+	}
+}
+
+// unhold returns the withdraw of the child's held notification, nil if
+// none, since a wait_agent returns its final status; the caller runs it
+// without m.mu, as it waits on the parent's session. It holds m.mu.
+func (c *child) unhold() func() {
+	w := c.held
+	c.waited, c.held = c.gen, nil
+
+	return w
 }
 
 // forward passes a child's tool events to the parent, for its detailed

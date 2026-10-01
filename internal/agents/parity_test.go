@@ -49,7 +49,7 @@ func TestParity_ChildOptions(t *testing.T) {
 
 // TestParity_ChildSharesTheParentsSystemPrompt pins that a child's model
 // requests carry its parent's system prompt byte for byte, for the cache,
-// and that Codex's subagent note reaches the child once, before its task.
+// and that Codex's subagent note reaches the child once, with its task.
 func TestParity_ChildSharesTheParentsSystemPrompt(t *testing.T) {
 	e := newEnv(t, agents.Config{},
 		fakellm.Reply{Calls: []fakellm.Call{call("spawn_agent", `{"message":"CHILD-P task"}`)}},
@@ -65,5 +65,5 @@ func TestParity_ChildSharesTheParentsSystemPrompt(t *testing.T) {
 	parent, child := parentRequest(t, e, 0), requestWith(t, e, "CHILD-P")
 	assert.Equal(t, parent.System, child.System, "the child's system prompt is its parent's")
 	assert.NotContains(t, child.System, instructions.SubagentNote)
-	assert.Equal(t, []string{instructions.SubagentNote, "CHILD-P task"}, child.UserTexts)
+	assert.Equal(t, []string{"CHILD-P task\n\n" + instructions.SubagentNote}, child.UserTexts)
 }

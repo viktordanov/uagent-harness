@@ -286,3 +286,35 @@ func TestAgents_NotifyTheParentWhenAChildEnds(t *testing.T) {
 	assert.Contains(t, note, `"status":{"completed":"forty-two"}`)
 	assert.Equal(t, "what did it say?", last.UserTexts[len(last.UserTexts)-1])
 }
+
+// TestAgents_AWaitTakesBackTheHeldNotification reports a child's result
+// once: the child ends while the parent's run works without a wait, so its
+// <subagent_notification> is held, and when wait_agent then returns the same
+// final status, the held notification does not go with the next message.
+func TestAgents_AWaitTakesBackTheHeldNotification(t *testing.T) {
+	childGate, parentGate := make(chan struct{}), make(chan struct{})
+	e := newEnv(t, agents.Config{},
+		fakellm.Reply{Calls: []fakellm.Call{call("spawn_agent", `{"message":"CHILD-W count the files"}`)}},
+		fakellm.Reply{From: func(req fakellm.Request) fakellm.Reply {
+			return fakellm.Reply{Gate: parentGate, Calls: []fakellm.Call{call("wait_agent", `{"targets":["`+ids(req)[0]+`"]}`)}}
+		}},
+		fakellm.Reply{Text: "the agent said forty-two"},
+		fakellm.Reply{Text: "nothing new"},
+	)
+	e.llm.Route("CHILD-W", fakellm.Reply{Gate: childGate, Text: "forty-two"})
+	s, ev := e.open(t, false)
+	_, err := s.Submit("delegate")
+	require.NoError(t, err)
+	close(childGate)
+	ev.agentState(engine.AgentCompleted) // its notification is held: no wait is pending
+	close(parentGate)
+	assert.Equal(t, "the agent said forty-two", ev.finished().Answer)
+	assert.Contains(t, lastOutputs(e), `{"completed":"forty-two"}`)
+
+	_, err = s.Submit("anything else?")
+	require.NoError(t, err)
+	ev.finished()
+	last := lastParent(e)
+	assert.Equal(t, "anything else?", last.UserTexts[len(last.UserTexts)-1])
+	assert.NotContains(t, strings.Join(last.UserTexts, "\n"), "<subagent_notification>", "the wait returned the status, so the note was taken back")
+}

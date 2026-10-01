@@ -72,7 +72,7 @@ type wiring struct {
 	// go to it, after their own auto-review.
 	askAnytime approval.Ask
 	// inject gives the session's agent a message without a turn of its own.
-	inject func(string)
+	inject func(string) func()
 	// tier is the run's service tier when it started.
 	tier string
 	// mode is the run's permission mode, which Run.SetMode changes.
