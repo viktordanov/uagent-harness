@@ -33,7 +33,7 @@ import (
 func TestProbeRemoteCompaction(t *testing.T) {
 	login, err := codexauth.Open(os.Getenv)
 	require.NoError(t, err)
-	hc := codexHTTPClient(login, openaicodex.BaseURL)
+	hc := codexHTTPClient(nil, login, openaicodex.BaseURL)
 	model := os.Getenv("UAH_PROBE_MODEL")
 	if model == "" {
 		model = "gpt-6.1-sol"

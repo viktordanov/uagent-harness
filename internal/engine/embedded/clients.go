@@ -37,8 +37,8 @@ const (
 
 // remoteHTTPClient is primitives.NewRemoteClient's HTTP client over the
 // model transport.
-func remoteHTTPClient(headerTimeout time.Duration) *http.Client {
-	return &http.Client{Transport: callTransport{base: modelTransport(headerTimeout)}}
+func remoteHTTPClient(ts *transports, headerTimeout time.Duration) *http.Client {
+	return &http.Client{Transport: callTransport{base: ts.get(headerTimeout)}}
 }
 
 // headerTimeout is responseHeaderTimeout, or none for a loopback server,
@@ -56,9 +56,9 @@ func headerTimeout(baseURL string) time.Duration {
 // Under the observing transport, the login sets the credentials on each
 // attempt and renews them after a 401 (codexauth.Login.Transport), where
 // the runner's client sends the token it read once.
-func codexHTTPClient(login *codexauth.Login, baseURL string) *http.Client {
+func codexHTTPClient(ts *transports, login *codexauth.Login, baseURL string) *http.Client {
 	return &http.Client{
-		Transport:     callTransport{base: login.Transport(modelTransport(headerTimeout(baseURL)))},
+		Transport:     callTransport{base: login.Transport(ts.get(headerTimeout(baseURL)))},
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 	}
 }
@@ -100,7 +100,7 @@ func keyedClient(name string, c ClientConfig, cache responsesapi.CacheKeyPlaceme
 		return remoteAdapter{}, errors.New(name + " base URL must be set")
 	}
 
-	return newClient(remoteHTTPClient(headerTimeout(baseURL)), c, responsesapi.Config{
+	return newClient(remoteHTTPClient(c.transports, headerTimeout(baseURL)), c, responsesapi.Config{
 		Endpoint:          baseURL + "/responses",
 		Headers:           map[string][]string{"Authorization": {"Bearer " + c.APIKey}, headerContentType: {contentJSON}},
 		CacheKeyPlacement: cache,
@@ -136,7 +136,7 @@ func ollamaClient(c ClientConfig) (Client, error) {
 		baseURL = ollama.BaseURL
 	}
 
-	return newClient(remoteHTTPClient(0), c, responsesapi.Config{
+	return newClient(remoteHTTPClient(c.transports, 0), c, responsesapi.Config{
 		Endpoint: baseURL + "/responses",
 		Headers:  map[string][]string{headerContentType: {contentJSON}},
 	})
@@ -159,7 +159,7 @@ func codexClient(c ClientConfig) (Client, error) {
 	if _, err := login.Check(); err != nil {
 		return nil, err //nolint:wrapcheck // the provider wraps it
 	}
-	ra, err := newClient(codexHTTPClient(login, baseURL), c, responsesapi.Config{
+	ra, err := newClient(codexHTTPClient(c.transports, login, baseURL), c, responsesapi.Config{
 		Endpoint: baseURL + "/responses",
 		Headers: map[string][]string{
 			headerContentType: {contentJSON},

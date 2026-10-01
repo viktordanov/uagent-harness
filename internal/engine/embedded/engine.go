@@ -103,6 +103,8 @@ type Engine struct {
 	// cacheKeys are the sessions whose prompt cache key is not their ID;
 	// scopes the sessions with a Scope (engine.Scoper).
 	forks, cacheKeys, scopes sync.Map
+	// transports are the model clients' connections, shared by every run.
+	transports transports
 }
 
 // Forget drops what the engine kept for a session that closed: the
@@ -169,6 +171,7 @@ func (e *Engine) Close() error {
 	if e.cfg.MCP != nil {
 		errs = append(errs, e.cfg.MCP.Close())
 	}
+	e.transports.closeIdle()
 
 	return errors.Join(errs...)
 }

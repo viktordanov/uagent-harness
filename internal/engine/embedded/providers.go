@@ -25,6 +25,8 @@ type ClientConfig struct {
 	// Ultra sends reasoning effort ultra (see variant).
 	Ultra  bool
 	Getenv func(string) string
+	// transports are the engine's; nil gives the client its own.
+	transports *transports
 }
 
 // Provider mirrors unreal-agent-runner v0.1.1's provider table

@@ -41,7 +41,7 @@ func setLimit(t *testing.T, limit *time.Duration, d time.Duration) {
 func ask(t *testing.T, url string, headerTimeout time.Duration, diag io.Writer) ([]core.Event, error) {
 	t.Helper()
 	const attempts = 3
-	ra, err := newClient(remoteHTTPClient(headerTimeout), ClientConfig{MaxAttempts: attempts}, responsesapi.Config{
+	ra, err := newClient(remoteHTTPClient(nil, headerTimeout), ClientConfig{MaxAttempts: attempts}, responsesapi.Config{
 		Endpoint: url + "/responses", Headers: map[string][]string{headerContentType: {contentJSON}},
 	})
 	require.NoError(t, err)
@@ -206,16 +206,19 @@ func TestModelCall_ToolProgress(t *testing.T) {
 }
 
 // TestModelTransport: both kinds of model client, keyed and codex (under
-// the login's transport), have the timeouts; a loopback server gets no
-// header timeout.
+// the login's transport), have the timeouts and share an engine's
+// transport; a loopback server gets no header timeout.
 func TestModelTransport(t *testing.T) {
-	for _, hc := range []*http.Client{remoteHTTPClient(headerTimeout("https://api.openai.com/v1")), codexHTTPClient(nil, "")} {
+	var ts transports
+	shared := ts.get(responseHeaderTimeout)
+	for _, hc := range []*http.Client{remoteHTTPClient(&ts, headerTimeout("https://api.openai.com/v1")), codexHTTPClient(&ts, nil, "")} {
 		ct, ok := hc.Transport.(callTransport)
 		require.True(t, ok)
 		base := reflect.ValueOf(ct.base)
 		if base.Kind() == reflect.Struct { // the codex login's transport
 			base = base.FieldByName("base").Elem()
 		}
+		assert.Equal(t, reflect.ValueOf(shared).Pointer(), base.Pointer())
 		tr := base.Elem()
 		assert.Equal(t, int64(responseHeaderTimeout), tr.FieldByName("ResponseHeaderTimeout").Int())
 		h2 := tr.FieldByName("HTTP2").Elem()
@@ -225,4 +228,6 @@ func TestModelTransport(t *testing.T) {
 		assert.True(t, tr.FieldByName("DialContext").IsValid())
 	}
 	assert.Zero(t, headerTimeout("http://127.0.0.1:11434"))
+	assert.NotSame(t, shared, ts.get(0))
+	assert.NotSame(t, shared, (*transports)(nil).get(responseHeaderTimeout))
 }

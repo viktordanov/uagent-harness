@@ -42,7 +42,7 @@ func (w *wiring) client(req core.Request, opts engine.Options) (string, *switche
 		if v.priority && !p.Priority {
 			return nil, errNoPriority
 		}
-		c, err := p.NewClient(ClientConfig{APIKey: apiKey, BaseURL: baseURL, MaxAttempts: maxAttempts, Priority: v.priority, Ultra: v.ultra, Getenv: w.getenv})
+		c, err := p.NewClient(ClientConfig{APIKey: apiKey, BaseURL: baseURL, MaxAttempts: maxAttempts, Priority: v.priority, Ultra: v.ultra, Getenv: w.getenv, transports: &w.e.transports})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create the %s client: %w", p.Name, err)
 		}
