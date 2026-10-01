@@ -2,7 +2,6 @@ package embedded_test
 
 import (
 	"context"
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -35,15 +34,14 @@ type patchOpts struct {
 	mode        sandbox.Mode
 	interactive bool
 	hooks       []hooks.Hook
-	// freeform runs the freeform-patch experiment.
-	freeform bool
 }
 
-// applyPatch is a model that applies the patch, then finishes.
+// applyPatch is a model that applies the patch, its input the raw patch,
+// then finishes.
 func applyPatch(body string) []fakellm.Reply {
-	args, _ := json.Marshal(map[string]string{"input": "*** Begin Patch\n" + body + "\n*** End Patch"}) //nolint:errchkjson // strings encode
+	input := "*** Begin Patch\n" + body + "\n*** End Patch\n"
 
-	return []fakellm.Reply{{Calls: []fakellm.Call{{Name: "apply_patch", Args: string(args)}}}, {Text: "done"}}
+	return []fakellm.Reply{{Calls: []fakellm.Call{{Name: "apply_patch", Args: input, Custom: true}}}, {Text: "done"}}
 }
 
 func newPatchEnv(t *testing.T, o patchOpts, replies func(ws, outside string) []fakellm.Reply) *patchEnv {
@@ -59,18 +57,8 @@ func newPatchEnv(t *testing.T, o patchOpts, replies func(ws, outside string) []f
 		runner, err = hooks.New(o.hooks, nil, e.Workspace)
 		require.NoError(t, err)
 	}
-	getenv := e.getenv
-	if o.freeform {
-		getenv = func(key string) string {
-			if key == "UAH_EXPERIMENTS" {
-				return "other, freeform-patch"
-			}
-
-			return e.getenv(key)
-		}
-	}
 	eng := embedded.New(embedded.Config{
-		StateDir: e.StateDir, Provider: "openai", Getenv: getenv, Hooks: runner,
+		StateDir: e.StateDir, Provider: "openai", Getenv: e.getenv, Hooks: runner,
 		Sandbox: &policy, SandboxDir: filepath.Join(e.StateDir, "sandbox"),
 		Approver: approval.New(approval.Config{}),
 	})

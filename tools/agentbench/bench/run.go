@@ -71,7 +71,7 @@ func (k Key) String() string {
 	return fmt.Sprintf("%s/%s/%s-%s/%d", k.Task, k.Label(), k.Model, k.Effort, k.Repeat)
 }
 
-// Label is the harness with its variant: "uah", "uah+freeform-patch".
+// Label is the harness with its variant: "uah", "uah+prompt-runner".
 func (k Key) Label() string {
 	if k.Variant == "" {
 		return k.Harness

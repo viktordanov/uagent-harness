@@ -29,13 +29,13 @@ func TestTUI_StatusLineFollowsTheModel(t *testing.T) {
 	})
 
 	t.Run("writing a patch, then thinking", func(t *testing.T) {
-		args := `{"input":"*** Begin Patch\n*** Add File: a.go\n+package a\n*** End Patch"}`
-		cut := strings.Index(args, `a.go\n`) + len(`a.go\n`)
+		args := "*** Begin Patch\n*** Add File: a.go\n+package a\n*** End Patch\n"
+		cut := strings.Index(args, "a.go\n") + len("a.go\n")
 		hold := make(chan struct{})
 		var release sync.Once
 		llm := fakellm.New(t,
 			fakellm.Reply{
-				Calls:     []fakellm.Call{{Name: "apply_patch", Args: args}},
+				Calls:     []fakellm.Call{{Name: "apply_patch", Args: args, Custom: true}},
 				ArgDeltas: []string{args[:20], args[20:cut], args[cut:]},
 				Pace:      500 * time.Millisecond,
 			},

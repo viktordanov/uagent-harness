@@ -29,31 +29,28 @@ type patchPlan struct {
 	Cwd   string `json:"cwd"`
 }
 
-// patchRegistry offers Codex's apply_patch tool and resolves its name even
-// when it is not offered, so a session with past calls resumes on any model.
-// The translator takes a call in either form, so a session resumes across
-// the freeform-patch experiment too.
+// patchRegistry offers Codex's apply_patch tool, a custom tool whose input
+// is the raw patch, sampled from Codex's Lark grammar, and resolves its name
+// even when it is not offered, so a session with past calls resumes on any
+// model.
 type patchRegistry struct {
 	tool.Registry
 
-	offered, freeform bool
-	gate              patchGate
+	offered bool
+	gate    patchGate
 }
 
-func withPatch(r tool.Registry, offered, freeform bool, gate patchGate) tool.Registry {
-	return patchRegistry{Registry: r, offered: offered, freeform: freeform, gate: gate}
+func withPatch(r tool.Registry, offered bool, gate patchGate) tool.Registry {
+	return patchRegistry{Registry: r, offered: offered, gate: gate}
 }
 
 func (r patchRegistry) StaticDefinitions() []tool.Definition {
 	defs := r.Registry.StaticDefinitions()
-	switch {
-	case r.offered && r.freeform:
+	if r.offered {
 		defs = append(defs, tool.Definition{Tool: llm.Tool{
-			Type: llm.ToolCustom, Name: patch.ToolName, Description: patch.FreeformDescription,
+			Type: llm.ToolCustom, Name: patch.ToolName, Description: patch.Description,
 			Grammar: &llm.ToolGrammar{Syntax: "lark", Definition: patch.Grammar},
 		}})
-	case r.offered:
-		defs = append(defs, tool.Definition{Tool: llm.Tool{Type: llm.ToolFunction, Name: patch.ToolName, Description: patch.Description, Parameters: patch.Parameters()}})
 	}
 
 	return defs
@@ -99,7 +96,7 @@ func (t patchTranslator) Translate(ctx tool.Context, call llm.ToolCall) tool.Cal
 	}
 	text, err := patch.ParseArgs(call.Arguments)
 	if err != nil && call.Custom {
-		// A freeform call's input is the patch; Parse says what is wrong with it.
+		// A call's input is the patch; Parse says what is wrong with it.
 		text, err = call.Arguments, nil
 	}
 	if err != nil {

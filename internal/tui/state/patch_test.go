@@ -9,8 +9,8 @@ import (
 )
 
 // TestReduce_PatchLabel: an apply_patch line names the files its patch
-// changes, from the function tool's {"input": patch} or a freeform call's
-// raw patch.
+// changes, from a call's raw patch or the {"input": patch} of a call
+// recorded when apply_patch was a function tool.
 func TestReduce_PatchLabel(t *testing.T) {
 	for _, args := range []string{
 		`{"input":"*** Begin Patch\n*** Update File: a.go\n@@\n-x\n+y\n*** Add File: b.go\n+z\n*** End Patch"}`,

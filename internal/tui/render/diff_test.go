@@ -1,7 +1,6 @@
 package render_test
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -24,8 +23,6 @@ import (
 func patchedRun(t *testing.T) state.State {
 	t.Helper()
 	text := "*** Begin Patch\n*** Update File: pkg/foo/foo.go\n@@ func Answer() int {\n-\treturn 41\n+\treturn 42\n*** Add File: pkg/foo/doc.md\n+x\n*** End Patch"
-	args, err := json.Marshal(patch.Args{Input: text})
-	assert.NoError(t, err)
 	var added []patch.DiffLine
 	for i := range 10 {
 		added = append(added, patch.DiffLine{Kind: "+", New: i + 1, Text: fmt.Sprintf("line %d of the notes", i+1)})
@@ -42,7 +39,7 @@ func patchedRun(t *testing.T) state.State {
 
 	return apply(base(),
 		core.RunStarted{At: t0, RunID: "20260924-120000-3f2a1b2c"},
-		core.ToolCalled{At: t0, CallID: "p1", Name: "apply_patch", Label: string(args), Arguments: string(args)},
+		core.ToolCalled{At: t0, CallID: "p1", Name: "apply_patch", Label: text, Arguments: text},
 		core.ToolStarted{At: t0, CallID: "p1", OpID: "o1"},
 		engine.PatchApplied{At: t0, CallID: "p1", Files: files},
 		core.ToolFinished{At: t0.Add(100 * time.Millisecond), CallID: "p1", OpID: "o1", OK: true, Detail: "completed", Duration: 100 * time.Millisecond},

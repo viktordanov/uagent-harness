@@ -26,7 +26,9 @@ func bash(id, command, output string) []llm.Item {
 }
 
 func applyPatch(id, text, output string) []llm.Item {
-	return []llm.Item{toolCall(id, "apply_patch", map[string]any{"input": text}), result(id, output)}
+	call := llm.Item{Type: llm.ItemToolCall, Data: llm.ToolCall{CallID: id, Name: "apply_patch", Arguments: text, Custom: true}}
+
+	return []llm.Item{call, result(id, output)}
 }
 
 func history(parts ...[]llm.Item) []llm.Item {
@@ -67,10 +69,11 @@ func TestExtractFacts(t *testing.T) {
 	assert.Equal(t, []string{"subagent-1 (Ada)"}, f.Agents)
 }
 
-// TestExtractFacts_FreeformPatch: a freeform apply_patch call's input is
-// the raw patch, and its changes count as the function form's do.
-func TestExtractFacts_FreeformPatch(t *testing.T) {
-	call := llm.Item{Type: llm.ItemToolCall, Data: llm.ToolCall{CallID: "c1", Name: "apply_patch", Arguments: updatePatch + "\n", Custom: true}}
+// TestExtractFacts_RecordedFunctionPatch: a call recorded when apply_patch
+// was a function tool has the patch in "input", and its changes count as a
+// raw patch's do.
+func TestExtractFacts_RecordedFunctionPatch(t *testing.T) {
+	call := toolCall("c1", "apply_patch", map[string]any{"input": updatePatch})
 	f := compaction.ExtractFacts([]llm.Item{call, result("c1", "Success. Updated the following files:\nM internal/a.go")})
 	assert.Equal(t, []compaction.FileChange{
 		{Path: "internal/a.go", Added: 1, Removed: 2},

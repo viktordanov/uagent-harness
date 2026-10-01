@@ -1,7 +1,6 @@
 package render_test
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -31,8 +30,7 @@ func spacedRun(t *testing.T) state.State {
 			core.ToolFinished{At: t0, CallID: id, OpID: id, OK: true, Detail: "exit 0", Duration: 100 * time.Millisecond},
 		}
 	}
-	args, err := json.Marshal(patch.Args{Input: "*** Begin Patch\n*** Add File: notes.md\n+x\n*** End Patch"})
-	require.NoError(t, err)
+	args := "*** Begin Patch\n*** Add File: notes.md\n+x\n*** End Patch\n"
 	var added []patch.DiffLine
 	for i := range 20 {
 		added = append(added, patch.DiffLine{Kind: "+", New: i + 1, Text: fmt.Sprintf("line %d", i+1)})
@@ -45,7 +43,7 @@ func spacedRun(t *testing.T) state.State {
 	evs = append(evs, ran("r1", "go build ./...")...)
 	evs = append(evs, ran("r2", "go vet ./...")...)
 	evs = append(evs,
-		core.ToolCalled{At: t0, CallID: "p1", Name: "apply_patch", Label: string(args), Arguments: string(args)},
+		core.ToolCalled{At: t0, CallID: "p1", Name: "apply_patch", Label: args, Arguments: args},
 		core.ToolStarted{At: t0, CallID: "p1", OpID: "p1"},
 		engine.PatchApplied{At: t0, CallID: "p1", Files: []patch.FileDiff{{Op: "add", Path: "notes.md", Added: 20, Hunks: []patch.DiffHunk{{Lines: added}}}}},
 		core.ToolFinished{At: t0, CallID: "p1", OpID: "p1", OK: true, Detail: "completed", Duration: 100 * time.Millisecond},

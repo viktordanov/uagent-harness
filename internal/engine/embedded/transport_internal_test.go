@@ -228,12 +228,12 @@ func TestModelCall_NoSuchHost(t *testing.T) {
 // TestModelCall_ToolProgress: an apply_patch being written reports its
 // file and size, and a progress without a tool once it is written.
 func TestModelCall_ToolProgress(t *testing.T) {
-	args := `{"input":"*** Begin Patch\n*** Add File: a.go\n+package a\n*** End Patch"}`
+	args := "*** Begin Patch\n*** Add File: a.go\n+package a\n*** End Patch\n"
 	// The header ends in the second piece; the pause lets its progress out
 	// before a later one replaces it in the queue.
-	cut := strings.Index(args, `a.go\n`) + len(`a.go\n`)
+	cut := strings.Index(args, "a.go\n") + len("a.go\n")
 	srv := fakellm.New(t, fakellm.Reply{
-		Calls:     []fakellm.Call{{Name: "apply_patch", Args: args}},
+		Calls:     []fakellm.Call{{Name: "apply_patch", Args: args, Custom: true}},
 		ArgDeltas: []string{args[:20], args[20:cut], args[cut:]},
 		Pace:      100 * time.Millisecond,
 	})
@@ -253,9 +253,9 @@ func TestModelCall_ToolProgress(t *testing.T) {
 	assert.True(t, written, "cleared once written")
 }
 
-// TestModelCall_FreeformToolProgress: a freeform apply_patch arrives raw,
-// so a quote in its file's name stays in the name.
-func TestModelCall_FreeformToolProgress(t *testing.T) {
+// TestModelCall_ToolProgressKeepsQuotes: an apply_patch's input arrives
+// raw, so a quote in its file's name stays in the name.
+func TestModelCall_ToolProgressKeepsQuotes(t *testing.T) {
 	input := "*** Begin Patch\n*** Add File: say \"hi\".go\n+package a\n*** End Patch"
 	cut := strings.Index(input, ".go\n") + len(".go\n")
 	srv := fakellm.New(t, fakellm.Reply{

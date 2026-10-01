@@ -56,7 +56,7 @@ func (w *wiring) tools(ctx context.Context, req core.Request, sessionID session.
 	gate := w.mcpGate(ctx, never)
 	gate.approved = scope.approvesTool
 	registry = withMCP(registry, scope.mcpTools(mcpTools), req.DisallowedTools, gate)
-	registry = withPatch(registry, offersPatch(w.e.models, req), w.e.experiments.freeformPatch, w.patchGate(ctx, req))
+	registry = withPatch(registry, offersPatch(w.e.models, req), w.patchGate(ctx, req))
 	req.SessionID = string(sessionID)
 	registry = w.withAgents(registry, req)
 

@@ -51,7 +51,7 @@ func run() error {
 	codexBin := fs.String("codex", "codex", "codex binary")
 	keep := fs.Bool("keep", false, "keep each run's workspace")
 	var uahEnv envList
-	fs.Var(&uahEnv, "uah-env", "KEY=VALUE added to uah's environment, such as UAH_EXPERIMENTS=freeform-patch (repeatable; needs -variant)")
+	fs.Var(&uahEnv, "uah-env", "KEY=VALUE added to uah's environment, such as UAH_EXPERIMENTS=<name> (repeatable; needs -variant)")
 	var uahConfig envList
 	fs.Var(&uahConfig, "uah-config", "a top-level line added to uah's generated config file, such as 'model_instructions_file = \"/path\"' (repeatable; needs -variant)")
 	variant := fs.String("variant", "", "label of the uah runs, part of their results key, so they sit beside the control runs (no -variant) in one results file and the report compares them")

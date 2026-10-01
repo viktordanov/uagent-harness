@@ -107,7 +107,7 @@ func TestTUI_SendTheQueueNow(t *testing.T) {
 // from enter) drops the response under way, and the next request has the
 // message at once.
 func TestTUI_EnterWaitsForTheToolCallCtrlEnterCutsIn(t *testing.T) {
-	patch := fakellm.Call{Name: "apply_patch", Args: `{"input":"*** Begin Patch\n*** Add File: a.go\n+package a\n*** End Patch"}`}
+	patch := fakellm.Call{Name: "apply_patch", Args: "*** Begin Patch\n*** Add File: a.go\n+package a\n*** End Patch\n", Custom: true}
 	for _, tc := range []struct {
 		name string
 		mod  tea.KeyMod

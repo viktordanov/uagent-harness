@@ -52,11 +52,9 @@ type apiError struct {
 func (e apiError) String() string { return strings.TrimPrefix(e.Code+": "+e.Message, ": ") }
 
 // toolCall is the call being written: the file an apply_patch names last.
-// A custom tool call's input arrives raw, a function call's JSON-escaped.
 type toolCall struct {
 	id, name, target, tail string
 	bytes                  int64
-	raw                    bool
 }
 
 var (
@@ -116,7 +114,7 @@ func (c *modelCall) event(ev streamEvent) {
 		target := c.tool.target
 		if c.tool.name == patch.ToolName {
 			tail := c.tool.tail + ev.Delta
-			c.tool.target, c.tool.tail = cmp.Or(patch.LastFile(tail, c.tool.raw), target), tail[max(len(tail)-512, 0):]
+			c.tool.target, c.tool.tail = cmp.Or(patch.LastFile(tail), target), tail[max(len(tail)-512, 0):]
 		}
 		c.progressLocked(engine.PhaseStreaming, c.tool.target != target)
 	case "response.output_text.delta":
@@ -143,7 +141,7 @@ func (c *modelCall) item(ev streamEvent) {
 		c.progressLocked(engine.PhaseStreaming, true)
 	case ev.Type == eventItemDone:
 	case ev.Item.Type == "function_call" || ev.Item.Type == "custom_tool_call":
-		c.tool, c.a.Tool = toolCall{id: ev.Item.ID, name: ev.Item.Name, raw: ev.Item.Type == "custom_tool_call"}, ev.Item.Name
+		c.tool, c.a.Tool = toolCall{id: ev.Item.ID, name: ev.Item.Name}, ev.Item.Name
 		c.progressLocked(engine.PhaseStreaming, true)
 	case ev.Item.Phase == "final_answer":
 		c.final[ev.Item.ID] = true

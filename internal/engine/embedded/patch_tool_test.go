@@ -12,7 +12,6 @@ import (
 	"github.com/viktordanov/uagent/core"
 
 	"github.com/viktordanov/uah/internal/engine"
-	"github.com/viktordanov/uah/internal/engine/embedded"
 	"github.com/viktordanov/uah/internal/hooks"
 	"github.com/viktordanov/uah/internal/patch"
 	"github.com/viktordanov/uah/internal/sandbox"
@@ -20,20 +19,14 @@ import (
 	"github.com/viktordanov/uah/testing/fakellm"
 )
 
-// applyFreeformPatch is a model that applies the patch through the
-// freeform tool, its input the raw patch, then finishes.
-func applyFreeformPatch(body string) []fakellm.Reply {
-	input := "*** Begin Patch\n" + body + "\n*** End Patch\n"
-
-	return []fakellm.Reply{{Calls: []fakellm.Call{{Name: "apply_patch", Args: input, Custom: true}}}, {Text: "done"}}
-}
-
 // wireItem is an input item of a request, as the provider reads it.
 type wireItem struct {
-	Type   string          `json:"type"`
-	CallID string          `json:"call_id"`
-	Input  string          `json:"input"`
-	Output json.RawMessage `json:"output"`
+	Type      string          `json:"type"`
+	CallID    string          `json:"call_id"`
+	Name      string          `json:"name"`
+	Input     string          `json:"input"`
+	Arguments string          `json:"arguments"`
+	Output    json.RawMessage `json:"output"`
 }
 
 func wireItems(t *testing.T, req fakellm.Request, types ...string) []wireItem {
@@ -67,14 +60,13 @@ func patchTool(t *testing.T, req fakellm.Request) map[string]any {
 	return nil
 }
 
-// TestFreeformPatch_Applies: with the experiment, apply_patch is Codex's
-// custom tool with its grammar; the model's raw patch applies, shows as an
-// edit of its files with its diff, and goes back to the model as a custom
-// tool call and its output.
-func TestFreeformPatch_Applies(t *testing.T) {
+// TestPatch_IsCodexsCustomTool: apply_patch is Codex's custom tool with its
+// grammar; the model's raw patch applies, shows as an edit of its files with
+// its diff, and goes back to the model as a custom tool call and its output.
+func TestPatch_IsCodexsCustomTool(t *testing.T) {
 	raw := "*** Begin Patch\n*** Add File: b.txt\n+say \"new\"\n*** End Patch\n"
-	e := newPatchEnv(t, patchOpts{mode: sandbox.WorkspaceWrite, freeform: true}, func(string, string) []fakellm.Reply {
-		return applyFreeformPatch("*** Add File: b.txt\n+say \"new\"")
+	e := newPatchEnv(t, patchOpts{mode: sandbox.WorkspaceWrite}, func(string, string) []fakellm.Reply {
+		return applyPatch("*** Add File: b.txt\n+say \"new\"")
 	})
 	applied := e.ev.until("PatchApplied", isA[engine.PatchApplied]).(engine.PatchApplied)
 	assert.Equal(t, core.StatusOK, e.ev.finished().Status)
@@ -87,7 +79,7 @@ func TestFreeformPatch_Applies(t *testing.T) {
 	require.Len(t, reqs, 2)
 	def := patchTool(t, reqs[0])
 	assert.Equal(t, "custom", def["type"])
-	assert.Equal(t, patch.FreeformDescription, def["description"])
+	assert.Equal(t, patch.Description, def["description"])
 	assert.Equal(t, map[string]any{"type": "grammar", "syntax": "lark", "definition": patch.Grammar}, def["format"])
 	assert.NotContains(t, def, "parameters")
 
@@ -115,27 +107,10 @@ func TestFreeformPatch_Applies(t *testing.T) {
 	assert.Equal(t, 1, count(runs[0].Events, isA[engine.PatchApplied]), "a reloaded transcript has the diff")
 }
 
-// TestFreeformPatch_OffByDefault: without the experiment apply_patch stays
-// a function tool with the patch in "input".
-func TestFreeformPatch_OffByDefault(t *testing.T) {
+// TestPatch_InvalidPatch: an input that is not a patch gets the parser's
+// message.
+func TestPatch_InvalidPatch(t *testing.T) {
 	e := newPatchEnv(t, patchOpts{mode: sandbox.WorkspaceWrite}, func(string, string) []fakellm.Reply {
-		return applyPatch("*** Add File: b.txt\n+new")
-	})
-	e.ev.finished()
-
-	reqs := e.llm.Requests()
-	def := patchTool(t, reqs[0])
-	assert.Equal(t, "function", def["type"])
-	assert.NotContains(t, def, "format")
-	assert.Len(t, wireItems(t, reqs[1], "function_call"), 1)
-	assert.Empty(t, wireItems(t, reqs[1], "custom_tool_call", "custom_tool_call_output"))
-	assert.Equal(t, "new\n", readFile(t, filepath.Join(e.Workspace, "b.txt")))
-}
-
-// TestFreeformPatch_InvalidPatch: a freeform input that is not a patch gets
-// the parser's message, not the function form's.
-func TestFreeformPatch_InvalidPatch(t *testing.T) {
-	e := newPatchEnv(t, patchOpts{mode: sandbox.WorkspaceWrite, freeform: true}, func(string, string) []fakellm.Reply {
 		return []fakellm.Reply{{Calls: []fakellm.Call{{Name: "apply_patch", Args: "*** Add File: a.txt\n+x", Custom: true}}}, {Text: "done"}}
 	})
 	e.ev.finished()
@@ -144,19 +119,19 @@ func TestFreeformPatch_InvalidPatch(t *testing.T) {
 	assert.NotContains(t, e.lastOutput(), "JSON")
 }
 
-// TestFreeformPatch_Hooks: PreToolUse and PostToolUse hooks see Codex's
-// {"command": patch} for a raw patch, and a hook's updatedInput replaces it.
-func TestFreeformPatch_Hooks(t *testing.T) {
+// TestPatch_HookUpdatesThePatch: PreToolUse and PostToolUse hooks see
+// Codex's {"command": patch}, and a hook's updatedInput replaces it.
+func TestPatch_HookUpdatesThePatch(t *testing.T) {
 	log := filepath.Join(t.TempDir(), "hook.log")
 	update := `{"hookSpecificOutput":{"hookEventName":"PreToolUse","updatedInput":{"command":"*** Begin Patch\n*** Add File: hooked.txt\n+from the hook\n*** End Patch"}}}`
 	e := newPatchEnv(t, patchOpts{
-		mode: sandbox.WorkspaceWrite, interactive: true, freeform: true,
+		mode: sandbox.WorkspaceWrite, interactive: true,
 		hooks: []hooks.Hook{
 			{Event: hooks.PreToolUse, Matcher: "Edit", Source: hooks.SourceUser, Command: "cat >> " + log + "; printf '%s' '" + update + "'"},
 			{Event: hooks.PostToolUse, Matcher: "apply_patch", Source: hooks.SourceUser, Command: "cat >> " + log},
 		},
 	}, func(_, outside string) []fakellm.Reply {
-		return applyFreeformPatch("*** Add File: " + filepath.Join(outside, "x.txt") + "\n+hi")
+		return applyPatch("*** Add File: " + filepath.Join(outside, "x.txt") + "\n+hi")
 	})
 	e.ev.finished()
 	e.ev.idle()
@@ -171,19 +146,19 @@ func TestFreeformPatch_Hooks(t *testing.T) {
 	assert.True(t, strings.HasPrefix(e.lastOutput(), "Success."))
 }
 
-// TestFreeformPatch_OutsideAsks: a raw patch outside the workspace asks
-// as the function form does; the approver (a PermissionRequest hook here,
-// the auto-reviewer in auto mode) sees Codex's {"command": patch}.
-func TestFreeformPatch_OutsideAsks(t *testing.T) {
+// TestPatch_ApproverSeesThePatch: the approver of a patch outside the
+// workspace (a PermissionRequest hook here, the auto-reviewer in auto mode)
+// sees Codex's {"command": patch}.
+func TestPatch_ApproverSeesThePatch(t *testing.T) {
 	log := filepath.Join(t.TempDir(), "permission.log")
 	e := newPatchEnv(t, patchOpts{
-		mode: sandbox.WorkspaceWrite, interactive: true, freeform: true,
+		mode: sandbox.WorkspaceWrite, interactive: true,
 		hooks: []hooks.Hook{{
 			Event: hooks.PermissionRequest, Matcher: "apply_patch", Source: hooks.SourceUser,
 			Command: "cat >> " + log + `; echo '{"hookSpecificOutput":{"permissionDecision":"allow"}}'`,
 		}},
 	}, func(_, outside string) []fakellm.Reply {
-		return applyFreeformPatch("*** Add File: " + filepath.Join(outside, "x.txt") + "\n+hi")
+		return applyPatch("*** Add File: " + filepath.Join(outside, "x.txt") + "\n+hi")
 	})
 	e.ev.finished()
 
@@ -194,22 +169,20 @@ func TestFreeformPatch_OutsideAsks(t *testing.T) {
 	assert.Contains(t, got, `"file_paths":["`+target+`"]`)
 }
 
-// TestFreeformPatch_SurvivesRewindAndResume: the session file keeps a
-// freeform call as one, so a rewound and a resumed session send it back as
-// a custom tool call with its output, even from an engine without the
-// experiment.
-func TestFreeformPatch_SurvivesRewindAndResume(t *testing.T) {
-	replies := append(applyFreeformPatch("*** Add File: b.txt\n+new"),
-		fakellm.Reply{Text: "two"}, fakellm.Reply{Text: "two, again"}, fakellm.Reply{Text: "three"})
+// TestPatch_ResumesFunctionCalls: a session recorded when apply_patch was
+// a function tool resumes, rewinds, and goes on with the custom tool: its
+// old calls go back as they were recorded, a function call with the patch
+// in "input" and its output, which the Responses API takes for a tool the
+// request no longer declares, as Codex sends its history.
+func TestPatch_ResumesFunctionCalls(t *testing.T) {
+	old := "*** Begin Patch\n*** Add File: a.txt\n+old\n*** End Patch"
+	args, err := json.Marshal(map[string]string{"input": old})
+	require.NoError(t, err)
+	replies := append([]fakellm.Reply{{Calls: []fakellm.Call{{Name: "apply_patch", Args: string(args)}}}, {Text: "done"}},
+		fakellm.Reply{Text: "two"}, fakellm.Reply{Text: "two, again"})
+	replies = append(replies, applyPatch("*** Update File: a.txt\n@@\n-old\n+new")...)
 	e := newEnv(t, replies...)
-	freeform := embedded.New(embedded.Config{StateDir: e.StateDir, Provider: "openai", Getenv: func(key string) string {
-		if key == "UAH_EXPERIMENTS" {
-			return "freeform-patch"
-		}
-
-		return e.getenv(key)
-	}})
-	s, ev := e.open(t, freeform, "")
+	s, ev := e.open(t, e.embedded(), "")
 	send(t, s, ev, "edit")
 	second := send(t, s, ev, "second")
 	require.NoError(t, s.Rewind(second))
@@ -220,17 +193,33 @@ func TestFreeformPatch_SurvivesRewindAndResume(t *testing.T) {
 	s2, ev2 := e.open(t, e.embedded(), id)
 	send(t, s2, ev2, "third")
 
+	assert.Equal(t, "new\n", readFile(t, filepath.Join(e.Workspace, "a.txt")))
 	reqs := e.llm.Requests()
-	require.Len(t, reqs, 5)
+	require.Len(t, reqs, 6)
 	for _, req := range reqs[2:] {
-		calls := wireItems(t, req, "custom_tool_call", "function_call")
+		assert.Equal(t, "custom", patchTool(t, req)["type"])
+		calls := wireItems(t, req, "function_call")
 		require.Len(t, calls, 1)
-		assert.Equal(t, "custom_tool_call", calls[0].Type)
-		assert.Equal(t, "*** Begin Patch\n*** Add File: b.txt\n+new\n*** End Patch\n", calls[0].Input)
-		outputs := wireItems(t, req, "custom_tool_call_output", "function_call_output")
+		assert.Equal(t, patch.ToolName, calls[0].Name)
+		assert.Equal(t, string(args), calls[0].Arguments)
+		outputs := wireItems(t, req, "function_call_output")
 		require.Len(t, outputs, 1)
-		assert.Equal(t, "custom_tool_call_output", outputs[0].Type)
+		assert.Equal(t, calls[0].CallID, outputs[0].CallID)
 	}
 	assert.Equal(t, []string{"edit", "second, edited", "third"}, reqs[4].UserTexts)
-	assert.Equal(t, "function", patchTool(t, reqs[4])["type"], "the resumed engine offers the function tool")
+	custom := wireItems(t, reqs[5], "custom_tool_call", "custom_tool_call_output")
+	require.Len(t, custom, 2, "the new call is a custom one")
+	assert.Equal(t, "Success. Updated the following files:\nM a.txt\n", strings.Join(reqs[5].ToolOutputs[len(reqs[5].ToolOutputs)-1:], ""))
+
+	runs, err := session.Load(e.StateDir, id)
+	require.NoError(t, err)
+	var describes []string
+	for _, r := range runs {
+		for _, ev := range r.Events {
+			if c, ok := ev.(core.ToolCalled); ok {
+				describes = append(describes, patch.Describe(c.Arguments))
+			}
+		}
+	}
+	assert.Equal(t, []string{"a.txt", "a.txt"}, describes, "the transcript reads both forms")
 }

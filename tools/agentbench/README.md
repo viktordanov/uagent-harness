@@ -74,14 +74,14 @@ At the end the command writes `<results>.md`, the [report](#metrics-and-the-repo
 
 ### Variants
 
-A variant is uah with something changed, such as an [experiment](../../internal/engine/README.md#experiments), run against uah as it is (the control). `-variant NAME` labels the uah runs; the label is part of the results key, so the variant's runs and the control's share one results file without replacing each other, while Codex's runs keep their keys and are shared by both. `-uah-env KEY=VALUE` passes the change through the environment, and `-uah-config 'key = value'` through the configuration file the harness generates for uah (top-level keys only, before `permission_mode`; that variant's runs get a file of their own, `uah-<mode>-<variant>.toml`); each result records them in `env` and `uah_config`, and its directory is `uah+NAME-<model>-<effort>-<repeat>`. For the freeform `apply_patch` experiment:
+A variant is uah with something changed, such as an [experiment](../../internal/engine/README.md#experiments), run against uah as it is (the control). `-variant NAME` labels the uah runs; the label is part of the results key, so the variant's runs and the control's share one results file without replacing each other, while Codex's runs keep their keys and are shared by both. `-uah-env KEY=VALUE` passes the change through the environment, and `-uah-config 'key = value'` through the configuration file the harness generates for uah (top-level keys only, before `permission_mode`; that variant's runs get a file of their own, `uah-<mode>-<variant>.toml`); each result records them in `env` and `uah_config`, and its directory is `uah+NAME-<model>-<effort>-<repeat>`. For an experiment:
 
 ```sh
-go run ./tools/agentbench -harness uah -repeat 3                                                    # the control
-go run ./tools/agentbench -harness uah -repeat 3 -uah-env UAH_EXPERIMENTS=freeform-patch -variant freeform-patch
+go run ./tools/agentbench -harness uah -repeat 3                                          # the control
+go run ./tools/agentbench -harness uah -repeat 3 -uah-env UAH_EXPERIMENTS=NAME -variant NAME
 ```
 
-A prompt variant, for example, is `-uah-config 'model_instructions_file = "/tmp/uah-agentbench/prompts/runner.md"' -variant prompt-runner`. The report then has `uah+freeform-patch` as a harness of its own in the per-harness tables, and a table of the variant against the control per task.
+A prompt variant, for example, is `-uah-config 'model_instructions_file = "/tmp/uah-agentbench/prompts/runner.md"' -variant prompt-runner`. The report then has `uah+NAME` as a harness of its own in the per-harness tables, and a table of the variant against the control per task.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="tasks" files="bench/task.go bench/fixture.go bench/dry.go" -->

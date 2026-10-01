@@ -97,7 +97,7 @@ type Reasoning struct {
 }
 
 // ToolCall is a tool_call output; Arguments are JSON text, or a custom
-// tool call's raw input (a freeform apply_patch's patch).
+// tool call's raw input (an apply_patch's patch).
 type ToolCall struct {
 	CallID    string
 	Name      string

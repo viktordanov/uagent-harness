@@ -1,7 +1,6 @@
 package agents_test
 
 import (
-	"encoding/json/v2"
 	"os"
 	"path/filepath"
 	"slices"
@@ -157,10 +156,9 @@ func TestFork_ResumedForkKeepsItsTools(t *testing.T) {
 // and applied a patch, and that has a command still running when it
 // spawns: the child gets them as history only, so each ran once.
 func TestFork_DoesNotRunTheParentsWorkAgain(t *testing.T) {
-	patch, err := json.Marshal(map[string]string{"input": "*** Begin Patch\n*** Update File: notes.txt\n@@\n a\n+b\n*** End Patch"})
-	require.NoError(t, err)
+	patch := fakellm.Call{Name: "apply_patch", Args: "*** Begin Patch\n*** Update File: notes.txt\n@@\n a\n+b\n*** End Patch\n", Custom: true}
 	e := newEnv(t, agents.Config{},
-		fakellm.Reply{Commands: []string{"echo ran >> stamp.txt"}, Calls: []fakellm.Call{call("apply_patch", string(patch))}},
+		fakellm.Reply{Commands: []string{"echo ran >> stamp.txt"}, Calls: []fakellm.Call{patch}},
 		fakellm.Reply{
 			Commands: []string{"sleep 1; echo late >> stamp.txt"},
 			Calls:    []fakellm.Call{call("spawn_agent", `{"message":"CHILD-AGAIN look","fork_context":true}`)},
@@ -172,7 +170,7 @@ func TestFork_DoesNotRunTheParentsWorkAgain(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(e.Workspace, "notes.txt"), []byte("a\n"), 0o600))
 	s, ev := e.open(t, false)
 
-	_, err = s.Submit("work, then fork")
+	_, err := s.Submit("work, then fork")
 	require.NoError(t, err)
 	assert.Equal(t, "done", ev.finished().Answer)
 

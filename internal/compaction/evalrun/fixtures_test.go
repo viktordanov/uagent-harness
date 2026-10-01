@@ -2,7 +2,6 @@ package evalrun_test
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -46,9 +45,7 @@ func TestRecordFixtures(t *testing.T) {
 func bashReply(cmds ...string) fakellm.Reply { return fakellm.Reply{Commands: cmds} }
 
 func patchReply(body string) fakellm.Reply {
-	args, _ := json.Marshal(map[string]string{"input": "*** Begin Patch\n" + body + "\n*** End Patch"}) //nolint:errchkjson // strings encode
-
-	return fakellm.Reply{Calls: []fakellm.Call{{Name: "apply_patch", Args: string(args)}}}
+	return fakellm.Reply{Calls: []fakellm.Call{{Name: "apply_patch", Args: "*** Begin Patch\n" + body + "\n*** End Patch\n", Custom: true}}}
 }
 
 // big prints n bytes of a repeated line, as a long file or log does.

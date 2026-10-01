@@ -16,7 +16,8 @@ import (
 )
 
 // TestPrintTranscript_Diff prints an applied patch as plain +/- lines,
-// from the function tool's arguments or a freeform call's raw patch.
+// from a call's raw patch or the {"input": patch} of a call recorded when
+// apply_patch was a function tool.
 func TestPrintTranscript_Diff(t *testing.T) {
 	for _, args := range []string{
 		`{"input":"*** Begin Patch\n*** Update File: a.go\n@@\n-x\n+y\n*** End Patch"}`,

@@ -170,12 +170,3 @@ func TestApply_LaterHunksSeeEarlierOnes(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "b\n", read(t, filepath.Join(dir, "new.txt")))
 }
-
-func TestTool_HookInputRoundTrip(t *testing.T) {
-	args := `{"input":"*** Begin Patch\n*** Add File: a.txt\n+x\n*** End Patch"}`
-	assert.JSONEq(t, `{"command":"*** Begin Patch\n*** Add File: a.txt\n+x\n*** End Patch","file_path":"a.txt","file_paths":["a.txt"]}`, string(patch.HookInput(args)))
-	back, err := patch.FromHookInput([]byte(`{"command":"P"}`))
-	require.NoError(t, err)
-	assert.JSONEq(t, `{"input":"P"}`, back)
-	assert.Equal(t, "a.txt", patch.Describe(args))
-}
