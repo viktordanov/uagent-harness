@@ -49,7 +49,7 @@ The output types in `Response.Output`:
 | --- | --- |
 | `message` | `Role`, `Text`, and `Phase`. `Phase` `final_answer` marks the answer of the turn. |
 | `reasoning` | `Summary`, a list of strings, and `Raw`, the provider's own item. |
-| `tool_call` | `CallID`, `Name`, and `Arguments`, a JSON text. |
+| `tool_call` | `CallID`, `Name`, and `Arguments`, a JSON text; with `Custom` true, a custom tool call whose `Arguments` are its raw input (a freeform `apply_patch`'s patch, under the [freeform-patch experiment](../engine/README.md#experiments)). |
 
 A message with images that the user pasted in the TUI has a tag line at its end for each image, `<uah-image label="[Image #1]" ref="<sha256>.png" …/>`. The image file is in `images/` in uah's home.
 
