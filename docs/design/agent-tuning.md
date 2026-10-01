@@ -10,9 +10,10 @@ This record collects every measurement made with the agent benchmark ([`tools/ag
 4. [Experiment 1: freeform `apply_patch`](#experiment-1-freeform-apply_patch)
 5. [Experiment 2: async prompts](#experiment-2-async-prompts)
 6. [Experiment 3: wake policies](#experiment-3-wake-policies)
-7. [Decisions](#decisions)
-8. [Still running and next](#still-running-and-next)
-9. [For release notes](#for-release-notes)
+7. [Experiment 4: cutting turns](#experiment-4-cutting-turns-quick-round)
+8. [Decisions](#decisions)
+9. [Still running and next](#still-running-and-next)
+10. [For release notes](#for-release-notes)
 
 ## How runs are measured
 
@@ -97,19 +98,45 @@ Proper round, slow tasks (totals of medians):
 - Edit check (4 tasks × 3): control 459 s, no placeholder wakes 471 s, same requests and tokens; neutral. Codex 517 s.
 - Wake-when-all-done never triggered on these tasks; a prompt rewrite for async made things worse (+7% wall).
 
+### Wake variations, 8 repeats
+
+5 tasks (the 50 s and 27 s suites, two slow packages, the slow algorithm, a bug hunt) × 8 repeats per variant, 120 runs, all passed ([raw](../../tools/agentbench/history/2026-10-02-wake-abc.jsonl)).
+
+| | A: hold, 5 min valve | B: 60 s valve | C: release quick results after 10 s |
+| --- | ---: | ---: | ---: |
+| Wall | 598 s | 594 s | 635 s (+6%) |
+| Model time | 451 s | 448 s | 556 s (+23%) |
+| Requests | 37.5 | 37.5 | 45 |
+| Estimated cost | $0.29 | $0.29 | $0.36 |
+
+With 8 repeats, a task's middle half spans about ±10% of its median (the 50 s suite: 128–145 s), so differences under 10% between variants are noise.
+
+## Experiment 4: cutting turns (quick round)
+
+Three switches, 8 tasks × 1 run each against a control, all passed ([raw](../../tools/agentbench/history/2026-10-02-turn-cutting-quick.jsonl)). One run per task, so these are directions, not results.
+
+| | Wall | Requests | Output tokens | Cost |
+| --- | ---: | ---: | ---: | ---: |
+| Control | 962 s | 60 | 26.0k | $0.58 |
+| Lower effort for turns that only react to tool results | 845 s (−12%) | 56 | 21.4k (−18%) | $0.55 |
+| Primed first turn (layout, git status, AGENTS.md includes) | 942 s (−2%) | 56 | 24.9k | $0.54 (−7%) |
+| Automatic compile check after an edit | 1104 s (+15%) | 65 | 29.5k | $0.65 |
+
+Lower effort costs about 3 points of prompt-cache hits (the effort level appears to be part of what the cache matches), which gives back part of the saving.
+
 ## Decisions
 
 | Date | Decision | Ledger |
 | --- | --- | --- |
 | 2026-10-02 | `apply_patch` is a freeform tool only, as in Codex; old sessions' JSON calls are still read and replayed | [90](../ledger.md) |
-| 2026-10-02 (being built) | No placeholder wakes is the default, with a 5-minute safety valve (a call still running after 5 minutes wakes the model with its output so far); debounce, wake-when-all-done and both foreground variants were removed | [91](../ledger.md) |
+| 2026-10-02 | No placeholder wakes is the default, with a 5-minute safety valve (a call still running after 5 minutes wakes the model with its output so far); debounce, wake-when-all-done and both foreground variants were removed | [91](../ledger.md) |
 | 2026-10-02 | The prompt stays Codex's adapted prompt; prompt-only async changes did not pay off | |
+| 2026-10-02 | The wake valve stays at 5 minutes (A); a 60 s valve (B) measured the same and releasing quick results early (C) was worse | [91](../ledger.md) |
+| 2026-10-02 | Automatic checks after an edit are dropped: the model still ran the tests after each edit, so the check added work | |
 
 ## Still running and next
 
-- Wake variations on 5 tasks × 8 repeats: A (the default above), B (the valve opens after 60 s), C (quick results released after 10 s while long calls run).
-- Three turn-cutting experiments, quick round first: automatic check after a successful edit (`go build`, a type check, or `py_compile`, attached to the patch result), a primed first turn (repository layout, git status, AGENTS.md includes and always-on skills in the first message), and lower effort for turns that only react to tool results.
-- After those: the whole suite against Codex with 5 repeats.
+- The whole suite (35 tasks) × 10 repeats at 64 concurrency: Codex; uah's default; uah with lower effort for follow-up turns; uah with lower effort and a primed first turn; uah with a preamble that describes the new wake policy.
 
 ## For release notes
 
