@@ -4,6 +4,19 @@ The definitive list of work until it is done or the stop time arrives. Nothing o
 
 Stop time (first round): 07:50 local. Later rounds have none.
 
+## Performance lane
+
+A standing lane beside the main one: optimizations measured with the [performance harness](../tools/perf/README.md), each picked for what a person feels (starting and resuming, long sessions, slow networks, an idle TUI left open), not for the harness's own numbers. The waste found so far is cleared (rows 81, 85, 88, 89); what is left is structural or outside uah.
+
+| # | Item | Lane | Status |
+| --- | --- | --- | --- |
+| P1 | Calibrate the harness against real use: test sessions that compact as real ones do (today's large fixture has no compaction, so its 20 MB requests overstate a real request, which the context window caps near 1 MB), a launch-to-prompt scenario (login, model list, MCP connect), memory over a long session, and `-real ~/.uah` as a regular run | performance | pending |
+| P2 | Compress request uploads: every request carries the whole conversation (up to about 1 MB); check whether Codex compresses requests to the ChatGPT backend and whether the backend accepts it, then compress in uah's transport | performance | pending |
+| P3 | Keep resume flat in long sessions: resume reads the whole session file (real ones reach 84 MB); start a fresh, compact session file at each compaction and keep the old one for history, with crash safety proven | performance | pending |
+| P4 | Measure the cost per command: the sandbox start and the runner's 5 to 7 fsyncs per command, which add up when a turn runs dozens of commands; fix only if it shows | performance | pending |
+| P5 | Upstream, unreal-agent: build each request without re-encoding the whole history (about 1.75 GB allocated per large turn), and let `Resume` seed the write state so a run start reads the session file once | performance | pending |
+| P6 | Upstream, Bubble Tea v2: park the frame ticker while nothing changes, so an idle program stops waking 30 to 60 times a second (a description of the change is drafted, not submitted) | performance | pending |
+
 ## Pending (round 5)
 
 Asked for by the owner: uah as a terminal host backend, inside the mechanisms the terminal host keeps for every harness. Designed and built; see [the terminal host integration design](design/hosting.md).
