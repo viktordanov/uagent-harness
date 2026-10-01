@@ -54,7 +54,10 @@ func (w *wiring) openStore(ctx context.Context, req core.Request, messages []cor
 		return runStore{}, err
 	}
 
-	return runStore{store: &checkpointStore{Store: cut}, id: id, restored: restored}, nil
+	ck := &checkpointStore{Store: cut}
+	w.closers = append(w.closers, func() error { return ck.flush(context.WithoutCancel(ctx)) }) // after the coordinator
+
+	return runStore{store: ck, id: id, restored: restored}, nil
 }
 
 // openSession resumes the session, or creates it when it does not exist.

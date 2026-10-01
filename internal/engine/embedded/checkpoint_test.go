@@ -8,14 +8,17 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/unreallabsai/unreal-agent/harness/session"
+	"github.com/unreallabsai/unreal-agent/harness/sessionstore/localfile"
 
 	"github.com/viktordanov/uah/testing/fakellm"
 )
 
 // TestEmbedded_ResumesAtEachSkippedPhase: the session file of a run that
 // stopped at a shell phase the store leaves out ends at the record before
-// it, ready or read_out. Resumed from there, the command has run once and
-// the model gets the whole output, as without the stop.
+// it, ready or read_out, and one that stopped while it held the terminal
+// state ends at the status. Resumed from there, the command has run once
+// and the model gets the whole output, as without the stop.
 func TestEmbedded_ResumesAtEachSkippedPhase(t *testing.T) {
 	// Both outputs are over the read limit, so the shell reads their tails.
 	const cmd = `echo ran >> ran.txt; seq 1 40000; seq 1 40000 | sed s/^/e/ >&2`
@@ -39,10 +42,18 @@ func TestEmbedded_ResumesAtEachSkippedPhase(t *testing.T) {
 	require.NoError(t, err)
 	lines := strings.SplitAfter(string(full), "\n")
 	var phases []string
-	ready, readOut := -1, -1
+	ready, readOut, done, ended := -1, -1, -1, 0
 	for i, line := range lines {
-		if ready < 0 && strings.Contains(line, `"Kind":"tool_call_status"`) {
-			ready = i
+		if strings.Contains(line, `"Kind":"tool_call_status"`) {
+			if ready < 0 {
+				ready = i
+			}
+			done = i
+		}
+		if strings.HasPrefix(line, `{"type":"operation"`) && strings.Contains(line, `"Status":"completed"`) {
+			assert.Equal(t, done, i-1, "the terminal state follows its status")
+			assert.NotContains(t, line, `"State"`, "the status has the state")
+			ended++
 		}
 		if strings.HasPrefix(line, `{"type":"operation"`) && strings.Contains(line, `"Status":"awaiting"`) {
 			phase := line[strings.Index(line, `"Phase":"`)+9:]
@@ -53,8 +64,15 @@ func TestEmbedded_ResumesAtEachSkippedPhase(t *testing.T) {
 		}
 	}
 	assert.Equal(t, []string{"process", "process", "read_out"}, phases, "only the write-ahead point and the exit code")
+	assert.Equal(t, 1, ended)
 	require.Positive(t, ready)
 	require.Greater(t, readOut, ready)
+	require.Greater(t, done, readOut)
+	store, err := localfile.New(filepath.Join(e.StateDir, "sessions"))
+	require.NoError(t, err)
+	resumed, err := store.Resume(t.Context(), session.ID(id))
+	require.NoError(t, err)
+	assert.Empty(t, resumed.Operations, "the terminal record ends the operation")
 	opDirs, err := filepath.Glob(filepath.Join(e.StateDir, "sessions", "operations", "*", "*"))
 	require.NoError(t, err)
 	require.Len(t, opDirs, 1)
@@ -71,6 +89,7 @@ func TestEmbedded_ResumesAtEachSkippedPhase(t *testing.T) {
 		{"read_out_tail", readOut, "all"},
 		{"read_err", readOut, "all"},
 		{"read_err_tail", readOut, "all"},
+		{"completed", done, "all"}, // its status written, its terminal record not
 	} {
 		t.Run(tc.phase, func(t *testing.T) {
 			require.NoError(t, os.WriteFile(path, []byte(strings.Join(lines[:tc.last+1], "")), 0o600))

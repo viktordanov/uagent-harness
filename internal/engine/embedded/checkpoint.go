@@ -3,7 +3,9 @@ package embedded
 import (
 	"context"
 	"slices"
+	"sync"
 
+	"github.com/unreallabsai/unreal-agent/harness/inbox"
 	"github.com/unreallabsai/unreal-agent/harness/operation"
 	"github.com/unreallabsai/unreal-agent/harness/session"
 	"github.com/unreallabsai/unreal-agent/harness/sessionstore"
@@ -18,8 +20,21 @@ import (
 // after read_out (a resume from read_out reads both files again). It keeps
 // process, the write-ahead point before the command starts, and read_out,
 // which holds the exit code. Other versions of the shell pass through.
+//
+// It holds an operation's terminal state until the tool-call status that
+// carries it is written, then writes it without the state, which the status
+// has. The terminal line itself stays: localfile resumes operations only
+// from operation lines, and the harness kills the process group of one
+// whose last line is not terminal. Any other write but a terminal state
+// writes the held states first, as does flush at the run's end. A stop
+// while it holds one resumes from the record before, as a stop just
+// before the terminal state would.
 type checkpointStore struct {
 	sessionstore.Store
+
+	mu   sync.Mutex
+	id   session.ID
+	held []operation.Operation
 }
 
 // skippedShellPhases are the shell phases a resume repeats harmlessly
@@ -35,6 +50,76 @@ func (c *checkpointStore) SaveOperation(ctx context.Context, id session.ID, v op
 			return nil
 		}
 	}
+	if !finalOperation(v.Status) {
+		return firstErr(c.flush(ctx), func() error { return c.Store.SaveOperation(ctx, id, v) })
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.id, c.held = id, append(c.held, v)
 
-	return c.Store.SaveOperation(ctx, id, v) //nolint:wrapcheck // the coordinator wraps store errors
+	return nil
+}
+
+func (c *checkpointStore) AppendToolCallStatus(ctx context.Context, id session.ID, s sessionstore.ToolCallStatus) error {
+	c.mu.Lock()
+	var carried []operation.Operation
+	c.held = slices.DeleteFunc(c.held, func(h operation.Operation) bool {
+		in := id == c.id && slices.ContainsFunc(s.Operations, func(op operation.Operation) bool { return op.ID == h.ID && op.Status == h.Status })
+		if in {
+			h.State = nil
+			carried = append(carried, h)
+		}
+
+		return in
+	})
+	c.mu.Unlock()
+	if err := c.flush(ctx); err != nil {
+		return err
+	}
+	if err := c.Store.AppendToolCallStatus(ctx, id, s); err != nil {
+		return err //nolint:wrapcheck // the coordinator wraps store errors
+	}
+	for _, op := range carried {
+		if err := c.Store.SaveOperation(ctx, id, op); err != nil {
+			return err //nolint:wrapcheck // as above
+		}
+	}
+
+	return nil
+}
+
+func (c *checkpointStore) AppendInput(ctx context.Context, id session.ID, in inbox.Input) error {
+	return firstErr(c.flush(ctx), func() error { return c.Store.AppendInput(ctx, id, in) })
+}
+
+func (c *checkpointStore) AppendTurn(ctx context.Context, id session.ID, t session.Turn) error {
+	return firstErr(c.flush(ctx), func() error { return c.Store.AppendTurn(ctx, id, t) })
+}
+
+func (c *checkpointStore) AppendModelResponse(ctx context.Context, id session.ID, r sessionstore.ModelResponse) error {
+	return firstErr(c.flush(ctx), func() error { return c.Store.AppendModelResponse(ctx, id, r) })
+}
+
+// flush writes the held terminal states.
+func (c *checkpointStore) flush(ctx context.Context) error {
+	c.mu.Lock()
+	held, id := c.held, c.id
+	c.held = nil
+	c.mu.Unlock()
+	for _, op := range held {
+		if err := c.Store.SaveOperation(ctx, id, op); err != nil {
+			return err //nolint:wrapcheck // the coordinator wraps store errors
+		}
+	}
+
+	return nil
+}
+
+// firstErr returns err, or then's error when err is nil.
+func firstErr(err error, then func() error) error {
+	if err != nil {
+		return err
+	}
+
+	return then()
 }
