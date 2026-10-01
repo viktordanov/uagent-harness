@@ -282,6 +282,7 @@ func TestTUI_WheelScrolls(t *testing.T) {
 	d.typeText("hi")
 	d.key(tea.KeyEnter, 0)
 	d.waitFor("• hello")
+	d.waitIdle() // a busy footer's elapsed time would change the views compared below
 	for range 3 {
 		d.typeText("/help")
 		d.key(tea.KeyEnter, 0)
