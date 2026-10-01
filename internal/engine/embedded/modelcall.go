@@ -90,7 +90,11 @@ func (s *switcher) observe(ctx context.Context, kind string) (context.Context, f
 		c.text, c.log = s.text, s.searches
 	}
 	c.remote, _ = ctx.Value(remoteCallKey{}).(*remoteCall)
-	s.calls.Add(1)
+	s.callsMu.Lock()
+	if s.calls++; s.calls == 1 {
+		s.idle = make(chan struct{})
+	}
+	s.callsMu.Unlock()
 	go func() {
 		defer close(c.done)
 		for open := true; open; {
@@ -105,17 +109,31 @@ func (s *switcher) observe(ctx context.Context, kind string) (context.Context, f
 		}
 	}()
 
-	return context.WithValue(ctx, callKey{}, c), func(err error) error { defer s.calls.Done(); return c.end(err) }
+	return context.WithValue(ctx, callKey{}, c), func(err error) error { defer s.callEnded(); return c.end(err) }
+}
+
+// callEnded counts a request out; the last one out closes idle.
+func (s *switcher) callEnded() {
+	s.callsMu.Lock()
+	defer s.callsMu.Unlock()
+	if s.calls--; s.calls == 0 {
+		close(s.idle)
+	}
 }
 
 // settle waits, at most d, for the requests in flight to end and send their
 // events. The coordinator does not wait for a request it cancels, so without
-// this a stopped run could finish before the request's StreamReset.
+// this a stopped run could finish before the request's StreamReset. A
+// request may start while it waits (a WaitGroup would race with that Add).
 func (s *switcher) settle(d time.Duration) {
-	ended := make(chan struct{})
-	go func() { s.calls.Wait(); close(ended) }()
+	s.callsMu.Lock()
+	idle := s.idle // closed when none is in flight
+	s.callsMu.Unlock()
+	if idle == nil {
+		return
+	}
 	select {
-	case <-ended:
+	case <-idle:
 	case <-time.After(d):
 	}
 }
