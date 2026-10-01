@@ -38,7 +38,8 @@ func (r *recordingStore) AppendTurn(context.Context, session.ID, session.Turn) e
 
 // TestCheckpointStore_HoldsTerminalStates: a terminal state waits; the
 // status that carries it goes first and the state follows without its
-// body. Anything else, and the run's end, writes it whole first.
+// body. Another status or operation state, and the run's end, write it
+// whole first; other items pass it.
 func TestCheckpointStore_HoldsTerminalStates(t *testing.T) {
 	rec := &recordingStore{}
 	c := &checkpointStore{Store: rec}
@@ -56,6 +57,8 @@ func TestCheckpointStore_HoldsTerminalStates(t *testing.T) {
 	require.NoError(t, c.SaveOperation(ctx, "s", op("d", operation.StatusAwaiting)))
 	require.NoError(t, c.SaveOperation(ctx, "s", op("e", operation.StatusCompleted)))
 	require.NoError(t, c.AppendToolCallStatus(ctx, "s", sessionstore.ToolCallStatus{CallID: "call-e", Operations: []operation.Operation{op("e", operation.StatusAwaiting)}}))
+	require.NoError(t, c.SaveOperation(ctx, "s", op("f", operation.StatusCompleted)))
+	require.NoError(t, c.AppendTurn(ctx, "s", session.Turn{}))
 	require.NoError(t, c.flush(ctx))
 
 	assert.Equal(t, []string{
@@ -63,5 +66,6 @@ func TestCheckpointStore_HoldsTerminalStates(t *testing.T) {
 		"turn",
 		"op c canceled state", "op d awaiting state",
 		"op e completed state", "status call-e", // the status has another state
+		"turn", "op f completed state", // at the run's end
 	}, rec.writes)
 }
