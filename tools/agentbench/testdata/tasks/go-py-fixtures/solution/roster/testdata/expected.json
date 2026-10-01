@@ -1,0 +1,32 @@
+[
+  {
+    "name": "Alice",
+    "team": "platform",
+    "role": "lead"
+  },
+  {
+    "name": "Bob",
+    "team": "platform",
+    "role": "member"
+  },
+  {
+    "name": "Carol",
+    "team": "data",
+    "role": "member"
+  },
+  {
+    "name": "Dmitri",
+    "team": "data",
+    "role": "lead"
+  },
+  {
+    "name": "Erin",
+    "team": "web",
+    "role": "member"
+  },
+  {
+    "name": "Frank",
+    "team": "web",
+    "role": "contractor"
+  }
+]

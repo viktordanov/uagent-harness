@@ -1,0 +1,6 @@
+{
+  "prompt": "Error handling in this repo is string-based: the API layer picks HTTP statuses by looking inside error messages, which keeps breaking. Please implement what docs/errors.md describes, in all three layers, and keep the existing tests passing.",
+  "check": "go vet ./... && go test ./...",
+  "exercises": "a cross-layer change from a design doc: sentinel errors in the store, wrapping with %w through the service, errors.Is in the API",
+  "tags": ["go", "refactor"]
+}

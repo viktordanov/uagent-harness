@@ -1,0 +1,6 @@
+{
+  "prompt": "Our fetcher gives up after the first failed attempt. Add a `retries` setting: how many times to retry after a failure, default 3, settable in the config file and overridable with the FETCHER_RETRIES environment variable like the other settings; a negative or non-numeric value is an error. Wire it into the fetch loop, and document it in the README's Configuration section next to the existing settings.",
+  "check": "go vet ./... && go test ./... && grep -q 'FETCHER_RETRIES' README.md && grep -i 'retries' README.md | grep -q '3'",
+  "exercises": "a config option through the file parser, the environment override, and its use, plus the matching README change",
+  "tags": ["go", "feature", "docs"]
+}

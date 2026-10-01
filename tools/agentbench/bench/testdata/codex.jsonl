@@ -1,0 +1,9 @@
+2026-10-01T18:57:26.007Z	{"type":"thread.started","thread_id":"01a0f8d4-1d2a-74e1-9d50-835b9fe3d424"}
+2026-10-01T18:57:26.014Z	{"type":"turn.started"}
+2026-10-01T18:57:31.021Z	{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"I’ll run both commands in parallel."}}
+2026-10-01T18:57:34.028Z	{"type":"item.started","item":{"id":"item_1","type":"command_execution","command":"/bin/zsh -lc ls","aggregated_output":"","exit_code":null,"status":"in_progress"}}
+2026-10-01T18:57:34.035Z	{"type":"item.started","item":{"id":"item_2","type":"command_execution","command":"/bin/zsh -lc 'cat go.mod'","aggregated_output":"","exit_code":null,"status":"in_progress"}}
+2026-10-01T18:57:34.042Z	{"type":"item.completed","item":{"id":"item_2","type":"command_execution","command":"/bin/zsh -lc 'cat go.mod'","aggregated_output":"module x\ngo 1.22\n","exit_code":0,"status":"completed"}}
+2026-10-01T18:57:34.049Z	{"type":"item.completed","item":{"id":"item_1","type":"command_execution","command":"/bin/zsh -lc ls","aggregated_output":"go.mod\nmain.go\n","exit_code":0,"status":"completed"}}
+2026-10-01T18:57:37.056Z	{"type":"item.completed","item":{"id":"item_3","type":"agent_message","text":"DONE"}}
+2026-10-01T18:57:37.063Z	{"type":"turn.completed","usage":{"input_tokens":37068,"cached_input_tokens":30464,"cache_write_input_tokens":0,"output_tokens":105,"reasoning_output_tokens":0}}

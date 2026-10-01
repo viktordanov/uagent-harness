@@ -1,0 +1,7 @@
+# date       time     job      status duration
+2026-09-01 02:00:01 backup   OK     12:30
+2026-09-01 03:00:00 reindex  OK     1:05:00
+2026-09-01 04:00:00 backup   FAILED 0:03
+2026-09-02 02:00:01 backup   OK     11:59
+2026-09-02 03:00:00 reindex  OK     2:00:07
+2026-09-02 05:00:00 cleanup  OK     42

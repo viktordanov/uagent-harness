@@ -1,0 +1,6 @@
+{
+  "prompt": "Records whose region is empty never come out of `pipeline.ProcessBatch` — they silently disappear. I don't want a fix yet, just the culprit: which function actually drops them? Write that function's name, and only the name, to a file named ANSWER.txt at the repository root.",
+  "check": "test -f ANSWER.txt && a=$(tr -d '[:space:]' < ANSWER.txt) && case \"$a\" in bucketize|pipeline.bucketize|'bucketize()') exit 0;; *) echo \"answer: $a\"; exit 1;; esac",
+  "exercises": "an investigation with no code change: follow a call chain through about ten files past decoys (validation, normalization, enrichment) to the one function that drops records",
+  "tags": ["go", "investigate"]
+}

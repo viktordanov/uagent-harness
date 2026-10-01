@@ -1,0 +1,6 @@
+{
+  "prompt": "`logx.Logf` is deprecated (see the comment on it in logx/logx.go). Please migrate every call site to the structured API (`logx.Info` / `logx.Error` with a constant message and key/value pairs), then delete `Logf` itself. Keep the information each log line carries. Make sure `go vet` and the tests still pass.",
+  "check": "! grep -rn 'Logf' --include='*.go' . && go vet ./... && go test ./...",
+  "exercises": "an API migration of about 15 call sites across four packages, with a reference API to read first; edits are independent per file",
+  "tags": ["go", "refactor"]
+}

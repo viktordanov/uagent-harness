@@ -1,0 +1,26 @@
+[
+  {
+    "name": "Alice",
+    "team": "platform"
+  },
+  {
+    "name": "Bob",
+    "team": "platform"
+  },
+  {
+    "name": "Carol",
+    "team": "data"
+  },
+  {
+    "name": "Dmitri",
+    "team": "data"
+  },
+  {
+    "name": "Erin",
+    "team": "web"
+  },
+  {
+    "name": "Frank",
+    "team": "web"
+  }
+]

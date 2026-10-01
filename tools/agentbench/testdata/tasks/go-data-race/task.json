@@ -1,0 +1,6 @@
+{
+  "prompt": "Our server occasionally crashes in production with `fatal error: concurrent map writes`, and the stack points at the stats package. The handlers run concurrently. Please make the stats package safe for concurrent use without changing its API, and make sure the race detector is happy.",
+  "check": "go vet ./... && go test -race -count=1 ./...",
+  "exercises": "a concurrency bug: read the package and its callers, fix unsynchronized map access and an aliasing snapshot, verify with the race detector",
+  "tags": ["go", "fix", "concurrency"]
+}

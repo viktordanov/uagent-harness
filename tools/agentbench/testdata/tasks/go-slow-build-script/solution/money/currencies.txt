@@ -1,0 +1,6 @@
+# code decimals name
+EUR 2 Euro
+GBP 2 Pound sterling
+JPY 0 Japanese yen
+KWD 3 Kuwaiti dinar
+USD 2 US dollar

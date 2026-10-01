@@ -1,0 +1,7 @@
+{
+  "prompt": "Two things in this repo, please:\n1. `Stock.remove` lets the quantity go negative when you remove more than is in stock; it should raise `OutOfStock` and leave the quantity unchanged.\n2. Add `bulk_price(unit_cents, qty)` to `inventory/pricing.py` as described in docs/pricing.md.\nThe test suite (`python3 -m unittest discover -s tests`) is slow, about 20 seconds, because of the sync tests.",
+  "check": "python3 -m unittest discover -s tests -q",
+  "check_timeout": "2m",
+  "exercises": "a slow Python suite (~20 s) plus two independent changes: work on one while the suite runs",
+  "tags": ["python", "slow"]
+}

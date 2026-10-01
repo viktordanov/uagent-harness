@@ -1,0 +1,6 @@
+{
+  "prompt": "Our job log report (`python3 -m logparse sample.log`) shows wrong durations for jobs that ran longer than an hour; shorter jobs look fine. Please find the cause and fix it, and keep `python3 -m unittest discover -s tests` passing.",
+  "check": "python3 -m unittest discover -s tests -q",
+  "exercises": "a symptom-only Python bug: read a few modules to trace a duration through parsing, records, and the report",
+  "tags": ["python", "investigate"]
+}

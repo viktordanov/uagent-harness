@@ -1,0 +1,6 @@
+{
+  "prompt": "The ringbuf package has no tests at all. Please write a proper test suite for it — I'd like at least 80% statement coverage (`go test -cover ./ringbuf`). Don't change the package's code; if you find a bug, tell me instead of fixing it.",
+  "check": "out=$(go test -count=1 -cover ./ringbuf/) || { echo \"$out\"; exit 1; }; echo \"$out\"; pct=$(echo \"$out\" | sed -n 's/.*coverage: \\([0-9.]*\\)%.*/\\1/p'); [ -n \"$pct\" ] && awk -v p=\"$pct\" 'BEGIN { exit !(p >= 80) }'",
+  "exercises": "writing tests for untested code to a coverage bar: read the package, write the tests, measure, iterate",
+  "tags": ["go", "tests"]
+}

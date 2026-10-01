@@ -1,0 +1,6 @@
+{
+  "prompt": "CI runs `go vet ./...` and it is failing on this repo. Please fix every vet finding properly (no //nolint-style suppressions, no deleting functionality) and make sure `go test ./...` still passes.",
+  "check": "go vet ./... && go test ./...",
+  "exercises": "several unrelated go vet findings across files and packages (printf, copylocks, lostcancel, struct tags, unreachable, self-assignment)",
+  "tags": ["go", "fix"]
+}

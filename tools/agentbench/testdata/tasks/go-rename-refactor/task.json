@@ -1,0 +1,6 @@
+{
+  "prompt": "Rename the `UserRecord` type to `Account` across the whole repository, and its constructor `NewUserRecord` to `NewAccount`. Update every use, the comments, the tests, and the README so the old name no longer appears anywhere. Behavior must not change.",
+  "check": "! grep -rIn 'UserRecord' --exclude-dir=.git . && go build ./... && go vet ./... && go test ./...",
+  "exercises": "a mechanical rename across about 14 files in five packages: many independent edits that can go in parallel",
+  "tags": ["go", "refactor"]
+}

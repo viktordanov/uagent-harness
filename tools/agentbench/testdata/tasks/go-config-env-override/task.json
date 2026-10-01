@@ -1,0 +1,6 @@
+{
+  "prompt": "Two config problems:\n1. Command-line flags are supposed to win over environment variables (see README.md), but right now `APP_ADDR=x ./app -addr y` ends up with x.\n2. Add a new setting `max_conns` (int, default 10, must be at least 1) that can be set in every layer: `max_conns` in the config file, `APP_MAX_CONNS` in the environment, and `-max-conns` on the command line. Document it in README.md with the others.\nKeep `go test ./...` green.",
+  "check": "go vet ./... && go test ./... && grep -q 'max_conns' README.md && grep -q 'APP_MAX_CONNS' README.md",
+  "exercises": "a layered config loader (file, env, flags): fix the precedence and thread a new key through every layer and the docs",
+  "tags": ["go", "feature", "docs"]
+}

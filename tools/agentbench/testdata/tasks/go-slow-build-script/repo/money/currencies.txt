@@ -1,0 +1,4 @@
+# code decimals name
+EUR 2 Euro
+GBP 2 Pound sterling
+USD 2 US dollar

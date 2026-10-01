@@ -1,0 +1,8 @@
+{
+  "prompt": "CI is red: `go test ./geo` and `go test ./units` each have a failing test. Can you fix both? Each package's tests take around 20 seconds to run.",
+  "check": "go test ./...",
+  "check_timeout": "4m",
+  "timeout": "20m",
+  "exercises": "two independent ~20 s packages, each with one failure: run both suites at once rather than one after the other",
+  "tags": ["go", "slow", "fix"]
+}

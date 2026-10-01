@@ -1,0 +1,6 @@
+{
+  "prompt": "Customers are reporting that some invoice totals are off by a cent, always one cent too low. It seems to happen only on orders that have a discount code. Please find the cause and fix it.",
+  "check": "go vet ./... && go test ./...",
+  "exercises": "a symptom-only bug report: grep and read several files to find a truncating discount among correct rounding helpers",
+  "tags": ["go", "investigate"]
+}

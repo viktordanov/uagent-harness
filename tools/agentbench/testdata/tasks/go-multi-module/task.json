@@ -1,0 +1,6 @@
+{
+  "prompt": "This is a Go workspace with three modules (slug, wrap, stats). Each module has a failing test. Please get all three green. Run the tests per module, e.g. `cd slug && go test ./...`.",
+  "check": "for m in slug wrap stats; do (cd $m && go vet ./... && go test ./...) || exit 1; done",
+  "exercises": "three independent modules in a go.work, each with one bug: independent builds and tests that can run side by side",
+  "tags": ["go", "fix", "workspace"]
+}

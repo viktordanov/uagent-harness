@@ -1,0 +1,6 @@
+{
+  "prompt": "`node --test` fails in this package. Fix the source so all the tests pass; leave the tests as they are.",
+  "check": "node --test",
+  "exercises": "a small ESM package with failing node:test suites across three source files",
+  "tags": ["javascript", "fix"]
+}

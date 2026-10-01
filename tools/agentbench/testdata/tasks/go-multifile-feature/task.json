@@ -1,0 +1,6 @@
+{
+  "prompt": "Please add a `-format` flag to the inventory CLI. `-format text` is the current table output and stays the default; `-format json` should print the items as a JSON array of objects with `name`, `qty`, and `price` fields (price as a number in dollars, e.g. 1.2), honoring `-sort` like the text output does. An empty inventory should print `[]`. An unknown format is a usage error, same as other bad flags. Add tests.",
+  "check": "go vet ./... && go test ./...",
+  "exercises": "a feature across a CLI's flag parsing, a new formatter, and the wiring, with tests",
+  "tags": ["go", "feature"]
+}

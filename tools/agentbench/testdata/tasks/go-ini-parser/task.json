@@ -1,0 +1,6 @@
+{
+  "prompt": "The INI parser in ini/ was left half-finished. Please complete it so it follows every rule in README.md (comments, quoting, continuation lines, duplicates, key case, and the errors). Keep the public API as it is.",
+  "check": "go test ./...",
+  "exercises": "finish a partial parser against a README of rules: comments, quoted values with escapes, continuations, duplicates, errors with line numbers",
+  "tags": ["go", "feature"]
+}

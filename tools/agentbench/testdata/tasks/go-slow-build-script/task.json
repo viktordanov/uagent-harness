@@ -1,0 +1,8 @@
+{
+  "prompt": "We need to support two more currencies: JPY (Japanese yen, no minor units) and KWD (Kuwaiti dinar, 3 decimal places). The currency table is generated from money/currencies.txt by ./build.sh (it's slow, ~10 s). Also, Format currently prints amounts in currencies without decimals wrongly, so fix that too. Regenerate and make sure the tests pass.",
+  "check": "./build.sh && go test ./...",
+  "check_timeout": "3m",
+  "timeout": "20m",
+  "exercises": "a slow (~10 s) code generator plus a code fix: edit the data and the code, regenerate, test",
+  "tags": ["go", "slow", "generate"]
+}

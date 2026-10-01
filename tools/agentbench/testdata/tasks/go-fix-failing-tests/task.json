@@ -1,0 +1,6 @@
+{
+  "prompt": "The tests in this repository fail. Fix the code so that `go test ./...` passes. Do not change the tests.",
+  "check": "go test ./...",
+  "exercises": "a failing suite with three independent bugs in three files: run the tests, read the files in parallel, fix each",
+  "tags": ["go", "fix"]
+}

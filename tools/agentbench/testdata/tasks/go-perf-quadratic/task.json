@@ -1,0 +1,11 @@
+{
+  "prompt": "`ids.Dedupe` has become a bottleneck: our nightly batches have a few hundred thousand IDs and it takes minutes. Please make it fast (it should handle 200k IDs well under a second) without changing what it returns.",
+  "check": "go vet ./... && go test -count=1 -timeout 20s ./...",
+  "exercises": "a performance fix: replace a quadratic loop by a map while keeping subtle semantics (case folding, first spelling, order, empties)",
+  "tags": [
+    "go",
+    "performance",
+    "slow"
+  ],
+  "check_timeout": "90s"
+}

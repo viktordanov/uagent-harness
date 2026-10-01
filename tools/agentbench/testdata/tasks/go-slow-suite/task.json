@@ -1,0 +1,8 @@
+{
+  "prompt": "Two things in this repo. First, `go test ./ledger` fails; please fix it. Second, add the `Summary` function to the report package as described in docs/report.md. Heads-up: the full `go test ./...` suite is slow (about 30 seconds), so make sure everything passes at the end.",
+  "check": "go test ./...",
+  "check_timeout": "4m",
+  "timeout": "20m",
+  "exercises": "a ~30 s suite plus an independent feature: start the slow suite in the background and write the feature meanwhile",
+  "tags": ["go", "slow", "feature"]
+}

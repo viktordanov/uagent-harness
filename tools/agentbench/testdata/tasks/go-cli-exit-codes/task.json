@@ -1,0 +1,6 @@
+{
+  "prompt": "Scripts that call `cnt` keep misbehaving: it exits 0 when a file is missing, error messages end up on stdout and get mixed into the counts, and the exit codes don't match what README.md promises. Please make the CLI follow the contract in README.md exactly.",
+  "check": "go vet ./... && go test ./...",
+  "exercises": "make a CLI's exit codes and stdout/stderr split match a documented contract across several error paths",
+  "tags": ["go", "fix"]
+}

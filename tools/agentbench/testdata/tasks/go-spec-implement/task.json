@@ -1,0 +1,6 @@
+{
+  "prompt": "Please implement `ParseSize` and `FormatSize` in size/size.go. The exact rules, including the error cases, are in docs/SPEC.md; follow the spec precisely.",
+  "check": "go test ./...",
+  "exercises": "implement two functions from a precise written spec with edge and error cases; hidden table tests",
+  "tags": ["go", "feature"]
+}
