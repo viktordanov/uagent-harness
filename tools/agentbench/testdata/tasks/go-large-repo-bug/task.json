@@ -1,0 +1,6 @@
+{
+  "prompt": "Some of the REST requests our generated client sends go out with a broken URL path. With the URI template /accounts/{AccountId}/vaults/{VaultName}/archives, AccountId \"-\" and VaultName \"photos-2024-archive\", the request path comes out as \"/accounts/-/vaults/photos-2024-archive/}/archiv\" instead of \"/accounts/-/vaults/photos-2024-archive/archives\". Short vault names look fine. Our client builds against this checkout of smithy-go. Find the cause, fix it, and add a regression test; go test ./... must keep passing.",
+  "check": "go vet ./encoding/... && go test ./encoding/httpbinding/ -run TestHidden && go test ./...",
+  "exercises": "a symptom in a vendored real project (aws/smithy-go v1.22.4: 242 files, 27k lines of Go): search for where a URI is built, find a capacity bug in a path-label replacement that only shows when a value outgrows its placeholder, fix it with a test",
+  "tags": ["go", "investigate", "fix", "large-repo"]
+}

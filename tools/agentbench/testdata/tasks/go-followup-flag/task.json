@@ -1,0 +1,10 @@
+{
+  "prompt": "Add a --since flag to logq that keeps only the entries at or after a given time, written as RFC 3339 (e.g. 2026-03-01T10:00:00Z). A bad value is a usage error like the other flags. Add tests and document it in the README.",
+  "follow_ups": [
+    "Now also accept a relative duration for it, like 90m or 2h, meaning that long before the newest entry in the input (not the current clock). Same tests and README treatment.",
+    "Rename that flag to --after. Keep --since working as a deprecated alias that prints \"logq: --since is deprecated, use --after\" to stderr. Update the tests and the README."
+  ],
+  "check": "go vet ./... && go test ./... && grep -q -- '--after' README.md",
+  "exercises": "three prompts in one session, each building on the last: a time filter flag, then relative durations for it, then a rename with a deprecated alias; the agent must keep track of what it added",
+  "tags": ["go", "feature", "follow-up", "uah-only"]
+}

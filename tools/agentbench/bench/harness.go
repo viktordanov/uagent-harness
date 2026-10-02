@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -20,6 +21,9 @@ type harnessRun struct {
 	args []string
 	env  []string
 	dir  string
+	// followUps are written to stdin one per line, each when the session
+	// reports it is idle; stdin closes after the last.
+	followUps []string
 }
 
 // Permission modes.
@@ -63,8 +67,15 @@ func invocation(cfg Config, env *runEnv, fx *Fixture, t Task, k Key, ws, art str
 		}
 
 		runEnv = append(runEnv, "UAH_HOME="+env.uahHome)
+		var followUps []string
+		for _, f := range t.FollowUps {
+			followUps = append(followUps, fx.Expand(f))
+		}
+		if len(followUps) > 0 {
+			args = append(args, "--stdin")
+		}
 
-		return harnessRun{name: cfg.UAH, args: append(args, prompt), env: append(runEnv, cfg.UAHEnv...), dir: ws}
+		return harnessRun{name: cfg.UAH, args: append(args, prompt), env: append(runEnv, cfg.UAHEnv...), dir: ws, followUps: followUps}
 	}
 }
 
@@ -79,8 +90,9 @@ type launched struct {
 	stream string // stdout, each line stamped with the time it was read
 }
 
-// launch runs the harness with stdin closed, stamping each stdout line
-// with the time it arrived, and stops its process group at the limit.
+// launch runs the harness with stdin closed, or feeding it the follow-ups,
+// stamping each stdout line with the time it arrived, and stops its process
+// group at the limit.
 func launch(ctx context.Context, h harnessRun, limit time.Duration, art string) (launched, error) {
 	l := launched{stream: filepath.Join(art, "stream.jsonl")}
 	stream, err := os.Create(l.stream)
@@ -109,6 +121,15 @@ func launch(ctx context.Context, h harnessRun, limit time.Duration, art string) 
 	if err != nil {
 		return l, err
 	}
+	var in *followUpWriter
+	if len(h.followUps) > 0 {
+		stdin, err := cmd.StdinPipe()
+		if err != nil {
+			return l, err
+		}
+		in = &followUpWriter{w: stdin, next: h.followUps}
+		defer in.close()
+	}
 	l.start = time.Now()
 	if err := cmd.Start(); err != nil {
 		return l, fmt.Errorf("start %s: %w", h.name, err)
@@ -120,6 +141,9 @@ func launch(ctx context.Context, h harnessRun, limit time.Duration, art string) 
 		_, _ = w.WriteString(time.Now().UTC().Format(time.RFC3339Nano) + "\t")
 		_, _ = w.Write(sc.Bytes())
 		_ = w.WriteByte('\n')
+		if in != nil {
+			in.event(sc.Bytes())
+		}
 	}
 	_ = w.Flush()
 	err = cmd.Wait()
@@ -143,6 +167,42 @@ func launch(ctx context.Context, h harnessRun, limit time.Duration, art string) 
 	}
 
 	return l, nil
+}
+
+// followUpWriter sends the follow-ups to uah exec --stdin: the next one each
+// time the session reports it is idle (its run ended), and closes stdin
+// after the last, so uah exits when that one is done.
+type followUpWriter struct {
+	w    io.WriteCloser
+	next []string
+	shut bool
+}
+
+func (f *followUpWriter) event(line []byte) {
+	var e struct {
+		Type string `json:"type"`
+	}
+	if f.shut || json.Unmarshal(line, &e) != nil || e.Type != "idle" {
+		return
+	}
+	if len(f.next) == 0 {
+		f.close()
+
+		return
+	}
+	if _, err := io.WriteString(f.w, f.next[0]+"\n"); err != nil {
+		f.close()
+
+		return
+	}
+	f.next = f.next[1:]
+}
+
+func (f *followUpWriter) close() {
+	if !f.shut {
+		f.shut = true
+		_ = f.w.Close()
+	}
 }
 
 // saveDiff stages everything in ws, writes the diff from the task's commit,

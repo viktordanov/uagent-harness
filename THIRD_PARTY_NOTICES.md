@@ -39,6 +39,14 @@ Many other parts follow Codex's behavior (configuration keys, rules, approvals, 
 | --- | --- |
 | `internal/cmdparse/shlex.go` | `src/bytes.rs` (`split` and `try_join`: POSIX word splitting and the quoting strategies) |
 
+## smithy-go (a benchmark fixture)
+
+<https://github.com/aws/smithy-go>, v1.22.4, as published to the Go module proxy. Copyright Amazon.com, Inc. or its affiliates. Licensed under the Apache License, Version 2.0. It is not part of uah: the agent benchmark copies it whole as the repository of one task, with its `LICENSE` and `NOTICE`, so the agent works in a real codebase of a few hundred files.
+
+| uah | From smithy-go |
+| --- | --- |
+| `tools/agentbench/testdata/tasks/go-large-repo-bug/repo/` | The whole module at v1.22.4, **modified**: three lines removed from `encoding/httpbinding/path_replace.go` (the `len(path) < newLen` branch of `replacePathElement`), the bug the task plants. The task's `solution/` restores the file as published, and its `check/` holds a copy of `encoding/httpbinding/path_replace_test.go` as published and a test of uah's own |
+
 ## unreal-agent
 
 <https://github.com/unreallabsai/unreal-agent>, v0.1.1. Used as a library throughout, through the fork <https://github.com/viktordanov/unreal-agent> (v0.4.0: upstream v0.2.0 with two performance fixes and custom tools, under the MIT License below); adapted in uah:

@@ -1,0 +1,12 @@
+{
+  "prompt": "main has been red all week. ci/failed/ has the logs of the 40 failed nightly jobs. Triage every one of them as ci/README.md describes: fill in ci/triage.csv (one row per job) and write ci/TRIAGE.md for the team. Read the logs properly: they have flakes that passed on a rerun and warnings after the tests that are not the cause.",
+  "setup": "mkdir -p ci/failed && python3 \"$TASK_DIR/gen.py\" ci/failed && git add -A && git -c user.name=ci-bot -c user.email=ci@example.com commit -q -m 'ci: logs of the failed nightly jobs'",
+  "solution_script": "python3 \"$TASK_DIR/solve.py\"",
+  "check": "python3 check_triage.py",
+  "exercises": "a large input: triage 40 CI logs (2.7 MB, up to 110 KB each) into causes, failing tests, and culprit commits, past retried flakes and post-test warnings",
+  "tags": [
+    "investigate",
+    "logs",
+    "large-input"
+  ]
+}

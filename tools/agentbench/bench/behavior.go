@@ -44,6 +44,10 @@ type Behavior struct {
 	// cut off), and AbortedMS the model time they took.
 	Aborted   int   `json:"aborted"`
 	AbortedMS int64 `json:"aborted_ms"`
+	// Compactions counts the context compactions (uah only), and
+	// CompactionMS the time their summary calls took.
+	Compactions  int   `json:"compactions"`
+	CompactionMS int64 `json:"compaction_ms"`
 }
 
 // approvalWait is the shortest wait between issuing and starting a call
@@ -106,6 +110,10 @@ func (tl *Timeline) behavior() Behavior {
 		} else {
 			ritual = false
 		}
+	}
+	for _, c := range tl.Compactions {
+		b.Compactions++
+		b.CompactionMS += c.EndMS - c.StartMS
 	}
 	if len(b.Efforts) == 0 {
 		b.Efforts = nil

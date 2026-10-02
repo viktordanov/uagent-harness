@@ -17,6 +17,9 @@ type Timeline struct {
 	End      time.Time `json:"end"`
 	Requests []Request `json:"requests"`
 	Calls    []Call    `json:"calls"`
+	// Compactions are the main agent's context compactions (uah only:
+	// Codex's events do not show them).
+	Compactions []Compaction `json:"compactions,omitempty"`
 	// Turns counts user turns: one per prompt for both harnesses.
 	Turns  int    `json:"turns"`
 	Tokens Tokens `json:"tokens"`
@@ -43,6 +46,18 @@ type Request struct {
 	Stop string `json:"stop,omitempty"`
 	// TextBytes is the length of the assistant text it wrote.
 	TextBytes int `json:"text_bytes,omitempty"`
+}
+
+// Compaction is one compaction of the context: its summary call ran from
+// StartMS to EndMS, when the context held Tokens (as the last response
+// reported). Trigger is "auto" (the context reached the limit) or what
+// else started it; Error is why it failed, else "".
+type Compaction struct {
+	StartMS int64  `json:"start_ms"`
+	EndMS   int64  `json:"end_ms"`
+	Trigger string `json:"trigger"`
+	Tokens  int64  `json:"tokens"`
+	Error   string `json:"error,omitempty"`
 }
 
 // Call is one tool call: issued by the model, started, finished.
@@ -118,7 +133,8 @@ func callKind(name string) string {
 // otherwise.
 type Metrics struct {
 	WallMS int64 `json:"wall_ms"`
-	// ModelMS is the time at least one model request was in flight.
+	// ModelMS is the time at least one model request, or a compaction's
+	// summary call, was in flight.
 	ModelMS int64 `json:"model_ms"`
 	// ToolMS is the time at least one tool call ran (waits excluded).
 	ToolMS int64 `json:"tool_ms"`
@@ -228,6 +244,10 @@ func (tl *Timeline) Compute(wall time.Duration, price Price) Metrics {
 		if r.Agent != "" {
 			agents[r.Agent] = true
 		}
+	}
+	for _, c := range tl.Compactions {
+		// The summary is a model call too.
+		model = append(model, span{c.StartMS, c.EndMS})
 	}
 	var events []span // +1 at a, -1 at b, for concurrency
 	var busySum int64

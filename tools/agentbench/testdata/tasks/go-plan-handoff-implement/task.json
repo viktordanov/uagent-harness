@@ -1,0 +1,17 @@
+{
+  "prompt": "How could we make shorty's links survive a restart? Don't change any code yet: give me the options with their trade-offs, and which one you'd pick for a single small instance.",
+  "follow_ups": [
+    "Ok, go with a plain file and a -data flag naming it (no flag keeps today's in-memory behavior). Write a short handoff in docs/HANDOFF.md so it can be implemented later.",
+    "Actually, implement the handoff now, with tests, and update the README."
+  ],
+  "check": "test -s docs/HANDOFF.md && grep -q -- '-data' docs/HANDOFF.md && grep -q -- '-data' README.md && go vet ./... && go test ./...",
+  "exercises": "the plan-then-build shape of the owner's sessions in three prompts: a design question with no code change, a handoff file, then the implementation (a file-backed store behind -data that survives a kill), which must follow the handoff",
+  "tags": [
+    "go",
+    "feature",
+    "docs",
+    "follow-up",
+    "uah-only",
+    "archetype"
+  ]
+}
