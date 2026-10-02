@@ -1,6 +1,6 @@
 # Implementation spec
 
-Status: draft, 2026-09-24. It turns [harness.md](harness.md) and [tui.md](tui.md) into concrete packages, files, types, and milestones.
+Status: historical, superseded by the [architecture rules](../documentation/architecture.md) (the packages) and the package READMEs. Its package layout names packages that are gone, such as the process engine, and misses most of today's. Originally: draft, 2026-09-24. It turns [harness.md](harness.md) and [tui.md](tui.md) into concrete packages, files, types, and milestones.
 
 1. [Repositories and responsibilities](#1-repositories-and-responsibilities)
 2. [Decisions made here](#2-decisions-made-here)

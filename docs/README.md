@@ -5,13 +5,22 @@
 The configuration reference, design records for the harness, the TUI, state storage, sandboxing, compaction, MCP, subagents, pasted images, streaming, Markdown rendering, going back to an earlier message, selecting text with the mouse, editing the prompt in an editor, the system prompt, web search, `/diff` and `/review`, prompt history and the composer's height, how tool calls read in the transcript, keeping the ChatGPT login fresh, and running uah as a terminal host backend, plus the architecture rules and documentation procedure for uah.
 <!-- /memoria:export -->
 
+Where to start:
+
+1. The [root README](../README.md): what uah does and how to use it, and a link to every package README.
+2. The [architecture rules](documentation/architecture.md): the packages, what may import what, and the rules every change follows.
+3. The package README of the code you change: its current contract.
+4. The [configuration reference](configuration.md).
+
+The design records below keep the research and the decisions behind each feature. Each has a `Status:` line; the ones marked historical describe a design that was replaced, and name what replaced it.
+
 Design:
 
-1. [Harness design](design/harness.md): what the runner provides, what the harness adds, the two engines, and the accepted scope.
-2. [TUI design](design/tui.md): the framework choice, architecture, screens, keys, and commands.
-3. [Implementation spec](design/implementation.md): the packages and files in both repositories, types, milestones, tests, and what was built differently.
+1. [Harness design](design/harness.md) (historical): what the runner provided, what the harness added, the two engines it planned, and the scope accepted then.
+2. [TUI design](design/tui.md) (historical): the framework choice, architecture, screens, keys, and commands as first designed.
+3. [Implementation spec](design/implementation.md) (historical): the first plan of packages, files, types, and milestones; the [architecture rules](documentation/architecture.md) have today's packages.
 4. [State storage](design/state.md): what is stored where, and the plan for a rebuildable SQLite index.
-5. [Sandboxing and approvals: research](design/sandbox-research.md): how Codex sandboxes and approves commands, and the options for uah.
+5. [Sandboxing and approvals: research](design/sandbox-research.md) (historical): how Codex sandboxes and approves commands, and the options for uah.
 6. [Sandboxing and approvals: plan](design/sandbox.md): the decisions (Codex's defaults), how a command runs, the packages, and the phases.
 7. [Subagents](design/subagents.md): how Codex and Claude Code run subagents, and the plan for uah.
 8. [Compaction](design/compaction.md): how Codex compacts, locally and remotely, what the runner supports, the design, the offline evaluation over recorded sessions and its numbers, the state ledger, elision, the kept calls and the summary prompt, remote compaction with its probes, and the open decisions.

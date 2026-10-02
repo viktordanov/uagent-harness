@@ -1,5 +1,7 @@
 # Keeping the ChatGPT login fresh
 
+Status: built (ledger item 50). The package READMEs hold the current contract; this record keeps the research and the decisions.
+
 GitHub #1: a uah session left open reported the Codex login as expired, while Codex itself never does. uah read the access token from `$CODEX_HOME/auth.json` and never refreshed it; uagent's preflight blocked a run with an expired token, and the embedded engine sent the token it read when it built the client. Codex refreshes the token with the refresh token in the same file and writes the file back. This record describes what Codex does and how uah does the same.
 
 Contents:

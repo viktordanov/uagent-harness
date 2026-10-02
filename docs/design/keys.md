@@ -1,5 +1,7 @@
 # Send keys: now, after the next tool call, or after the run
 
+Status: built (ledger items 76 and 79). The package READMEs hold the current contract; this record keeps the research and the decisions.
+
 While the agent works, uah has three ways to send a message. Ctrl+enter sends it now: the agent drops the model response under way and asks again with the message. Enter sends it after the next tool call: the message waits until the model's response and its tool calls are done, then rides the next model request. Tab queues it for the end of the run. Alt+enter is ctrl+enter for the terminals where ctrl+enter arrives as enter (tmux with `extended-keys off`). The terminal's answer to the keyboard enhancement query picks the new-line hint and names the send-now key in the footer.
 
 1. [The problem](#the-problem)

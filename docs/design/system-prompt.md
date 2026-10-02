@@ -1,5 +1,7 @@
 # The system prompt
 
+Status: built (ledger items 63 and 66). The package READMEs hold the current contract; this record keeps the research and the decisions.
+
 Ledger item 63: uah's default base instructions are Codex's prompt with only the changes uah needs, and Codex's `<environment_context>` block ends the system prompt. Item 66 moved the base from gpt-6-sol's template at Codex rust-v0.156.1 to gpt-6.1-sol's at rust-v0.159.1 (see [The move to gpt-6.1-sol](#the-move-to-gpt-61-sol)).
 
 1. [What the model sees](#what-the-model-sees)

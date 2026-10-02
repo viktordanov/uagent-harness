@@ -1,5 +1,7 @@
 # Agent tuning: uah against Codex
 
+Status: a running record, added to with each benchmark run.
+
 This record collects every measurement made with the agent benchmark ([`tools/agentbench`](../../tools/agentbench/README.md)), what each experiment changed, and what was decided. It is the source for the performance part of release notes. Each experiment's raw results are in [`tools/agentbench/history`](../../tools/agentbench/history), one JSON line per run (local paths are shortened to `~` and `$TMPDIR`).
 
 ## Contents

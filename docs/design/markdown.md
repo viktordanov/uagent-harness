@@ -1,5 +1,7 @@
 # Markdown rendering
 
+Status: built (ledger item 47). The package READMEs hold the current contract; this record keeps the research and the decisions.
+
 Ledger item 47: rich text as a core subsystem, designed for speed. A real Markdown parser (GFM: tables, lists, code, quotes, links), tables that fit the width, cached syntax highlighting, and incremental rendering, so a streaming answer re-renders only its last block. Benchmarks gate it.
 
 1. [What uah did before](#what-uah-did-before)

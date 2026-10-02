@@ -1,5 +1,7 @@
 # Tool calls in the transcript
 
+Status: built (ledger item 75). The package READMEs hold the current contract; this record keeps the research and the decisions.
+
 How the TUI draws a tool call, and why. Ledger item 75; the [TUI README](../../internal/tui/README.md#the-look) lists the parts and the code.
 
 1. [The problem](#the-problem)

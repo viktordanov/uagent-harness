@@ -1,5 +1,7 @@
 # Selecting and copying text
 
+Status: built (ledger item 48). The package READMEs hold the current contract; this record keeps the research and the decisions.
+
 Ledger item 48: select and copy transcript text inside the TUI while it reports the mouse. A drag selects, and the selection follows the transcript as it scrolls or streams. A double click selects a word, a triple click a line, and letting go copies to the system clipboard. The wheel keeps scrolling.
 
 1. [The problem](#the-problem)

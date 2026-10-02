@@ -1,5 +1,7 @@
 # Going back to an earlier message
 
+Status: built (ledger item 46). The package READMEs hold the current contract; this record keeps the research and the decisions.
+
 Ledger item 46: pick an earlier message of yours, edit it (or drop it), and continue from there. What came after it leaves the model's context, and the old branch stays on disk. Codex calls it backtrack; Claude Code calls it rewind.
 
 1. [What Codex does](#what-codex-does)

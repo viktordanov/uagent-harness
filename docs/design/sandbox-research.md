@@ -1,6 +1,6 @@
 # Sandboxing and approvals: research and options
 
-Status: research, 2026-09-24. Nothing here is decided yet. The document ends with a recommendation and the [decisions for the owner](#8-decisions-for-the-owner).
+Status: historical, superseded by the [sandbox plan](sandbox.md), which records the decisions. Originally: research, 2026-09-24, with nothing decided. The document ends with a recommendation and the [decisions for the owner](#8-decisions-for-the-owner).
 
 Evidence comes from these sources:
 

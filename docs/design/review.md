@@ -1,5 +1,7 @@
 # `/diff` and `/review`
 
+Status: built (ledger item 65). The package READMEs hold the current contract; this record keeps the research and the decisions.
+
 Ledger item 65: `/diff` shows the workspace's git changes, and `/review` has a read-only reviewer look at a set of changes and list its findings, as Codex's commands do.
 
 1. [What Codex does](#what-codex-does)

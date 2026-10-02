@@ -1,5 +1,7 @@
 # Prompt history and a taller composer
 
+Status: built (ledger items 68 and 74). The package READMEs hold the current contract; this record keeps the research and the decisions.
+
 Ledger item 68: ↑ and ↓ bring back earlier prompts, from this session and from earlier ones, ctrl+r searches them, and the composer grows past 8 rows for a long prompt.
 Ledger item 74: ↑, ↓, and ctrl+r show only the prompts sent in the session's workspace, as Claude Code keeps history per project.
 

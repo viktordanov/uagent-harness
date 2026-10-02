@@ -1,5 +1,7 @@
 # Editing the prompt in an editor (ctrl+g)
 
+Status: built (ledger item 61). The package READMEs hold the current contract; this record keeps the research and the decisions.
+
 Ledger item 61: ctrl+g opens the composer's draft in the user's editor, and the saved text comes back as the draft. Image placeholders keep their images, and a multi-line draft comes back unchanged.
 
 1. [What Claude Code does](#what-claude-code-does)
