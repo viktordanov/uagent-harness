@@ -50,7 +50,7 @@ func (w *wiring) openStore(ctx context.Context, req core.Request, messages []cor
 		return runStore{}, err
 	}
 	log := newLogStore(store, filepath.Join(w.l.SessionsDir, string(id)+".session.jsonl"), id)
-	w.closers = append(w.closers, log.Close) // after the checkpoints' flush
+	w.closers = append(w.closers, closer{close: log.Close, saves: true}) // after the checkpoints' flush
 	var early []sessionstore.Item
 	if !slices.ContainsFunc(restored.Operations, func(op operation.Operation) bool { return !finalOperation(op.Status) }) {
 		first := log.AddObserver(func(_ session.ID, it sessionstore.Item) { early = append(early, it) })
@@ -66,7 +66,7 @@ func (w *wiring) openStore(ctx context.Context, req core.Request, messages []cor
 	}
 
 	ck := &checkpointStore{Store: cut}
-	w.closers = append(w.closers, func() error { return ck.flush(context.WithoutCancel(ctx)) }) // after the coordinator
+	w.closers = append(w.closers, closer{close: func() error { return ck.flush(context.WithoutCancel(ctx)) }, saves: true}) // after the coordinator
 
 	return runStore{store: ck, id: id, restored: restored, early: early}, nil
 }

@@ -48,7 +48,7 @@ func (b backend) Start(ctx context.Context, l harness.Launch) (harness.Process, 
 	}
 	a, err := w.start(ctx, start.opts)
 	if err != nil {
-		w.cleanup()
+		err = errors.Join(err, w.cleanup())
 		_ = l.Stdout.Close()
 
 		return nil, err
@@ -82,14 +82,38 @@ type wiring struct {
 	// bashTools, when set, keeps Bash's definition in each model request
 	// in step with the mode.
 	bashTools func([]llm.Tool) []llm.Tool
-	closers   []func() error
+	closers   []closer
 }
 
-func (w *wiring) cleanup() {
-	for _, c := range slices.Backward(w.closers) {
-		_ = c()
+// closer releases something a starting run opened. One that saves the
+// session's state fails the run when it fails; the others' errors are
+// dropped.
+type closer struct {
+	close func() error
+	saves bool
+}
+
+// closeAll runs the closers in reverse and returns the saving ones' errors.
+func closeAll(closers []closer) error {
+	var errs []error
+	for _, c := range slices.Backward(closers) {
+		if err := c.close(); err != nil && c.saves {
+			errs = append(errs, err)
+		}
 	}
+	if err := errors.Join(errs...); err != nil {
+		return fmt.Errorf("failed to save the session: %w", err)
+	}
+
+	return nil
+}
+
+// cleanup closes what a failed start opened.
+func (w *wiring) cleanup() error {
+	err := closeAll(w.closers)
 	w.closers = nil
+
+	return err
 }
 
 // start opens the run's resources in the runner's order and starts the
@@ -105,7 +129,7 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 	if err != nil {
 		return nil, err
 	}
-	w.closers = append(w.closers, sw.Close)
+	w.closers = append(w.closers, closer{close: sw.Close})
 	sw.seen, sw.cacheKey = w.e.last.recorder(req.SessionID), w.e.cacheKey(req.SessionID)
 	if w.e.cfg.AutoReview || w.ask != nil || w.mode.get().ReviewerDecides() {
 		w.ask = w.reviewedAsk(sw, req)
@@ -125,7 +149,7 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 
 	// The run stops through the inbox; the harness cancels only after the grace period.
 	runCtx, cancel := context.WithCancel(context.WithoutCancel(ctx))
-	w.closers = append(w.closers, func() error { cancel(); return nil })
+	w.closers = append(w.closers, closer{close: func() error { cancel(); return nil }})
 
 	registry, err := w.tools(runCtx, req, s.id)
 	if err != nil {
@@ -147,7 +171,7 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 	if err != nil {
 		return nil, err
 	}
-	w.closers = append(w.closers, comp.stop)
+	w.closers = append(w.closers, closer{close: comp.stop})
 	a, err := newAgent(runCtx, cancel, sw, s.restored, req.Effort, messages, s.early != nil)
 	if err != nil {
 		return nil, err
@@ -293,21 +317,35 @@ func (w *wiring) launch(ctx context.Context, a *agent, coord coordinator.Coordin
 		if oerr := obs.err(); oerr != nil {
 			err = oerr
 		}
-		switch {
-		case a.interrupted.Load():
-			a.code = exitInterrupted
-		case err != nil:
-			err = runError(err)
-			writeError(w.l.Stdout, err)
-			_, _ = fmt.Fprintf(w.l.Stderr, "embedded: %v\n", err)
+		w.finish(a, err, closers)
+	}()
+}
+
+// finish records how the run ended, closes what it opened, and closes its
+// output. A failure to save the session is reported as the run's error and
+// fails a run that would have succeeded; an interrupted run keeps its code.
+func (w *wiring) finish(a *agent, err error, closers []closer) {
+	switch {
+	case a.interrupted.Load():
+		a.code = exitInterrupted
+	case err != nil:
+		w.fail(runError(err))
+		a.code = 1
+	}
+	if serr := closeAll(closers); serr != nil {
+		w.fail(serr)
+		if a.code == 0 {
 			a.code = 1
 		}
-		for _, c := range slices.Backward(closers) {
-			_ = c()
-		}
-		_ = w.l.Stdout.Close()
-		close(a.done)
-	}()
+	}
+	_ = w.l.Stdout.Close()
+	close(a.done)
+}
+
+// fail reports the run's error to the session and to stderr.
+func (w *wiring) fail(err error) {
+	writeError(w.l.Stdout, err)
+	_, _ = fmt.Fprintf(w.l.Stderr, "embedded: %v\n", err)
 }
 
 // requestMessages returns the request's messages, or its prompt as one message.
