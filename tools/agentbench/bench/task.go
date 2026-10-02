@@ -181,7 +181,7 @@ func (t Task) Prepare(ctx context.Context, ws string, env []string) error {
 		{"-c", "user.name=agentbench", "-c", "user.email=agentbench@localhost", "commit", "-q", "-m", "task: " + t.Name},
 	} {
 		cmd := exec.CommandContext(ctx, "git", args...)
-		cmd.Dir = ws
+		cmd.Dir, cmd.Env = ws, slices.Concat(os.Environ(), gitIdentity)
 		if out, err := cmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("git %s: %w: %s", args[0], err, out)
 		}
@@ -284,8 +284,13 @@ func copyTree(src, dst string) error { return copyFiles(src, dst, false) }
 // each README.fixture.md as README.md.
 func copyFixture(src, dst string) error { return copyFiles(src, dst, true) }
 
+// A file that disappears during the walk, such as a lock file of git
+// running in the background, is skipped.
 func copyFiles(src, dst string, fixture bool) error {
 	return filepath.WalkDir(src, func(p string, d fs.DirEntry, err error) error {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil
+		}
 		if err != nil {
 			return err
 		}
@@ -298,6 +303,9 @@ func copyFiles(src, dst string, fixture bool) error {
 			target = filepath.Join(filepath.Dir(target), "README.md")
 		}
 		info, err := d.Info()
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil
+		}
 		if err != nil {
 			return err
 		}
@@ -306,6 +314,9 @@ func copyFiles(src, dst string, fixture bool) error {
 			return os.MkdirAll(target, 0o755)
 		case info.Mode().IsRegular():
 			b, err := os.ReadFile(p)
+			if errors.Is(err, fs.ErrNotExist) {
+				return nil
+			}
 			if err != nil {
 				return err
 			}
