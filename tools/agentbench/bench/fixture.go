@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -148,7 +149,7 @@ var gitIdentity = []string{
 // in ws.
 func runScript(ctx context.Context, script, ws string, env []string) error {
 	cmd := exec.CommandContext(ctx, "sh", "-c", script)
-	cmd.Dir, cmd.Env = ws, append(env, gitIdentity...)
+	cmd.Dir, cmd.Env = ws, slices.Concat(env, gitIdentity)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("%w: %s", err, tail(string(out), 2000))
 	}
