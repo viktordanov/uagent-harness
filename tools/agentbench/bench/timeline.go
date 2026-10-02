@@ -33,7 +33,10 @@ type Timeline struct {
 
 // Request is one model request. FirstByte is zero when unknown.
 type Request struct {
-	Agent     string `json:"agent,omitempty"` // "" for the main agent, else the subagent's session
+	Agent string `json:"agent,omitempty"` // "" for the main agent, else the subagent's session
+	// Turn is the user turn a main agent's request belongs to, from 1: the
+	// prompt's, then each follow-up's. 0 for a subagent, or when unknown.
+	Turn      int    `json:"turn,omitempty"`
 	StartMS   int64  `json:"start_ms"`
 	FirstMS   int64  `json:"first_byte_ms,omitempty"`
 	EndMS     int64  `json:"end_ms"`

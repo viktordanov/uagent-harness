@@ -1,0 +1,14 @@
+{
+  "prompt": "In this bookmarks API, add a `tag` query parameter to GET /bookmarks that keeps only the bookmarks carrying that tag, compared case-insensitively (so ?tag=go matches a bookmark tagged Go). It should combine with the existing q parameter. Add tests for it.",
+  "follow_ups": [
+    "Now also add `limit` and `offset` query parameters to GET /bookmarks for paging. They apply after the q and tag filters, in the usual id order, and the response stays a plain JSON array. A negative or non-numeric limit or offset must be a 400 with the same JSON error body the other handlers use. Tests too.",
+    "Rename the bookmark's Title field to Name everywhere: the Go code, the tests, the JSON key (`name`), error messages and the seed data. Old clients still send `title`, so POST and PUT must keep accepting `title` as well as `name`, but responses only have `name`.",
+    "Add DELETE /bookmarks/{id}: 204 with no body when it deleted something, 404 with the usual JSON error body when there is no such bookmark. Add tests.",
+    "I don't think the store is safe for concurrent requests, and net/http serves each request on its own goroutine. Make it safe and add a test that hits the API from several goroutines at once; `go test -race ./...` must pass.",
+    "Last one: update the API section of the README for everything we changed in this session (the new query parameters, the name field and the title fallback, DELETE, and the error cases)."
+  ],
+  "check": "go vet ./... && go test -race -count=1 ./... && grep -q DELETE README.md && grep -q limit README.md && grep -q offset README.md && grep -q '\"name\"' README.md",
+  "exercises": "a six-message chat over a 19-file Go JSON API: a tag filter, paging with 400s, a field rename with a JSON alias, a DELETE route, a planted data race in the store, then the README; each message builds on the state the earlier ones left",
+  "tags": ["go", "follow-up", "uah-only", "chat", "feature", "refactor", "concurrency", "docs", "tests"],
+  "timeout": "30m"
+}

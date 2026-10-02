@@ -1,0 +1,14 @@
+{
+  "prompt": "Customers report wrong invoices: Umbrella GmbH (Europe/Berlin, on Pro since 2026-03-15) got \"Pro plan, 16 of 30 days\" for March 2026, but March has 31 days and they had 17 of them; Globex, who started the same day in UTC, correctly got 17 of 31. You can reproduce it with `go run ./cmd/billctl invoice -month 2026-03 testdata/customers.json`. Find the cause and explain it to me. Don't change any code yet.",
+  "follow_ups": [
+    "Ok, that makes sense. Fix it.",
+    "Add a regression test for that case, for the helper itself and for the invoice of a customer in a time zone with daylight saving time.",
+    "Is the same mistake anywhere else in the repo? If so, fix it there too and add a test for it.",
+    "Rename period.DaysBetween to period.CalendarDays everywhere: the function, its callers, tests and comments. Don't keep an alias with the old name.",
+    "Now run the full test suite with the race detector, and add a short CHANGELOG.md at the repo root with an entry describing what we fixed."
+  ],
+  "check": "go vet ./... && go test -race -count=1 ./... && test -s CHANGELOG.md && ! grep -rqw DaysBetween --include='*.go' .",
+  "exercises": "a six-message debug chat over a 19-file Go billing library: explain a DST day-count bug from its symptom without editing, fix it, add a regression test, find and fix the same 24-hour-division pattern in the dunning package, rename the helper everywhere, then run the race suite and write a CHANGELOG entry",
+  "tags": ["go", "follow-up", "uah-only", "chat", "investigate", "fix", "tests", "refactor", "docs"],
+  "timeout": "30m"
+}

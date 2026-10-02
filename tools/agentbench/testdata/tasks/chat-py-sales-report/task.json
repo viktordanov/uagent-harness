@@ -1,0 +1,15 @@
+{
+  "prompt": "`python3 -m unittest discover -s tests` fails in salesrep. Please find out why and fix the code (not the tests).",
+  "follow_ups": [
+    "Thanks. Now add a `--by month` option to the `summary` command that groups totals per calendar month as YYYY-MM, sorted ascending (oldest first), with tests.",
+    "Now also add `--format json` to `summary` (default stays `text`): print only a JSON list of objects with exactly the keys `group` and `total`, where total is a string with 2 decimals like \"122.47\", in the same order as the table and without the TOTAL line or footer; it must work with every `--by`. Add tests.",
+    "Rows with a missing or empty quantity currently crash the loader. Skip them instead, print a warning on stderr that names the file and the line number (header is line 1), e.g. `warning: q1.csv: line 7: missing quantity, skipped`, and count them in the summary footer like `13 rows, 1 skipped`. Keep `load_csv` returning a list of sales, and add tests.",
+    "Rename the module `salesrep/agg.py` to `salesrep/aggregate.py` and the function `sum_rows` to `total_by` everywhere, including imports and tests; no `agg` module or `sum_rows` should be left, and the tests must pass.",
+    "Finally update the README: document `--by month`, `--format json` with its output shape, and the skipped-rows warning and footer."
+  ],
+  "check": "python3 -m unittest discover -s tests -q && grep -qi 'month' README.md && grep -q 'json' README.md && grep -qi 'skip' README.md",
+  "exercises": "six messages in one chat over a 16-file Python package: a rounding bug behind failing tests, a month grouping, JSON output, skipping bad rows with warnings and a footer count, a module and function rename across code and tests, then the README; each builds on the last",
+  "tags": ["python", "follow-up", "uah-only", "chat", "fix", "feature", "refactor", "docs"],
+  "timeout": "30m",
+  "solution_delete": ["salesrep/agg.py", "tests/test_agg.py"]
+}
