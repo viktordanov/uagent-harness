@@ -26,13 +26,14 @@ import (
 // cannot spawn and is hidden from the resume picker.
 func TestAgents_SpawnWaitAnswer(t *testing.T) {
 	gate := make(chan struct{})
-	var childID string
+	childIDs := make(chan string, 1) // the fake model's handler learns the child's ID
 	e := newEnv(t, agents.Config{},
 		fakellm.Reply{Calls: []fakellm.Call{call("spawn_agent", `{"message":"CHILD-A count the files"}`)}},
 		fakellm.Reply{From: func(req fakellm.Request) fakellm.Reply {
-			childID = ids(req)[0]
+			id := ids(req)[0]
+			childIDs <- id
 
-			return fakellm.Reply{Commands: []string{"echo side"}, Calls: []fakellm.Call{call("wait_agent", `{"targets":["`+childID+`"]}`)}}
+			return fakellm.Reply{Commands: []string{"echo side"}, Calls: []fakellm.Call{call("wait_agent", `{"targets":["`+id+`"]}`)}}
 		}},
 		fakellm.Reply{Text: "the agent counted"},
 	)
@@ -42,6 +43,7 @@ func TestAgents_SpawnWaitAnswer(t *testing.T) {
 	_, err := s.Submit("delegate")
 	require.NoError(t, err)
 	awaitRequests(t, e, "CHILD-A", 1)
+	childID := <-childIDs
 	require.Eventually(t, func() bool { return e.mgr.Waiting(s.ID(), childID) == 1 }, waitTimeout, time.Millisecond)
 	_, timedOut, _ := e.mgr.Wait(context.Background(), s.ID(), []string{childID}, 50*time.Millisecond)
 	close(gate)
