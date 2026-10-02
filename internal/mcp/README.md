@@ -14,7 +14,7 @@ This package owns everything MCP that is not engine or UI wiring: the configurat
 5. [Configuration and Codex](#configuration-and-codex)
 6. [Extending](#extending)
 
-Behavior follows Codex (openai/codex rust-v0.156.1) unless the runner (uah-core v0.6.0) forces a difference; the decisions and the validation are in [the MCP design record](../../docs/design/mcp.md).
+Behavior follows Codex (openai/codex rust-v0.156.1) unless the runner (uah-core v0.7.0) forces a difference; the decisions and the validation are in [the MCP design record](../../docs/design/mcp.md).
 <!-- /memoria:section -->
 
 <!-- memoria:section id="lifecycle" files="manager.go server.go status.go transport.go stderr.go" -->
