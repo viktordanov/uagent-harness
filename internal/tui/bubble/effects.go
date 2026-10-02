@@ -21,7 +21,7 @@ func (m Model) run(e state.Effect) tea.Cmd { //nolint:gocyclo // a dispatch swit
 	sess := m.sess
 	fail := func(err error) tea.Msg { return state.Failed{Err: err} }
 	withSession := func(fn func(*session.Session) error) tea.Cmd {
-		return func() tea.Msg {
+		return m.calls.next(func() tea.Msg {
 			if sess == nil {
 				return fail(errNoSession)
 			}
@@ -30,7 +30,7 @@ func (m Model) run(e state.Effect) tea.Cmd { //nolint:gocyclo // a dispatch swit
 			}
 
 			return nil
-		}
+		})
 	}
 	if cmd, ok := m.runImage(e); ok {
 		return cmd
@@ -51,7 +51,16 @@ func (m Model) run(e state.Effect) tea.Cmd { //nolint:gocyclo // a dispatch swit
 	case state.EffShell:
 		ctx := m.ctx
 
-		return withSession(func(s *session.Session) error { _, err := s.RunShell(ctx, e.Command); return err })
+		return func() tea.Msg { // not in m.calls: it runs until the command ends
+			if sess == nil {
+				return fail(errNoSession)
+			}
+			if _, err := sess.RunShell(ctx, e.Command); err != nil {
+				return fail(err)
+			}
+
+			return nil
+		}
 	case state.EffInterrupt:
 		return withSession(func(s *session.Session) error { return s.Interrupt() })
 	case state.EffClear:
@@ -65,7 +74,7 @@ func (m Model) run(e state.Effect) tea.Cmd { //nolint:gocyclo // a dispatch swit
 	case state.EffSetSettings:
 		return withSession(func(s *session.Session) error { _, err := s.SetSettings(e.Settings); return err })
 	case state.EffWithdraw:
-		return func() tea.Msg {
+		return m.calls.next(func() tea.Msg {
 			if sess == nil {
 				return fail(errNoSession)
 			}
@@ -78,7 +87,7 @@ func (m Model) run(e state.Effect) tea.Cmd { //nolint:gocyclo // a dispatch swit
 			}
 
 			return withdrawnMsg{text: e.Text}
-		}
+		})
 	case state.EffLoadSessions:
 		return func() tea.Msg {
 			infos, err := m.deps.Sessions()
@@ -170,13 +179,13 @@ func (m Model) run(e state.Effect) tea.Cmd { //nolint:gocyclo // a dispatch swit
 	case state.EffEditDraft:
 		return m.editDraft(e.Text)
 	case state.EffQuit:
-		return func() tea.Msg {
+		return m.calls.next(func() tea.Msg {
 			if sess != nil {
 				_ = sess.Close()
 			}
 
 			return quitMsg{}
-		}
+		})
 	}
 
 	return nil
@@ -199,11 +208,11 @@ func (m Model) switchTo(id string) tea.Cmd {
 	sess := m.sess
 	next := m.open(id)
 
-	return func() tea.Msg {
+	return m.calls.next(func() tea.Msg {
 		if sess != nil {
 			_ = sess.Close()
 		}
 
 		return next()
-	}
+	})
 }

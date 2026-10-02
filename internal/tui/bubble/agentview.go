@@ -119,7 +119,7 @@ func (m *Model) stopWatch() {
 func (m Model) sendToAgent(text string, when session.When) tea.Cmd {
 	w := m.watch
 
-	return func() tea.Msg {
+	return m.calls.next(func() tea.Msg {
 		if w == nil {
 			return nil
 		}
@@ -128,14 +128,14 @@ func (m Model) sendToAgent(text string, when session.When) tea.Cmd {
 		}
 
 		return nil
-	}
+	})
 }
 
 // steerAgentQueue sends the watched agent's queued messages now.
 func (m Model) steerAgentQueue() tea.Cmd {
 	w := m.watch
 
-	return func() tea.Msg {
+	return m.calls.next(func() tea.Msg {
 		if w == nil || w.SteerQueued == nil {
 			return nil
 		}
@@ -144,5 +144,5 @@ func (m Model) steerAgentQueue() tea.Cmd {
 		}
 
 		return nil
-	}
+	})
 }

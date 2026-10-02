@@ -100,6 +100,43 @@ func TestTUI_SendTheQueueNow(t *testing.T) {
 	}
 }
 
+// TestTUI_SessionCallsKeepTheKeyOrder: the commands of two tab presses run
+// in their own goroutines, and the second may run first, as here; the
+// session still queues, and enter still sends, the messages in the order
+// typed (Model.calls).
+func TestTUI_SessionCallsKeepTheKeyOrder(t *testing.T) {
+	gate := make(chan struct{})
+	llm := fakellm.New(t, fakellm.Reply{Text: "never shown", Gate: gate})
+	t.Cleanup(func() { close(gate) }) // before the server closes
+	d := start(t, liveDeps(t, llm))
+	d.until("the session is open", func() bool { return d.m.(bubble.Model).Exit().SessionID != "" })
+	d.typeText("start")
+	d.key(tea.KeyEnter, 0)
+	d.until("the model thinking", func() bool { return len(llm.Requests()) == 1 })
+
+	d.typeText("first queued")
+	first := d.update(tea.KeyPressMsg{Code: tea.KeyTab})
+	d.typeText("second queued")
+	second := d.update(tea.KeyPressMsg{Code: tea.KeyTab})
+	d.execNow(second)
+	time.Sleep(50 * time.Millisecond) // without the chain, the second Send lands first
+	d.execNow(first)
+	d.waitFor("↳ queued: first queued")
+	d.waitFor("↳ queued: second queued")
+	v := d.view()
+	assert.Less(t, strings.Index(v, "↳ queued: first queued"), strings.Index(v, "↳ queued: second queued"), "queued in order")
+
+	d.key(tea.KeyEnter, 0)
+	d.waitFor("• done")
+	d.waitIdle()
+	reqs := llm.Requests()
+	last := reqs[len(reqs)-1].UserTexts
+	i := slices.Index(last, "first queued")
+	require.GreaterOrEqual(t, i, 1, "the model got the queue: %q", last)
+	assert.Equal(t, "start", last[i-1], "%q", last)
+	assert.Equal(t, i+1, slices.Index(last, "second queued"), "the order typed: %q", last)
+}
+
 // TestTUI_EnterWaitsForTheToolCallCtrlEnterCutsIn: while the model
 // streams a response, enter holds the message, shown as queued, until the
 // response and its tool call are done, so it rides the request after the

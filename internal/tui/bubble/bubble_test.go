@@ -88,6 +88,34 @@ func (d *driver) exec(cmd tea.Cmd) {
 	}
 }
 
+// update gives the model a message and returns its command without running
+// it, so a test can choose when, and in which order, commands run.
+func (d *driver) update(msg tea.Msg) tea.Cmd {
+	next, cmd := d.m.Update(msg)
+	d.m = next
+
+	return cmd
+}
+
+// execNow runs a command in a goroutine at once, and each command of a batch
+// in its own, as tea.Program does; exec leaves a batch for send to start.
+func (d *driver) execNow(cmd tea.Cmd) {
+	if cmd == nil {
+		return
+	}
+	go func() {
+		switch msg := cmd().(type) {
+		case nil:
+		case tea.BatchMsg:
+			for _, c := range msg {
+				d.execNow(c)
+			}
+		default:
+			d.msgs <- msg
+		}
+	}()
+}
+
 func (d *driver) send(msg tea.Msg) {
 	switch msg := msg.(type) {
 	case tea.BatchMsg:
