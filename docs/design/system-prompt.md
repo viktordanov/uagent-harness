@@ -16,7 +16,7 @@ Checked against Codex rust-v0.156.1 (the prompt: rust-v0.159.1) and unreal-agent
 
 The runner's context builder (`harness/contextbuilder/builder.go`, `SetSystemPrompt`) sends one `system` message:
 
-1. The runner's preamble (`harness/contextbuilder/prompts/preamble.md`): "You run on Unreal Agent Harness", turns, asynchronous tool calls, the heartbeat, and "ending a turn with nothing running ends the session". uah does not change the runner, so the preamble stays.
+1. The runner's preamble (`harness/contextbuilder/prompts/preamble.md`): turns, asynchronous tool calls, the heartbeat, and "ending a turn with nothing running ends the session". Up to unreal-agent v0.5.2 it opened with "You run on Unreal Agent Harness built by Unreal Labs."; uah-core v0.6.0 (ledger item 93) drops that line, which changes the cached prefix once per session.
 2. The skill preamble and the `<available_skills>` block, only when the workspace has skills.
 3. uah's `SystemPrompt` (`instructions.HostPrompt`): the base instructions, then `# Project instructions` and the AGENTS.md files, then `<environment_context>`.
 

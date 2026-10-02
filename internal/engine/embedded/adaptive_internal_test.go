@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/viktordanov/unreal-agent/harness/llm"
+	"github.com/viktordanov/uah-core/harness/llm"
 )
 
 func TestAdaptiveRoute(t *testing.T) {

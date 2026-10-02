@@ -7,8 +7,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/viktordanov/unreal-agent/harness/operation"
-	"github.com/viktordanov/unreal-agent/harness/tool"
+	"github.com/viktordanov/uah-core/harness/operation"
+	"github.com/viktordanov/uah-core/harness/tool"
 )
 
 // A call found awaiting after a restart fails instead of running twice.

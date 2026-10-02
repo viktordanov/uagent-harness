@@ -15,10 +15,10 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/viktordanov/unreal-agent/harness/llm"
-	"github.com/viktordanov/unreal-agent/harness/llm/clients/openaicodex"
-	"github.com/viktordanov/unreal-agent/harness/llm/responsesapi"
-	"github.com/viktordanov/unreal-agent/harness/primitives"
+	"github.com/viktordanov/uah-core/harness/llm"
+	"github.com/viktordanov/uah-core/harness/llm/clients/openaicodex"
+	"github.com/viktordanov/uah-core/harness/llm/responsesapi"
+	"github.com/viktordanov/uah-core/harness/primitives"
 
 	"github.com/viktordanov/uah/internal/engine/codexauth"
 	"github.com/viktordanov/uah/internal/llmcall"
@@ -85,7 +85,7 @@ func TestProbeHeaders(t *testing.T) {
 		Endpoint: openaicodex.BaseURL + "/responses",
 		Headers: map[string][]string{
 			"Authorization": {"Bearer " + creds.AccessToken}, "ChatGPT-Account-ID": {creds.AccountID},
-			"Content-Type": {"application/json"}, "originator": {"unreal-agent"}, "User-Agent": {"unreal-agent"},
+			"Content-Type": {"application/json"}, "originator": {"uah-core"}, "User-Agent": {"uah-core"},
 		},
 		CacheKeyPlacement: responsesapi.CacheKeyPlacement{UsePromptCacheKeyField: true, Header: "session-id"},
 		MaxAttempts:       &one,

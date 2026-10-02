@@ -17,7 +17,7 @@ import (
 var errNotLive = errors.New("a runner subprocess takes nothing while it runs")
 
 // RunnerEngine is an engine.Engine for tests that spawns a runner binary
-// through uagent's harness with cfg: the real unreal-agent-runner
+// through uagent's harness with cfg: the real uah-core-runner
 // (RealRunner), which the equivalence test compares the embedded engine
 // with, or uagent's fake runner (FakeRunner), whose runs need no model.
 // Every live change fails, so a session queues messages and applies

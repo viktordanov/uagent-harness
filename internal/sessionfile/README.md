@@ -1,13 +1,13 @@
 <!-- memoria:section id="overview" files="sessionfile.go data.go" -->
 # The session file
 
-unreal-agent-runner writes each session's history to `sessions/<id>.session.jsonl` in uah's home. uah does not change the file. This README documents the file as a versioned format, so a program outside uah can read a session's history without starting uah. This package reads the file by these rules only, with no code from the runner.
+The runner (uah-core) writes each session's history to `sessions/<id>.session.jsonl` in uah's home. uah does not change the file. This README documents the file as a versioned format, so a program outside uah can read a session's history without starting uah. This package reads the file by these rules only, with no code from the runner.
 
 <!-- memoria:export id="summary" -->
 The runner's session file, `sessions/<id>.session.jsonl`, is a versioned JSON-lines format: a version-2 header, then items numbered by `Sequence`, the stable cursor for paging. uah documents the format and reads it by the documented rules, and a test fails when the runner's output stops following them.
 <!-- /memoria:export -->
 
-The rules were checked against unreal-agent-runner v0.1.1, the version in `go.mod`.
+The rules were checked against unreal-agent-runner v0.1.1; uah-core, the runtime in `go.mod`, keeps the format.
 
 1. [The file](#the-file)
 2. [Items](#items)

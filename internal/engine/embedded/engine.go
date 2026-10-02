@@ -1,8 +1,9 @@
-// Package embedded is the engine that runs unreal-agent-runner's packages in
-// process. It reproduces the runner's wiring (cmd/internal/agentrunner/run.go
-// in v0.1.1) behind uagent's harness, so runs keep every guard, the session
-// lock, and the run records, and it adds what a subprocess cannot offer:
-// messages, effort, model, and service tier changes that reach a live run.
+// Package embedded is the engine that runs uah-core's packages in process.
+// It reproduces the runner's wiring (cmd/internal/agentrunner/run.go, as of
+// unreal-agent-runner v0.1.1) behind uagent's harness, so runs keep every
+// guard, the session lock, and the run records, and it adds what a
+// subprocess cannot offer: messages, effort, model, and service tier changes
+// that reach a live run.
 package embedded
 
 import (

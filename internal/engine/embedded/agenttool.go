@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/viktordanov/unreal-agent/harness/llm"
-	"github.com/viktordanov/unreal-agent/harness/operation"
-	"github.com/viktordanov/unreal-agent/harness/tool"
+	"github.com/viktordanov/uah-core/harness/llm"
+	"github.com/viktordanov/uah-core/harness/operation"
+	"github.com/viktordanov/uah-core/harness/tool"
 
 	"github.com/viktordanov/uah/internal/engine"
 )

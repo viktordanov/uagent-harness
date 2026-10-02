@@ -12,8 +12,8 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/viktordanov/unreal-agent/harness/llm/clients/ollama"
-	"github.com/viktordanov/unreal-agent/harness/llm/clients/openaicodex"
+	"github.com/viktordanov/uah-core/harness/llm/clients/ollama"
+	"github.com/viktordanov/uah-core/harness/llm/clients/openaicodex"
 )
 
 // The providers uah runs, as the engine names them.

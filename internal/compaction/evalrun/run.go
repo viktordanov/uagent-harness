@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/viktordanov/unreal-agent/harness/llm"
+	"github.com/viktordanov/uah-core/harness/llm"
 
 	"github.com/viktordanov/uah/internal/compaction"
 	"github.com/viktordanov/uah/internal/compaction/eval"

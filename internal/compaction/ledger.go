@@ -7,7 +7,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/viktordanov/unreal-agent/harness/llm"
+	"github.com/viktordanov/uah-core/harness/llm"
 )
 
 // LedgerMaxTokens caps the state ledger. Each list keeps its newest entries

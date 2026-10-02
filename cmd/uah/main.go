@@ -1,5 +1,5 @@
-// Command uah is a general-purpose harness for unreal-agent-runner: long-lived
-// sessions, a terminal UI, and headless runs built on uagent.
+// Command uah is a general-purpose agent harness built on uah-core: long-lived
+// sessions, a terminal UI, and headless runs with uagent's guards.
 package main
 
 import (
@@ -39,7 +39,7 @@ func main() {
 func newApp() *cli.Command {
 	return withCompletion(&cli.Command{
 		Name:    "uah",
-		Usage:   "a general-purpose harness for unreal-agent-runner",
+		Usage:   "a general-purpose agent harness built on uah-core",
 		Version: buildVersion(),
 		// Errors are printed once, by main, with the right exit code.
 		ExitErrHandler: func(context.Context, *cli.Command, error) {},

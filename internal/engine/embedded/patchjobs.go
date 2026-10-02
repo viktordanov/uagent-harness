@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/viktordanov/unreal-agent/harness/operation"
+	"github.com/viktordanov/uah-core/harness/operation"
 
 	"github.com/viktordanov/uah/internal/engine"
 	"github.com/viktordanov/uah/internal/patch"

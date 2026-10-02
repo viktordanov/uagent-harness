@@ -11,7 +11,7 @@
 
 <p align="center"><img src="docs/assets/uah.png" alt="The uah TUI: a flaky test found and fixed with a diff, then two subagents reviewing in parallel" width="900"></p>
 
-uah (unreal agent harness) is a terminal coding agent that works like Codex, running on [unreal-agent](https://github.com/unreallabsai/unreal-agent) ([a fork](internal/engine/README.md#the-runner-fork) with two performance fixes, until upstream merges them) through [uagent](https://github.com/viktordanov/uagent).
+uah is a terminal coding agent that works like Codex, running on [uah-core](https://github.com/viktordanov/uah-core), its own runtime ([derived from unreal-agent](internal/engine/README.md#uah-core)), through [uagent](https://github.com/viktordanov/uagent).
 
 ```sh
 brew install viktordanov/tap/uah
@@ -423,7 +423,7 @@ Read more: [sessions](internal/session/README.md), [the session index](internal/
 ### The engine
 
 <!-- memoria:import src="internal/engine/README.md#summary" -->
-The embedded engine runs unreal-agent-runner's packages inside uah, so messages, model, effort, fast mode, and the permission mode reach a live run. It keeps uagent's guards, session lock, and run records, applies the command rules, and writes the runner's own session files.
+The embedded engine runs uah-core's packages inside uah, so messages, model, effort, fast mode, and the permission mode reach a live run. It keeps uagent's guards, session lock, and run records, applies the command rules, and writes the runner's own session files.
 <!-- /memoria:import -->
 
 `internal/app/setup.go` builds it for every session; there is no engine to choose. What still varies is the provider and the model, such as `/fast` on openai and openai-codex only; the [engine README](internal/engine/README.md#what-varies-by-provider-and-model) lists it, and where each behavior lives.
@@ -549,7 +549,7 @@ The usage package reads the ChatGPT subscription's rate limits for the openai-co
 <!-- memoria:section id="development" files=".github/workflows/ci.yml .github/workflows/release.yml scripts/package-release.sh .golangci.yml cmd/uah/compaction.go testing/fakellm/fakellm.go testing/harnesstest/harnesstest.go testing/harnesstest/runner.go testing/harnesstest/home.go" -->
 ## Development
 
-Tests need no model or tokens: the engine runs against `testing/fakellm`, a scripted Responses API, and session and TUI tests also run on uagent's fake runner through `harnesstest.RunnerEngine`, a test-only engine. One test drives the real `unreal-agent-runner` and the embedded engine with the same script and requires the same events; `go test -short` skips it. Tests never read your `~/.uah`: each package that could runs through `harnesstest.IsolatedMain`, which gives it a temporary home.
+Tests need no model or tokens: the engine runs against `testing/fakellm`, a scripted Responses API, and session and TUI tests also run on uagent's fake runner through `harnesstest.RunnerEngine`, a test-only engine. One test drives the real `uah-core-runner` and the embedded engine with the same script and requires the same events; `go test -short` skips it. Tests never read your `~/.uah`: each package that could runs through `harnesstest.IsolatedMain`, which gives it a temporary home.
 
 ```sh
 go run ./cmd/uah --version   # build and run
@@ -583,5 +583,5 @@ The harnesses that measure uah rather than test it: the performance harness (`go
 
 uah is licensed under the [Apache License, Version 2.0](LICENSE).
 
-uah owes its shape to [OpenAI Codex](https://github.com/openai/codex). Its configuration format, sandbox profiles, approval rules, auto-review, compaction, `apply_patch`, MCP handling, subagent tools, `/review`, and how tool calls are classified follow Codex closely, and some of its code and prompts are adapted from Codex's (Apache License 2.0, Copyright 2025 OpenAI), with the shell word splitting Codex uses adapted from [rust-shlex](https://github.com/comex/rust-shlex) (MIT or Apache License 2.0). It runs on [unreal-agent](https://github.com/unreallabsai/unreal-agent) through [uagent](https://github.com/viktordanov/uagent), with a few files adapted from unreal-agent's (MIT License, Copyright 2026 Unreal Labs), and borrows ideas from [Claude Code](https://code.claude.com) (hooks, `/context`, Markdown agents, permission modes). [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) lists every adapted file and its license, and the one open-source project the agent benchmark carries as a task's repository ([smithy-go](https://github.com/aws/smithy-go), Apache License 2.0).
+uah owes its shape to [OpenAI Codex](https://github.com/openai/codex). Its configuration format, sandbox profiles, approval rules, auto-review, compaction, `apply_patch`, MCP handling, subagent tools, `/review`, and how tool calls are classified follow Codex closely, and some of its code and prompts are adapted from Codex's (Apache License 2.0, Copyright 2025 OpenAI), with the shell word splitting Codex uses adapted from [rust-shlex](https://github.com/comex/rust-shlex) (MIT or Apache License 2.0). It runs on [uah-core](https://github.com/viktordanov/uah-core) through [uagent](https://github.com/viktordanov/uagent); uah-core began as a fork of [unreal-agent](https://github.com/unreallabsai/unreal-agent) (MIT License, Copyright 2026 Unreal Labs), and a few of uah's files are adapted from unreal-agent's, and borrows ideas from [Claude Code](https://code.claude.com) (hooks, `/context`, Markdown agents, permission modes). [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) lists every adapted file and its license, and the one open-source project the agent benchmark carries as a task's repository ([smithy-go](https://github.com/aws/smithy-go), Apache License 2.0).
 <!-- /memoria:section -->

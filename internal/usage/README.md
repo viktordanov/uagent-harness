@@ -34,7 +34,7 @@ Only `internal/app` builds a reader: `app.NewUsage` for the settings' provider a
 <!-- memoria:section id="usage" files="usage.go payload.go fetch.go" -->
 ## Reading usage
 
-`Fetch(ctx, creds, opts)` sends one GET to `https://chatgpt.com/backend-api/wham/usage`, the endpoint that Codex's `/status` reads. The credentials are `codexauth.Creds`. The request sends the same headers that the engine sends to `/responses`: the bearer token, `ChatGPT-Account-ID`, and `originator` and `User-Agent` set to `unreal-agent`, not Codex's user agent. The client does not follow redirects, and an error never contains the token or the response body.
+`Fetch(ctx, creds, opts)` sends one GET to `https://chatgpt.com/backend-api/wham/usage`, the endpoint that Codex's `/status` reads. The credentials are `codexauth.Creds`. The request sends the same headers that the engine sends to `/responses`: the bearer token, `ChatGPT-Account-ID`, and `originator` and `User-Agent` set to `uah-core`, not Codex's user agent. The client does not follow redirects, and an error never contains the token or the response body.
 
 `URL` chooses the path as Codex does: `/wham/usage` under `/backend-api`, else `/api/codex/usage`. It accepts only the runner's base URL or a loopback test server, so the token cannot go to another host. `--base-url` (`UNREAL_HARNESS_LLM_BASE_URL`) sets it, as for the model list.
 

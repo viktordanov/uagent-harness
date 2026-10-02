@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/viktordanov/unreal-agent/harness/llm"
+	"github.com/viktordanov/uah-core/harness/llm"
 
 	"github.com/viktordanov/uah/internal/compaction"
 	"github.com/viktordanov/uah/internal/contextusage"
@@ -17,7 +17,7 @@ func msg(role llm.Role, text string) llm.Item {
 }
 
 func TestAnalyze(t *testing.T) {
-	system := "You run on Unreal Agent Harness.\n\nThe following skills provide specialized instructions for specific tasks.\n" +
+	system := "You work in turns.\n\nThe following skills provide specialized instructions for specific tasks.\n" +
 		"<available_skills><skill><name>release</name><description>Cut a release</description><location>/s/release/SKILL.md</location></skill></available_skills>\n\n" +
 		instructions.HostPrompt("You are an AI agent.\n# Project instructions\nA base prompt's own heading.",
 			"## /repo/AGENTS.md\n\nUse tabs.\n## A heading inside the file\nMore.\n\n## /repo/svc/AGENTS.md\n\nService rules.\n",

@@ -9,8 +9,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	runnersession "github.com/viktordanov/unreal-agent/harness/session"
-	"github.com/viktordanov/unreal-agent/harness/sessionstore/localfile"
+	runnersession "github.com/viktordanov/uah-core/harness/session"
+	"github.com/viktordanov/uah-core/harness/sessionstore/localfile"
 
 	"github.com/viktordanov/uah/internal/app"
 	"github.com/viktordanov/uah/internal/session"

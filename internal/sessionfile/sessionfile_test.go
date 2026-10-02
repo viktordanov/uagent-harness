@@ -11,10 +11,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/viktordanov/unreal-agent/harness/llm"
-	"github.com/viktordanov/unreal-agent/harness/session"
-	"github.com/viktordanov/unreal-agent/harness/sessionstore"
-	"github.com/viktordanov/unreal-agent/harness/sessionstore/localfile"
+	"github.com/viktordanov/uah-core/harness/llm"
+	"github.com/viktordanov/uah-core/harness/session"
+	"github.com/viktordanov/uah-core/harness/sessionstore"
+	"github.com/viktordanov/uah-core/harness/sessionstore/localfile"
 
 	"github.com/viktordanov/uah/internal/sessionfile"
 )

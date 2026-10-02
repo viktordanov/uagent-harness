@@ -92,7 +92,7 @@ func TestHelpListsCommands(t *testing.T) {
 		assert.Regexp(t, `(?m)^\s+`+command+`\b`, res.stdout)
 	}
 	assert.NotContains(t, res.stdout, "--runner", "nothing spawns the runner")
-	assert.Contains(t, res.stdout, "a general-purpose harness for unreal-agent-runner")
+	assert.Contains(t, res.stdout, "a general-purpose agent harness built on uah-core")
 }
 
 func TestUnknownFlag(t *testing.T) {

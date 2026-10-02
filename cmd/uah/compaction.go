@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/urfave/cli/v3"
-	"github.com/viktordanov/unreal-agent/harness/llm"
+	"github.com/viktordanov/uah-core/harness/llm"
 
 	"github.com/viktordanov/uah/internal/compaction/eval"
 	"github.com/viktordanov/uah/internal/compaction/evalrun"

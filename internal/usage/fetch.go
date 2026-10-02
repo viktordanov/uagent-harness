@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/viktordanov/unreal-agent/harness/llm/clients/openaicodex"
+	"github.com/viktordanov/uah-core/harness/llm/clients/openaicodex"
 
 	"github.com/viktordanov/uah/internal/engine/codexauth"
 )
@@ -32,8 +32,8 @@ type Options struct {
 var ErrUnauthorized = errors.New("the ChatGPT backend rejected the Codex credentials; sign in to Codex again")
 
 // originator is what the runner's openaicodex client sends as originator and
-// User-Agent (unreal-agent v0.1.1, harness/llm/clients/openaicodex/client.go:59-60).
-const originator = "unreal-agent"
+// User-Agent (uah-core, harness/llm/clients/openaicodex/client.go).
+const originator = "uah-core"
 
 // maxBody bounds a usage response.
 const maxBody = 1 << 20

@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/viktordanov/unreal-agent/harness/llm"
+	"github.com/viktordanov/uah-core/harness/llm"
 
 	"github.com/viktordanov/uah/internal/llmcall"
 )

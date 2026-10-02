@@ -116,7 +116,7 @@ A session with an operation that never finished is skipped: resuming it would ca
 <!-- memoria:section id="baseline" files="baseline.json" -->
 ## Baseline
 
-[baseline.json](baseline.json) is the report of `go run ./tools/perf -count 3` at 1eaf98d (main at 1eaf3cd on the [unreal-agent fork](../../internal/engine/README.md#the-runner-fork) v0.3.2: requests encode each history item once and reuse the last request's encodings, and a resumed session's file is decoded once per run start), with the `turn` scenario closing its session before the count, the medians of three runs on an Apple M4 Max (14 cores), macOS 27.2, Go 1.27.1, in the workspace-write sandbox. Compare a change with it on a similar machine: `go run ./tools/perf -baseline tools/perf/baseline.json`. Replace it, with a new commit and this paragraph, when a change moves the numbers on purpose.
+[baseline.json](baseline.json) is the report of `go run ./tools/perf -count 3` at 1eaf98d (main at 1eaf3cd on the [unreal-agent fork](../../internal/engine/README.md#uah-core) v0.3.2, now uah-core: requests encode each history item once and reuse the last request's encodings, and a resumed session's file is decoded once per run start), with the `turn` scenario closing its session before the count, the medians of three runs on an Apple M4 Max (14 cores), macOS 27.2, Go 1.27.1, in the workspace-write sandbox. Compare a change with it on a similar machine: `go run ./tools/perf -baseline tools/perf/baseline.json`. Replace it, with a new commit and this paragraph, when a change moves the numbers on purpose.
 
 | Scenario | Wall ms | CPU ms | Alloc MB | Peak heap MB | Goroutines left | Conns after | Its own |
 | --- | --- | --- | --- | --- | --- | --- | --- |

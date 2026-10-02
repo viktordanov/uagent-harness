@@ -3,10 +3,10 @@ package embedded
 import (
 	"errors"
 
-	"github.com/viktordanov/unreal-agent/harness/llm"
-	"github.com/viktordanov/unreal-agent/harness/llm/clients/ollama"
-	"github.com/viktordanov/unreal-agent/harness/llm/clients/openaicodex"
-	"github.com/viktordanov/unreal-agent/harness/primitives"
+	"github.com/viktordanov/uah-core/harness/llm"
+	"github.com/viktordanov/uah-core/harness/llm/clients/ollama"
+	"github.com/viktordanov/uah-core/harness/llm/clients/openaicodex"
+	"github.com/viktordanov/uah-core/harness/primitives"
 )
 
 // Client is a model client the engine can close.

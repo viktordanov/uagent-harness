@@ -156,7 +156,7 @@ func TestEmbedded_RunsToolsAndAnswers(t *testing.T) {
 // with one script and compares what the harness sees.
 func TestEmbedded_MatchesTheRunner(t *testing.T) {
 	if testing.Short() {
-		t.Skip("builds unreal-agent-runner")
+		t.Skip("builds uah-core-runner")
 	}
 	script := func() []fakellm.Reply {
 		return []fakellm.Reply{
@@ -302,7 +302,7 @@ func TestEmbedded_UnreadMessageGoesWithTheNext(t *testing.T) {
 // directory, so the embedded engine replays its history.
 func TestEmbedded_ResumesAProcessSession(t *testing.T) {
 	if testing.Short() {
-		t.Skip("builds unreal-agent-runner")
+		t.Skip("builds uah-core-runner")
 	}
 	e := newEnv(t, fakellm.Reply{Text: "first"}, fakellm.Reply{Text: "second"})
 	t.Setenv("OPENAI_API_KEY", "test-key")

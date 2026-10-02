@@ -13,7 +13,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/viktordanov/unreal-agent/harness/operation"
+	"github.com/viktordanov/uah-core/harness/operation"
 
 	"github.com/viktordanov/uah/internal/approval"
 	"github.com/viktordanov/uah/internal/sandbox"

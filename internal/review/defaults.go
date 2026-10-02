@@ -1,6 +1,6 @@
 package review
 
-import "github.com/viktordanov/unreal-agent/harness/llm"
+import "github.com/viktordanov/uah-core/harness/llm"
 
 // Who approves an action that needs approval: approvals_reviewer's values,
 // as in Codex.

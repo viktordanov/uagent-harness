@@ -8,10 +8,10 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/viktordanov/unreal-agent/harness/session"
-	"github.com/viktordanov/unreal-agent/harness/tool"
-	"github.com/viktordanov/unreal-agent/harness/tool/bash"
-	"github.com/viktordanov/unreal-agent/harness/tool/viewimage"
+	"github.com/viktordanov/uah-core/harness/session"
+	"github.com/viktordanov/uah-core/harness/tool"
+	"github.com/viktordanov/uah-core/harness/tool/bash"
+	"github.com/viktordanov/uah-core/harness/tool/viewimage"
 
 	"github.com/viktordanov/uagent/core"
 

@@ -12,7 +12,7 @@ import (
 
 // codexOriginator is what the runner's openaicodex client sends as
 // originator and User-Agent; the models request sends the same.
-const codexOriginator = "unreal-agent"
+const codexOriginator = "uah-core"
 
 // newCodexSource lists the ChatGPT backend's models for the Codex login, as
 // Codex does for ChatGPT auth: GET {base}/models?client_version=…, with the

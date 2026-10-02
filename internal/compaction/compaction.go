@@ -21,7 +21,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/viktordanov/unreal-agent/harness/llm"
+	"github.com/viktordanov/uah-core/harness/llm"
 )
 
 var (

@@ -6,7 +6,7 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/viktordanov/unreal-agent/harness/operation"
+	"github.com/viktordanov/uah-core/harness/operation"
 
 	"github.com/viktordanov/uah/internal/mcp"
 )

@@ -3,8 +3,8 @@ package embedded
 import (
 	"time"
 
-	"github.com/viktordanov/unreal-agent/harness/coordinator"
-	"github.com/viktordanov/unreal-agent/harness/tool/bash"
+	"github.com/viktordanov/uah-core/harness/coordinator"
+	"github.com/viktordanov/uah-core/harness/tool/bash"
 )
 
 // wakeHold is how long a turn's results wait for its running calls before

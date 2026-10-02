@@ -23,7 +23,7 @@ import (
 // `uah run --session` on the embedded engine, which replays its history.
 func TestRunResumesAProcessSession(t *testing.T) {
 	if testing.Short() {
-		t.Skip("builds unreal-agent-runner")
+		t.Skip("builds uah-core-runner")
 	}
 	e := harnesstest.NewEnv(t)
 	llm := fakellm.New(t, fakellm.Reply{Text: "noted"}, fakellm.Reply{Text: "7"})

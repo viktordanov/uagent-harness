@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/viktordanov/unreal-agent/harness/llm/clients/openaicodex"
+	"github.com/viktordanov/uah-core/harness/llm/clients/openaicodex"
 )
 
 // Provider is the provider whose credentials this package serves.

@@ -75,7 +75,7 @@ func TestSources(t *testing.T) {
 					ReasoningHelp: map[string]string{"low": "Fast responses"}, DefaultEffort: "medium", ServiceTiers: []string{"priority"}, Priority: 3, Plans: []string{"plus"}, MinClientVersion: "0.155.0",
 				},
 			},
-			headers: map[string]string{"Authorization": "Bearer x.", "ChatGPT-Account-ID": "acct-test", "Originator": "unreal-agent", "User-Agent": "unreal-agent"},
+			headers: map[string]string{"Authorization": "Bearer x.", "ChatGPT-Account-ID": "acct-test", "Originator": "uah-core", "User-Agent": "uah-core"},
 		},
 		"openai: /v1/models, with bundled metadata for known models": {
 			provider: models.ProviderOpenAI, path: "/v1/models", baseSuffix: "/v1", vars: map[string]string{"OPENAI_API_KEY": "sk-test"},

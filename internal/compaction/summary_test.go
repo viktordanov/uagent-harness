@@ -9,8 +9,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/viktordanov/unreal-agent/harness/llm"
-	"github.com/viktordanov/unreal-agent/harness/llm/clients/openai"
+	"github.com/viktordanov/uah-core/harness/llm"
+	"github.com/viktordanov/uah-core/harness/llm/clients/openai"
 
 	"github.com/viktordanov/uah/internal/compaction"
 	"github.com/viktordanov/uah/internal/llmcall"

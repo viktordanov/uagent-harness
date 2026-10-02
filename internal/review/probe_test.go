@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	"github.com/viktordanov/unreal-agent/harness/llm/clients/openaicodex"
+	"github.com/viktordanov/uah-core/harness/llm/clients/openaicodex"
 
 	"github.com/viktordanov/uah/internal/engine/embedded"
 	"github.com/viktordanov/uah/internal/review"

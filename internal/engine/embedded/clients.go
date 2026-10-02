@@ -20,12 +20,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/viktordanov/unreal-agent/harness/llm"
-	"github.com/viktordanov/unreal-agent/harness/llm/clients/fireworks"
-	"github.com/viktordanov/unreal-agent/harness/llm/clients/ollama"
-	"github.com/viktordanov/unreal-agent/harness/llm/clients/openaicodex"
-	"github.com/viktordanov/unreal-agent/harness/llm/responsesapi"
-	"github.com/viktordanov/unreal-agent/harness/primitives"
+	"github.com/viktordanov/uah-core/harness/llm"
+	"github.com/viktordanov/uah-core/harness/llm/clients/fireworks"
+	"github.com/viktordanov/uah-core/harness/llm/clients/ollama"
+	"github.com/viktordanov/uah-core/harness/llm/clients/openaicodex"
+	"github.com/viktordanov/uah-core/harness/llm/responsesapi"
+	"github.com/viktordanov/uah-core/harness/primitives"
 
 	"github.com/viktordanov/uah/internal/engine/codexauth"
 )
@@ -163,8 +163,8 @@ func codexClient(c ClientConfig) (Client, error) {
 		Endpoint: baseURL + "/responses",
 		Headers: map[string][]string{
 			headerContentType: {contentJSON},
-			"originator":      {"unreal-agent"},
-			"User-Agent":      {"unreal-agent"},
+			"originator":      {"uah-core"},
+			"User-Agent":      {"uah-core"},
 		},
 		CacheKeyPlacement: responsesapi.CacheKeyPlacement{UsePromptCacheKeyField: true, Header: "session-id"},
 	})

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/viktordanov/unreal-agent/harness/llm"
+	"github.com/viktordanov/uah-core/harness/llm"
 )
 
 // Adaptive effort's routing: a request whose input since the model's last

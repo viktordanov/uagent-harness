@@ -1,5 +1,5 @@
 // Package harnesstest sets up isolated uagent environments for tests: the
-// fake runner from uagent, the real unreal-agent-runner, an engine that
+// fake runner from uagent, the real uah-core-runner, an engine that
 // spawns either (RunnerEngine), a workspace, a state directory, and Codex
 // credentials that pass preflight.
 package harnesstest
@@ -29,7 +29,7 @@ var (
 	errRunner  error
 )
 
-// RealRunner builds unreal-agent-runner at the version in go.mod once per
+// RealRunner builds uah-core-runner at the version in go.mod once per
 // test binary and returns its path.
 func RealRunner(tb testing.TB) string {
 	tb.Helper()
@@ -40,10 +40,10 @@ func RealRunner(tb testing.TB) string {
 
 			return
 		}
-		runnerPath = filepath.Join(dir, "unreal-agent-runner")
-		build := exec.CommandContext(context.Background(), "go", "build", "-o", runnerPath, "github.com/viktordanov/unreal-agent/cmd/unreal-agent-runner")
+		runnerPath = filepath.Join(dir, "uah-core-runner")
+		build := exec.CommandContext(context.Background(), "go", "build", "-o", runnerPath, "github.com/viktordanov/uah-core/cmd/uah-core-runner")
 		if out, err := build.CombinedOutput(); err != nil {
-			errRunner = fmt.Errorf("build unreal-agent-runner: %w\n%s", err, out)
+			errRunner = fmt.Errorf("build uah-core-runner: %w\n%s", err, out)
 		}
 	})
 	require.NoError(tb, errRunner)

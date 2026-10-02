@@ -1,6 +1,6 @@
-// Package engine is the seam between a session and how it runs
-// unreal-agent-runner: the embedded engine runs the runner's packages in
-// process, so messages and settings reach a live run.
+// Package engine is the seam between a session and how it runs uah-core,
+// uah's runtime: the embedded engine runs uah-core's packages in process, so
+// messages and settings reach a live run.
 package engine
 
 import (

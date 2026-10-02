@@ -7,9 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/viktordanov/unreal-agent/harness/llm"
-	"github.com/viktordanov/unreal-agent/harness/session"
-	"github.com/viktordanov/unreal-agent/harness/sessionstore"
+	"github.com/viktordanov/uah-core/harness/llm"
+	"github.com/viktordanov/uah-core/harness/session"
+	"github.com/viktordanov/uah-core/harness/sessionstore"
 
 	"github.com/viktordanov/uagent/core"
 

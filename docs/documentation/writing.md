@@ -10,7 +10,7 @@ The root README is written for someone who wants to use uah: install, run, keys,
 Design and decision records live in `docs/design`; the root README links to them rather than repeating them.
 Add a vertical, numbered list of contents near the top when a README has more than two sections.
 Use a table only when the reader is choosing between alternatives or looking up a value, such as a key, an event, or a configuration field.
-Facts about unreal-agent-runner or Codex behavior carry the version they were checked against.
+Facts about the runner (uah-core, or unreal-agent before it) or Codex behavior carry the version they were checked against.
 
 ## Keep maintenance out of the introduction
 

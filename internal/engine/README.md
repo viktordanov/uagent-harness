@@ -1,10 +1,10 @@
 <!-- memoria:section id="overview" files="engine.go events.go embedded/engine.go" -->
 # The engine
 
-An engine starts runs of unreal-agent-runner for a session. uah has one: the `embedded` engine runs the runner's own packages inside uah, so messages and settings reach a live run.
+An engine starts runs of uah-core, uah's runtime, for a session. uah has one: the `embedded` engine runs uah-core's packages inside uah, so messages and settings reach a live run.
 
 <!-- memoria:export id="summary" -->
-The embedded engine runs unreal-agent-runner's packages inside uah, so messages, model, effort, fast mode, and the permission mode reach a live run. It keeps uagent's guards, session lock, and run records, applies the command rules, and writes the runner's own session files.
+The embedded engine runs uah-core's packages inside uah, so messages, model, effort, fast mode, and the permission mode reach a live run. It keeps uagent's guards, session lock, and run records, applies the command rules, and writes the runner's own session files.
 <!-- /memoria:export -->
 
 `internal/app/setup.go` builds the engine for every session. The [harness design](../../docs/design/harness.md) records how it came about.
@@ -118,37 +118,28 @@ The embedded engine is a uagent `harness.Backend`. uagent still owns the run: th
 
 Every opened resource adds a closer; a failed start closes them in reverse, and after a successful start the coordinator's goroutine closes them when it returns.
 
-The session store is the runner's own, under `<state>/sessions`, and uagent writes the run records, as when the runner binary runs. The runner's `localfile` store decodes the whole file for every page of items, and the usage seed and the coordinator's restore each page through the whole history, so the run's store serves those pages from one read until the run records an item after them (an 84 MB session started in 1.2 s with 2.2 GB allocated, now 0.27 s and 0.6 GB; on the [runner fork](#the-runner-fork), `localfile` keeps what `Resume` decoded and serves that read from it while the file is unchanged, so a run start decodes the file once). That store is a `logStore` (`sessionlog.go`), and the run writes through it, not through `localfile`; the same read builds its check of what it writes, where `localfile`'s first append decoded the file again (56 MB session: 1.17 GB allocated to 0.95 GB, first request 515 to 416 ms). It appends the lines `localfile` writes, byte for byte, but syncs the file only before a record a crash of the system must not lose (an operation state that is not terminal, a tool status with the result of an operation other than a command, a response that ends the turn), within 100 ms for the rest, and at the run's end. One sync covers every record before it. Later reads go to `localfile`, which reads the file and so sees every record written. A turn of six commands and a patch syncs 21 times instead of 51; the [state storage design](../../docs/design/state.md#syncing-the-session-file) gives the policy and why it re-runs nothing. So a session the runner binary started resumes here too: the coordinator restores the runner's history from its session file (`TestEmbedded_ResumesAProcessSession`, and `TestRunResumesAProcessSession` through `uah run --session`).
+The session store is the runner's own, under `<state>/sessions`, and uagent writes the run records, as when the runner binary runs. The runner's `localfile` store decodes the whole file for every page of items, and the usage seed and the coordinator's restore each page through the whole history, so the run's store serves those pages from one read until the run records an item after them (an 84 MB session started in 1.2 s with 2.2 GB allocated, now 0.27 s and 0.6 GB; on [uah-core](#uah-core), `localfile` keeps what `Resume` decoded and serves that read from it while the file is unchanged, so a run start decodes the file once). That store is a `logStore` (`sessionlog.go`), and the run writes through it, not through `localfile`; the same read builds its check of what it writes, where `localfile`'s first append decoded the file again (56 MB session: 1.17 GB allocated to 0.95 GB, first request 515 to 416 ms). It appends the lines `localfile` writes, byte for byte, but syncs the file only before a record a crash of the system must not lose (an operation state that is not terminal, a tool status with the result of an operation other than a command, a response that ends the turn), within 100 ms for the rest, and at the run's end. One sync covers every record before it. Later reads go to `localfile`, which reads the file and so sees every record written. A turn of six commands and a patch syncs 21 times instead of 51; the [state storage design](../../docs/design/state.md#syncing-the-session-file) gives the policy and why it re-runs nothing. So a session the runner binary started resumes here too: the coordinator restores the runner's history from its session file (`TestEmbedded_ResumesAProcessSession`, and `TestRunResumesAProcessSession` through `uah run --session`).
 
 ### The wake policy
 
-Upstream's coordinator wakes the model for each finished tool call a second after the turn. A model waiting on a slow command was woken by each quick one, saw the slow one as "Tool call is still running", and filled the wait with `git status`, `ps`, and `sleep`. uah sets the fork's `coordinator.WakePolicy` (`wake.go`) so that the model is not woken just to hear that a call is still running:
+Upstream's coordinator wakes the model for each finished tool call a second after the turn. A model waiting on a slow command was woken by each quick one, saw the slow one as "Tool call is still running", and filled the wait with `git status`, `ps`, and `sleep`. uah sets uah-core's `coordinator.WakePolicy` (`wake.go`) so that the model is not woken just to hear that a call is still running:
 
 - A turn's results, immediate ones included, wait until every call the turn issued has finished, for every tool.
 - A call still running after 5 minutes (the longest wait of Codex's `write_stdin` on a running command, codex-rs `main`, checked 2026-10-02) wakes the model with "Still running after 5 minutes" and the tail of its output so far (`bash.Progress`); the call goes on, and its result wakes the model when it finishes.
 - An inbox input, such as a user message or the 10-minute heartbeat, ends the wait at once.
 
-On six slow-test tasks × 3 (the agent benchmark, gpt-6.1-sol, high effort), the medians against the old wake: model time −19%, requests −25%, cost −19%, wall time unchanged; on edit tasks, unchanged. `wake_test.go` runs a quick and a slow command in one turn and checks that both results arrive in one request; the fork's `coordinator/wake_test.go` checks the hold and the valve.
+On six slow-test tasks × 3 (the agent benchmark, gpt-6.1-sol, high effort), the medians against the old wake: model time −19%, requests −25%, cost −19%, wall time unchanged; on edit tasks, unchanged. `wake_test.go` runs a quick and a slow command in one turn and checks that both results arrive in one request; uah-core's `coordinator/wake_test.go` checks the hold and the valve.
 
-### The runner fork
+### uah-core
 
-uah builds on [github.com/viktordanov/unreal-agent](https://github.com/viktordanov/unreal-agent), a fork of [unreallabsai/unreal-agent](https://github.com/unreallabsai/unreal-agent): upstream v0.2.0 with two performance fixes, custom tools (v0.4.0), and a wake policy (v0.5.0, on the branch `wake`; v0.5.2, on the branch `radical`, has only the hold and the valve), under its own module path so that `go install github.com/viktordanov/uah/cmd/uah@latest` works without a `replace` directive. The fork's `main` is upstream `main`, the fixes, custom tools, and the rename; each change alone is on its branches `pr/request-encoding`, `pr/resume-write-state`, and `pr/custom-tools`, proposed upstream.
+uah runs on [uah-core](https://github.com/viktordanov/uah-core) (`github.com/viktordanov/uah-core`), uah's own runtime: the coordinator, the durable operations, the session store, and the Responses client. uah-core began as a fork of [unreallabsai/unreal-agent](https://github.com/unreallabsai/unreal-agent) v0.2.0 (MIT License, Copyright (c) 2026 Unreal Labs), first published as [viktordanov/unreal-agent](https://github.com/viktordanov/unreal-agent) (v0.3.0 to v0.5.2), and continues from its `main` at v0.6.0 with the module renamed, the runner renamed to `uah-core-runner`, and the preamble's first line, which named Unreal Agent Harness, removed (ledger item 93). The `UNREAL_HARNESS_LLM_*` variables keep their names. Its changes since unreal-agent v0.2.0:
 
 - **Request encoding.** The Responses client encodes each history item once, writes the encoded items into the request without re-encoding the history, and keeps the previous request's encodings, so a run's next request encodes only its new items. The request bytes are unchanged (a test compares them with the old encoder). The encodings of the last request stay in memory between requests, about the size of one request body. On the large fixture (48 MB), `turn/large` went from 2.58 GB allocated and 1.30 s to 0.86 GB and 0.77 s; see the [ledger](../../docs/ledger.md) item P5.
 - **Custom tools.** `llm.ToolCustom` offers a Responses API custom tool, whose input is free text, optionally sampled from a grammar (`llm.ToolGrammar`). A `custom_tool_call` becomes an `llm.ToolCall` with `Custom` set and the raw input in `Arguments`; it goes back as a `custom_tool_call`, and the adapter sends a tool result as a `custom_tool_call_output` when its call was custom. Function tools encode as before. `apply_patch` is one.
 - **Wake policy.** `coordinator.Dependencies.Wake` holds a turn's results until its calls finish, with a valve for a call that runs long ([below](#the-wake-policy)); its zero value wakes as upstream's coordinator does.
 - **Resume.** `localfile.Store.Resume` keeps its decoded state with the file's identity, size, and modification time. While the file is unchanged, history pages come from it until a page reaches the end, and the first write's state comes from it, where every page and the first append decoded the file again. `load/large`'s first request went from 454 to 292 ms.
 
-To go back to upstream once it has merged both fixes and tagged a release, from the repository root:
-
-```sh
-git grep -l 'github.com/viktordanov/unreal-agent' -- '*.go' | xargs sed -i '' 's#github.com/viktordanov/unreal-agent#github.com/unreallabsai/unreal-agent#g'
-gofmt -w $(git ls-files '*.go')       # the import order changes
-go get github.com/unreallabsai/unreal-agent@<release> && go mod tidy
-go test -race ./...
-```
-
-On Linux, `sed -i` takes no `''`. The sed also covers `testing/harnesstest` (the runner binary the tests build). Then point this section, [NOTICE](../../NOTICE), and [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md) at upstream again.
+The old fork keeps the branches `pr/request-encoding`, `pr/resume-write-state`, and `pr/custom-tools`, each change alone, as proposed upstream.
 
 ### A live run
 
@@ -293,7 +284,7 @@ The tests run against `testing/fakellm`, a scripted Responses API, and need no t
 
 | Test | Pins |
 | --- | --- |
-| `TestEmbedded_MatchesTheRunner` | The real `unreal-agent-runner` (built from go.mod's version) and the embedded engine get the same script and must produce the same events and session items. `go test -short` skips it |
+| `TestEmbedded_MatchesTheRunner` | The real `uah-core-runner` (built from go.mod's version) and the embedded engine get the same script and must produce the same events and session items. `go test -short` skips it |
 | `TestEmbedded_SteersALiveRun`, `TestEmbedded_ChangesSettingsLive`, `TestEmbedded_InterruptThenContinue` | Live input, live settings, and interrupts |
 | `TestEmbedded_ResumesAProcessSession` | A session the real runner started resumes on the embedded engine with its history. `go test -short` skips it |
 | `patch_test.go`, `patch_tool_test.go` | `apply_patch` end to end: the custom tool's definition, patches inside and outside the workspace, read only, protected paths, declines, verification, hooks and their `updatedInput`, the approver's input, the live mode; a session recorded with the function tool rewinds, resumes, and goes on with a custom call, its old call sent back as recorded |

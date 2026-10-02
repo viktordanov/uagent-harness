@@ -20,7 +20,7 @@ const usagePath = "/api/codex/usage"
 // as the primary window.
 func serveUsage(w http.ResponseWriter, r *http.Request) {
 	body, err := os.ReadFile(filepath.Join("..", "..", "internal", "usage", "testdata", "pro_weekly_only.json"))
-	if err != nil || r.Header.Get("ChatGPT-Account-ID") != "acct-test" || r.Header.Get("User-Agent") != "unreal-agent" {
+	if err != nil || r.Header.Get("ChatGPT-Account-ID") != "acct-test" || r.Header.Get("User-Agent") != "uah-core" {
 		http.NotFound(w, r)
 
 		return

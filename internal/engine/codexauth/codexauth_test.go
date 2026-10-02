@@ -10,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/viktordanov/unreal-agent/harness/llm/clients/openaicodex"
+	"github.com/viktordanov/uah-core/harness/llm/clients/openaicodex"
 
 	"github.com/viktordanov/uah/internal/engine/codexauth"
 )

@@ -16,7 +16,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
-	"github.com/viktordanov/unreal-agent/harness/llm/clients/openaicodex"
+	"github.com/viktordanov/uah-core/harness/llm/clients/openaicodex"
 
 	"github.com/viktordanov/uah/internal/engine/codexauth"
 )
@@ -104,8 +104,8 @@ func probeRequest(t *testing.T, hc *http.Client, model string, input []any) prob
 	require.NoError(t, err)
 	req.GetBody = func() (io.ReadCloser, error) { return io.NopCloser(bytes.NewReader(body)), nil }
 	req.Header.Set(headerContentType, contentJSON)
-	req.Header.Set("originator", "unreal-agent")
-	req.Header.Set("User-Agent", "unreal-agent")
+	req.Header.Set("originator", "uah-core")
+	req.Header.Set("User-Agent", "uah-core")
 	if os.Getenv("UAH_PROBE_NOBETA") == "" {
 		req.Header.Set("x-codex-beta-features", "remote_compaction_v2")
 	}
