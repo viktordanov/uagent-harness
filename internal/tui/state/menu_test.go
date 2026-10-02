@@ -64,3 +64,34 @@ func TestMenu_EnterRunsOrFills(t *testing.T) {
 	_, effects = apply(opened(), state.MenuEnter{Draft: "/eff"})
 	assert.Equal(t, []state.Effect{state.EffSetDraft{Text: "/effort "}}, effects, "one with arguments is filled in")
 }
+
+// TestMenu_Adaptive: /adaptive lists its values with what each does at the
+// session's effort (high), marks the current one, and finds a value from a
+// digit, so the steps need no remembering.
+func TestMenu_Adaptive(t *testing.T) {
+	s := opened()
+	items := s.Suggestions("/adaptive ")
+	require.Equal(t, []string{"off", "1-step", "2-steps"}, labels(items))
+	assert.Equal(t, "full effort on every turn (now)", items[0].Help)
+	assert.Equal(t, "follow-ups after tool results at medium", items[1].Help)
+	assert.Equal(t, "follow-ups after tool results at low", items[2].Help)
+	assert.Equal(t, "/adaptive 2-steps", items[2].Draft)
+	assert.Equal(t, []string{"2-steps"}, labels(s.Suggestions("/adaptive 2")))
+	assert.Equal(t, []string{"1-step"}, labels(s.Suggestions("/adaptive one")))
+	assert.Empty(t, s.Suggestions("/adaptive 1-step"), "a complete value has no menu")
+}
+
+// TestCommand_AdaptiveShortForms: "/adaptive two" and "/adaptive 1" set the
+// steps; an unknown value says how to set it.
+func TestCommand_AdaptiveShortForms(t *testing.T) {
+	for in, want := range map[string]string{"/adaptive two": "2-steps", "/adaptive 1": "1-step", "/adaptive 0": "off", "/adaptive 2-steps": "2-steps"} {
+		_, effects := state.Reduce(opened(), state.Submit{Text: in})
+		require.Len(t, effects, 1, in)
+		set, ok := effects[0].(state.EffSetSettings)
+		require.True(t, ok, in)
+		assert.Equal(t, want, set.Settings.AdaptiveEffort, in)
+	}
+	next, effects := state.Reduce(opened(), state.Submit{Text: "/adaptive lots"})
+	assert.Empty(t, effects)
+	assert.Contains(t, next.Items[len(next.Items)-1].Text, "off|1-step|2-steps")
+}

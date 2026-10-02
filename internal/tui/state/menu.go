@@ -105,6 +105,8 @@ func (s State) argSuggestions(name, arg string) []Suggestion {
 		return s.reviewSuggestions(arg)
 	case "effort":
 		values = session.Efforts
+	case "adaptive":
+		return s.adaptiveSuggestions(arg)
 	case cmdAgentsName:
 		values = s.agentNames()
 	case "resume":
@@ -254,3 +256,26 @@ func bare(draft string) bool {
 // MenuOpen reports whether the draft shows a menu, so the shell sends the
 // menu keys to it.
 func (s State) MenuOpen(draft string) bool { return len(s.Suggestions(draft)) > 0 }
+
+// adaptiveSuggestions lists adaptive effort's values with what each does at
+// the session's effort, the current one marked, so the steps need no
+// remembering. A digit or a word ("2", "two") finds its value too.
+func (s State) adaptiveSuggestions(arg string) []Suggestion {
+	current := adaptiveText(s.Settings)
+	var out []Suggestion
+	for _, v := range session.AdaptiveEfforts {
+		if v == arg || arg != "" && !strings.HasPrefix(v, arg) && adaptiveValue(arg) != v {
+			continue // a complete value has no menu, as /effort's
+		}
+		help := "full effort on every turn"
+		if session.AdaptiveSteps(v) > 0 {
+			help = "follow-ups after tool results at " + session.FollowUpEffort(s.Settings.Effort, v)
+		}
+		if v == current {
+			help += " (now)"
+		}
+		out = append(out, Suggestion{Label: v, Help: help, Draft: "/adaptive " + v})
+	}
+
+	return out
+}

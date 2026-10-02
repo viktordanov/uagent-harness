@@ -148,7 +148,7 @@ func cmdFast(s *State, _ string) []Effect {
 
 // cmdAdaptive sets adaptive effort, or steps to the next value.
 func cmdAdaptive(s *State, args string) []Effect {
-	value := args
+	value := adaptiveValue(args)
 	if value == "" {
 		value = cycle(session.AdaptiveEfforts, adaptiveText(s.Settings), 1)
 	}
@@ -161,6 +161,21 @@ func cmdAdaptive(s *State, args string) []Effect {
 	next.AdaptiveEffort = value
 
 	return []Effect{EffSetSettings{Settings: next}}
+}
+
+// adaptiveValue reads /adaptive's argument: a value, or a short form of
+// one ("1", "one", "2", "two", "0", "no"); anything else as typed.
+func adaptiveValue(arg string) string {
+	switch strings.ToLower(strings.TrimSpace(arg)) {
+	case "0", "no", "zero":
+		return session.AdaptiveOff
+	case "1", "one", "1step", "1 step", "1-steps":
+		return session.AdaptiveOneStep
+	case "2", "two", "2step", "2 steps", "2-step":
+		return session.AdaptiveTwoSteps
+	}
+
+	return strings.TrimSpace(arg)
 }
 
 // adaptiveText is the session's adaptive effort, "off" when unset.
