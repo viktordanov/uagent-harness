@@ -242,6 +242,22 @@ The suite had only one-message tasks, so (1) was never measured. Five chat tasks
 - **Miss (2) is small after turn 1**, about what off misses. On turn 1 the empty cache adds about 8k tokens per task.
 - The reasoning tokens the API reports are small for this model, 3k to 10k per turn over the 6 tasks at high, against 20k to 26k of output. The lower effort saves mostly visible output (patches and text) and time.
 
+**Where the misses are.** All four groups ran the same 190 user messages (30 sessions), with about 5.5 model requests per message and no subagents.
+
+- A later opener's median miss is 517 tokens with adaptive effort off and 9,704 at 1 step. That happens 5.3 times per session, and over the 30 sessions it adds 2.0M uncached tokens at 1 step and 1.6M at 2 steps.
+- A later first follow-up after the switch misses about what off's first follow-up misses at the same place: about 5k of new content, the answer and the tool results.
+- Turn 1's first follow-up misses 11k against off's 4.9k, because the lowered effort's cache is empty.
+
+Over the 30 sessions, against off, at the bench prices:
+
+| | Switching misses | Output saved (reasoning) | Shorter sessions | Net |
+| --- | ---: | ---: | ---: | ---: |
+| 1 step | +$2.44 | −$2.72 (−$1.56) | −$3.17 | −$3.45 (−15%) |
+| 2 steps | +$1.87 | −$3.91 (−$2.00) | −$4.79 | −$6.83 (−30%) |
+| All medium | 0 | −$3.13 (−$1.76) | −$4.57 | −$7.70 (−34%) |
+
+"Shorter sessions" is the rest of the difference: with less output, every later request re-reads a smaller context. At 1 step, the switching misses take 90% of the output saving. All-medium was the cheapest and passed 30/30, so on these chats high effort bought nothing the checks can see. The checks are functional, though, and 30 of 30 cannot rule out a loss of a few points. Whether high effort pays needs tasks where medium sometimes fails, graded by more than pass or fail (mutation tests, recall of planted findings, a blind pairwise judge), at about 10 repeats.
+
 **Replays.** `-turns` replays each run's main-agent requests under other rules, with a cache model. Each effort keeps the longest prompt sent at it, and a request finds cached what that prompt covers, in 128-token blocks. A request moved to the other effort has its output scaled by the measured follow-up output ratio: high over medium 1.47, high over low 1.95. The model reproduces the runs: $3.76 against a measured $3.85 at 1 step, with the same cached share, 91.6%. The replay keeps each run's requests, so it does not count the shorter sessions a cheaper rule also brings.
 
 | Rule, replayed on the adaptive runs | 1 step | 2 steps |
