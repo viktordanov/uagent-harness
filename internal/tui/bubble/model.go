@@ -118,6 +118,8 @@ type Model struct {
 	watchGen int
 	// prompts appends to the history file in order (nil without one).
 	prompts *history.Recorder
+	// calls keeps the session calls in the order Update made them.
+	calls *calls
 }
 
 // Messages from goroutines and commands.
@@ -150,6 +152,7 @@ func New(ctx context.Context, deps Deps) Model {
 	m := Model{
 		ctx: ctx, deps: deps, st: st,
 		cache: render.NewCache(render.Amber), theme: render.Amber, composer: newComposer(render.NewStyles(render.Amber)),
+		calls: &calls{},
 	}
 	if deps.History != nil {
 		m.prompts = history.NewRecorder(*deps.History)
