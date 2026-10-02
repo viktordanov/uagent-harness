@@ -155,25 +155,20 @@ func (s *Session) onSettings(next Settings) Applied {
 	return applied
 }
 
-// setLive passes the fields that changed to the live run, and reports
-// whether it took them all.
+// setLive passes the fields that changed to the live run, each even when
+// one before it failed, and reports whether it took them all.
 func (s *Session) setLive(prev, next Settings) bool {
 	live := true
-	if next.Effort != prev.Effort {
-		live = live && s.run.SetEffort(next.Effort) == nil
+	set := func(changed bool, apply func() error) {
+		if changed && apply() != nil {
+			live = false
+		}
 	}
-	if next.Model != prev.Model {
-		live = live && s.run.SetModel(next.Model) == nil
-	}
-	if next.ServiceTier != prev.ServiceTier {
-		live = live && s.run.SetServiceTier(next.ServiceTier) == nil
-	}
-	if next.AdaptiveEffort != prev.AdaptiveEffort {
-		live = live && s.run.SetAdaptiveEffort(next.AdaptiveEffort) == nil
-	}
-	if next.Mode != prev.Mode {
-		live = live && s.run.SetMode(next.Mode) == nil
-	}
+	set(next.Effort != prev.Effort, func() error { return s.run.SetEffort(next.Effort) })
+	set(next.Model != prev.Model, func() error { return s.run.SetModel(next.Model) })
+	set(next.ServiceTier != prev.ServiceTier, func() error { return s.run.SetServiceTier(next.ServiceTier) })
+	set(next.AdaptiveEffort != prev.AdaptiveEffort, func() error { return s.run.SetAdaptiveEffort(next.AdaptiveEffort) })
+	set(next.Mode != prev.Mode, func() error { return s.run.SetMode(next.Mode) })
 
 	return live
 }

@@ -23,7 +23,7 @@ import (
 // fails with errNotLive, as a real run's does once it stopped, and the
 // session applies it from the next run. SlowStop ignores an interrupt:
 // only a kill ends the run.
-type fakeCaps struct{ LiveInput, LiveEffort, LiveMode, SlowStop bool }
+type fakeCaps struct{ LiveInput, LiveEffort, LiveMode, LiveAdaptive, SlowStop bool }
 
 var errNotLive = errors.New("the run takes no live changes")
 
@@ -79,6 +79,8 @@ type fakeRun struct {
 	sent   []core.UserInput
 	effort string
 	mode   approval.Mode
+	// adaptive is the adaptive effort the run took live.
+	adaptive string
 	// unread accepts live messages without ever reading them, like a run
 	// that went idle just as they arrived.
 	unread bool
@@ -114,9 +116,17 @@ func (r *fakeRun) SetEffort(e string) error {
 	return nil
 }
 
-func (r *fakeRun) SetModel(string) error          { return errNotLive }
-func (r *fakeRun) SetServiceTier(string) error    { return errNotLive }
-func (r *fakeRun) SetAdaptiveEffort(string) error { return errNotLive }
+func (r *fakeRun) SetModel(string) error       { return errNotLive }
+func (r *fakeRun) SetServiceTier(string) error { return errNotLive }
+
+func (r *fakeRun) SetAdaptiveEffort(v string) error {
+	if !r.caps.LiveAdaptive {
+		return errNotLive
+	}
+	r.adaptive = v
+
+	return nil
+}
 
 func (r *fakeRun) SetMode(m approval.Mode) error {
 	if !r.caps.LiveMode {
@@ -444,6 +454,23 @@ func TestSession_SetSettings(t *testing.T) {
 
 		assert.Equal(t, session.AppliedLive, applied)
 		assert.Equal(t, "max", run.effort)
+		run.finish(core.StatusOK)
+	})
+
+	t.Run("a failed live change does not stop the ones after it", func(t *testing.T) {
+		h := newHarness(t, fakeCaps{LiveAdaptive: true})
+		_, err := h.s.Submit("work")
+		require.NoError(t, err)
+		run := h.nextRun()
+		next := settings()
+		next.ServiceTier = "priority" // the run refuses it
+		next.AdaptiveEffort = session.AdaptiveOneStep
+
+		applied, err := h.s.SetSettings(next)
+		require.NoError(t, err)
+
+		assert.Equal(t, session.AppliedNextRun, applied, "not all of it applied live")
+		assert.Equal(t, session.AdaptiveOneStep, run.adaptive, "adaptive effort still reached the run")
 		run.finish(core.StatusOK)
 	})
 
