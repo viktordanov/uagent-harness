@@ -3,12 +3,15 @@
   "follow_ups": [
     "Now add a section called \"The middleware stack\": the five steps, each step's input and output types, how ordering works (Before/After and relative positions), and what happens when the same ID is added twice. Cite file paths.",
     "Add a section called \"Encoding\" covering the httpbinding, json, xml, and cbor encoders and decoders: what each is for and its main types, with file paths.",
-    "Last one: add a \"Gotchas\" section with at least five non-obvious behaviors you found while reading, each with its file and function. Check each against the code before you write it."
+    "Add a section called \"Transport\" on transport/http: the request wrapper, the client handler, and every middleware in that package (what each does and which step it goes in), with file paths.",
+    "Add a section called \"Documents\" on document, document/json, and document/cbor: how a document type is marshaled and unmarshaled, the main types, and file paths.",
+    "Add a section called \"Auth, endpoints, and waiters\" covering auth, auth/bearer (including when the token cache refreshes), endpoints/private/rulesfn, and how waiter computes its delays, with file paths.",
+    "Last one: add a \"Gotchas\" section with at least five non-obvious behaviors you found while reading, each with its file and function. Check each against the code before you write it, then reread the whole document and fix anything a later section contradicts."
   ],
   "setup": "rm .gitkeep && cp -R \"$TASK_DIR/../go-large-repo-bug/repo/.\" . && cp \"$TASK_DIR/../go-large-repo-bug/solution/encoding/httpbinding/path_replace.go\" encoding/httpbinding/ && git add -A && git -c user.name=agentbench -c user.email=agentbench@localhost commit -q -m 'smithy-go v1.22.4'",
   "check": "python3 check_guide.py",
-  "timeout": "45m",
-  "exercises": "a long session in a real codebase (smithy-go v1.22.4, the large-repo task's repository without its bug): four prompts that each need wide reading (every package, the middleware steps, the encoders, verified gotchas) in one context, enough to reach uah's automatic compaction",
+  "timeout": "75m",
+  "exercises": "a long session in a real codebase (smithy-go v1.22.4, the large-repo task's repository without its bug): seven prompts that each need wide reading (every package, the middleware steps, the encoders, the transport, documents, auth and waiters, verified gotchas) in one context, enough to reach uah's automatic compaction",
   "tags": [
     "go",
     "docs",

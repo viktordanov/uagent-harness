@@ -23,7 +23,7 @@ for step in ["initialize", "serialize", "build", "finalize", "deserialize"]:
 for typ in ["InitializeInput", "SerializeInput", "DeserializeOutput", "RawResponse", "Before", "After"]:
     if typ not in doc:
         problems.append(f"{typ} not mentioned")
-for head in ["middleware stack", "encoding", "gotchas"]:
+for head in ["middleware stack", "encoding", "transport", "documents", "waiters", "gotchas"]:
     if not re.search(r"^#+ .*" + head, low, re.M):
         problems.append(f"no section heading with {head!r}")
 gotchas = re.split(r"^#+ .*gotchas.*$", doc, flags=re.M | re.I)

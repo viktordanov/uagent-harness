@@ -65,6 +65,30 @@ Each step keeps its middleware in an `orderedIDs` (`middleware/ordered_group.go`
 - `encoding/xml`: `Encoder` (`encoder.go`) and `Value` (`value.go`) write XML with namespaces and attributes; `xml_decoder.go` has `NodeDecoder` over `encoding/xml` tokens.
 - `encoding/cbor`: `Value` types (`cbor.go`), `Encode` (`encode.go`), `Decode` (`decode.go`), and coercions (`coerce.go`).
 
+## Transport
+
+`transport/http` wraps `*http.Request` as `smithyhttp.Request` (`request.go`: the stream body, `SetStream`, `Build`) and `*http.Response` as `Response` (`response.go`, with `ResponseError`). `ClientHandler` (`client.go`) is the stack's terminal handler: it builds the request, calls `ClientDo`, and returns the response. Its middleware:
+
+| File | Middleware | Step |
+| --- | --- | --- |
+| `middleware_content_length.go` | `ComputeContentLength`, `validateContentLength` | Build |
+| `middleware_headers.go` | `headerValueHelper` (set or add headers), `removeDefaultContentType` | Build, Serialize |
+| `middleware_header_comment.go` | `headerCommentMiddleware` (comments appended to headers) | Build |
+| `middleware_close_response_body.go` | `closeResponseBody`, `errorCloseResponseBodyMiddleware` | Deserialize, before `OperationDeserializer` |
+| `middleware_min_proto.go` | `RequireMinimumProtocol` | Deserialize |
+| `middleware_http_logging.go` | `RequestResponseLogger` | Deserialize |
+| `middleware_metadata.go` | host prefix and endpoint metadata on the context | none (context helpers) |
+
+`checksum_middleware.go` adds a Content-MD5 header (`md5_checksum.go`), `host.go` validates host labels, and `user_agent.go` builds the user agent.
+
+## Documents
+
+`document` defines `Marshaler` and `Unmarshaler` (`document.go`) and the errors (`errors.go`); a generated document type is a value that a protocol's codec turns into its wire form. `document/json` has `NewEncoder` and `NewDecoder` (`encoder.go`, `decoder.go`) that walk Go values by reflection through `document/internal/serde` (`field.go`, `reflect.go`, `tags.go`); `document/cbor` (`encode.go`, `decode.go`) does the same over `encoding/cbor` values.
+
+## Auth, endpoints, and waiters
+
+`auth` (`auth.go`, `identity.go`, `option.go`, `scheme_id.go`) names schemes and identities. `auth/bearer`'s `TokenCache` (`token_cache.go`) returns the cached token and refreshes it when it is expired or within `RefreshBeforeExpires` of expiring: a hard expiry refreshes in line, a soft one asynchronously through `internal/sync/singleflight`, at most once per `AsyncRefreshMinimumDelay`; `middleware.go` signs the request. `endpoints/private/rulesfn` (`uri.go`, `strings.go`) has the functions the generated endpoint rules call. `waiter.ComputeDelay` (`waiter/waiter.go`) doubles the minimum delay per attempt up to the maximum, picks a random delay between the minimum and that, and shortens the last delay to fit the remaining time.
+
 ## Gotchas
 
 1. `encoding/httpbinding/path_replace.go`, `EscapePath`: a greedy label (`{Key+}`) keeps `/` unescaped, a plain label escapes it.
