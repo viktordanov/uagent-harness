@@ -20,14 +20,14 @@ import (
 
 // Environment variables behind flags.
 const (
-	EnvProvider = "UNREAL_HARNESS_LLM_PROVIDER"
-	EnvModel    = "UNREAL_HARNESS_LLM_MODEL"
+	EnvProvider = "UAH_LLM_PROVIDER"
+	EnvModel    = "UAH_LLM_MODEL"
 	EnvSandbox  = "UAH_SANDBOX"
 	EnvAsk      = "UAH_ASK"
 	// EnvAdaptiveEffort is --adaptive-effort's variable.
 	EnvAdaptiveEffort = "UAH_ADAPTIVE_EFFORT"
 	// EnvMaxAttempts is the runner's variable for the attempt limit.
-	EnvMaxAttempts = "UNREAL_HARNESS_LLM_MAX_ATTEMPTS"
+	EnvMaxAttempts = "UAH_LLM_MAX_ATTEMPTS"
 )
 
 // Source is where an effective setting came from.

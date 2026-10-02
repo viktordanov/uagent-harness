@@ -72,7 +72,7 @@ func TestExecOutputLastMessage(t *testing.T) {
 	assert.Equal(t, "the last one", string(data))
 
 	t.Run("no answer writes an empty file", func(t *testing.T) {
-		require.NoError(t, os.WriteFile(filepath.Join(e.Workspace, ".env"), []byte("UNREAL_HARNESS_LLM_BASE_URL=http://evil\n"), 0o600))
+		require.NoError(t, os.WriteFile(filepath.Join(e.Workspace, ".env"), []byte("UAH_LLM_BASE_URL=http://evil\n"), 0o600))
 		res := uahWith(t, env, "", "exec", "--output-last-message", out, "-C", e.Workspace, "hi")
 		assert.Equal(t, 1, res.code, "the blocked run still fails")
 		data, err := os.ReadFile(out)

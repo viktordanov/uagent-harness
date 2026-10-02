@@ -76,10 +76,10 @@ Every key may be set in the user file, in a layer, and in a trusted project file
 
 | Key | Type | Default | Flag, env | Merge | Meaning |
 | --- | --- | --- | --- | --- | --- |
-| `provider` | string | `openai-codex` | `--provider`, `UNREAL_HARNESS_LLM_PROVIDER` | override | The LLM provider: openai, openai-codex, openrouter, fireworks, or ollama |
-| `model` | string | `gpt-6.1-sol` on openai-codex and openai when the login's model list has it; else `gpt-6-sol` on openai-codex, `gpt-6-astra` on openai, and none for the others | `-m`, `--model`, `UNREAL_HARNESS_LLM_MODEL` | override | The model ID. Codex rust-v0.159.1 ranks gpt-6.1-sol first, but OpenAI rolls it out by account, so without a named model uah asks the provider for its list (cached for five minutes) when the session opens. A list uah could not get counts as without it. `uah models` marks the default, and `uah config` settles it from the cached list |
+| `provider` | string | `openai-codex` | `--provider`, `UAH_LLM_PROVIDER` | override | The LLM provider: openai, openai-codex, openrouter, fireworks, or ollama |
+| `model` | string | `gpt-6.1-sol` on openai-codex and openai when the login's model list has it; else `gpt-6-sol` on openai-codex, `gpt-6-astra` on openai, and none for the others | `-m`, `--model`, `UAH_LLM_MODEL` | override | The model ID. Codex rust-v0.159.1 ranks gpt-6.1-sol first, but OpenAI rolls it out by account, so without a named model uah asks the provider for its list (cached for five minutes) when the session opens. A list uah could not get counts as without it. `uah models` marks the default, and `uah config` settles it from the cached list |
 | `effort` | string | `high` | `-e`, `--effort` | override | The thinking level: low, medium, high, xhigh, max, or ultra. Not every model takes every level (`uah models` lists each model's); a session warns when it opens with a level its model does not list, and `/effort` refuses one |
-| `request_max_attempts` | integer | 10 | `--max-attempts`, `UNREAL_HARNESS_LLM_MAX_ATTEMPTS` | override | How many times a model request is sent before the run fails. A lost connection, a timeout, a 429, or most 5xx statuses are retried after 2 s, then 4, 8, and 16 s, and then every 30 s (less up to a fifth of jitter, or the server's `Retry-After` up to 30 s): 10 attempts wait about 3 minutes in all. The runner's own default is 5 |
+| `request_max_attempts` | integer | 10 | `--max-attempts`, `UAH_LLM_MAX_ATTEMPTS` | override | How many times a model request is sent before the run fails. A lost connection, a timeout, a 429, or most 5xx statuses are retried after 2 s, then 4, 8, and 16 s, and then every 30 s (less up to a fifth of jitter, or the server's `Retry-After` up to 30 s): 10 attempts wait about 3 minutes in all. The runner's own default is 5 |
 | `max_disk` | size | `5G` | `--max-disk` | override | Stop a run when tool output exceeds this size (`500M`, `5G`, bytes without a suffix); `0` disables it |
 | `fast` | bool | false | `--fast` | OR | Priority processing (`service_tier = "priority"`); needs the openai or openai-codex provider, and any other provider refuses it before the session starts |
 | `web_search` | string | `live` | none | override | The provider's hosted web search tool, as Codex's key: `live` offers it on openai and openai-codex (other providers never get it), `disabled` does not. Codex's `cached` and `indexed` are errors: the runner sends the tool without Codex's access options, which the API treats as live search. The search runs on the provider's servers, so the sandbox's network rule does not apply; it is offered in every permission mode, as in Codex ([web search](design/web-search.md)) |
@@ -397,10 +397,10 @@ developer_instructions = "Review the diff you are given. List only real bugs, ea
 
 | Variable | Flag | Config key | Meaning |
 | --- | --- | --- | --- |
-| `UNREAL_HARNESS_LLM_PROVIDER` | `--provider` | `provider` | The provider |
-| `UNREAL_HARNESS_LLM_MODEL` | `--model` | `model` | The model |
-| `UNREAL_HARNESS_LLM_BASE_URL` | `--base-url` | none | The LLM base URL |
-| `UNREAL_HARNESS_LLM_MAX_ATTEMPTS` | `--max-attempts` | `request_max_attempts` | The attempts per model request. uah passes the resolved value to the runner's client, so the variable does not reach the runner directly |
+| `UAH_LLM_PROVIDER` | `--provider` | `provider` | The provider |
+| `UAH_LLM_MODEL` | `--model` | `model` | The model |
+| `UAH_LLM_BASE_URL` | `--base-url` | none | The LLM base URL |
+| `UAH_LLM_MAX_ATTEMPTS` | `--max-attempts` | `request_max_attempts` | The attempts per model request. uah passes the resolved value to the runner's client, so the variable does not reach the runner directly |
 | `UAH_SANDBOX` | `--sandbox` | `sandbox_mode` | The sandbox mode, and the permission mode of that sandbox |
 | `UAH_ASK` | `--ask` | `approval_policy` | The approval policy |
 | `UAH_ADAPTIVE_EFFORT` | `--adaptive-effort` | `adaptive_effort` | Adaptive effort: off, 1-step, or 2-steps |

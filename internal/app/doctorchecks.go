@@ -83,7 +83,7 @@ func credentialFix(provider string) string {
 		return "run `codex login` (or set OPENAI_CODEX_ACCESS_TOKEN)"
 	}
 
-	return "export the provider's API key variable, or UNREAL_HARNESS_LLM_API_KEY"
+	return "export the provider's API key variable, or UAH_LLM_API_KEY"
 }
 
 // workspaceCheck reports preflight's other findings: the workspace, the

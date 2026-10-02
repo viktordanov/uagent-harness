@@ -24,7 +24,7 @@ func TestRunStreamsTheAnswer(t *testing.T) {
 	require.NoError(t, os.MkdirAll(home, 0o700))
 	env := []string{
 		"UAH_STATE_DIR=" + e.StateDir, "OPENAI_API_KEY=test-key",
-		"UNREAL_HARNESS_LLM_PROVIDER=", "UNREAL_HARNESS_LLM_MODEL=", "UAH_HOME=" + home,
+		"UAH_LLM_PROVIDER=", "UAH_LLM_MODEL=", "UAH_HOME=" + home,
 	}
 	args := []string{"--provider", "openai", "-m", "gpt-test", "--base-url", llm.URL, "-C", e.Workspace, "hi"}
 

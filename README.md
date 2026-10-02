@@ -190,7 +190,7 @@ When a model request fails because the connection dropped, it timed out, or the 
 λ Reconnecting, attempt 3 of 10 (retrying in 8s • esc to interrupt)
 ```
 
-When every attempt loses the connection, the run fails with "gave up after 10 attempts because the connection to the model was lost". Change the limit with `request_max_attempts` in the [configuration](#configuration), `--max-attempts`, or `UNREAL_HARNESS_LLM_MAX_ATTEMPTS`.
+When every attempt loses the connection, the run fails with "gave up after 10 attempts because the connection to the model was lost". Change the limit with `request_max_attempts` in the [configuration](#configuration), `--max-attempts`, or `UAH_LLM_MAX_ATTEMPTS`.
 
 ### Command rules
 

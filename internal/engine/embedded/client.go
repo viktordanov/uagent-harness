@@ -53,7 +53,7 @@ func (w *wiring) client(req core.Request, opts engine.Options) (string, *switche
 	return model, sw, err
 }
 
-// apiKey returns UNREAL_HARNESS_LLM_API_KEY, else the provider's key
+// apiKey returns UAH_LLM_API_KEY, else the provider's key
 // variable. A provider without a key variable needs no key.
 func (w *wiring) apiKey(p Provider) (string, error) { return providerKey(p, w.getenv) }
 
@@ -61,12 +61,12 @@ func providerKey(p Provider, getenv func(string) string) (string, error) {
 	if p.APIKeyEnv == "" {
 		return "", nil
 	}
-	key := strings.TrimSpace(getenv("UNREAL_HARNESS_LLM_API_KEY"))
+	key := strings.TrimSpace(getenv("UAH_LLM_API_KEY"))
 	if key == "" {
 		key = strings.TrimSpace(getenv(p.APIKeyEnv))
 	}
 	if key == "" {
-		return "", fmt.Errorf("UNREAL_HARNESS_LLM_API_KEY or %s must be set", p.APIKeyEnv)
+		return "", fmt.Errorf("UAH_LLM_API_KEY or %s must be set", p.APIKeyEnv)
 	}
 
 	return key, nil
@@ -101,10 +101,10 @@ func (w *wiring) maxAttempts(req core.Request) (int, error) {
 	n := engine.DefaultMaxAttempts
 	if req.MaxAttempts > 0 {
 		n = req.MaxAttempts
-	} else if v := strings.TrimSpace(w.getenv("UNREAL_HARNESS_LLM_MAX_ATTEMPTS")); v != "" {
+	} else if v := strings.TrimSpace(w.getenv("UAH_LLM_MAX_ATTEMPTS")); v != "" {
 		parsed, err := strconv.Atoi(v)
 		if err != nil || parsed <= 0 {
-			return 0, fmt.Errorf("invalid UNREAL_HARNESS_LLM_MAX_ATTEMPTS %q", v)
+			return 0, fmt.Errorf("invalid UAH_LLM_MAX_ATTEMPTS %q", v)
 		}
 		n = parsed
 	}

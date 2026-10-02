@@ -32,7 +32,7 @@ func TestUsage(t *testing.T) {
 	e, env := fakeEnv(t)
 	srv := httptest.NewServer(http.HandlerFunc(serveUsage))
 	t.Cleanup(srv.Close)
-	env = append(env, "UNREAL_HARNESS_LLM_BASE_URL="+srv.URL, "TZ=UTC")
+	env = append(env, "UAH_LLM_BASE_URL="+srv.URL, "TZ=UTC")
 
 	res := uahWith(t, env, "", "usage", "-C", e.Workspace)
 	require.Equal(t, 0, res.code, res.stderr)

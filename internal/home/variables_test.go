@@ -33,7 +33,7 @@ func TestVariables(t *testing.T) {
 	root := filepath.Join("..", "..")
 	declared := filepath.Join(root, "internal", "home", "home.go")
 	consts := homeConsts(t, declared)
-	name := regexp.MustCompile(`"((?:UAH|UAGENT|UNREAL_HARNESS)_[A-Z0-9_]+|CODEX_REFRESH_TOKEN_URL_OVERRIDE)"`)
+	name := regexp.MustCompile(`"((?:UAH|UAGENT)_[A-Z0-9_]+|CODEX_REFRESH_TOKEN_URL_OVERRIDE)"`)
 	constRef := regexp.MustCompile(`\bhome\.(Env[A-Za-z]*)\b`)
 	named := map[string]bool{}
 	for _, dir := range []string{"cmd", "internal"} {

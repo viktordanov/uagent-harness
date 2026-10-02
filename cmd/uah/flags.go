@@ -67,7 +67,7 @@ func sessionFlags() []cli.Flag {
 		},
 		&cli.StringFlag{
 			Name: "base-url", Usage: "LLM base URL override", DefaultText: "provider default",
-			Sources: cli.EnvVars("UNREAL_HARNESS_LLM_BASE_URL"),
+			Sources: cli.EnvVars("UAH_LLM_BASE_URL"),
 		},
 		&cli.StringFlag{
 			Name: "max-disk", Usage: "stop a run when tool output exceeds this size, e.g. 500M (0 disables)", Value: "5G",
