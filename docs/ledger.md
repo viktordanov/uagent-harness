@@ -383,6 +383,7 @@ Done: items 13–27. `/context`, shell completion, module READMEs and a root REA
 
 Ideas that come up while working go here, not into the items.
 
+- A decision model for effort routing (the owner, 2026-10-02): a small, fast model judges each turn and picks its reasoning effort, instead of Lean mode's fixed rules; the owner tried decision models before. Compare against the winning Lean rule with agentbench, counting the extra call's latency and cost.
 - Non-OpenAI providers (OpenRouter, Fireworks, Ollama) get `apply_patch` as a freeform custom tool too (row 90), which those endpoints may not support; untested, since the owner does not use them. If one fails, give that provider no `apply_patch` (it edits through shell commands) rather than bringing back the function tool.
 - After round 5: rewrite the repository history as agreed with the owner on 2026-09-29 (generic names in design records; tags moved; old history backed up locally).
 - Flaky test: `TestTUI_CtrlEnterSendsTheQueue` timed out once in CI (1eaf812, 2026-09-29) waiting for the first model request; it passes 30 times alone and 6 times with the package on 2 CPUs locally. Look again if it recurs.
