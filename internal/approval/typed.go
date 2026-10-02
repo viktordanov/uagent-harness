@@ -9,7 +9,10 @@ import "github.com/viktordanov/uah/internal/rules"
 // because typing the command is the user's approval; so neither a prompt
 // rule nor the approval policy asks again.
 func (a *Approver) DecideTyped(command string) Decision {
-	commands, _ := rules.Split(command)
+	commands, ok := rules.Split(command)
+	if d, denied := a.forbidsUnsplit(command, ok); denied {
+		return d
+	}
 	rule, matched := a.policy().Check(commands)
 	switch {
 	case matched && rule.Decision == rules.Forbidden:

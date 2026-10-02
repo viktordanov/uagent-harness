@@ -21,14 +21,16 @@ const (
 )
 
 // Trust records the exact project hook commands the user approved, by
-// SHA-256, so a changed command needs approval again. When a command runs a
-// local script (its first word is a path to an existing file), the entry
-// also records the script's SHA-256, so a changed script needs approval
-// again too.
+// SHA-256, so a changed command needs approval again. A command holds only
+// where it was approved: one that runs no script is keyed by the workspace
+// too. When a command runs a local script (its first word is a path to an
+// existing file), the entry is keyed by the script's path and also records
+// the script's SHA-256, so a changed script needs approval again too.
 //
 // Entries written before script hashes existed are keyed by the command
-// alone. They still approve commands that run no local script; a command
-// that runs one needs `uah hooks trust` again.
+// alone. They still approve commands that run no local script in the
+// workspace they record; a command that runs one needs `uah hooks trust`
+// again.
 type Trust struct {
 	path string
 
@@ -68,9 +70,10 @@ func (t *Trust) Check(workspace, command string) (bool, string) {
 	script := scriptPath(command, workspace)
 	if script == "" {
 		t.mu.Lock()
-		_, ok := t.entries[hash(command)]
+		_, ok := t.entries[workspaceKey(command, workspace)]
+		old, legacy := t.entries[hash(command)]
 		t.mu.Unlock()
-		if !ok {
+		if !ok && (!legacy || !sameDir(old.Workspace, workspace)) {
 			return false, ReasonUntrusted
 		}
 
@@ -111,7 +114,7 @@ func (t *Trust) Allow(workspace string, commands ...string) error {
 	now := time.Now().UTC()
 	for _, c := range commands {
 		e := trustEntry{Command: c, Workspace: workspace, TrustedAt: now}
-		key := hash(c)
+		key := workspaceKey(c, workspace)
 		if script := scriptPath(c, workspace); script != "" {
 			sum, err := fileHash(script)
 			if err != nil {
@@ -148,6 +151,14 @@ func hash(command string) string {
 // scriptKey keys a command that runs a script by the script's path too: the
 // same relative command runs a different file in another workspace.
 func scriptKey(command, script string) string { return hash(command + "\x00" + script) }
+
+// workspaceKey keys a command that runs no script by the workspace too, so
+// trusting it in one project does not trust it in every project.
+func workspaceKey(command, workspace string) string {
+	return hash(command + "\x00workspace\x00" + filepath.Clean(workspace))
+}
+
+func sameDir(a, b string) bool { return a != "" && filepath.Clean(a) == filepath.Clean(b) }
 
 func fileHash(path string) (string, error) {
 	data, err := os.ReadFile(path)

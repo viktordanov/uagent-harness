@@ -119,3 +119,43 @@ func unescape(s string) string {
 
 	return b.String()
 }
+
+// scanned is one simple command found anywhere in a shell command. Its
+// words stop at the first word that is not plain text, such as a variable
+// or a glob; partial is true when they stopped early.
+type scanned struct {
+	words   []string
+	partial bool
+}
+
+// scan finds every simple command of a shell command, including those
+// Split refuses: with redirects or assignments, in subshells,
+// substitutions, and control flow. ok is false when it does not parse.
+func scan(command string) ([]scanned, bool) {
+	file, err := syntax.NewParser(syntax.Variant(syntax.LangBash)).Parse(strings.NewReader(command), "")
+	if err != nil {
+		return nil, false
+	}
+	var out []scanned
+	syntax.Walk(file, func(n syntax.Node) bool {
+		call, ok := n.(*syntax.CallExpr)
+		if !ok || len(call.Args) == 0 {
+			return true
+		}
+		var c scanned
+		for _, w := range call.Args {
+			s, ok := literal(w)
+			if !ok {
+				c.partial = true
+
+				break
+			}
+			c.words = append(c.words, s)
+		}
+		out = append(out, c)
+
+		return true
+	})
+
+	return out, true
+}

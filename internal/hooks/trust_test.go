@@ -52,20 +52,31 @@ func TestTrust_Scripts(t *testing.T) {
 	}
 }
 
+// TestTrust_CommandsWithoutAScript: a command that runs no local script is
+// trusted for the workspace it was trusted in, not for every project.
 func TestTrust_CommandsWithoutAScript(t *testing.T) {
-	ws := t.TempDir()
+	ws, other := t.TempDir(), t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(ws, "true"), []byte("exit 1"), 0o700))
-	trust, err := hooks.LoadTrust(filepath.Join(t.TempDir(), "trust.json"))
+	path := filepath.Join(t.TempDir(), "trust.json")
+	trust, err := hooks.LoadTrust(path)
 	require.NoError(t, err)
 	for _, command := range []string{"true", "./missing.sh", "$(pick)/x.sh", "echo 'a/b'"} {
 		require.NoError(t, trust.Allow(ws, command))
 		assert.True(t, trust.Trusted(ws, command), "%q runs no local script", command)
-		assert.True(t, trust.Trusted(t.TempDir(), command), "%q is trusted by its text alone", command)
+		ok, why := trust.Check(other, command)
+		assert.False(t, ok, "%q is not trusted in another workspace", command)
+		assert.Equal(t, hooks.ReasonUntrusted, why)
 	}
+
+	require.NoError(t, trust.Allow(other, "true"))
+	reloaded, err := hooks.LoadTrust(path)
+	require.NoError(t, err)
+	assert.True(t, reloaded.Trusted(ws, "true"), "trusting it in another workspace keeps the first")
+	assert.True(t, reloaded.Trusted(other, "true"))
 }
 
 // TestTrust_OldEntries: entries without a script hash, from before scripts
-// were hashed, still trust plain commands, but a command that runs a script
+// were hashed, still trust plain commands in their workspace, but a command that runs a script
 // needs trust again.
 func TestTrust_OldEntries(t *testing.T) {
 	ws := t.TempDir()
@@ -82,6 +93,7 @@ func TestTrust_OldEntries(t *testing.T) {
 	trust, err := hooks.LoadTrust(path)
 	require.NoError(t, err)
 	assert.True(t, trust.Trusted(ws, "echo hi"))
+	assert.False(t, trust.Trusted(t.TempDir(), "echo hi"), "an old entry holds only for its workspace")
 	ok, why := trust.Check(ws, "./check.sh")
 	assert.False(t, ok)
 	assert.Equal(t, hooks.ReasonScriptNew, why)

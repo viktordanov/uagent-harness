@@ -102,9 +102,9 @@ The permission modes:
 | `read-only` | `read-only` | Ask you (the auto-reviewer first only with `approvals_reviewer = "auto_review"`) |
 | `workspace` (default) | `workspace-write` | Ask you (the auto-reviewer first only with `approvals_reviewer = "auto_review"`) |
 | `auto` | `workspace-write` | The auto-reviewer decides, also with `approvals_reviewer = "user"`. The user is not asked; a decline reaches the model with the reviewer's reason |
-| `yolo` | none | Nothing asks: escalations, `prompt` rules, patches, and MCP tools with an approval mode all run, without the auto-reviewer or PermissionRequest hooks; `forbid` rules still refuse. Only `--yolo` (alias `--dangerously-bypass-approvals-and-sandbox`, Codex's name) starts it, with no `--sandbox` or `--ask`. It adds `yolo` after `auto` in the shift+tab cycle, and a resumed session stays in it only when `--yolo` is given again |
+| `yolo` | none | Nothing asks: escalations, `prompt` rules, patches, and MCP tools with an approval mode all run, without the auto-reviewer or PermissionRequest hooks; `forbid` rules still refuse, also a command with a redirect, a subshell, or a variable that runs or may run a forbidden command. Only `--yolo` (alias `--dangerously-bypass-approvals-and-sandbox`, Codex's name) starts it, with no `--sandbox` or `--ask`. It adds `yolo` after `auto` in the shift+tab cycle, and a resumed session stays in it only when `--yolo` is given again |
 
-`approval_policy = "never"` still denies whatever needs approval, in every mode but yolo. A mode change reaches a live run from its next command and model request.
+`approval_policy = "never"` still denies whatever needs approval, in every mode but yolo, unless a PreToolUse hook allowed the call. A mode change reaches a live run from its next command and model request.
 
 `[sandbox_workspace_write]` configures the `workspace-write` mode:
 
@@ -118,7 +118,7 @@ The permission modes:
 | Key | Type | Default | Merge | Meaning |
 | --- | --- | --- | --- | --- |
 | `allow` | list of strings | `[]` | append | Commands that start with one of these run outside the sandbox without asking |
-| `forbid` | list of strings | `[]` | append | Commands that start with one of these never run |
+| `forbid` | list of strings | `[]` | append | Commands that start with one of these never run, also in a pipeline, a subshell, a substitution, or with a redirect. A command that may run one, because a word it needs is a variable, a glob, or a substitution, is refused too |
 
 `[shell_environment_policy]` is Codex's filter for the environment commands get. Empty, commands get the whole environment:
 
@@ -248,7 +248,7 @@ Each `[[hooks.<Event>]]` entry runs a command at an event. The events are `Sessi
 | `command` | string | required | The command, run with `/bin/sh -c` in the workspace |
 | `timeout` | duration | `60s` | The limit for one run of the hook |
 
-Merge: append, per event, the user file's hooks first, then each layer's, then the project file's. User and layer hooks run as written. Project hooks run only after `uah hooks trust` records their exact commands.
+Merge: append, per event, the user file's hooks first, then each layer's, then the project file's. User and layer hooks run as written. Project hooks run only after `uah hooks trust` records their exact commands, for that workspace. A PreToolUse hook's `permissionDecision` `"allow"` approves the call without asking, in every mode and headless; a `forbid` rule still refuses it. `"deny"` and `"ask"` refuse the call.
 
 ### MCP servers
 

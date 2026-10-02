@@ -33,7 +33,7 @@ command = "osascript -e 'display notification \"uah is idle\"'"
 | --- | --- | --- | --- |
 | `SessionStart` | When the session opens (`source`: startup or resume) | Add context to the first message (`additionalContext` or plain stdout); show a `systemMessage` | session |
 | `UserPromptSubmit` | Before a message is sent | Block it (exit 2 or `"decision": "block"`); add context | session |
-| `PreToolUse` | Before each tool call | Deny it (exit 2, or `permissionDecision` `"deny"` or `"ask"`); the reason is the tool's error. Rewrite it (`updatedInput`) | engine |
+| `PreToolUse` | Before each tool call | Deny it (exit 2, or `permissionDecision` `"deny"` or `"ask"`); the reason is the tool's error. Allow it (`"allow"`): an approval it needs is given without asking anyone, but a `forbid` rule still refuses it. Rewrite it (`updatedInput`) | engine |
 | `PostToolUse` | After each tool call | Observe only | session |
 | `Stop` | When the agent finished and nothing is queued | Keep it going: `"decision": "block"` with a `reason` sends the reason as the next message, at most 5 times in a row. `stop_hook_active` is true after the first | session |
 | `SubagentStart` | When a subagent starts, before its first message (`agent_id`, `agent_type`, `agent_transcript_path`; `session_id` is the parent's) | Observe only | internal/agents |
@@ -105,9 +105,9 @@ To add an event: add it to `Events` in `hooks.go` and any payload fields to `Inp
 
 Hooks in the user file and in the configuration layers (`~/.uah/config.d/*.toml` and `UAH_EXTRA_CONFIG`) run as written: a program that can write a layer can already write the user file. Their `Source` is the layer's name, such as `config.d/host.toml`, which `uah hooks` and `uah doctor` show. Hooks in a trusted project's `.uah/config.toml` run only after `uah hooks trust` records them in `~/.uah/trusted-hooks.json`. Trust is based on content:
 
-1. Each command is recorded by its SHA-256, so a changed command needs trust again.
+1. Each command is recorded by its SHA-256, so a changed command needs trust again. The trust holds only in the workspace where `uah hooks trust` ran: a command that runs no script is keyed by the workspace too.
 2. When the command's first word is a path to a local file (absolute, relative to the workspace, or through a variable such as `"$UAH_PROJECT_DIR"/check.sh`), the entry also records the script's path and SHA-256. An edited script is reported as untrusted ("the script changed") until `uah hooks trust` runs again.
-3. Entries written before uah hashed scripts still cover commands that run no script; a command that runs one needs trust again.
+3. Entries written before uah hashed scripts still cover commands that run no script, in the workspace that the entry records; a command that runs a script needs trust again.
 
 An untrusted hook is skipped and reported once per command. The file is written atomically.
 <!-- /memoria:section -->
@@ -115,5 +115,5 @@ An untrusted hook is skipped and reported once per command. The file is written 
 <!-- memoria:section id="tests" files="hooks_test.go trust_test.go" -->
 ## Tests
 
-`hooks_test.go` pins the exit codes, the stdin payload, PreToolUse decisions, timeouts, validation, and the subagent rules (`TestRun_Subagents`); `internal/app`'s `TestSetup_SubagentHooks` runs every event through a real session with a subagent. `trust_test.go` pins script hashing, commands without a script, old entries, and the "script changed" report. The session's event handling is tested in `internal/session/hooks_test.go`, and PreToolUse and PermissionRequest in `internal/engine/embedded`.
+`hooks_test.go` pins the exit codes, the stdin payload, PreToolUse decisions, timeouts, validation, and the subagent rules (`TestRun_Subagents`); `internal/app`'s `TestSetup_SubagentHooks` runs every event through a real session with a subagent. `trust_test.go` pins script hashing, commands without a script and their workspace scope, old entries, and the "script changed" report. The session's event handling is tested in `internal/session/hooks_test.go`, and PreToolUse and PermissionRequest in `internal/engine/embedded`.
 <!-- /memoria:section -->

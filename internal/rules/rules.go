@@ -79,6 +79,22 @@ func (r Rule) Matches(words []string) bool {
 	return true
 }
 
+// mayMatch reports whether words the rule's pattern does not cover yet
+// could complete a match: the known words agree with the pattern so far.
+func (r Rule) mayMatch(words []string) bool {
+	if len(words) >= len(r.Pattern) {
+		return r.Matches(words)
+	}
+	for i, w := range words {
+		alts := r.Pattern[i]
+		if !slices.Contains(alts, w) && (i != 0 || !filepath.IsAbs(w) || !slices.Contains(alts, filepath.Base(w))) {
+			return false
+		}
+	}
+
+	return true
+}
+
 // String is the rule as a line of a rules file.
 func (r Rule) String() string {
 	parts := make([]string, 0, len(r.Pattern))
@@ -162,6 +178,49 @@ func (p *Policy) Check(commands [][]string) (Rule, bool) {
 	}
 
 	return strictest, strictest.Decision != 0
+}
+
+// Forbids finds a forbidden rule for a command that Split does not reduce
+// to plain words, so that Check never sees it: one with redirects,
+// assignments, variables, globs, subshells, substitutions, or control
+// flow. It checks every simple command inside. found is true when a
+// simple command matches a forbidden rule, or may match one because a
+// word the rule needs is not plain text, such as `rm $FLAGS` for a rule on
+// `rm -rf`; maybe is true in that second case. A command that does not
+// parse may match any forbidden rule.
+func (p *Policy) Forbids(command string) (r Rule, maybe, found bool) {
+	var forbidden []Rule
+	for _, r := range p.Rules() {
+		if r.Decision == Forbidden {
+			forbidden = append(forbidden, r)
+		}
+	}
+	if len(forbidden) == 0 {
+		return Rule{}, false, false
+	}
+	commands, ok := scan(command)
+	if !ok {
+		return forbidden[0], true, true
+	}
+	for _, c := range commands {
+		for _, r := range forbidden {
+			if r.Matches(c.words) {
+				return r, false, true
+			}
+		}
+	}
+	for _, c := range commands {
+		if !c.partial {
+			continue
+		}
+		for _, r := range forbidden {
+			if r.mayMatch(c.words) {
+				return r, true, true
+			}
+		}
+	}
+
+	return Rule{}, false, false
 }
 
 // quote writes a string as a Starlark string literal.

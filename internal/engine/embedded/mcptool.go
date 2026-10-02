@@ -152,7 +152,7 @@ func (g mcpGate) check(ctx context.Context, t mcp.Tool, args string) string {
 	if g.approved != nil && g.approved(t.Name) {
 		t.Approval = mcp.ApprovalApprove
 	}
-	if !t.NeedsApproval() || g.yolo != nil && g.yolo() {
+	if !t.NeedsApproval() || g.yolo != nil && g.yolo() || hookAllowed(ctx) {
 		return ""
 	}
 	why := fmt.Sprintf("the MCP tool %s needs the user's approval (approval_mode %q)", t.Name, t.Approval)

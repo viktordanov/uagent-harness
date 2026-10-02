@@ -53,8 +53,14 @@ type Request struct {
 	// allows needs approval to run.
 	NoSandbox bool
 	// Bypass is yolo mode: what would need approval runs unsandboxed
-	// without asking anyone; a forbid rule still refuses.
+	// without asking anyone; a forbid rule still refuses, also a command
+	// that may match it (Decide).
 	Bypass bool
+	// Approved means a PreToolUse hook allowed the call: what would need
+	// approval runs as if the user approved it, without asking anyone, also
+	// with the policy never or headless. Rules still apply first, so a
+	// forbid rule refuses.
+	Approved bool
 	// Tool and Input name a tool call other than Bash that needs approval,
 	// such as apply_patch, and its input for PermissionRequest hooks and
 	// the auto-reviewer; Command then describes it for the rules and the
@@ -172,7 +178,10 @@ func (a *Approver) Policy() Policy { return a.cfg.Policy }
 // the command needs approval. A nil ask means no one can answer, as in a
 // headless run, and such commands are denied.
 func (a *Approver) Decide(ctx context.Context, req Request, ask Ask) Decision {
-	commands, _ := rules.Split(req.Command)
+	commands, ok := rules.Split(req.Command)
+	if d, denied := a.forbidsUnsplit(req.Command, ok); denied {
+		return d
+	}
 	rule, matched := a.policy().Check(commands)
 	if d, done := byRule(req, rule, matched); done {
 		return d
@@ -180,13 +189,16 @@ func (a *Approver) Decide(ctx context.Context, req Request, ask Ask) Decision {
 	if req.Bypass {
 		return Decision{Run: Unsandboxed}
 	}
-	if reason := a.cannotAsk(ask); reason != "" {
-		return Decision{Run: Deny, Reason: reason}
-	}
 	p := prompt(req, rule, matched, commands)
 	run := Sandboxed
 	if p.Escalation {
 		run = Unsandboxed
+	}
+	if req.Approved {
+		return Decision{Run: run}
+	}
+	if reason := a.cannotAsk(ask); reason != "" {
+		return Decision{Run: Deny, Reason: reason}
 	}
 	var ruled Decision
 	answer, settled := AskUnless(ctx, ask, p, &a.changes, func() bool {
@@ -271,6 +283,29 @@ func (a *Approver) cannotAsk(ask Ask) string {
 	}
 
 	return ""
+}
+
+// forbidsUnsplit denies a command that does not split (split is false)
+// when a forbidden rule matches, or may match, a simple command inside it.
+// Check sees no words for such a command, so without this a redirect or a
+// subshell would hide a forbidden command, and yolo would run it.
+func (a *Approver) forbidsUnsplit(command string, split bool) (Decision, bool) {
+	if split {
+		return Decision{}, false
+	}
+	r, maybe, found := a.policy().Forbids(command)
+	if !found {
+		return Decision{}, false
+	}
+	if !maybe {
+		return Decision{Run: Deny, Reason: forbiddenReason(r)}, true
+	}
+	reason := "not run: the command may run a command a rule forbids, and its words are not all plain text (a variable, glob, or substitution)"
+	if r.Justification != "" {
+		reason += "; the rule says: " + r.Justification
+	}
+
+	return Decision{Run: Deny, Reason: reason + ". Write the command out in plain words."}, true
 }
 
 func forbiddenReason(r rules.Rule) string {
