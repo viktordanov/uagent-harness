@@ -131,6 +131,7 @@ func (b sandboxedBash) decide(ctx context.Context, call llm.ToolCall) submit {
 		Command: args.Command, Cwd: b.cwd, Justification: args.Justification, PrefixRule: args.PrefixRule,
 		Escalated: args.Permissions == permEscalated && sandboxed,
 		NoSandbox: !sandboxed && mode != sandbox.FullAccess, Bypass: b.mode.get().AsksNoOne(),
+		Approved: hookAllowed(ctx),
 	}, b.ask)
 	if d.Run != approval.Deny && d.Reason != "" {
 		_, _ = fmt.Fprintf(b.warn, "embedded: %s\n", d.Reason)

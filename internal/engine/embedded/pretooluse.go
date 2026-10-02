@@ -46,6 +46,22 @@ func (r hookedRegistry) Resolve(name string) (tool.Translator, bool) {
 	return hookedTranslator{Translator: t, name: name, r: r}, true
 }
 
+// hookAllowKey marks the context of a call that a PreToolUse hook allowed
+// ("permissionDecision": "allow"): the call's approval, if it needs one,
+// is given without asking, as in Claude Code. The rules still apply.
+type hookAllowKey struct{}
+
+// hookAllowed reports whether a PreToolUse hook allowed the call decided
+// under ctx.
+func hookAllowed(ctx context.Context) bool {
+	if ctx == nil {
+		return false
+	}
+	allowed, _ := ctx.Value(hookAllowKey{}).(bool)
+
+	return allowed
+}
+
 type hookedTranslator struct {
 	tool.Translator
 
@@ -79,6 +95,9 @@ func (t hookedTranslator) decide(ctx context.Context, call llm.ToolCall) submit 
 	d := t.r.hooks.Run(ctx, in)
 	if d.Block {
 		return refuse(tool.CallStatus{Error: "blocked by a PreToolUse hook: " + d.Reason})
+	}
+	if d.Allow {
+		ctx = context.WithValue(ctx, hookAllowKey{}, true)
 	}
 	switch {
 	case len(d.UpdatedInput) == 0:

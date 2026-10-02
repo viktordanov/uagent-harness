@@ -134,7 +134,8 @@ func TestTrust(t *testing.T) {
 	trust, err := hooks.LoadTrust(path)
 	require.NoError(t, err)
 	project := hooks.Hook{Event: hooks.Stop, Command: "exit 2", Source: hooks.SourceProject}
-	r, err := hooks.New([]hooks.Hook{project}, trust, t.TempDir())
+	ws := t.TempDir()
+	r, err := hooks.New([]hooks.Hook{project}, trust, ws)
 	require.NoError(t, err)
 
 	var got []hooks.Result
@@ -144,11 +145,11 @@ func TestTrust(t *testing.T) {
 	require.Len(t, got, 1)
 	assert.Equal(t, hooks.OutcomeSkipped, got[0].Outcome)
 
-	require.NoError(t, trust.Allow("/ws", "exit 2"))
+	require.NoError(t, trust.Allow(ws, "exit 2"))
 	reloaded, err := hooks.LoadTrust(path)
 	require.NoError(t, err)
-	assert.True(t, reloaded.Trusted("/ws", "exit 2"))
-	assert.False(t, reloaded.Trusted("/ws", "exit 2 "), "a changed command needs approval again")
+	assert.True(t, reloaded.Trusted(ws, "exit 2"))
+	assert.False(t, reloaded.Trusted(ws, "exit 2 "), "a changed command needs approval again")
 	assert.True(t, r.Run(context.Background(), hooks.Input{Event: hooks.Stop}).Block)
 }
 

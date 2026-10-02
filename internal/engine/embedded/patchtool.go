@@ -212,7 +212,7 @@ func (g patchGate) check(ctx context.Context, hunks []patch.Hunk, arguments stri
 	}
 	req := approval.Request{
 		Command: patchCommand(outside), Cwd: g.cwd, Escalated: true, Justification: why,
-		Tool: patch.ToolName, Input: patch.HookInput(arguments),
+		Tool: patch.ToolName, Input: patch.HookInput(arguments), Approved: hookAllowed(ctx),
 	}
 	if g.approver == nil {
 		return "apply_patch rejected: " + why + ", and no one can approve it."

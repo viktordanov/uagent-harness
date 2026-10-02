@@ -69,6 +69,16 @@ func TestDecide(t *testing.T) {
 		{name: "yolo runs an escalation unasked, also headless", req: approval.Request{Command: "curl x", Escalated: true, Bypass: true}, want: approval.Unsandboxed},
 		{name: "yolo runs past the never policy", policy: approval.Never, req: approval.Request{Command: "curl x", Escalated: true, Bypass: true}, want: approval.Unsandboxed},
 		{name: "a forbid rule refuses in yolo too", req: approval.Request{Command: "rm -rf /", Bypass: true}, user: approval.Approve, want: approval.Deny, reason: "use trash instead"},
+		{name: "a forbid rule refuses a command with a redirect in yolo", req: approval.Request{Command: "rm -rf x 2>/dev/null", Bypass: true}, want: approval.Deny, reason: "use trash instead"},
+		{name: "a forbid rule refuses inside a subshell", req: approval.Request{Command: "(cd x && rm -rf y)", Bypass: true}, want: approval.Deny, reason: "use trash instead"},
+		{name: "a hook's approval runs an escalation unasked, also headless", req: approval.Request{Command: "curl x", Escalated: true, Approved: true}, want: approval.Unsandboxed},
+		{name: "a hook's approval runs a prompt rule sandboxed", policy: approval.Never, req: approval.Request{Command: "git push", Approved: true}, want: approval.Sandboxed},
+		{name: "a forbid rule refuses past a hook's approval", req: approval.Request{Command: "rm -rf /", Approved: true}, want: approval.Deny, reason: "use trash instead"},
+		{name: "a forbid rule refuses with an assignment prefix", req: approval.Request{Command: "X=1 rm -rf y"}, user: approval.Approve, want: approval.Deny, reason: "use trash instead"},
+		{name: "a forbid rule refuses inside a substitution", req: approval.Request{Command: "echo $(rm -rf y)", Bypass: true}, want: approval.Deny, reason: "use trash instead"},
+		{name: "a forbid rule refuses a command that may match it", req: approval.Request{Command: "rm $FLAGS y", Bypass: true}, want: approval.Deny, reason: "may run a command a rule forbids"},
+		{name: "a forbid rule refuses an unknown command name", req: approval.Request{Command: "$CMD -rf y", Bypass: true}, want: approval.Deny, reason: "may run a command a rule forbids"},
+		{name: "yolo runs an unsplittable command no forbid rule can match", req: approval.Request{Command: "echo $HOME > out.txt", Escalated: true, Bypass: true}, want: approval.Unsandboxed},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			a := approval.New(approval.Config{Policy: tc.policy, Rules: parsed})

@@ -38,7 +38,7 @@ prefix_rule(
 ## Matching
 
 1. `Split` parses the command with a shell parser into its simple commands: plain words and quotes joined by `&&`, `||`, `;`, and `|`.
-2. A command with redirects, variables, substitutions, subshells, or control flow does not split, and matches no rule. It then runs in the sandbox, like any command without a rule.
+2. A command with redirects, assignments, variables, globs, substitutions, subshells, background jobs, or control flow does not split, and `Check` matches no rule for it. `Policy.Forbids` then checks it against the `forbidden` rules alone. It finds every simple command inside the shell command, and takes each command's words up to the first word that is not plain text. A match is found. A command whose words stop early may match too, when its known words agree with a rule so far. A command that does not parse may match any `forbidden` rule. The approver denies all these cases.
 3. `Policy.Check` decides for all simple commands together: `forbidden` or `prompt` wins when any of them matches it, and `allow` needs every one of them allowed.
 
 `rules_test.go` pins parsing, the example checks, splitting, the strictest-wins check, loading, and appending.

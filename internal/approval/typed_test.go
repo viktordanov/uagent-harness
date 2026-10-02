@@ -26,6 +26,7 @@ func TestDecideTyped(t *testing.T) {
 
 	for command, want := range map[string]approval.Run{
 		"ls && rm -rf build":   approval.Deny,
+		"rm -rf build > log":   approval.Deny,
 		"git commit -m wip":    approval.Unsandboxed,
 		"git push origin main": approval.Sandboxed,
 		"go test ./...":        approval.Sandboxed,

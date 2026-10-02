@@ -189,6 +189,29 @@ func TestEmbedded_MCPApproval(t *testing.T) {
 	}
 }
 
+// TestEmbedded_MCPPreToolUseAllow: a PreToolUse "allow" approves an MCP
+// call whose approval_mode is prompt, headless, without asking.
+func TestEmbedded_MCPPreToolUseAllow(t *testing.T) {
+	e := newEnv(t, fakellm.Reply{Calls: []fakellm.Call{call("mcp__test__echo", `{"text":"allowed"}`)}}, fakellm.Reply{Text: "done"})
+	m := mcpManager(t, e, mcp.ServerConfig{Tools: map[string]mcp.ToolConfig{"echo": {ApprovalMode: mcp.ApprovalPrompt}}})
+	runner, err := hooks.New([]hooks.Hook{{
+		Event: hooks.PreToolUse, Matcher: "mcp__test__echo", Source: hooks.SourceUser,
+		Command: `echo '{"hookSpecificOutput":{"permissionDecision":"allow"}}'`,
+	}}, nil, e.Workspace)
+	require.NoError(t, err)
+	s, err := session.Open(context.Background(), e.withMCP(m, runner), session.Options{Settings: e.settings(), Hooks: runner})
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = s.Close() })
+	ev := &events{t: t, s: s}
+
+	_, err = s.Submit("echo")
+	require.NoError(t, err)
+	assert.Equal(t, core.StatusOK, ev.finished().Status)
+
+	reqs := e.llm.Requests()
+	assert.Contains(t, strings.Join(reqs[len(reqs)-1].ToolOutputs, "\n"), "echo: allowed")
+}
+
 // A huge result reaches the model bounded by the runner, as other tool
 // output is; arguments that are not a JSON object are refused before
 // anyone is asked to approve them.

@@ -112,6 +112,46 @@ func TestCheck(t *testing.T) {
 	}
 }
 
+// TestForbids pins the forbid check for commands that do not split: a
+// forbidden rule matches the simple commands wherever they are, and one
+// whose words are not all known may match.
+func TestForbids(t *testing.T) {
+	parsed, err := rules.Parse("sample.rules", []byte(sample))
+	require.NoError(t, err)
+	p := rules.New(parsed...)
+	for _, tc := range []struct {
+		command string
+		found   bool
+		maybe   bool
+	}{
+		{"git push --force origin 2>/dev/null", true, false},
+		{"(cd x && git push --force)", true, false},
+		{"FOO=1 git push --force", true, false},
+		{"echo $(git push --force)", true, false},
+		{"if true; then git push --force; fi", true, false},
+		{"/usr/bin/git push --force > out", true, false},
+		{"git push $FLAG", true, true},
+		{"git $SUB --force", true, true},
+		{"$GIT push --force", true, true},
+		{"$(which git) status", true, true},
+		{"git push origin > out", false, false},
+		{"git status $X", false, false},
+		{"echo $HOME > out.txt", false, false},
+		{"ls *.go", false, false},
+	} {
+		t.Run(tc.command, func(t *testing.T) {
+			r, maybe, found := p.Forbids(tc.command)
+			assert.Equal(t, tc.found, found)
+			assert.Equal(t, tc.maybe, maybe)
+			if found {
+				assert.Equal(t, rules.Forbidden, r.Decision)
+			}
+		})
+	}
+	_, _, found := rules.New().Forbids("$X")
+	assert.False(t, found, "no forbid rule, nothing to refuse")
+}
+
 func TestLoadAndAppend(t *testing.T) {
 	user, project := t.TempDir(), t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(user, "a.rules"), []byte(`prefix_rule(pattern=["ls"])`), 0o600))

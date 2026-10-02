@@ -254,6 +254,44 @@ func TestEmbedded_PermissionRequestHook(t *testing.T) {
 	}
 }
 
+// TestEmbedded_PreToolUseDecision: a PreToolUse "allow" approves the
+// escalation without asking anyone, also headless and with the policy
+// never, as Claude Code's does; "deny" and "ask" refuse the call; a forbid
+// rule still refuses an allowed call.
+func TestEmbedded_PreToolUseDecision(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		decision string
+		policy   approval.Policy
+		rules    string
+		ran      bool
+		output   string
+	}{
+		{name: "allow", decision: "allow", ran: true},
+		{name: "allow with the policy never", decision: "allow", policy: approval.Never, ran: true},
+		{name: "deny", decision: "deny", output: "blocked by a PreToolUse hook: no"},
+		{name: "ask", decision: "ask", output: "blocked by a PreToolUse hook: no"},
+		{name: "allow under a forbid rule", decision: "allow", rules: `prefix_rule(pattern=["touch"], decision="forbidden", justification="no touching")`, output: "no touching"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			hook := hooks.Hook{
+				Event: hooks.PreToolUse, Matcher: "Bash", Source: hooks.SourceUser,
+				Command: `echo '{"hookSpecificOutput":{"permissionDecision":"` + tc.decision + `","permissionDecisionReason":"no"}}'`,
+			}
+			e := newApprovalEnv(t, approvalOpts{policy: tc.policy, rules: tc.rules, hooks: []hooks.Hook{hook}}, escalate)
+			e.run(t)
+			assert.Equal(t, core.StatusOK, e.ev.finished().Status)
+			assert.Zero(t, e.count(isRequested), "no one is asked")
+			if tc.ran {
+				assert.FileExists(t, filepath.Join(e.outside, "x.txt"))
+			} else {
+				assert.NoFileExists(t, filepath.Join(e.outside, "x.txt"))
+				assert.Contains(t, e.lastOutputs(), tc.output)
+			}
+		})
+	}
+}
+
 // TestEmbedded_AutoReview puts the reviewer before the user: allow runs the
 // escalation, deny refuses it with the reviewer's reason; the user is not
 // asked either way.

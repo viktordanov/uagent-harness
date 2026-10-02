@@ -72,8 +72,8 @@ type Output struct {
 // SpecificOutput carries event-specific fields.
 type SpecificOutput struct {
 	HookEventName Event `json:"hookEventName,omitempty"`
-	// PreToolUse: "allow", "deny", or "ask" ("ask" is treated as deny: uah has
-	// no approval prompt yet).
+	// PreToolUse: "allow" approves the call without asking (the rules still
+	// apply); "deny" and "ask" refuse it.
 	PermissionDecision       string          `json:"permissionDecision,omitempty"`
 	PermissionDecisionReason string          `json:"permissionDecisionReason,omitempty"`
 	UpdatedInput             json.RawMessage `json:"updatedInput,omitempty"`
