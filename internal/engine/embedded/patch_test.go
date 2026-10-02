@@ -19,6 +19,7 @@ import (
 	"github.com/viktordanov/uah/internal/sandbox"
 	"github.com/viktordanov/uah/internal/session"
 	"github.com/viktordanov/uah/testing/fakellm"
+	"github.com/viktordanov/uah/testing/harnesstest"
 )
 
 // patchEnv is a session whose model calls apply_patch, under a sandbox
@@ -46,13 +47,12 @@ func applyPatch(body string) []fakellm.Reply {
 
 func newPatchEnv(t *testing.T, o patchOpts, replies func(ws, outside string) []fakellm.Reply) *patchEnv {
 	t.Helper()
-	outside, err := os.MkdirTemp(userCache(t), "uah-patch-")
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = os.RemoveAll(outside) })
+	outside := harnesstest.OutsideDir(t, "uah-patch-")
 	e := &patchEnv{env: newEnv(t), outside: outside}
 	e.llm = fakellm.New(t, replies(e.Workspace, outside)...)
 	policy := sandbox.Policy{Mode: o.mode, Workspace: e.Workspace}
 	var runner *hooks.Runner
+	var err error
 	if len(o.hooks) > 0 {
 		runner, err = hooks.New(o.hooks, nil, e.Workspace)
 		require.NoError(t, err)

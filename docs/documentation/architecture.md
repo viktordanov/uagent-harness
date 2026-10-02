@@ -100,7 +100,7 @@ Known exceptions, to remove when the code there next changes:
 - Files are the source of truth for state: the runtime's session files, uagent's run records, and uah's sidecars; the SQLite index can be rebuilt from them (see `docs/design/state.md`). A run that fails to save its session file ends failed.
 - Wrap errors with `fmt.Errorf("failed to <action>: %w", err)`, and log with `slog` instances to stderr or the TUI log file, never the global logger.
 - Test through real code paths: `fakellm`, uagent's fake runner, the real `uah-core-runner` built from go.mod, and real sandboxes, instead of mocks. A fake behind a seam interface, such as `internal/session`'s fake `engine.Engine`, is allowed.
-- No test reads the user's `~/.uah` or takes their settings from the environment. A package whose tests can reach uah's home (`internal/home`, directly or through `internal/config` and `internal/app`) runs them through `harnesstest.IsolatedMain`, which sets `UAH_HOME` to a temporary directory and clears `home.Variables`; `cmd/uah`'s `TestMain` and the perf harness do the same.
+- No test reads the user's `~/.uah` or `~/.codex`, or takes their settings from the environment. A package whose tests can reach uah's home (`internal/home`, directly or through `internal/config` and `internal/app`) runs them through `harnesstest.IsolatedMain`, which sets `UAH_HOME`, `HOME`, and `CODEX_HOME` to a temporary directory, clears `home.Variables`, `XDG_CONFIG_HOME`, and `XDG_STATE_HOME`, and keeps Go's own folders (`GOPATH`, `GOMODCACHE`, `GOCACHE`, `GOENV`) where they were; `cmd/uah`'s `TestMain` calls the same `harnesstest.Isolate`, and the perf harness does the same.
 
 ## Exceptions
 

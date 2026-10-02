@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/viktordanov/uah/testing/fakellm"
+	"github.com/viktordanov/uah/testing/harnesstest"
 )
 
 func TestExecReadsThePromptFromStdin(t *testing.T) {
@@ -100,12 +101,7 @@ func TestExecJSONIsStream(t *testing.T) {
 // escalate, and a headless run then refuses, runs under --yolo without
 // anyone approving it; --yolo takes no --sandbox or --ask.
 func TestExecYolo(t *testing.T) {
-	cache, err := os.UserCacheDir()
-	require.NoError(t, err)
-	require.NoError(t, os.MkdirAll(cache, 0o700))
-	outside, err := os.MkdirTemp(cache, "uah-yolo-test-")
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = os.RemoveAll(outside) })
+	outside := harnesstest.OutsideDir(t, "uah-yolo-test-")
 	target := filepath.Join(outside, "x.txt")
 	touch := []fakellm.Reply{{Escalated: []string{"touch " + target}}, {Text: "done"}}
 

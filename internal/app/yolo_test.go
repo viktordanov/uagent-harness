@@ -3,7 +3,6 @@ package app_test
 import (
 	"context"
 	"io"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -15,6 +14,7 @@ import (
 	"github.com/viktordanov/uah/internal/approval"
 	"github.com/viktordanov/uah/internal/session"
 	"github.com/viktordanov/uah/testing/fakellm"
+	"github.com/viktordanov/uah/testing/harnesstest"
 )
 
 // TestSetup_YoloSubagent: a session started with --yolo opens in yolo mode,
@@ -23,12 +23,7 @@ import (
 func TestSetup_YoloSubagent(t *testing.T) {
 	_, in := setupEnv(t)
 	t.Setenv("OPENAI_API_KEY", "test-key")
-	cache, err := os.UserCacheDir()
-	require.NoError(t, err)
-	require.NoError(t, os.MkdirAll(cache, 0o700))
-	outside, err := os.MkdirTemp(cache, "uah-yolo-agent-")
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = os.RemoveAll(outside) })
+	outside := harnesstest.OutsideDir(t, "uah-yolo-agent-")
 	target := filepath.Join(outside, "child.txt")
 	llm := fakellm.New(t,
 		fakellm.Reply{Calls: []fakellm.Call{{Name: "spawn_agent", Args: `{"message":"CHILD-Y touch the file"}`}}},

@@ -123,15 +123,83 @@ func (o overlay) read(path string) (string, error) {
 }
 
 // Write applies the changes to the files in order, creating missing
-// parent directories. It stops at the first failure.
+// parent directories. It is all or nothing: at the first failure it puts
+// back every file the changes touch as it was before (a directory it
+// created stays), and returns that failure.
 func Write(changes []Change) error {
+	before, err := snapshot(changes)
+	if err != nil {
+		return err
+	}
 	for _, c := range changes {
 		if err := write(c); err != nil {
-			return err
+			return errors.Join(err, restore(before))
 		}
 	}
 
 	return nil
+}
+
+// original is a file as it was before Write: its content and mode, or
+// absent when there was no file.
+type original struct {
+	path   string
+	absent bool
+	text   string
+	perm   fs.FileMode
+}
+
+// snapshot reads every file the changes touch, each once.
+func snapshot(changes []Change) ([]original, error) {
+	var out []original
+	seen := map[string]bool{}
+	for _, c := range changes {
+		for _, path := range []string{c.Abs, c.MoveAbs} {
+			if path == "" || seen[path] {
+				continue
+			}
+			seen[path] = true
+			info, err := os.Stat(path)
+			if err != nil {
+				// No file to keep; writing there reports why.
+				out = append(out, original{path: path, absent: true})
+
+				continue
+			}
+			if !info.Mode().IsRegular() {
+				continue // a directory: writing there fails and changes nothing
+			}
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return nil, fmt.Errorf("Failed to read file %s: %w", path, err) //nolint:staticcheck // Codex's style
+			}
+			out = append(out, original{path: path, text: string(data), perm: info.Mode().Perm()})
+		}
+	}
+
+	return out, nil
+}
+
+// restore puts the files back as snapshot found them.
+func restore(before []original) error {
+	var errs []error
+	for _, o := range before {
+		if o.absent {
+			if _, err := os.Lstat(o.path); err != nil {
+				continue // never written
+			}
+			if err := os.Remove(o.path); err != nil {
+				errs = append(errs, fmt.Errorf("failed to remove %s while undoing the patch: %w", o.path, err))
+			}
+
+			continue
+		}
+		if err := writeFile(o.path, o.text, o.perm); err != nil {
+			errs = append(errs, fmt.Errorf("failed to restore %s while undoing the patch: %w", o.path, err))
+		}
+	}
+
+	return errors.Join(errs...)
 }
 
 func write(c Change) error {
