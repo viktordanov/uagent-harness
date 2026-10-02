@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -30,6 +31,7 @@ type Fixture struct {
 	// Home is the fake home, or "".
 	Home string
 	svc  *exec.Cmd
+	port int
 }
 
 // StartFixture makes the task's fake home under scratch and starts its
@@ -59,6 +61,7 @@ func (t Task) StartFixture(ctx context.Context, scratch string, base []string) (
 	if err != nil {
 		return nil, err
 	}
+	fx.port = port
 	fx.URL = "http://127.0.0.1:" + strconv.Itoa(port)
 	fx.Env = append(fx.Env, "SERVICE_URL="+fx.URL)
 	// The service runs outside the run's context, so it outlives nothing
@@ -69,11 +72,15 @@ func (t Task) StartFixture(ctx context.Context, scratch string, base []string) (
 	svc.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	log, err := os.Create(filepath.Join(scratch, "service.log"))
 	if err != nil {
+		fx.Stop()
+
 		return nil, err
 	}
 	defer log.Close()
 	svc.Stdout, svc.Stderr = log, log
 	if err := svc.Start(); err != nil {
+		fx.Stop()
+
 		return nil, fmt.Errorf("service: %w", err)
 	}
 	fx.svc = svc
@@ -92,7 +99,14 @@ const serviceStart = 3 * time.Minute
 
 // Stop ends the service and its process group.
 func (fx *Fixture) Stop() {
-	if fx == nil || fx.svc == nil || fx.svc.Process == nil {
+	if fx == nil {
+		return
+	}
+	if fx.port != 0 {
+		releasePort(fx.port)
+		fx.port = 0
+	}
+	if fx.svc == nil || fx.svc.Process == nil {
 		return
 	}
 	_ = syscall.Kill(-fx.svc.Process.Pid, syscall.SIGKILL)
@@ -106,19 +120,48 @@ func (fx *Fixture) Expand(s string) string {
 	return strings.ReplaceAll(s, "{{URL}}", fx.URL)
 }
 
+// reserved holds the ports handed to services that have not stopped. A
+// service may take minutes to listen (`go run` compiles first), and in that
+// time the system may offer its port again; another task's service would
+// then answer this task's requests.
+var reserved = struct {
+	sync.Mutex
+
+	ports map[int]bool
+}{ports: map[int]bool{}}
+
+// freePort finds a port no other fixture holds and reserves it until
+// releasePort.
 func freePort(ctx context.Context) (int, error) {
 	var lc net.ListenConfig
-	l, err := lc.Listen(ctx, "tcp", "127.0.0.1:0")
-	if err != nil {
-		return 0, err
-	}
-	defer l.Close()
-	addr, ok := l.Addr().(*net.TCPAddr)
-	if !ok {
-		return 0, errors.New("not a TCP address")
+	for range 100 {
+		l, err := lc.Listen(ctx, "tcp", "127.0.0.1:0")
+		if err != nil {
+			return 0, err
+		}
+		addr, ok := l.Addr().(*net.TCPAddr)
+		_ = l.Close()
+		if !ok {
+			return 0, errors.New("not a TCP address")
+		}
+		reserved.Lock()
+		taken := reserved.ports[addr.Port]
+		if !taken {
+			reserved.ports[addr.Port] = true
+		}
+		reserved.Unlock()
+		if !taken {
+			return addr.Port, nil
+		}
 	}
 
-	return addr.Port, nil
+	return 0, errors.New("no free port")
+}
+
+func releasePort(port int) {
+	reserved.Lock()
+	delete(reserved.ports, port)
+	reserved.Unlock()
 }
 
 func waitPort(ctx context.Context, port int, limit time.Duration) error {
