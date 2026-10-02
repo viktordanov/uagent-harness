@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uah/internal/home"
 	"github.com/viktordanov/uah/testing/fakellm"
 	"github.com/viktordanov/uah/testing/harnesstest"
 )
@@ -27,16 +26,12 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 	uahBin = filepath.Join(dir, "uah")
-	// Every uah the tests start has its own home, so none reads, or copies
-	// into, the real ~/.uah, and none takes the user's settings from the
-	// environment; the tests that need another home set one.
-	if err := os.Setenv("UAH_HOME", filepath.Join(dir, "home")); err != nil {
+	// Every uah the tests start has its own home, HOME, and CODEX_HOME, so
+	// none reads, or copies into, the real ~/.uah or reads ~/.codex, and none
+	// takes the user's settings from the environment; the tests that need
+	// another home set one.
+	if err := harnesstest.Isolate(dir); err != nil {
 		panic(err)
-	}
-	for _, name := range home.Variables {
-		if err := os.Unsetenv(name); err != nil {
-			panic(err)
-		}
 	}
 	if msg, err := exec.Command("go", "build", "-o", uahBin, ".").CombinedOutput(); err != nil {
 		fmt.Fprintf(os.Stderr, "build uah: %v\n%s", err, msg)

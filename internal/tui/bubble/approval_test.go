@@ -2,13 +2,11 @@ package bubble_test
 
 import (
 	"context"
-	"os"
 	"path/filepath"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"github.com/viktordanov/uah/internal/engine/embedded"
 	"github.com/viktordanov/uah/internal/sandbox"
@@ -28,11 +26,7 @@ func approvalDeps(t *testing.T) (bubble.Deps, string) {
 	if _, err := policy.Wrap([]string{"/bin/sh"}); err != nil {
 		t.Skipf("no sandbox here: %v", err)
 	}
-	cache, err := os.UserCacheDir()
-	require.NoError(t, err)
-	outside, err := os.MkdirTemp(cache, "uah-tui-approval-")
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = os.RemoveAll(outside) })
+	outside := harnesstest.OutsideDir(t, "uah-tui-approval-")
 	target := filepath.Join(outside, "x.txt")
 	llm := fakellm.New(t, fakellm.Reply{Escalated: []string{"touch " + target}}, fakellm.Reply{Text: "done"})
 	getenv := func(key string) string {

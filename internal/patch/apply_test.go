@@ -170,3 +170,31 @@ func TestApply_LaterHunksSeeEarlierOnes(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "b\n", read(t, filepath.Join(dir, "new.txt")))
 }
+
+// TestWrite_UndoesOnFailure: a write that fails partway leaves every file
+// as it was: updated and deleted files come back, added ones go.
+func TestWrite_UndoesOnFailure(t *testing.T) {
+	dir := t.TempDir()
+	write(t, filepath.Join(dir, "a.txt"), "one\n")
+	write(t, filepath.Join(dir, "gone.txt"), "keep me\n")
+	write(t, filepath.Join(dir, "old.txt"), "moved\n")
+	write(t, filepath.Join(dir, "blocker"), "a file, not a directory\n")
+	require.NoError(t, os.Chmod(filepath.Join(dir, "gone.txt"), 0o600))
+	_, err := apply(t, dir, "*** Update File: a.txt\n@@\n-one\n+uno\n"+
+		"*** Add File: new.txt\n+new\n"+
+		"*** Delete File: gone.txt\n"+
+		"*** Update File: old.txt\n*** Move to: moved.txt\n@@\n-moved\n+moved!\n"+
+		"*** Add File: blocker/x.txt\n+x")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "Failed to create parent directories for "+filepath.Join(dir, "blocker", "x.txt"))
+
+	assert.Equal(t, "one\n", read(t, filepath.Join(dir, "a.txt")))
+	assert.Equal(t, "keep me\n", read(t, filepath.Join(dir, "gone.txt")))
+	info, err := os.Stat(filepath.Join(dir, "gone.txt"))
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o600), info.Mode().Perm(), "a deleted file comes back with its mode")
+	assert.Equal(t, "moved\n", read(t, filepath.Join(dir, "old.txt")))
+	assert.NoFileExists(t, filepath.Join(dir, "moved.txt"))
+	assert.NoFileExists(t, filepath.Join(dir, "new.txt"))
+	assert.Equal(t, "a file, not a directory\n", read(t, filepath.Join(dir, "blocker")))
+}

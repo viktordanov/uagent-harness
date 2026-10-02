@@ -16,6 +16,7 @@ import (
 	"github.com/viktordanov/uah/internal/sandbox"
 	"github.com/viktordanov/uah/internal/session"
 	"github.com/viktordanov/uah/testing/fakellm"
+	"github.com/viktordanov/uah/testing/harnesstest"
 )
 
 // TestEmbedded_Sandbox runs real commands in the workspace-write sandbox:
@@ -27,9 +28,7 @@ func TestEmbedded_Sandbox(t *testing.T) {
 	if _, err := policy.Wrap([]string{"/bin/sh"}); err != nil {
 		t.Skipf("no sandbox here: %v", err)
 	}
-	outside, err := os.MkdirTemp(userCache(t), "uah-sandbox-")
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = os.RemoveAll(outside) })
+	outside := harnesstest.OutsideDir(t, "uah-sandbox-")
 	require.NoError(t, os.MkdirAll(filepath.Join(ws, ".git"), 0o700))
 
 	e := newEnv(t,
@@ -62,12 +61,4 @@ func TestEmbedded_Sandbox(t *testing.T) {
 	outputs := strings.Join(reqs[len(reqs)-1].ToolOutputs, "\n---\n")
 	assert.Equal(t, 2, strings.Count(outputs, "sandbox likely blocked this"), outputs)
 	assert.Contains(t, outputs, "no user can approve it in this headless run")
-}
-
-func userCache(t *testing.T) string {
-	t.Helper()
-	dir, err := os.UserCacheDir()
-	require.NoError(t, err)
-
-	return dir
 }

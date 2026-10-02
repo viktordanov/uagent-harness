@@ -22,6 +22,7 @@ import (
 	"github.com/viktordanov/uah/internal/sandbox"
 	"github.com/viktordanov/uah/internal/session"
 	"github.com/viktordanov/uah/testing/fakellm"
+	"github.com/viktordanov/uah/testing/harnesstest"
 )
 
 // approvalEnv is a workspace-write session whose commands go through an
@@ -54,9 +55,7 @@ func newApprovalEnv(t *testing.T, o approvalOpts, replies func(outside string) [
 	if _, err := policy.Wrap([]string{"/bin/sh"}); err != nil {
 		t.Skipf("no sandbox here: %v", err)
 	}
-	outside, err := os.MkdirTemp(userCache(t), "uah-approval-")
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = os.RemoveAll(outside) })
+	outside := harnesstest.OutsideDir(t, "uah-approval-")
 	e := &approvalEnv{env: newEnv(t, replies(outside)...), outside: outside, rulesFile: filepath.Join(t.TempDir(), "rules", rules.DefaultFile)}
 	e.Workspace = ws
 	parsed, err := rules.Parse("test.rules", []byte(o.rules))
