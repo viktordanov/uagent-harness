@@ -220,6 +220,8 @@ The wait columns are medians per run. The approval waits are agentbench's `appro
 
 ## Adaptive effort in chats
 
+The cost model, its charts, and the projections are in [Adaptive effort costs](adaptive-effort-costs.md).
+
 The provider keeps a prompt cache per effort. A controlled test sent the same 33k prefix twice: at the same effort, 99.5% of it was cached; at another effort, 0%. With adaptive effort (R0), each later user turn of a chat therefore misses twice:
 
 1. Its first request (the opener) goes at E. E's cache holds only what the previous opener sent, so the opener re-bills all of the previous turn's tool work.
