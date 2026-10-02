@@ -253,7 +253,7 @@ A job that had already started before the run stopped fails with "interrupted" w
 | A provider | `embedded/providers.go`, mirroring the runner's table, and its client in `embedded/clients.go`, built as the runner's client is, over `remoteHTTPClient`; set `Priority` if it accepts `service_tier = "priority"`, `WebSearch` if it runs the hosted search, and `RemoteCompaction` if it answers Codex's compaction trigger; add it to `TestClients_MatchTheRunner` |
 | A session-level query | An optional interface in `engine.go`, implemented by the embedded engine and probed by `internal/session` |
 
-The runner stays unchanged: uah reproduces its wiring instead of patching it, and the equivalence test below keeps the two in step.
+A change the runtime itself needs is made in [uah-core](#uah-core) and tagged there; uah wires uah-core's packages as `uah-core-runner` does and never patches them, and the equivalence test below keeps the two in step.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="adaptive" files="embedded/adaptive.go embedded/primed.go embedded/adaptive_internal_test.go" -->
