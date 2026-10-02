@@ -48,8 +48,9 @@ func (c ServerConfig) Target() string {
 	return strings.Join(append([]string{c.Command}, c.Args...), " ")
 }
 
-// Status starts the servers if needed and reports each one. While some are
-// still starting, the ready ones' tools are named as if the others fail.
+// Status starts the servers if needed and reports each one, or none once
+// the manager closed. While some are still starting, the ready ones' tools
+// are named as if the others fail.
 func (m *Manager) Status() []ServerStatus {
 	m.Start()
 	m.mu.Lock()
@@ -60,12 +61,15 @@ func (m *Manager) Status() []ServerStatus {
 
 // Started starts the servers if needed, waits until each has started or
 // failed, and reports them. It reports nothing when ctx ends or the manager
-// closes first, so a late caller never starts closed servers again.
+// closes first; a closed manager never starts its servers again.
 func (m *Manager) Started(ctx context.Context) []ServerStatus {
 	m.Start() //nolint:contextcheck // servers outlive the caller's context
 	m.mu.Lock()
-	done := m.done
+	done, closed := m.done, m.closed
 	m.mu.Unlock()
+	if closed {
+		return nil
+	}
 	select {
 	case <-done:
 	case <-ctx.Done():
@@ -73,7 +77,7 @@ func (m *Manager) Started(ctx context.Context) []ServerStatus {
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if m.done != done {
+	if m.closed {
 		return nil
 	}
 

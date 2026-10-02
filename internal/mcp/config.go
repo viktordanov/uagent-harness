@@ -107,7 +107,7 @@ func (c ServerConfig) Validate() error {
 	if err := c.validateTransport(); err != nil {
 		return err
 	}
-	if err := c.validateAuth(); err != nil {
+	if err := c.validateOAuth(); err != nil {
 		return err
 	}
 	for _, v := range []*float64{c.StartupTimeoutSec, c.ToolTimeoutSec} {
@@ -127,9 +127,18 @@ func (c ServerConfig) Validate() error {
 			return fmt.Errorf("unknown approval mode %q (want one of %v)", m, approvalModes)
 		}
 	}
+	// Checked last, so a server failing only this one can still be
+	// configured: the manager fails just that server.
+	if c.Auth != "" && c.Auth != "oauth" {
+		return fmt.Errorf("auth %q is %w (want oauth)", c.Auth, errUnsupportedAuth)
+	}
 
 	return nil
 }
+
+// errUnsupportedAuth is an auth value uah cannot use. Codex's other values
+// (chatgpt, ema_auth) need Codex's account.
+var errUnsupportedAuth = errors.New("not supported")
 
 // validateTransport checks that the keys match the transport.
 func (c ServerConfig) validateTransport() error {
@@ -156,12 +165,8 @@ func (c ServerConfig) validateTransport() error {
 	return nil
 }
 
-// validateAuth checks the OAuth keys. Codex's other auth values (chatgpt,
-// ema_auth) need Codex's account and are not supported.
-func (c ServerConfig) validateAuth() error {
-	if c.Auth != "" && c.Auth != "oauth" {
-		return fmt.Errorf("auth %q is not supported (want oauth)", c.Auth)
-	}
+// validateOAuth checks the [mcp_servers.<name>.oauth] keys.
+func (c ServerConfig) validateOAuth() error {
 	if c.OAuth == nil {
 		return nil
 	}

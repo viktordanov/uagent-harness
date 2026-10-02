@@ -29,6 +29,9 @@ const (
 
 var discard = slog.New(slog.DiscardHandler)
 
+// ErrClosed is a manager used after Close.
+var ErrClosed = errors.New("the MCP servers were closed")
+
 // Options configure a Manager.
 type Options struct {
 	// Workspace is a stdio server's directory unless it sets cwd.
@@ -86,9 +89,13 @@ func (t Tool) NeedsApproval() bool {
 // Close. It is safe for concurrent use.
 type Manager struct {
 	configs map[string]ServerConfig
-	opts    Options
+	// unsupported holds the servers whose auth uah does not support: they
+	// fail with the reason instead of starting.
+	unsupported map[string]error
+	opts        Options
 
 	mu      sync.Mutex
+	closed  bool            // Close was called: nothing starts again
 	ctx     context.Context // the servers' lifetime, until Close
 	cancel  context.CancelFunc
 	servers map[string]*server // nil until started
@@ -97,10 +104,16 @@ type Manager struct {
 }
 
 // NewManager returns a manager for the servers, keyed by name. It starts
-// nothing until Start, Tools, or Status.
+// nothing until Start, Tools, or Status. An invalid server fails it, except
+// that a server with an auth uah does not support only fails to start.
 func NewManager(servers map[string]ServerConfig, opts Options) (*Manager, error) {
+	unsupported := map[string]error{}
 	for _, name := range slices.Sorted(maps.Keys(servers)) {
-		if err := servers[name].Validate(); err != nil {
+		err := servers[name].Validate()
+		switch {
+		case errors.Is(err, errUnsupportedAuth):
+			unsupported[name] = err
+		case err != nil:
 			return nil, fmt.Errorf("mcp_servers.%s: %w", name, err)
 		}
 	}
@@ -114,14 +127,15 @@ func NewManager(servers map[string]ServerConfig, opts Options) (*Manager, error)
 		opts.HTTPClient = http.DefaultClient
 	}
 
-	return &Manager{configs: maps.Clone(servers), opts: opts}, nil
+	return &Manager{configs: maps.Clone(servers), unsupported: unsupported, opts: opts}, nil
 }
 
-// Start begins starting the enabled servers, once.
+// Start begins starting the enabled servers, once, unless the manager
+// closed.
 func (m *Manager) Start() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if m.servers != nil {
+	if m.servers != nil || m.closed {
 		return
 	}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -134,13 +148,18 @@ func (m *Manager) Start() {
 		if s.state == StateDisabled {
 			continue
 		}
+		if err := m.unsupported[name]; err != nil {
+			s.state, s.err = StateFailed, err
+
+			continue
+		}
 		wg.Go(func() { m.connect(ctx, s) })
 	}
 	done, servers := m.done, m.servers
 	go func() {
 		wg.Wait()
 		m.mu.Lock()
-		if m.done == done { // not closed meanwhile
+		if !m.closed {
 			m.tools = qualify(servers)
 		}
 		m.mu.Unlock()
@@ -154,8 +173,11 @@ func (m *Manager) Start() {
 func (m *Manager) Tools(ctx context.Context) ([]Tool, error) {
 	m.Start() //nolint:contextcheck // servers outlive the caller's context
 	m.mu.Lock()
-	done := m.done
+	done, closed := m.done, m.closed
 	m.mu.Unlock()
+	if closed {
+		return nil, ErrClosed
+	}
 	select {
 	case <-done:
 	case <-ctx.Done():
@@ -163,6 +185,9 @@ func (m *Manager) Tools(ctx context.Context) ([]Tool, error) {
 	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if m.closed {
+		return nil, ErrClosed
+	}
 	for _, name := range slices.Sorted(maps.Keys(m.servers)) {
 		s := m.servers[name]
 		if s.cfg.Required && (s.state == StateFailed || s.state == StateNeedsLogin) {
@@ -173,15 +198,23 @@ func (m *Manager) Tools(ctx context.Context) ([]Tool, error) {
 	return slices.Clone(m.tools), nil
 }
 
-// Close stops the servers. A later Start starts them again.
+// Close stops the servers for good: the closed state is set under the
+// same lock Start checks, so nothing starts a server afterwards. Closing
+// again does nothing.
 func (m *Manager) Close() error {
 	m.mu.Lock()
+	if m.closed {
+		m.mu.Unlock()
+
+		return nil
+	}
 	servers, cancel := m.servers, m.cancel
+	m.closed = true
 	m.servers, m.tools, m.cancel, m.done = nil, nil, nil, nil
-	m.mu.Unlock()
 	if cancel != nil {
 		cancel()
 	}
+	m.mu.Unlock()
 	var errs []error
 	for _, s := range servers {
 		m.mu.Lock()
