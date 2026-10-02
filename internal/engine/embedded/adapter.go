@@ -1,7 +1,6 @@
 package embedded
 
 import (
-	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -74,7 +73,7 @@ func (s *switcher) Respond(ctx context.Context, req llm.Request, opts llm.Reques
 	v, model := s.variant, s.model
 	reason := ""
 	if s.lean != nil && !compacting {
-		c := s.lean.route(req.Input, req.Model.ReasoningEffort, v.ultra, cmp.Or(model, req.Model.ID))
+		c := s.lean.route(req.Input, req.Model.ReasoningEffort, v.ultra)
 		req.Model.ReasoningEffort, v.ultra, reason = c.effort, c.ultra, c.reason
 	}
 	client, err := s.clientLocked(v)

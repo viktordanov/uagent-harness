@@ -12,9 +12,10 @@ This record collects every measurement made with the agent benchmark ([`tools/ag
 6. [Experiment 3: wake policies](#experiment-3-wake-policies)
 7. [Experiment 4: cutting turns](#experiment-4-cutting-turns-quick-round)
 8. [The full suite, 10 repeats](#the-full-suite-10-repeats)
-9. [Decisions](#decisions)
-10. [Still running and next](#still-running-and-next)
-11. [For release notes](#for-release-notes)
+9. [Lean mode rules](#lean-mode-rules)
+10. [Decisions](#decisions)
+11. [Still running and next](#still-running-and-next)
+12. [For release notes](#for-release-notes)
 
 ## How runs are measured
 
@@ -144,6 +145,31 @@ Lower effort costs about 3 points of prompt-cache hits (the effort level appears
 - The corrected preamble changed nothing measurable.
 - Pass rates: the extra failures are concentrated in two tasks, each failing the same way in every harness. The branch review misses the swallowed `Record` error (Codex 8/10, uah 5–6/10), and the findings report keeps a red herring (Codex 10/10, uah 7–9/10). Both are review-quality misses, not regressions from the switches; the branch review is uah's weak spot against Codex.
 
+## Lean mode rules
+
+Which follow-up requests should go lower? Four rules, each with the primed first turn, at 1 step (E−1) and 2 steps (E−2), against Lean off: 35 tasks × 5 repeats, gpt-6.1-sol at high effort in auto mode, uah only ([raw](../../tools/agentbench/history/2026-10-02-lean-rules.jsonl)). Totals are sums of per-task medians; the cache columns are over all runs' requests after the first, split by whether the request's effort was the one before it (agentbench's `same_effort_*` and `changed_effort_*`).
+
+- **r0:** lower for any request whose input since the model's last output is only tool results.
+- **r1:** lower only when every one of those results is a plain confirmation: an applied patch, a passing test or build, or a short command that is not a read, listing, search, or dump.
+- **r2:** r1, and one level above E when the same command failed in each of the last two turns.
+- **r3:** r2, and never lower in a reading-heavy session (a review, an investigation, a report, or no edit in 4 turns).
+
+| | Passed | Wall | Model time | Requests | Output tokens | Cost | Cached input | Same effort cached | Changed effort cached (requests) |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Lean off | 172/175 | 5168 s | 4934 s | 242 | 113.7k | $2.53 | 86.0% | 85.5% | — |
+| **1 step, r0** | 172/175 | **3928 s (−24%)** | 3703 s | 224 | **80.4k (−29%)** | **$2.01 (−21%)** | 85.4% | 87.8% | 79.1% (295) |
+| 1 step, r1 | 172/175 | 4775 s (−8%) | 4546 s | 238 | 102.4k | $2.70 (+6%) | 79.1% | 81.0% | 74.1% (424) |
+| 1 step, r2 | 171/175 | 4937 s (−4%) | 4710 s | 241 | 107.1k | $2.85 (+12%) | 78.6% | 81.2% | 73.3% (434) |
+| 1 step, r3 | 173/175 | 4837 s (−6%) | 4606 s | 235 | 104.4k | $2.67 (+5%) | 80.1% | 83.4% | 71.5% (347) |
+| 2 steps, r1 | 172/175 | 4692 s (−9%) | 4457 s | 241 | 100.0k | $2.64 (+4%) | 80.0% | 83.1% | 73.5% (415) |
+| 2 steps, r2 | 171/175 | 4720 s (−9%) | 4491 s | 237 | 99.7k | $2.70 (+6%) | 78.8% | 82.2% | 71.3% (422) |
+| 2 steps, r3 | 171/175 | 4959 s (−4%) | 4724 s | 245 | 106.4k | $2.69 (+6%) | 80.6% | 83.4% | 71.5% (334) |
+
+- r0 wins clearly: −24% wall, −29% output tokens, and −21% cost against Lean off, at the same pass rate.
+- **The cache finding.** A request whose effort differs from the one before it hits the prompt cache less: about 71–74% of its input cached under r1 to r3, and 79% under r0, against about 85–88% at the same effort. The finer rules switch the effort between requests more often (415 to 434 changes, against 295 under r0), so they lose more of the cache than the lower effort saves, and cost more than Lean off. r0's runs keep long stretches of follow-ups at one effort, and change only at a user message.
+- No rule won back the branch review's or the findings report's misses; the pass counts are within one run of each other.
+- 2 steps with r0 is being measured against 1 step.
+
 ## Decisions
 
 | Date | Decision | Ledger |
@@ -154,11 +180,12 @@ Lower effort costs about 3 points of prompt-cache hits (the effort level appears
 | 2026-10-02 | The wake valve stays at 5 minutes (A); a 60 s valve (B) measured the same and releasing quick results early (C) was worse | [91](../ledger.md) |
 | 2026-10-02 | Automatic checks after an edit are dropped: the model still ran the tests after each edit, so the check added work | |
 | 2026-10-02 | The corrected preamble is dropped, from uah and the runner fork (v0.5.2): it changed nothing measurable | |
-| 2026-10-02 | Lower effort for follow-up turns and the primed first turn become Lean mode, a setting off by default (`lean = "off" | "1-step" | "2-steps"`, `/config`): routine turns go one or two effort levels below the user's, never below low, and a repeated failure at most one above. Lower effort narrows to follow-ups after plain confirmations (r1) until a test of the rules (r0 to r3) picks one | [92](../ledger.md) |
+| 2026-10-02 | Lower effort for follow-up turns and the primed first turn become Lean mode, a setting off by default (`lean = "off" | "1-step" | "2-steps"`, `/config`): a request after tool results only goes one or two effort levels below the user's, never below low | [92](../ledger.md) |
+| 2026-10-02 | Lean mode keeps r0, every follow-up after tool results lower; r1 to r3 and their classifier are removed: changing the effort between requests more often cost more cache than the lower effort saved ([Lean mode rules](#lean-mode-rules)) | [92](../ledger.md) |
 
 ## Still running and next
 
-- Lean mode's effort rules ([engine README](../../internal/engine/README.md#lean-mode)), each with the primed first turn, at 1 step and 2 steps, against uah's default: r0 (every follow-up after tool results one level lower, as in the full suite), r1 (only after plain confirmations: an applied patch, a passing test or build, a short command that is not a read), r2 (r1, one level higher after the same command failed twice), and r3 (r2, never lower in a reading-heavy session: a review, an investigation, a report, or no edit in 4 turns). The question is whether r1 to r3 keep the speed and win back the branch review's and the findings report's passes. Each run records each request's effort and why, and the cache hit rate for requests whose effort changed against those whose did not.
+- Lean mode at 2 steps against 1 step, both with r0.
 
 ## For release notes
 

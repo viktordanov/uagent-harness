@@ -54,8 +54,8 @@ type Config struct {
 	// default where the provider has it) or disabled, as Codex's key.
 	WebSearch string `toml:"web_search"`
 	// Lean is Lean mode: off (the default), 1-step, or 2-steps. On, the
-	// model thinks one or two effort levels less on routine turns (requests
-	// that only follow tool results that confirm), and a new session starts
+	// model thinks one or two effort levels less on follow-up turns
+	// (requests that only follow tool results), and a new session starts
 	// with the workspace's context.
 	Lean string `toml:"lean"`
 

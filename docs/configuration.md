@@ -83,7 +83,7 @@ Every key may be set in the user file, in a layer, and in a trusted project file
 | `max_disk` | size | `5G` | `--max-disk` | override | Stop a run when tool output exceeds this size (`500M`, `5G`, bytes without a suffix); `0` disables it |
 | `fast` | bool | false | `--fast` | OR | Priority processing (`service_tier = "priority"`); needs the openai or openai-codex provider, and any other provider refuses it before the session starts |
 | `web_search` | string | `live` | none | override | The provider's hosted web search tool, as Codex's key: `live` offers it on openai and openai-codex (other providers never get it), `disabled` does not. Codex's `cached` and `indexed` are errors: the runner sends the tool without Codex's access options, which the API treats as live search. The search runs on the provider's servers, so the sandbox's network rule does not apply; it is offered in every permission mode, as in Codex ([web search](design/web-search.md)) |
-| `lean` | string | `off` | none | override | Lean mode: `off`, `1-step`, or `2-steps`. On, the model thinks less on routine turns, and a new session starts with the workspace's context. A routine request, one that only follows tool results that confirm (a patch that applied, a test or build that passed, another command that succeeded with a short output and is not a read, a listing, or a search), goes one (`1-step`) or two (`2-steps`) effort levels below `effort`, never below low: at `high`, 2 steps is `low`. The first request, a request with a user message, and one after a read, a long output, a failure, or any other tool's result go at `effort`. A new session's first message also carries the files AGENTS.md includes with `@`, the git branch and status, and the tracked files by top directory, so the model need not look them up. `/config` cycles it for the sessions opened next ([engine README](../internal/engine/README.md#lean-mode)) |
+| `lean` | string | `off` | none | override | Lean mode: `off`, `1-step`, or `2-steps`. On, the model thinks less on follow-up turns, and a new session starts with the workspace's context. A request that only follows tool results goes one (`1-step`) or two (`2-steps`) effort levels below `effort`, never below low: at `high`, 2 steps is `low`. The first request and a request with a user message go at `effort`. A new session's first message also carries the files AGENTS.md includes with `@`, the git branch and status, and the tracked files by top directory, so the model need not look them up. `/config` cycles it for the sessions opened next ([engine README](../internal/engine/README.md#lean-mode)) |
 
 ### Sandbox and approvals
 
@@ -437,7 +437,7 @@ max_disk = "5G"                    # tool output per run; "0" disables
 request_max_attempts = 10          # per model request; a lost connection is retried with backoff
 fast = false                       # priority processing
 web_search = "live"                # or disabled: the provider's hosted web search
-lean = "off"                       # or 1-step, 2-steps: Lean mode, fewer effort levels on routine turns
+lean = "off"                       # or 1-step, 2-steps: Lean mode, lower effort on follow-up turns
 sandbox_mode = "workspace-write"   # read-only, workspace-write; no sandbox is --yolo
 # permission_mode = "workspace"    # read-only, workspace, auto; wins over sandbox_mode
 approval_policy = "on-request"     # or never

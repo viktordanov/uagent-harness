@@ -15,21 +15,9 @@ import (
 	"github.com/viktordanov/uah/testing/fakellm"
 )
 
-// withExperiments serves UAH_EXPERIMENTS as names, and getenv the rest.
-func withExperiments(getenv func(string) string, names string) func(string) string {
-	return func(key string) string {
-		if key == "UAH_EXPERIMENTS" {
-			return names
-		}
-
-		return getenv(key)
-	}
-}
-
-// leanEngine is the env's engine in Lean mode with steps (0: off), with
-// the experiments on.
-func (e *env) leanEngine(steps int, names string) *embedded.Engine {
-	return embedded.New(embedded.Config{StateDir: e.StateDir, Provider: "openai", LeanSteps: steps, Getenv: withExperiments(e.getenv, names)})
+// leanEngine is the env's engine in Lean mode with steps (0: off).
+func (e *env) leanEngine(steps int) *embedded.Engine {
+	return embedded.New(embedded.Config{StateDir: e.StateDir, Provider: "openai", LeanSteps: steps, Getenv: e.getenv})
 }
 
 // TestPrimedFirstTurn: in Lean mode, a new session's first request carries the workspace
@@ -54,7 +42,7 @@ func TestPrimedFirstTurn(t *testing.T) {
 		}
 		settings := e.settings()
 		settings.SystemPrompt = "Base.\n\n# Project instructions\n\n## " + agents + "\n\n@INC.md\n"
-		s, err := session.Open(t.Context(), e.leanEngine(map[bool]int{true: 1}[on], ""), session.Options{Settings: settings})
+		s, err := session.Open(t.Context(), e.leanEngine(map[bool]int{true: 1}[on]), session.Options{Settings: settings})
 		require.NoError(t, err)
 		t.Cleanup(func() { _ = s.Close() })
 		ev := &events{t: t, s: s}
@@ -90,27 +78,25 @@ func TestPrimedFirstTurn(t *testing.T) {
 }
 
 // TestLean_Effort: in Lean mode, the first request and one with a user
-// message go at the session's effort, and one after a command that only
-// confirms goes one level lower; a read keeps the effort under the default
-// rule, r1, and not under r0. Without Lean mode, every request keeps it.
+// message go at the session's effort, and one after tool results only, a
+// read as much as a command that confirms, goes one or two levels lower.
+// Without Lean mode, every request keeps it.
 func TestLean_Effort(t *testing.T) {
 	tests := []struct {
-		name  string
-		steps int
-		rule  string
-		reply fakellm.Reply
-		want  []string
+		name    string
+		steps   int
+		command string
+		want    []string
 	}{
-		{"off", 0, "", fakellm.Reply{Commands: []string{"echo one"}}, []string{"high", "high", "high"}},
-		{"a confirmation", 1, "", fakellm.Reply{Commands: []string{"echo one"}}, []string{"high", "medium", "high"}},
-		{"a confirmation, 2 steps", 2, "", fakellm.Reply{Commands: []string{"echo one"}}, []string{"high", "low", "high"}},
-		{"a read under r1", 1, "", fakellm.Reply{Commands: []string{"cat go.mod"}}, []string{"high", "high", "high"}},
-		{"a read under r0", 1, "lean-rule=r0", fakellm.Reply{Commands: []string{"cat go.mod"}}, []string{"high", "medium", "high"}},
+		{"off", 0, "echo one", []string{"high", "high", "high"}},
+		{"1 step", 1, "echo one", []string{"high", "medium", "high"}},
+		{"1 step after a read", 1, "cat go.mod", []string{"high", "medium", "high"}},
+		{"2 steps", 2, "echo one", []string{"high", "low", "high"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := newEnv(t, tt.reply, fakellm.Reply{Text: "done"}, fakellm.Reply{Text: "again"})
-			s, ev := e.open(t, e.leanEngine(tt.steps, tt.rule), "")
+			e := newEnv(t, fakellm.Reply{Commands: []string{tt.command}}, fakellm.Reply{Text: "done"}, fakellm.Reply{Text: "again"})
+			s, ev := e.open(t, e.leanEngine(tt.steps), "")
 			_, err := s.Submit("run it")
 			require.NoError(t, err)
 			ev.finished()
@@ -124,15 +110,17 @@ func TestLean_Effort(t *testing.T) {
 				efforts = append(efforts, r.Effort)
 			}
 			assert.Equal(t, tt.want, efforts)
-			if tt.name == "a confirmation" {
-				logs, _ := filepath.Glob(filepath.Join(e.StateDir, "runs", "*", "stderr.log"))
-				var all string
-				for _, l := range logs {
-					all += readFile(t, l)
-				}
-				assert.Contains(t, all, `"effort":"medium","effort_reason":"r1, 1-step: confirmations: short output"`, "the attempt's diagnostics say why")
-				assert.Contains(t, all, `"effort":"high","effort_reason":"r1, 1-step: first request"`)
+			if tt.steps != 2 {
+				return
 			}
+			logs, _ := filepath.Glob(filepath.Join(e.StateDir, "runs", "*", "stderr.log"))
+			var all string
+			for _, l := range logs {
+				all += readFile(t, l)
+			}
+			assert.Contains(t, all, `"effort":"low","effort_reason":"2-steps: tool results only"`, "the attempt's diagnostics say why")
+			assert.Contains(t, all, `"effort":"high","effort_reason":"2-steps: first request"`)
+			assert.Contains(t, all, `"effort":"high","effort_reason":"2-steps: user message"`)
 		})
 	}
 }

@@ -190,7 +190,7 @@ In the `/model` picker, ↑/↓ (or ctrl+p/ctrl+n) choose, enter on a model list
 | Fast mode | `fast` | Toggles | This session too, as `/fast`, where the engine has it |
 | Permission mode | `permission_mode` | Cycles read only, workspace, auto, as shift+tab does without `--yolo`; yolo is never saved | This session too, as shift+tab |
 | Web search | `web_search` | Cycles live and disabled | New sessions |
-| Lean mode | `lean` | Cycles off, 1 step, and 2 steps; while selected, the panel says "Lean mode: think one or two effort levels less on routine turns, and start with the workspace's context" ([engine README](../engine/README.md#lean-mode)) | New sessions |
+| Lean mode | `lean` | Cycles off, 1 step, and 2 steps; while selected, the panel says "Lean mode: think one or two effort levels less on follow-up turns, and start with the workspace's context" ([engine README](../engine/README.md#lean-mode)) | New sessions |
 | Details view | `[tui] details` | Toggles | At once |
 | Mouse | `[tui] mouse` | Toggles | At once |
 

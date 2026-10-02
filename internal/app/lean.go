@@ -7,7 +7,7 @@ import (
 )
 
 // Lean mode's values (lean): how many effort levels below the user's a
-// routine turn goes; any other than off also primes a new session with
+// follow-up turn goes; any other than off also primes a new session with
 // the workspace's context.
 const (
 	LeanOff      = "off"
@@ -27,7 +27,7 @@ func pickLean(cfg config.Config) (string, error) {
 	return "", usage(fmt.Errorf("invalid lean %q (want off, 1-step, or 2-steps)", cfg.Lean))
 }
 
-// LeanSteps is the number of effort levels a routine turn goes down: 0
+// LeanSteps is the number of effort levels a follow-up turn goes down: 0
 // when Lean mode is off.
 func LeanSteps(lean string) int {
 	switch lean {

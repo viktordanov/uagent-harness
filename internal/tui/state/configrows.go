@@ -78,7 +78,7 @@ var configKeys = []struct {
 	{keyFast, "Fast mode", rowToggle, ""},
 	{keyMode, "Permission mode", rowChoice, ""},
 	{keyWebSearch, "Web search", rowChoice, ""},
-	{keyLean, "Lean mode", rowChoice, "Lean mode: think one or two effort levels less on routine turns, and start with the workspace's context"},
+	{keyLean, "Lean mode", rowChoice, "Lean mode: think one or two effort levels less on follow-up turns, and start with the workspace's context"},
 	{keyDetails, "Details view", rowToggle, ""},
 	{keyMouse, "Mouse", rowToggle, ""},
 }
@@ -97,7 +97,7 @@ var webSearchModes = []string{"live", "disabled"}
 const shownOff = "off"
 
 // leanModes are lean's values: off, then one and two effort levels lower
-// on routine turns.
+// on follow-up turns.
 var leanModes = []string{shownOff, "1-step", "2-steps"}
 
 // sessionModel is the compaction model's choice for "the session's model".

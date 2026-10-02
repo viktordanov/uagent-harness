@@ -266,43 +266,24 @@ A job that had already started before the run stopped fails with "interrupted" w
 The runner stays unchanged: uah reproduces its wiring instead of patching it, and the equivalence test below keeps the two in step.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="lean" files="embedded/lean.go embedded/leanclass.go embedded/primed.go embedded/lean_internal_test.go" -->
+<!-- memoria:section id="lean" files="embedded/lean.go embedded/primed.go embedded/lean_internal_test.go" -->
 ## Lean mode
 
-Lean mode (`lean = "1-step"` or `"2-steps"`, `Config.LeanSteps` 1 or 2; `"off"`, 0, by default; `/config` cycles it for the sessions opened next) makes the model think less on routine turns and start with the workspace's context. Every effort change is relative to the effort the user picked, E: a routine request goes the mode's steps lower, E−1 or E−2, never below low, and a repeated failure at most one step higher.
+Lean mode (`lean = "1-step"` or `"2-steps"`, `Config.LeanSteps` 1 or 2; `"off"`, 0, by default; `/config` cycles it for the sessions opened next) makes the model think less on follow-up turns and start with the workspace's context.
 
-**Effort routing.** The switcher (`adapter.go`) asks the run's `leanRouter` (`lean.go`) for each turn request's effort; a remote compaction and the direct calls (summaries, the auto-reviewer) keep theirs. The router reads the request's input as turns, each a model output and what came back after it, and classifies every tool result by the call it answers (`leanclass.go`):
+**Effort routing.** The switcher (`adapter.go`) asks the run's `leanRouter` (`lean.go`) for each turn request's effort; a remote compaction and the direct calls (summaries, the auto-reviewer) keep theirs. A request whose input since the model's last output is only tool results goes the mode's steps below the user's effort E, never below low. The first request, a request with a user message (a steer, an injected notification, a heartbeat), and one without tool results go at E. The levels are low, medium, high, xhigh, max, and ultra above max: one step down from high is medium, two are low; from ultra (then on the plain client) one is max and two are xhigh.
 
-| Result | Kind |
-| --- | --- |
-| `apply_patch` that applied; a Bash test, build, type check, or formatter that exited 0 (`go test`, `go build`, `npm run build`, `pytest`, `cargo test`, `make`, …, after `cmdparse.Strip` removes `rtk` and `sh -c`); another Bash command that exited 0 with at most 1.5 KB and 30 lines of output | confirmation |
-| A read, a listing, or a search (`cmdparse`'s classification), a dump (`cat`, `git diff`, `git show`, `git log`, `jq`, …), a longer output, a call still running, MCP, the agent tools, `SkillUse`, `ViewImage`, an image, a call the input no longer has | content |
-| A nonzero exit (`Exit code: N`), a command that did not run (`Error: …`), a refusal or a decline (`not run: …`), a patch that failed | failure |
+A benchmark of finer rules, which lowered only the follow-ups after plain confirmations, raised the effort after a repeated failure, or kept reading-heavy sessions at E, found them slower and dearer than this one: a request whose effort differs from the one before it hits the prompt cache less, and they changed the effort more often ([Lean mode rules](../../docs/design/agent-tuning.md#lean-mode-rules)).
 
-The first request and every request with a user message go at E. Otherwise the rule decides which requests are routine; `UAH_EXPERIMENTS=lean-rule=r0` to `r3` picks it for a benchmark, and r1 is the default until one wins. A routine request goes the steps lower:
-
-| Rule | Effort |
-| --- | --- |
-| r0 | Lower whenever the input since the model's last output is only tool results |
-| r1 | Lower only when every one of those results is a confirmation; else E |
-| r2 | r1, and E+1 when the same command (Bash's without its wrappers and with single spaces, else the tool and its input) failed in each of the last two turns, at most the model's highest effort (`ReasoningLevels` in its catalog entry) and never above max or ultra |
-| r3 | r2, and never below E in a reading-heavy session: its first message (not the workspace context) says review, investigate, explain, summarize, report, audit, analyse, or why, or no patch applied in 4 model turns; an edit later flips it back |
-
-The levels are low, medium, high, xhigh, max, and ultra above max: one step down from high is medium, two are low; from ultra (then on the plain client) one is max and two are xhigh; nothing goes below low. A failure keeps E under every rule, since it is not a confirmation. Each attempt's `model_attempt` line in the run's `stderr.log` carries `effort` and, in Lean mode, `effort_reason`: the rule, the steps, and the signal, such as `r1, 2-steps: confirmations: patch applied, test or build passed`, which the agent benchmark reads.
+Each attempt's `model_attempt` line in the run's `stderr.log` carries `effort` and, in Lean mode, `effort_reason`: the steps and why, such as `1-step: tool results only` or `2-steps: user message`. The agent benchmark reads them.
 
 **Primed first turn.** A new session of the main agent (not a subagent, a fork, or a resumed session) gets one more user message before the user's: a `<workspace_context>` block of at most about 4 KB that `primed.go` gathers before the first request. It holds the files that instruction files include with an `@` line (such as `@RTK.md`; the system prompt keeps each instruction file under a `## <path>` header, which resolves a relative include), the git branch and `git status --short` (at most 20 lines), and `git ls-files` by top directory with file counts (at most 40 entries). Each git command has 2 seconds. The system prompt does not change, so the prompt cache holds.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="experiments" files="embedded/experiments.go embedded/wake_internal_test.go embedded/experiments_internal_test.go" -->
+<!-- memoria:section id="experiments" files="embedded/experiments.go embedded/wake_internal_test.go" -->
 ## Experiments
 
-An experiment is a switch for an A/B benchmark (`tools/agentbench -uah-env`), not a setting: it has no config key and may go away. The environment variable `UAH_EXPERIMENTS` names the experiments to turn on, separated by commas; the engine reads it once, through `Config.Getenv`, in `embedded/experiments.go`, and a subagent's run gets its parent's engine and so the same switches. An unknown name is ignored.
-
-| Name | What it does |
-| --- | --- |
-| `lean-rule=r0`, `r1`, `r2`, `r3` | The rule [Lean mode](#lean-mode) routes effort by; without Lean mode it does nothing |
-
-`wake_internal_test.go` checks the wake policy.
+An experiment is a switch for an A/B benchmark (`tools/agentbench -uah-env`), not a setting: it has no config key and may go away. The environment variable `UAH_EXPERIMENTS` names the experiments to turn on, separated by commas; the engine reads it once, through `Config.Getenv`, in `embedded/experiments.go`, and a subagent's run gets its parent's engine and so the same switches. An unknown name is ignored. No experiment runs now. `wake_internal_test.go` checks the wake policy.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="tests" files="embedded/embedded_test.go embedded/patch_test.go embedded/patch_tool_test.go embedded/approval_test.go embedded/compact_test.go embedded/compact_settings_test.go embedded/context_test.go embedded/mcp_test.go embedded/mcpjobs_internal_test.go embedded/sandbox_test.go embedded/mode_test.go embedded/images_test.go embedded/clients_test.go embedded/reconnect_test.go embedded/transport_internal_test.go embedded/stream_test.go embedded/stream_internal_test.go embedded/rewind_test.go embedded/rewind_internal_test.go embedded/fork_internal_test.go embedded/store_internal_test.go embedded/sessionlog_test.go embedded/sessionlog_internal_test.go embedded/codexlogin_test.go codexauth/codexauth_test.go codexauth/login_test.go codexauth/file_internal_test.go embedded/websearch_test.go embedded/searchlog_internal_test.go embedded/compact_remote_test.go embedded/remotecompact_internal_test.go embedded/compact_probe_test.go embedded/remote_probe_test.go embedded/experiments_test.go" -->
@@ -316,7 +297,7 @@ The tests run against `testing/fakellm`, a scripted Responses API, and need no t
 | `TestEmbedded_SteersALiveRun`, `TestEmbedded_ChangesSettingsLive`, `TestEmbedded_InterruptThenContinue` | Live input, live settings, and interrupts |
 | `TestEmbedded_ResumesAProcessSession` | A session the real runner started resumes on the embedded engine with its history. `go test -short` skips it |
 | `patch_test.go`, `patch_tool_test.go` | `apply_patch` end to end: the custom tool's definition, patches inside and outside the workspace, read only, protected paths, declines, verification, hooks and their `updatedInput`, the approver's input, the live mode; a session recorded with the function tool rewinds, resumes, and goes on with a custom call, its old call sent back as recorded |
-| `experiments_test.go`, `lean_internal_test.go`, `experiments_internal_test.go` | Lean mode on and off: the primed context before the first message only, with the include, git's state, and the files, and the same system prompt; each request's effort and its reason in the attempt's diagnostics, and a rule picked through `UAH_EXPERIMENTS`; the classifier on each kind of result; each rule, the escalation's cap, and reading-heavy sessions; one and two steps down, floored at low, with ultra |
+| `experiments_test.go`, `lean_internal_test.go` | Lean mode off, at 1 step, and at 2 steps: the primed context before the first message only, with the include, git's state, and the files, and the same system prompt; a follow-up after tool results one or two levels lower, a read as much as a confirmation, and each request's effort and its reason in the attempt's diagnostics; which inputs keep the user's effort; the steps down, floored at low, with ultra |
 | `approval_test.go`, `sandbox_test.go` | Escalation, rules, "don't ask again", headless denial, PermissionRequest hooks, auto-review (its start always paired with its end), and the sandbox |
 | `mode_test.go` | Permission modes: a live switch to read only makes the next write fail in the sandbox and the next request describe it; Auto mode lets the reviewer allow or decline without asking, also once its breaker opens |
 | `compact_test.go`, `compact_settings_test.go`, `clear_test.go`, `context_test.go` | Manual and automatic compaction, the configured summary model, prompt, focus, token limit, and kept-message cap, the stop when compacting cannot get under the limit, `/clear` in the same session, resume after both, the PreCompact hook, and `/context`; each compaction's stats in the event and the record, the state ledger after the summary, elision before an automatic summary (no summary call when the stubs free enough, the same stubs on later requests and after a resume), and the last calls kept verbatim |

@@ -113,7 +113,7 @@ func TestConfig_LeanMode(t *testing.T) {
 		return state.ConfigRow{}
 	}
 	assert.Equal(t, "off", row(s).Value)
-	assert.Equal(t, "Lean mode: think one or two effort levels less on routine turns, and start with the workspace's context", row(s).Help)
+	assert.Equal(t, "Lean mode: think one or two effort levels less on follow-up turns, and start with the workspace's context", row(s).Help)
 	s, effects := apply(s, state.ConfigChange{Delta: 1})
 	assert.Equal(t, []state.Effect{state.EffSaveConfig{Key: "lean", Value: "1-step"}}, effects, "no session change")
 	assert.Equal(t, "1 step", row(s).Value)
