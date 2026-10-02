@@ -20,8 +20,8 @@ working, 2 steps, a user message:
  gpt-6-sol high · workspace mode · /workspace/proj                         enter after tool · alt+enter now · tab later
  uah · 3f2a1b2c · openai-codex/gpt-6-sol · high · workspace mode · /workspace/proj                       ● running 0:00
 working, 2 steps, a follow-up, narrow:
- gpt-6-sol high · workspace mode · /workspace/proj enter after tool · alt+enter now · tab later
- uah · 3f2a1b2c · openai-codex/gpt-6-sol · high · workspace mode · /workspace/p… ● running 0:00
+ gpt-6-sol high→low · workspace mode · /workspace… enter after tool · alt+enter now · tab later
+ uah · 3f2a1b2c · openai-codex/gpt-6-sol · high→low · workspace mode · /workspa… ● running 0:00
 idle, 2 steps, narrow:
  gpt-6-sol… ctrl+t details · / commands
  uah · 3f2a1b2c · openai-codex/gp… idle

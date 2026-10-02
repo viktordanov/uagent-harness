@@ -141,8 +141,11 @@ func transcript(s state.State, c *Cache, w, height int, head []string) []string 
 
 func (st *Styles) headerLine(s state.State, w int) string {
 	full, short, _ := effortLabel(s)
+	head := func(effort string) string {
+		return fmt.Sprintf(" uah · %s · %s/%s · %s", session.ShortID(s.SessionID), s.Settings.Provider, s.Settings.Model, effort)
+	}
 	header := func(effort string) string {
-		return fmt.Sprintf(" uah · %s · %s/%s · %s · %s · %s", session.ShortID(s.SessionID), s.Settings.Provider, s.Settings.Model, effort, cmp.Or(modeText(s), "sandbox none"), home(s.Home, s.Settings.Workspace))
+		return head(effort) + fmt.Sprintf(" · %s · %s", cmp.Or(modeText(s), "sandbox none"), home(s.Home, s.Settings.Workspace))
 	}
 	left := header(full)
 	var right string
@@ -159,7 +162,9 @@ func (st *Styles) headerLine(s state.State, w int) string {
 		right = "idle "
 	}
 	gap := w - ansi.StringWidth(left) - ansi.StringWidth(right)
-	if gap < 1 { // the live →low part goes first
+	// The end is cut first; the live →low part goes only when the cut
+	// would reach the effort.
+	if gap < 1 && ansi.StringWidth(head(full)) >= w-ansi.StringWidth(right) {
 		left = header(short)
 		gap = w - ansi.StringWidth(left) - ansi.StringWidth(right)
 	}
@@ -323,10 +328,11 @@ func (st *Styles) compactFooter(s state.State, w int) string {
 		hint = u + " · " + hint // the plan's tightest window
 	}
 	// The hint wins over the left side, which is cut when the line is
-	// full: the live →low part first, then the end.
+	// full: from the end, the live →low part only when the model and the
+	// effort alone do not fit, since it shows only while a request is out.
 	room := w - ansi.StringWidth(hint)
 	if room > 0 {
-		if ansi.StringWidth(left) > room-1 {
+		if ansi.StringWidth(model+full) > room-1 {
 			full = short
 			left = line(full)
 		}

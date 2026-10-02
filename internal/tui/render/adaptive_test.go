@@ -82,3 +82,19 @@ func TestFooterShowsAdaptiveEffort(t *testing.T) {
 	assert.NotContains(t, lastLine(adaptiveAt("off"), 100), accent("high"), "off is dim as before")
 	assert.NotContains(t, lastLine(adaptiveAt("2-steps"), 40), "\uFFFD", "a cut effort is not split")
 }
+
+// TestFooterKeepsLoweredEffort: while a lowered follow-up is out, a footer
+// too full for the whole line cuts its end, the directory, before the
+// effort's →medium part, which is the only place the lowering shows.
+func TestFooterKeepsLoweredEffort(t *testing.T) {
+	s := sending(adaptiveAt("1-step"), "medium")
+	s.Settings.Workspace = "/home/colleague/src/github.com/team/service"
+	for _, w := range []int{80, 100, 120} {
+		line := ansi.Strip(lastLine(s, w))
+		assert.Contains(t, line, "high→medium", "width %d: %q", w, line)
+		s.Details = true
+		out, _ := render.Screen(s, render.NewCache(render.Amber), render.Frame{Width: w, Height: 24, Composer: "λ ", ComposerHeight: 1})
+		assert.Contains(t, ansi.Strip(strings.SplitN(out, "\n", 2)[0]), "high→medium", "the header at width %d", w)
+		s.Details = false
+	}
+}
