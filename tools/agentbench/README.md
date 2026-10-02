@@ -83,7 +83,7 @@ go run ./tools/agentbench -harness uah -repeat 3                                
 go run ./tools/agentbench -harness uah -repeat 3 -uah-env UAH_EXPERIMENTS=NAME -variant NAME
 ```
 
-A prompt variant, for example, is `-uah-config 'model_instructions_file = "/tmp/uah-agentbench/prompts/runner.md"' -variant prompt-runner`. The report then has `uah+NAME` as a harness of its own in the per-harness tables, and a table of the variant against the control per task.
+A prompt variant, for example, is `-uah-config 'model_instructions_file = "/tmp/uah-agentbench/prompts/runner.md"' -variant prompt-runner`. Adaptive effort at 2 steps is `-uah-config 'adaptive_effort = "2-steps"' -variant adaptive2` (or `-uah-env UAH_ADAPTIVE_EFFORT=2-steps`). The report then has `uah+NAME` as a harness of its own in the per-harness tables, and a table of the variant against the control per task.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="tasks" files="bench/task.go bench/fixture.go bench/dry.go bench/harness.go bench/run.go" -->
@@ -208,7 +208,7 @@ The mining of the owner's sessions (P7) found the model is about 89% of the wall
 | Field | Meaning |
 | --- | --- |
 | `output_reasoning`, `output_patch`, `output_tool_args`, `output_text` | the output tokens split by what they wrote: reasoning as reported, the rest in proportion to the bytes of patches (`apply_patch`, `Edit`, `Write`), of other tools' arguments, and of text. Codex reports tokens per turn, and its patch events hold paths, not hunks, so its split is rough |
-| `efforts` | requests per effort. A uah request's effort is its own, from the `effort` of its `model_attempt` line in the run's `stderr.log`, which in [Lean mode](../../internal/engine/README.md#lean-mode) also gives `effort_reason`, kept in the timeline's request; without that line, the session's effort |
+| `efforts` | requests per effort. A uah request's effort is its own, from the `effort` of its `model_attempt` line in the run's `stderr.log`, which with [adaptive effort](../../internal/engine/README.md#adaptive-effort) also gives `effort_reason`, kept in the timeline's request; without that line, the session's effort |
 | `ritual_requests`, `ritual_ms` | the main agent's first requests that only load a skill (`SkillUse`) or read an instructions file (`AGENTS.md`, `RTK.md`, `CLAUDE.md`), and the time until the next request |
 | `patch_then_verify` | requests that only patched, followed by a request that runs a command: a build or a test that could have gone with the patch |
 | `escalations`, `escalations_refused`, `review_ms`, `review_median_ms` | calls that asked to run outside the sandbox (uah's `sandbox_permissions: require_escalated`), how many failed, and the time from issuing them to starting them, which is the approval's latency. Codex's events show neither, so its counts are 0 |

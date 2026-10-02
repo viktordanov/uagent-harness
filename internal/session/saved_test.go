@@ -27,13 +27,13 @@ func TestSession_SavesSettingsInTheSidecar(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, found)
 	require.NotNil(t, sc.Settings, "saved when the session opens")
-	assert.Equal(t, session.Saved{Provider: settings().Provider, Model: settings().Model, Effort: settings().Effort}, *sc.Settings)
+	assert.Equal(t, session.Saved{Provider: settings().Provider, Model: settings().Model, Effort: settings().Effort, AdaptiveEffort: "off"}, *sc.Settings)
 
 	_, err = s.Submit("go")
 	require.NoError(t, err)
 	run := <-eng.started
 	next := settings().WithMode(approval.ModeAuto)
-	next.Effort, next.ServiceTier = "low", "priority"
+	next.Effort, next.ServiceTier, next.AdaptiveEffort = "low", "priority", session.AdaptiveTwoSteps
 	applied, err := s.SetSettings(next)
 	require.NoError(t, err)
 	assert.Equal(t, session.AppliedNextRun, applied, "the fake run cannot change its effort live")
@@ -42,13 +42,14 @@ func TestSession_SavesSettingsInTheSidecar(t *testing.T) {
 	sc, _, err = session.ReadSidecar(dir, s.ID())
 	require.NoError(t, err)
 	assert.Equal(t, session.SourceTUI, sc.Source)
-	assert.Equal(t, session.Saved{Provider: next.Provider, Model: next.Model, Effort: "low", Fast: true, Mode: approval.ModeAuto}, *sc.Settings)
+	assert.Equal(t, session.Saved{Provider: next.Provider, Model: next.Model, Effort: "low", Fast: true, AdaptiveEffort: "2-steps", Mode: approval.ModeAuto}, *sc.Settings)
 
 	var info session.Info
 	info.ApplySidecar(sc)
 	assert.True(t, info.Saved)
 	assert.Equal(t, "low", info.Effort)
 	assert.Equal(t, approval.ModeAuto, info.Mode)
+	assert.Equal(t, session.AdaptiveTwoSteps, info.AdaptiveEffort)
 	require.NotNil(t, info.Fast)
 	assert.True(t, *info.Fast)
 }
@@ -76,4 +77,5 @@ func TestApplySidecar_WithoutSettingsKeepsTheRun(t *testing.T) {
 	assert.Equal(t, "from-run", info.Model)
 	assert.False(t, info.Saved)
 	assert.Nil(t, info.Fast)
+	assert.Empty(t, info.AdaptiveEffort, "the configuration's applies")
 }

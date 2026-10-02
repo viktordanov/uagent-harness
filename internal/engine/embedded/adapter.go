@@ -41,8 +41,9 @@ type switcher struct {
 	// searches, when set, records the session's web searches and puts
 	// them back into later turn requests (searchlog.go).
 	searches *searchLog
-	// lean, in Lean mode, picks each turn request's effort (lean.go).
-	lean *leanRouter
+	// adaptive picks each turn request's effort when adaptive effort is
+	// on (adaptive.go); setAdaptive changes it.
+	adaptive adaptiveRouter
 	// max is the attempt limit; diag gets the diagnostics (modelcall.go).
 	max  int
 	diag io.Writer
@@ -72,8 +73,8 @@ func (s *switcher) Respond(ctx context.Context, req llm.Request, opts llm.Reques
 	s.mu.Lock()
 	v, model := s.variant, s.model
 	reason := ""
-	if s.lean != nil && !compacting {
-		c := s.lean.route(req.Input, req.Model.ReasoningEffort, v.ultra)
+	if s.adaptive.steps > 0 && !compacting {
+		c := s.adaptive.route(req.Input, req.Model.ReasoningEffort, v.ultra)
 		req.Model.ReasoningEffort, v.ultra, reason = c.effort, c.ultra, c.reason
 	}
 	client, err := s.clientLocked(v)
@@ -117,6 +118,13 @@ func (s *switcher) setModel(model string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.model = model
+}
+
+// setAdaptive sets adaptive effort's steps for the next request (0: off).
+func (s *switcher) setAdaptive(steps int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.adaptive.steps = steps
 }
 
 // setPriority switches priority processing on or off.

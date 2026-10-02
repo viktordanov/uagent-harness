@@ -147,6 +147,8 @@ Lower effort costs about 3 points of prompt-cache hits (the effort level appears
 
 ## Lean mode rules
 
+Adaptive effort was called Lean mode during these experiments; the setting is now `adaptive_effort`, a session setting like the effort (`--adaptive-effort`, `/adaptive`, `/config`).
+
 Which follow-up requests should go lower? Four rules, each with the primed first turn, at 1 step (E−1) and 2 steps (E−2), against Lean off: 35 tasks × 5 repeats, gpt-6.1-sol at high effort in auto mode, uah only ([raw](../../tools/agentbench/history/2026-10-02-lean-rules.jsonl)). Totals are sums of per-task medians; the cache columns are over all runs' requests after the first, split by whether the request's effort was the one before it (agentbench's `same_effort_*` and `changed_effort_*`).
 
 - **r0:** lower for any request whose input since the model's last output is only tool results.
@@ -210,13 +212,15 @@ The escalations fell mostly on the test-fixing, race, slow-suite, bug-hunt, bran
 | 2026-10-02 | Lower effort for follow-up turns and the primed first turn become Lean mode, a setting off by default (`lean = "off" | "1-step" | "2-steps"`, `/config`): a request after tool results only goes one or two effort levels below the user's, never below low | [92](../ledger.md) |
 | 2026-10-02 | Lean mode keeps r0, every follow-up after tool results lower; r1 to r3 and their classifier are removed: changing the effort between requests more often cost more cache than the lower effort saved ([Lean mode rules](#lean-mode-rules)) | [92](../ledger.md) |
 | 2026-10-02 | Escalation on failure is dropped: a step back up per failing follow-up in a row brought no quality gain and cost cache ([Escalation on failure](#escalation-on-failure)) | [92](../ledger.md) |
+| 2026-10-02 | Lean mode is renamed adaptive effort and becomes a session setting like the effort: the session keeps it in its sidecar, `--adaptive-effort` wins, `adaptive_effort` is the default for new sessions, and `/adaptive` or `/config` changes the current session from its next model request | [92](../ledger.md) |
 
 ## Still running and next
 
-- Lean mode at 2 steps against 1 step, both with r0.
+- Nothing is running. Next: a decision model for effort routing against adaptive effort ([ledger](../ledger.md)).
 
 ## For release notes
 
 - uah's `apply_patch` is now a freeform tool, as in Codex: on edit-heavy tasks −24% wall time and −26% output tokens, and uah is now faster than Codex on those tasks (1710 s against 1785 s over 10 tasks).
 - The model is no longer woken just to hear that a command is still running: on long builds and test suites, −25% model requests and −19% model time and cost, with a 5-minute safety valve for commands that never end.
-- With both, uah matches Codex on wall time on slow tasks and is cheaper (estimated $0.34 against $0.44 on the 6 slow tasks).
+- With both, uah matches Codex on wall time on slow tasks and is cheaper (estimated $0.34 against $0.44 on the 6 slow tasks). Over the full suite (35 tasks × 10 repeats), uah's default is level with Codex on wall time and 14% cheaper.
+- New setting, adaptive effort (`/adaptive`, `/config`, `--adaptive-effort`, `adaptive_effort`; off by default): the model thinks one or two effort levels less on turns that only follow tool results, and a new session starts with the workspace's context. A session keeps it, as it keeps its effort. On the full suite (35 × 10) at 1 step, uah is 22% faster and 31% cheaper than Codex, and faster on 33 of 35 tasks. On 12 tasks × 3, against off, 1 step cut wall time by 27% and cost by 16%, and 2 steps by 35% and 25%, at the same pass rate. Raising the effort again after failures was measured and left out: no quality gain, and it cost prompt-cache hits.

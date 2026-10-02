@@ -42,15 +42,16 @@ func (e runnerEngine) Start(ctx context.Context, req core.Request, _ engine.Opti
 
 type runnerRun struct{ run *harness.Run }
 
-func (runnerRun) Send(core.UserInput) error   { return errNotLive }
-func (runnerRun) SetEffort(string) error      { return errNotLive }
-func (runnerRun) SetModel(string) error       { return errNotLive }
-func (runnerRun) SetServiceTier(string) error { return errNotLive }
-func (runnerRun) SetMode(approval.Mode) error { return errNotLive }
-func (runnerRun) Compact(string) error        { return errNotLive }
-func (runnerRun) Clear() error                { return errNotLive }
-func (r runnerRun) Interrupt()                { r.run.Interrupt() }
-func (r runnerRun) Kill()                     { r.run.Kill() }
+func (runnerRun) Send(core.UserInput) error      { return errNotLive }
+func (runnerRun) SetEffort(string) error         { return errNotLive }
+func (runnerRun) SetModel(string) error          { return errNotLive }
+func (runnerRun) SetServiceTier(string) error    { return errNotLive }
+func (runnerRun) SetAdaptiveEffort(string) error { return errNotLive }
+func (runnerRun) SetMode(approval.Mode) error    { return errNotLive }
+func (runnerRun) Compact(string) error           { return errNotLive }
+func (runnerRun) Clear() error                   { return errNotLive }
+func (r runnerRun) Interrupt()                   { r.run.Interrupt() }
+func (r runnerRun) Kill()                        { r.run.Kill() }
 
 func (r runnerRun) Wait() (core.Result, error) {
 	result, err := r.run.Wait()

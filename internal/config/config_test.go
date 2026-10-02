@@ -256,26 +256,26 @@ func TestMouse(t *testing.T) {
 	assert.True(t, cfg.TUI.MouseOn(), "the project file wins")
 }
 
-// TestLean: lean is unset by default, the user file sets it, and a
+// TestAdaptiveEffort: adaptive_effort is unset by default, the user file sets it, and a
 // trusted project file overrides it.
-func TestLean(t *testing.T) {
+func TestAdaptiveEffort(t *testing.T) {
 	root := t.TempDir()
 	ws := filepath.Join(root, "ws")
 	user := filepath.Join(root, "config.toml")
 	cfg, _, err := config.Load(user, ws)
 	require.NoError(t, err)
-	assert.Empty(t, cfg.Lean, "off by default")
+	assert.Empty(t, cfg.AdaptiveEffort, "off by default")
 
-	write(t, user, "lean = \"1-step\"\n")
+	write(t, user, "adaptive_effort = \"1-step\"\n")
 	cfg, _, err = config.Load(user, ws)
 	require.NoError(t, err)
-	assert.Equal(t, "1-step", cfg.Lean)
+	assert.Equal(t, "1-step", cfg.AdaptiveEffort)
 
-	write(t, user, "lean = \"2-steps\"\n[projects.\""+ws+"\"]\ntrusted = true\n")
-	write(t, config.ProjectFile(ws), "lean = \"off\"\n")
+	write(t, user, "adaptive_effort = \"2-steps\"\n[projects.\""+ws+"\"]\ntrusted = true\n")
+	write(t, config.ProjectFile(ws), "adaptive_effort = \"off\"\n")
 	cfg, _, err = config.Load(user, ws)
 	require.NoError(t, err)
-	assert.Equal(t, "off", cfg.Lean, "the project file wins")
+	assert.Equal(t, "off", cfg.AdaptiveEffort, "the project file wins")
 }
 
 // TestTitle: the TUI sets the terminal's title unless a file sets title =

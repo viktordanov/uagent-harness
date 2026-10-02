@@ -359,7 +359,7 @@ type diagAttempt struct {
 	Kind        string    `json:"kind"`
 	FirstByteMS int64     `json:"first_byte_ms"`
 	Result      string    `json:"result"`
-	// Effort and EffortReason are the request's effort and, in Lean mode,
+	// Effort and EffortReason are the request's effort and, with adaptive effort,
 	// why.
 	Effort       string `json:"effort"`
 	EffortReason string `json:"effort_reason"`
@@ -369,7 +369,7 @@ type diagAttempt struct {
 // model_attempt diagnostics, the attempt that started nearest the request's
 // start within a second; a request without one keeps its first streamed
 // text, which comes later. The attempt's effort, when it has one, replaces
-// the session's: in Lean mode a request's effort is its own.
+// the session's: with adaptive effort a request's effort is its own.
 func addFirstBytes(tl *Timeline, stateDir string) {
 	logs, _ := filepath.Glob(filepath.Join(stateDir, "runs", "*", "stderr.log"))
 	var attempts []diagAttempt

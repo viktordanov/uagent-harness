@@ -80,8 +80,8 @@ type attemptDiag struct {
 	RecvBytes    int64     `json:"recv_bytes"`
 	LongestGapMS int64     `json:"longest_gap_ms"`
 	Tool         string    `json:"tool,omitempty"`
-	// Effort is the effort the request went at; EffortReason, in Lean
-	// mode, why (lean.go).
+	// Effort is the effort the request went at; EffortReason, with adaptive
+	// effort on, why (adaptive.go).
 	Effort        string `json:"effort,omitempty"`
 	EffortReason  string `json:"effort_reason,omitempty"`
 	NetworkWaitMS int64  `json:"network_wait_ms"`

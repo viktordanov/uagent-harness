@@ -181,9 +181,10 @@ func (s *State) commitTyped() []Effect {
 }
 
 // save writes the value, shows it at once, and applies it to the running
-// session where that works live: the model, effort, fast mode, and
-// permission mode through the session (as /model, /effort, /fast, and
-// shift+tab do), the details view and the mouse in the TUI.
+// session where that works live: the model, effort, fast mode, adaptive
+// effort, and permission mode through the session (as /model, /effort,
+// /fast, /adaptive, and shift+tab do), the details view and the mouse in
+// the TUI.
 func (s *State) save(key string, value any) []Effect {
 	p := s.Config
 	p.Values[key] = ConfigValue{Value: valueText(value), Source: SourceUser}
@@ -202,6 +203,8 @@ func (s *State) save(key string, value any) []Effect {
 		if on, _ := value.(bool); on {
 			next.ServiceTier = "priority"
 		}
+	case keyAdaptive:
+		next.AdaptiveEffort, _ = value.(string)
 	case keyMode:
 		mode, _ := value.(string)
 		next = next.WithMode(approval.Mode(mode))
@@ -251,7 +254,7 @@ func appliesWhen(key string, fastLive bool) string {
 		return "applies now"
 	case key == keyFast && !fastLive:
 		return "applies to new sessions on a provider with fast mode"
-	case slices.Contains([]string{keyModel, keyEffort, keyFast, keyMode}, key):
+	case slices.Contains([]string{keyModel, keyEffort, keyFast, keyAdaptive, keyMode}, key):
 		return "this session changes too"
 	}
 

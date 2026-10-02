@@ -25,6 +25,7 @@ import (
 	"github.com/viktordanov/uah/internal/compaction"
 	"github.com/viktordanov/uah/internal/engine"
 	"github.com/viktordanov/uah/internal/instructions"
+	"github.com/viktordanov/uah/internal/session"
 )
 
 // The runner's defaults.
@@ -42,7 +43,7 @@ func (b backend) Start(ctx context.Context, l harness.Launch) (harness.Process, 
 	start, _ := ctx.Value(startKey{}).(startValue)
 	w := &wiring{
 		e: b.e, l: l, getenv: b.e.cfg.Getenv, emit: start.emit, notify: start.opts.Notify, ask: start.opts.Ask,
-		askAnytime: start.opts.AskAnytime, inject: start.opts.Inject, tier: start.opts.ServiceTier,
+		askAnytime: start.opts.AskAnytime, inject: start.opts.Inject, tier: start.opts.ServiceTier, adaptive: start.opts.AdaptiveEffort,
 		mode: newModeCell(start.opts, b.e.cfg),
 	}
 	a, err := w.start(ctx, start.opts)
@@ -72,8 +73,10 @@ type wiring struct {
 	askAnytime approval.Ask
 	// inject gives the session's agent a message without a turn of its own.
 	inject func(string) func()
-	// tier is the run's service tier when it started.
-	tier string
+	// tier and adaptive are the run's service tier and adaptive effort
+	// when it started.
+	tier     string
+	adaptive string
 	// mode is the run's permission mode, which Run.SetMode changes.
 	mode *modeCell
 	// bashTools, when set, keeps Bash's definition in each model request
@@ -97,7 +100,7 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 	if err != nil {
 		return nil, err
 	}
-	messages = w.primed(ctx, req, messages)
+	messages = w.primed(ctx, req, opts, messages)
 	model, sw, err := w.client(req, opts)
 	if err != nil {
 		return nil, err
@@ -131,9 +134,7 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 	sw.tools = w.bashTools
 	sw.images = w.e.pastedImages
 	sw.stream, sw.text, sw.diag = w.emit, opts.Stream, w.l.Stderr
-	if w.e.cfg.LeanSteps > 0 {
-		sw.lean = &leanRouter{steps: w.e.cfg.LeanSteps}
-	}
+	sw.adaptive.steps = session.AdaptiveSteps(opts.AdaptiveEffort)
 	operations := operation.NewLocalOperationManager(runCtx, newMCPJobs(runCtx, w.e.cfg.MCP), newAgentJobs(runCtx, w.e.cfg.Subagents, string(s.id)), newPatchJobs(runCtx))
 	first := compaction.Trigger("")
 	switch {

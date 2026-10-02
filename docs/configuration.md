@@ -41,7 +41,7 @@ Each value comes from the first of these that sets it:
 
 1. A flag.
 2. The flag's environment variable (see [Environment variables](#environment-variables)).
-3. The resumed session (`--session`, `uah resume`, `uah run --last`): the `provider`, `model`, `effort`, `fast`, and `permission_mode` it last used, which its sidecar (`sessions/<id>.uah.json`) keeps whenever they change, and its workspace. A session from before uah kept them gives the provider, model, and effort of its last run.
+3. The resumed session (`--session`, `uah resume`, `uah run --last`): the `provider`, `model`, `effort`, `fast`, `adaptive_effort`, and `permission_mode` it last used, which its sidecar (`sessions/<id>.uah.json`) keeps whenever they change, and its workspace. A session from before uah kept them gives the provider, model, and effort of its last run.
 4. The project file.
 5. The file `UAH_EXTRA_CONFIG` names.
 6. `~/.uah/config.d/*.toml`, the last in lexical order first.
@@ -83,7 +83,7 @@ Every key may be set in the user file, in a layer, and in a trusted project file
 | `max_disk` | size | `5G` | `--max-disk` | override | Stop a run when tool output exceeds this size (`500M`, `5G`, bytes without a suffix); `0` disables it |
 | `fast` | bool | false | `--fast` | OR | Priority processing (`service_tier = "priority"`); needs the openai or openai-codex provider, and any other provider refuses it before the session starts |
 | `web_search` | string | `live` | none | override | The provider's hosted web search tool, as Codex's key: `live` offers it on openai and openai-codex (other providers never get it), `disabled` does not. Codex's `cached` and `indexed` are errors: the runner sends the tool without Codex's access options, which the API treats as live search. The search runs on the provider's servers, so the sandbox's network rule does not apply; it is offered in every permission mode, as in Codex ([web search](design/web-search.md)) |
-| `lean` | string | `off` | none | override | Lean mode: `off`, `1-step`, or `2-steps`. On, the model thinks less on follow-up turns, and a new session starts with the workspace's context. A request that only follows tool results goes one (`1-step`) or two (`2-steps`) effort levels below `effort`, never below low: at `high`, 2 steps is `low`. The first request and a request with a user message go at `effort`. A new session's first message also carries the files AGENTS.md includes with `@`, the git branch and status, and the tracked files by top directory, so the model need not look them up. `/config` cycles it for the sessions opened next ([engine README](../internal/engine/README.md#lean-mode)) |
+| `adaptive_effort` | string | `off` | `--adaptive-effort`, `UAH_ADAPTIVE_EFFORT` | override | Adaptive effort for new sessions: `off`, `1-step`, or `2-steps`. On, the model thinks less on follow-up turns: a request that only follows tool results goes one (`1-step`) or two (`2-steps`) effort levels below `effort`, never below low (at `high`, 2 steps is `low`). The first request and a request with a user message go at `effort`. A new session's first message also carries the files AGENTS.md includes with `@`, the git branch and status, and the tracked files by top directory, so the model need not look them up. A session keeps its own value, as it keeps its effort; `/adaptive` and `/config` change it for the current session from its next model request. Measured on the agent benchmark at high effort, at the same pass rate: 1 step cut wall time by about a quarter and cost by 16–21%; 2 steps cut wall time by about a third and cost by a quarter ([agent tuning](design/agent-tuning.md#lean-mode-rules)) |
 
 ### Sandbox and approvals
 
@@ -403,6 +403,7 @@ developer_instructions = "Review the diff you are given. List only real bugs, ea
 | `UNREAL_HARNESS_LLM_MAX_ATTEMPTS` | `--max-attempts` | `request_max_attempts` | The attempts per model request. uah passes the resolved value to the runner's client, so the variable does not reach the runner directly |
 | `UAH_SANDBOX` | `--sandbox` | `sandbox_mode` | The sandbox mode, and the permission mode of that sandbox |
 | `UAH_ASK` | `--ask` | `approval_policy` | The approval policy |
+| `UAH_ADAPTIVE_EFFORT` | `--adaptive-effort` | `adaptive_effort` | Adaptive effort: off, 1-step, or 2-steps |
 | `UAH_HOME` | none | none | uah's home, `~/.uah` by default |
 | `UAH_CONFIG` | `--config` | none | The user file, `<home>/config.toml` by default |
 | `UAH_STATE_DIR` | `--state-dir` | none | Sessions, logs, and run records; the home by default |
@@ -423,7 +424,7 @@ uah config --session 3f2a      # as resuming a session would
 uah config --json | jq '.settings[] | select(.sources != ["default"])'
 ```
 
-`/config` in the TUI shows the same values and sources for the basic settings (auto-compact and its token limit, `compact_model`, `model`, `effort`, `fast`, `permission_mode`, `[tui] details` and `mouse`) and changes them in the user file (`--config` or the default path). It edits one key in place and keeps the file's comments and formatting, with the editor `uah mcp add` uses; a change that would stop a session from starting is undone. The layers and the project file are never written, and a value one of them sets still wins over the change.
+`/config` in the TUI shows the same values and sources for the basic settings (auto-compact and its token limit, `compact_model`, `model`, `effort`, `fast`, `adaptive_effort`, `permission_mode`, `[tui] details` and `mouse`) and changes them in the user file (`--config` or the default path). It edits one key in place and keeps the file's comments and formatting, with the editor `uah mcp add` uses; a change that would stop a session from starting is undone. The layers and the project file are never written, and a value one of them sets still wins over the change.
 
 ## Examples
 
@@ -437,7 +438,7 @@ max_disk = "5G"                    # tool output per run; "0" disables
 request_max_attempts = 10          # per model request; a lost connection is retried with backoff
 fast = false                       # priority processing
 web_search = "live"                # or disabled: the provider's hosted web search
-lean = "off"                       # or 1-step, 2-steps: Lean mode, lower effort on follow-up turns
+adaptive_effort = "off"            # or 1-step, 2-steps: lower effort on follow-up turns
 sandbox_mode = "workspace-write"   # read-only, workspace-write; no sandbox is --yolo
 # permission_mode = "workspace"    # read-only, workspace, auto; wins over sandbox_mode
 approval_policy = "on-request"     # or never

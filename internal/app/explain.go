@@ -24,6 +24,8 @@ const (
 	EnvModel    = "UNREAL_HARNESS_LLM_MODEL"
 	EnvSandbox  = "UAH_SANDBOX"
 	EnvAsk      = "UAH_ASK"
+	// EnvAdaptiveEffort is --adaptive-effort's variable.
+	EnvAdaptiveEffort = "UAH_ADAPTIVE_EFFORT"
 	// EnvMaxAttempts is the runner's variable for the attempt limit.
 	EnvMaxAttempts = "UNREAL_HARNESS_LLM_MAX_ATTEMPTS"
 )
@@ -94,7 +96,7 @@ type Origins struct {
 // files, and explains the effective configuration. It builds no engine.
 func Inspect(ctx context.Context, in Inputs) (Report, error) {
 	o := Origins{Env: map[string]string{}}
-	for _, name := range []string{EnvProvider, EnvModel, EnvSandbox, EnvAsk, EnvMaxAttempts} {
+	for _, name := range []string{EnvProvider, EnvModel, EnvSandbox, EnvAsk, EnvMaxAttempts, EnvAdaptiveEffort} {
 		o.Env[name] = os.Getenv(name)
 	}
 	var err error
@@ -187,6 +189,8 @@ func sessionSettings(in Inputs, o Origins, r Resolved, cfg config.Config) []Sett
 		one("request_max_attempts", s.MaxAttempts, pick(attemptsInput(in, env), overrides(l, func(c config.Config) any { return c.RequestMaxAttempts }), FromDefault)),
 		one("max_disk", maxDisk, pick(given(in.MaxDiskSet), overrides(l, func(c config.Config) any { return c.MaxDisk }), FromDefault)),
 		{Key: "fast", Value: s.ServiceTier != "", Sources: fastSources(in, o, cfg)},
+		one("adaptive_effort", s.AdaptiveEffort, pick(input(in.AdaptiveEffort, EnvAdaptiveEffort, env), sessionValue(resumed.AdaptiveEffort),
+			overrides(l, func(c config.Config) any { return c.AdaptiveEffort }), FromDefault)),
 		one("permission_mode", string(s.Mode), modeSource(in, o)),
 		one("sandbox_mode", string(r.Sandbox.Mode), modeSource(in, o)),
 		one("approval_policy", string(r.Approval), pick(input(in.Ask, EnvAsk, env), overrides(l, func(c config.Config) any { return c.ApprovalPolicy }), FromDefault)),

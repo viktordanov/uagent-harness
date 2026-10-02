@@ -52,7 +52,7 @@ func TestParseUAH(t *testing.T) {
 }
 
 // TestParseUAH_EffortFromDiagnostics: a request's model_attempt line in the
-// run's stderr.log gives its effort and, in Lean mode, why.
+// run's stderr.log gives its effort and, with adaptive effort, why.
 func TestParseUAH_EffortFromDiagnostics(t *testing.T) {
 	start := time.Date(2026, 10, 1, 18, 57, 5, 700_000_000, time.UTC)
 	parse := func(stateDir string) *bench.Timeline {

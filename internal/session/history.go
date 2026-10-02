@@ -37,6 +37,9 @@ type Info struct {
 	// last used, from its sidecar (nil and "" when it does not record them).
 	Fast *bool
 	Mode approval.Mode
+	// AdaptiveEffort is the adaptive effort the session last used, from
+	// its sidecar ("" when it does not record it).
+	AdaptiveEffort string
 	// Saved reports whether the sidecar recorded the settings, which then
 	// replaced the provider, model, and effort of the newest run.
 	Saved bool

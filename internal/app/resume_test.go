@@ -19,7 +19,7 @@ import (
 )
 
 // TestSetup_ResumeRestoresSessionSettings runs a session, changes its
-// model, effort, fast mode, and permission mode after the run, and resumes
+// model, effort, fast mode, adaptive effort, and permission mode after the run, and resumes
 // it: the sidecar's settings beat the configuration, a flag beats them,
 // and a sidecar without settings falls back to the last run's request.
 func TestSetup_ResumeRestoresSessionSettings(t *testing.T) {
@@ -27,7 +27,7 @@ func TestSetup_ResumeRestoresSessionSettings(t *testing.T) {
 	t.Setenv("OPENAI_API_KEY", "test-key")
 	llm := fakellm.New(t, fakellm.Reply{Text: "hi"})
 	require.NoError(t, os.MkdirAll(filepath.Dir(in.ConfigPath), 0o700))
-	require.NoError(t, os.WriteFile(in.ConfigPath, []byte("model = \"cfg-model\"\neffort = \"high\"\npermission_mode = \"auto\"\n"), 0o600))
+	require.NoError(t, os.WriteFile(in.ConfigPath, []byte("model = \"cfg-model\"\neffort = \"high\"\npermission_mode = \"auto\"\nadaptive_effort = \"1-step\"\n"), 0o600))
 	in.Provider, in.Model, in.Effort, in.BaseURL = "openai", "gpt-test", "medium", llm.URL
 
 	res, err := app.Setup(context.Background(), in, io.Discard)
@@ -40,7 +40,8 @@ func TestSetup_ResumeRestoresSessionSettings(t *testing.T) {
 	require.NoError(t, err)
 	waitFinished(t, s)
 	next := opts.Settings.WithMode(approval.ModeReadOnly)
-	next.Model, next.Effort, next.ServiceTier = "gpt-other", "low", "priority"
+	assert.Equal(t, session.AdaptiveOneStep, opts.Settings.AdaptiveEffort, "the configured default")
+	next.Model, next.Effort, next.ServiceTier, next.AdaptiveEffort = "gpt-other", "low", "priority", session.AdaptiveTwoSteps
 	_, err = s.SetSettings(next)
 	require.NoError(t, err)
 	require.NoError(t, s.Close())
@@ -56,12 +57,13 @@ func TestSetup_ResumeRestoresSessionSettings(t *testing.T) {
 		assert.Equal(t, [4]string{"openai", "gpt-other", "low", "priority"}, [4]string{got.Provider, got.Model, got.Effort, got.ServiceTier})
 		assert.Equal(t, approval.ModeReadOnly, got.Mode)
 		assert.Equal(t, "read-only", got.Sandbox)
+		assert.Equal(t, session.AdaptiveTwoSteps, got.AdaptiveEffort)
 
 		rep, err := app.Inspect(context.Background(), resume)
 		require.NoError(t, err)
 		for _, st := range rep.Settings {
 			switch st.Key {
-			case "model", "effort", "fast", "permission_mode", "sandbox_mode":
+			case "model", "effort", "fast", "adaptive_effort", "permission_mode", "sandbox_mode":
 				assert.Equal(t, "session", st.SourceText(), st.Key)
 			}
 		}
@@ -70,6 +72,7 @@ func TestSetup_ResumeRestoresSessionSettings(t *testing.T) {
 	t.Run("a flag beats the session", func(t *testing.T) {
 		in := resume
 		in.Effort, in.Sandbox, in.Fast, in.FastSet = "max", "workspace-write", false, true
+		in.AdaptiveEffort = session.AdaptiveOff
 
 		res, err := app.Setup(context.Background(), in, io.Discard)
 		require.NoError(t, err)
@@ -77,6 +80,7 @@ func TestSetup_ResumeRestoresSessionSettings(t *testing.T) {
 		got := res.Options.Settings
 		assert.Equal(t, [3]string{"gpt-other", "max", ""}, [3]string{got.Model, got.Effort, got.ServiceTier})
 		assert.Equal(t, approval.ModeWorkspace, got.Mode)
+		assert.Equal(t, session.AdaptiveOff, got.AdaptiveEffort)
 	})
 
 	t.Run("an older sidecar without settings falls back to the last run", func(t *testing.T) {
@@ -89,6 +93,7 @@ func TestSetup_ResumeRestoresSessionSettings(t *testing.T) {
 		got := res.Options.Settings
 		assert.Equal(t, [3]string{"gpt-test", "medium", ""}, [3]string{got.Model, got.Effort, got.ServiceTier}, "the run's request")
 		assert.Equal(t, approval.ModeAuto, got.Mode, "the configured mode")
+		assert.Equal(t, session.AdaptiveOneStep, got.AdaptiveEffort, "the configured adaptive effort")
 	})
 }
 

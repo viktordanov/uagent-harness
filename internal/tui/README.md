@@ -146,6 +146,7 @@ In the `/model` picker, ↑/↓ (or ctrl+p/ctrl+n) choose, enter on a model list
 | `/model [id] [effort]` | Choose the model, then its effort, in the picker; `/model <id>` opens the picker at that model's efforts, and `/model <id> <effort>` sets both without it | Yes |
 | `/effort <level>` | Set the thinking level: low, medium, high, xhigh, max, ultra (only those the model lists, once `/model` has loaded the list) | Yes |
 | `/fast` | Toggle priority processing; needs the embedded engine and the openai or openai-codex provider | Yes |
+| `/adaptive [off\|1-step\|2-steps]` | Set adaptive effort, or alone step to the next value: think one or two effort levels less on follow-up turns after tool results ([engine README](../engine/README.md#adaptive-effort)); another word shows the current value | Yes |
 | `/resume [id]` | Open the picker, or resume a session by ID prefix | No |
 | `/new` | Start a new session | No |
 | `/clear` | Start the agent fresh in this session: the screen clears, and the next request carries nothing from before; the session keeps its history (embedded engine) | Yes |
@@ -156,7 +157,7 @@ In the `/model` picker, ↑/↓ (or ctrl+p/ctrl+n) choose, enter on a model list
 | `/review [target]` | A read-only reviewer looks at `uncommitted` changes, the changes against `branch <name>`, `commit <sha>`, or follows custom instructions, and lists its findings (embedded engine) | No |
 | `/context` | Break down what fills the context window | Yes |
 | `/config` | The settings panel: change the basic settings and save them to the user file (see [/config](#config)) | Yes |
-| `/status` | Session, settings, totals, a 12-week activity heatmap, and the plan's usage (see [Plan usage](#plan-usage)); while a run is live, what it waits on and the model request's phase (`now: Waiting for the model · waiting`) | Yes |
+| `/status` | Session, settings (adaptive effort among them), totals, a 12-week activity heatmap, and the plan's usage (see [Plan usage](#plan-usage)); while a run is live, what it waits on and the model request's phase (`now: Waiting for the model · waiting`) | Yes |
 | `/usage` | Your plan's usage, read fresh: each limit with a bar, what is left, and when it resets, as `uah usage` prints it (openai-codex) | Yes |
 | `/mcp [verbose]` | MCP servers: state, transport, tool count, and a login hint; `verbose` (or the detailed view) adds each server's command or URL, auth, and tools with their approval mode | Yes |
 | `/agents [name]` | Subagents and their state; with a nickname or ID, that agent's live transcript (see [The agent view](#the-agent-view)) | Yes |
@@ -172,7 +173,7 @@ In the `/model` picker, ↑/↓ (or ctrl+p/ctrl+n) choose, enter on a model list
 
 `/diff` and `/review` follow Codex's commands (see the [review design](../../docs/design/review.md)). `EffDiff` collects the changes with `internal/gitdiff` off the update loop (`bubble/review.go`), and `DiffShown` brings them back. After `/review ` the menu offers Codex's presets (`state/reviewmenu.go`); `/review branch ` and `/review commit ` list the local branches and the newest 100 commits, read once per review (`EffLoadReviewTargets`, `ReviewTargetsLoaded`). A complete target returns `EffReview`, which calls `Session.Review`; the session's review events draw the item, and esc esc stops the review as it stops a run. One review runs at a time, and the findings reach the agent with the next message.
 
-`/model`, `/effort`, and `/fast` apply from the next model request, or from the next run when the run just stopped; the session's `SettingsChanged` event says which. `/fast` needs a provider with priority processing (`Session.Priority`, kept in `State.Priority`); on another it says so.
+`/model`, `/effort`, `/fast`, and `/adaptive` apply from the next model request, or from the next run when the run just stopped; the session's `SettingsChanged` event says which. `/fast` needs a provider with priority processing (`Session.Priority`, kept in `State.Priority`); on another it says so.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="config" files="state/config.go state/configrows.go render/config.go bubble/keys.go bubble/effects.go" -->
@@ -188,15 +189,15 @@ In the `/model` picker, ↑/↓ (or ctrl+p/ctrl+n) choose, enter on a model list
 | Model | `model` | Cycles the provider's models, or type one when there is no list | This session too, as `/model` |
 | Effort | `effort` | Cycles low to max | This session too, as `/effort` |
 | Fast mode | `fast` | Toggles | This session too, as `/fast`, where the engine has it |
+| Adaptive effort | `adaptive_effort` | Cycles off, 1 step, and 2 steps; while selected, the panel says what it does ([engine README](../engine/README.md#adaptive-effort)) | This session too, as `/adaptive` |
 | Permission mode | `permission_mode` | Cycles read only, workspace, auto, as shift+tab does without `--yolo`; yolo is never saved | This session too, as shift+tab |
 | Web search | `web_search` | Cycles live and disabled | New sessions |
-| Lean mode | `lean` | Cycles off, 1 step, and 2 steps; while selected, the panel says "Lean mode: think one or two effort levels less on follow-up turns, and start with the workspace's context" ([engine README](../engine/README.md#lean-mode)) | New sessions |
 | Details view | `[tui] details` | Toggles | At once |
 | Mouse | `[tui] mouse` | Toggles | At once |
 
 The split follows the rest of the TUI:
 
-- **State** (`state/config.go`, `state/configrows.go`): `ConfigPanel` holds the loaded values, the selected row, and a value being typed. The reducer turns a change into `EffSaveConfig`, shows the new value at once with the user file as its source, and, for a setting the session takes live, adds the same `EffSetSettings` that `/model`, `/effort`, `/fast`, and shift+tab send. Opening the panel loads the values (`EffLoadConfig`) and the model list (`EffLoadModels`).
+- **State** (`state/config.go`, `state/configrows.go`): `ConfigPanel` holds the loaded values, the selected row, and a value being typed. The reducer turns a change into `EffSaveConfig`, shows the new value at once with the user file as its source, and, for a setting the session takes live, adds the same `EffSetSettings` that `/model`, `/effort`, `/fast`, `/adaptive`, and shift+tab send. Opening the panel loads the values (`EffLoadConfig`) and the model list (`EffLoadModels`).
 - **Render** (`render/config.go`): the rows, the value in bold, on in the good color, the source dim, the selected row's help (`ConfigRow.Help`) when it has one, and the keys at the bottom.
 - **Effects** (`bubble/effects.go`): `Deps.Config` and `Deps.SaveConfig`, which `cmd/uah` backs with `app.Inspect` and `app.SaveSetting`. A save goes through the comment-preserving editor that `uah mcp add` uses (`internal/config/tomledit`); a change that would stop a session from starting, such as fast mode with a provider that has no priority processing, is undone and reported. After each save the panel reloads, and says so when a flag, the environment, a configuration layer, or a trusted project file still sets the key and wins over the user file ("model still comes from config.d/host.toml, which wins over the user file").
 <!-- /memoria:section -->
@@ -331,5 +332,5 @@ To add a key, map it to an intent in `bubble/keys.go` and handle the intent in `
 | `render/toolcalls_test.go`, `state/toolcalls_test.go` | Tool calls: the gallery's sample turn (wrappers, absolute paths, two skills, failures with their stderr, a heredoc, an auto-approval arriving after later calls, a listing, searches, and two MCP calls) in both views (`tools`, `tools-details`) and the colors each line uses in both themes (`tools-colors`, `tools-colors-light`); blank lines around entries with a second line only; the approval on its call and a notice when no call matches; the MCP line, result, and failure; a copy of a failure and its error line; a command shaped from its whole arguments; skills joined and a failed one split off; and the error line and result summary from `engine.ToolOutput` |
 | `render/websearch_test.go` | A hosted web search: the running `WEB` line, the finished search replacing it with the query or the URL, and the detailed view's `web_search` |
 | `state/modelpicker_test.go`, `render/modelpicker_test.go`, `bubble/modelpicker_test.go` | `/model`: loading then listing the models with hidden ones left out, a model's own levels with its default preselected (the current effort on the current model), applying both, esc back and closed, a single level applying at once, `/model <id>`, `/model <id> <effort>`, an unknown model or level, a provider with no models, enter on the menu opening the picker while tab waits for an argument, goldens for both steps and loading (`model-loading`, `model-picker`, `model-effort`), and a real embedded session whose next model requests carry the model and effort chosen in the picker and typed after `/model` |
-| `state/config_test.go`, `bubble/config_test.go` | `/config`: the rows and sources, toggles, cycles (Lean mode with its help), typed values, what applies live, the warning when another source wins, and a real user file saved with its comments kept, with a change that would stop a session from starting undone |
+| `state/config_test.go`, `bubble/config_test.go` | `/config`: the rows and sources, toggles, cycles (adaptive effort with its help, changing the session, and `/adaptive` and `/status`), typed values, what applies live, the warning when another source wins, and a real user file saved with its comments kept, with a change that would stop a session from starting undone |
 <!-- /memoria:section -->

@@ -48,6 +48,11 @@ func sessionFlags() []cli.Flag {
 		},
 		&cli.BoolFlag{Name: "fast", Usage: "priority processing (service_tier priority; openai and openai-codex)"},
 		&cli.StringFlag{
+			Name: "adaptive-effort", Usage: "think less on follow-up turns after tool results: off, 1-step, or 2-steps (effort levels down)",
+			DefaultText: "off, or the resumed session's", Sources: cli.EnvVars(app.EnvAdaptiveEffort),
+			Validator: oneOf("adaptive-effort", session.AdaptiveEfforts),
+		},
+		&cli.StringFlag{
 			Name: "sandbox", Usage: "where commands may write: read-only or workspace-write (no sandbox is --yolo)",
 			DefaultText: "workspace-write", Sources: cli.EnvVars(app.EnvSandbox), Validator: oneOf("sandbox", sandboxModes()),
 		},
@@ -145,6 +150,7 @@ func inputs(cmd *cli.Command) app.Inputs {
 		MaxAttempts:    cmd.Int("max-attempts"),
 		Fast:           cmd.Bool("fast"),
 		FastSet:        cmd.IsSet("fast"),
+		AdaptiveEffort: cmd.String("adaptive-effort"),
 		Sandbox:        cmd.String("sandbox"),
 		Ask:            cmd.String("ask"),
 		Yolo:           cmd.Bool(flagYolo),

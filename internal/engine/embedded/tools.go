@@ -91,7 +91,7 @@ func (w *wiring) withAgents(registry tool.Registry, req core.Request) tool.Regis
 		emit = func(core.Event) {}
 	}
 	offered := a.Attach(engine.AgentParent{
-		SessionID: req.SessionID, Request: req, ServiceTier: w.tier, Mode: w.mode.get,
+		SessionID: req.SessionID, Request: req, ServiceTier: w.tier, AdaptiveEffort: w.adaptive, Mode: w.mode.get,
 		Ask: w.askAnytime, Emit: emit, Inject: w.inject,
 	})
 

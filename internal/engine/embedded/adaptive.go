@@ -7,17 +7,17 @@ import (
 	"github.com/viktordanov/unreal-agent/harness/llm"
 )
 
-// Lean mode's effort routing: a request whose input since the model's last
-// output is only tool results goes the mode's steps (1 or 2) below the
+// Adaptive effort's routing: a request whose input since the model's last
+// output is only tool results goes the setting's steps (1 or 2) below the
 // effort the user picked, never below low. The first request and every
 // request that carries a user message go at the user's effort. A
 // benchmark of the rules (docs/design/agent-tuning.md) kept this one:
 // lowering only some follow-ups changed the effort between requests more
 // often, which costs the prompt cache more than the lower effort saves.
 
-// leanRouter picks each turn request's effort.
-type leanRouter struct {
-	// steps is how many levels a follow-up goes down: 1 or 2.
+// adaptiveRouter picks each turn request's effort.
+type adaptiveRouter struct {
+	// steps is how many levels a follow-up goes down: 1 or 2 (0: off).
 	steps int
 }
 
@@ -30,7 +30,7 @@ type effortChoice struct {
 }
 
 // route picks the effort for a request at e (ultra: at effort ultra).
-func (l leanRouter) route(input []llm.Item, e llm.ReasoningEffort, ultra bool) effortChoice {
+func (l adaptiveRouter) route(input []llm.Item, e llm.ReasoningEffort, ultra bool) effortChoice {
 	tag := fmt.Sprintf("%d-steps: ", l.steps)
 	if l.steps == 1 {
 		tag = "1-step: "

@@ -18,10 +18,11 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
+	"github.com/viktordanov/uah/internal/engine"
 	"github.com/viktordanov/uah/internal/session"
 )
 
-// Lean mode's primed first turn: a new session of the main agent starts
+// Adaptive effort's primed first turn: a new session of the main agent starts
 // with one more user message before the user's, a compact workspace
 // context that uah gathers cheaply, so the model's first turns need not
 // explore or read what AGENTS.md includes: the files git tracks, by top
@@ -44,9 +45,9 @@ const (
 )
 
 // primed adds the workspace context before the messages of a new main
-// session, when the experiment is on.
-func (w *wiring) primed(ctx context.Context, req core.Request, messages []core.UserInput) []core.UserInput {
-	if w.e.cfg.LeanSteps == 0 || strings.HasPrefix(req.SessionID, session.SubagentIDPrefix) {
+// session, when adaptive effort is on.
+func (w *wiring) primed(ctx context.Context, req core.Request, opts engine.Options, messages []core.UserInput) []core.UserInput {
+	if session.AdaptiveSteps(opts.AdaptiveEffort) == 0 || strings.HasPrefix(req.SessionID, session.SubagentIDPrefix) {
 		return messages
 	}
 	if req.SessionID != "" {

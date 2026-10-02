@@ -114,8 +114,9 @@ func (r *fakeRun) SetEffort(e string) error {
 	return nil
 }
 
-func (r *fakeRun) SetModel(string) error       { return errNotLive }
-func (r *fakeRun) SetServiceTier(string) error { return errNotLive }
+func (r *fakeRun) SetModel(string) error          { return errNotLive }
+func (r *fakeRun) SetServiceTier(string) error    { return errNotLive }
+func (r *fakeRun) SetAdaptiveEffort(string) error { return errNotLive }
 
 func (r *fakeRun) SetMode(m approval.Mode) error {
 	if !r.caps.LiveMode {

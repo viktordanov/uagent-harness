@@ -1,6 +1,7 @@
 package state
 
 import (
+	"cmp"
 	"fmt"
 	"slices"
 	"strings"
@@ -29,6 +30,7 @@ func Commands() []Command {
 		{Name: "model", Args: "[id] [effort]", Help: "choose the model, then its effort; /model <id> <effort> sets both at once", WhileBusy: true, Bare: true, run: cmdModel},
 		{Name: "effort", Args: "<level>", Help: "set the thinking level: " + strings.Join(session.Efforts, ", "), WhileBusy: true, run: cmdEffort},
 		{Name: "fast", Help: "priority processing (needs the embedded engine)", WhileBusy: true, run: cmdFast},
+		{Name: "adaptive", Args: "[off|1-step|2-steps]", Help: "adaptive effort: think one or two effort levels less on follow-up turns after tool results; alone, the next value", WhileBusy: true, run: cmdAdaptive},
 		{Name: "resume", Args: "[id]", Help: "open the session picker, or resume a session by ID prefix", run: cmdResume},
 		{Name: "new", Help: "start a new session", run: func(*State, string) []Effect { return []Effect{EffOpenSession{}} }},
 		{Name: "stop", Help: "interrupt the live run; queued messages stay", WhileBusy: true, run: func(s *State, _ string) []Effect { return s.interrupt() }},
@@ -38,7 +40,7 @@ func Commands() []Command {
 		{Name: "diff", Help: "the workspace's git changes, staged, unstaged, and untracked; not sent to the agent", WhileBusy: true, run: cmdDiff},
 		{Name: cmdReviewName, Args: "[target]", Help: "a read-only reviewer looks at your changes (uncommitted, branch <name>, commit <sha>, or instructions) and lists findings", run: cmdReview},
 		{Name: "context", Help: "what fills the context window: prompt, instructions, skills, tools, messages", WhileBusy: true, run: cmdContext},
-		{Name: "config", Help: "settings: auto-compact, compaction model, model, effort, fast mode, permission mode, web search, Lean mode, details, mouse; saved to the user file", WhileBusy: true, run: cmdConfig},
+		{Name: "config", Help: "settings: auto-compact, compaction model, model, effort, fast mode, adaptive effort, permission mode, web search, details, mouse; saved to the user file", WhileBusy: true, run: cmdConfig},
 		{Name: "status", Help: "session, settings, totals, and your plan's usage", WhileBusy: true, run: cmdStatus},
 		{Name: "usage", Help: "your plan's usage: each limit, what is left, and when it resets (openai-codex)", WhileBusy: true, run: cmdUsage},
 		{Name: "mcp", Args: "[verbose]", Help: "MCP servers: state, transport, and tool count; verbose adds auth and each tool", WhileBusy: true, run: cmdMCP},
@@ -144,6 +146,26 @@ func cmdFast(s *State, _ string) []Effect {
 	return []Effect{EffSetSettings{Settings: next}}
 }
 
+// cmdAdaptive sets adaptive effort, or steps to the next value.
+func cmdAdaptive(s *State, args string) []Effect {
+	value := args
+	if value == "" {
+		value = cycle(session.AdaptiveEfforts, adaptiveText(s.Settings), 1)
+	}
+	if !slices.Contains(session.AdaptiveEfforts, value) {
+		s.notice(session.LevelInfo, fmt.Sprintf("adaptive effort: %s (set it with /adaptive %s)", adaptiveText(s.Settings), strings.Join(session.AdaptiveEfforts, "|")))
+
+		return nil
+	}
+	next := s.Settings
+	next.AdaptiveEffort = value
+
+	return []Effect{EffSetSettings{Settings: next}}
+}
+
+// adaptiveText is the session's adaptive effort, "off" when unset.
+func adaptiveText(s session.Settings) string { return cmp.Or(s.AdaptiveEffort, session.AdaptiveOff) }
+
 func cmdResume(s *State, args string) []Effect {
 	if args == "" {
 		return []Effect{EffLoadSessions{}}
@@ -163,7 +185,8 @@ func cmdStatus(s *State, _ string) []Effect {
 	if len(s.Files) > 0 {
 		files = strings.Join(s.Files, ", ")
 	}
-	s.notice(session.LevelInfo, fmt.Sprintf("session %s · %s engine · %s/%s · effort %s · %s mode · %s", s.SessionID, s.Engine, s.Settings.Provider, s.Settings.Model, s.Settings.Effort, s.Settings.Mode.Label(), s.Settings.Workspace))
+	s.notice(session.LevelInfo, fmt.Sprintf("session %s · %s engine · %s/%s · effort %s · adaptive effort %s · %s mode · %s",
+		s.SessionID, s.Engine, s.Settings.Provider, s.Settings.Model, s.Settings.Effort, adaptiveText(s.Settings), s.Settings.Mode.Label(), s.Settings.Workspace))
 	if s.Settings.Mode.AsksNoOne() {
 		s.notice(session.LevelWarning, "yolo mode (--yolo): no sandbox, and nothing asks before a command, a patch, or an MCP tool runs; only forbid rules refuse")
 	}

@@ -83,10 +83,6 @@ type Config struct {
 	// WebSearch offers the provider's hosted web search tool to a run on a
 	// provider that has it (Provider.WebSearch), subagents' runs included.
 	WebSearch bool
-	// LeanSteps, 1 or 2, is Lean mode: a routine request goes that many
-	// effort levels lower (lean.go), and a new main session starts with
-	// the workspace's context (primed.go). 0 is off.
-	LeanSteps int
 	// Subagents, when set, offers its tools to the runs it attaches and
 	// hears when the user interrupts a run; the engine closes it when it is
 	// an io.Closer.
@@ -247,6 +243,7 @@ func (r *run) Send(in core.UserInput) error     { return r.agent.Send(in) }
 func (r *run) SetEffort(effort string) error    { return r.agent.SetEffort(effort) }
 func (r *run) SetModel(model string) error      { return r.agent.SetModel(model) }
 func (r *run) SetServiceTier(tier string) error { return r.agent.SetServiceTier(tier) }
+func (r *run) SetAdaptiveEffort(v string) error { return r.agent.SetAdaptiveEffort(v) }
 func (r *run) SetMode(m approval.Mode) error    { return r.agent.SetMode(m) }
 func (r *run) Compact(focus string) error       { return r.agent.Compact(focus) }
 func (r *run) Clear() error                     { return r.agent.Clear() }

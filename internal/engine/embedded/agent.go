@@ -14,6 +14,7 @@ import (
 	"github.com/viktordanov/uagent/core"
 
 	"github.com/viktordanov/uah/internal/compaction"
+	"github.com/viktordanov/uah/internal/session"
 )
 
 // agent is one in-process coordinator run. It implements harness.Process;
@@ -104,6 +105,12 @@ func (a *agent) SetModel(model string) error {
 }
 
 func (a *agent) SetServiceTier(tier string) error { return a.llm.setPriority(tier == tierPriority) }
+
+func (a *agent) SetAdaptiveEffort(value string) error {
+	a.llm.setAdaptive(session.AdaptiveSteps(value))
+
+	return nil
+}
 
 // Compact compacts the context before the next model request, the summary
 // focused on focus when it is not empty.

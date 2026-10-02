@@ -41,7 +41,7 @@ type Request struct {
 	ToolCalls int    `json:"tool_calls"`
 	// Effort is the reasoning effort the request ran at: for uah, from the
 	// request's model_attempt diagnostics when they have it, else the
-	// session's; EffortReason is why, in Lean mode.
+	// session's; EffortReason is why, with adaptive effort.
 	Effort       string `json:"effort,omitempty"`
 	EffortReason string `json:"effort_reason,omitempty"`
 	// Stop is how the response ended ("complete", or a cancel or

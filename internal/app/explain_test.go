@@ -84,11 +84,28 @@ func TestExplainSources(t *testing.T) {
 		{
 			name: "the resumed session's saved fast mode and permission mode beat the files",
 			o: app.Origins{
-				Resumed: session.Info{Provider: "openai-codex", Model: "gpt-saved", Fast: new(true), Mode: approval.ModeAuto, Saved: true},
-				Layers:  config.Layers{User: config.Config{SandboxMode: "read-only", Fast: false}},
+				Resumed: session.Info{Provider: "openai-codex", Model: "gpt-saved", Fast: new(true), AdaptiveEffort: "1-step", Mode: approval.ModeAuto, Saved: true},
+				Layers:  config.Layers{User: config.Config{SandboxMode: "read-only", Fast: false, AdaptiveEffort: "2-steps"}},
 			},
-			want: map[string]string{"model": "session", "fast": "session", "permission_mode": "session", "sandbox_mode": "session"},
-			vals: map[string]string{"fast": "true", "permission_mode": "auto", "sandbox_mode": "workspace-write"},
+			want: map[string]string{"model": "session", "fast": "session", "adaptive_effort": "session", "permission_mode": "session", "sandbox_mode": "session"},
+			vals: map[string]string{"fast": "true", "adaptive_effort": "1-step", "permission_mode": "auto", "sandbox_mode": "workspace-write"},
+		},
+		{
+			name: "--adaptive-effort beats the resumed session's, and its variable counts as env",
+			in:   func(in *app.Inputs) { in.AdaptiveEffort = "off" },
+			o: app.Origins{
+				Env:     map[string]string{app.EnvAdaptiveEffort: "off"},
+				Resumed: session.Info{AdaptiveEffort: "2-steps", Saved: true},
+				Layers:  config.Layers{User: config.Config{AdaptiveEffort: "1-step"}},
+			},
+			want: map[string]string{"adaptive_effort": "env"},
+			vals: map[string]string{"adaptive_effort": "off"},
+		},
+		{
+			name: "adaptive_effort in a file is the default for a new session",
+			o:    app.Origins{Layers: config.Layers{User: config.Config{AdaptiveEffort: "2-steps"}}},
+			want: map[string]string{"adaptive_effort": "user file"},
+			vals: map[string]string{"adaptive_effort": "2-steps"},
 		},
 		{
 			name: "permission_mode in a file sets the sandbox mode",

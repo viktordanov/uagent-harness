@@ -51,7 +51,7 @@ type Behavior struct {
 	// The prompt cache split by effort: the main agent's requests after
 	// its first, at the same effort as the request before them or at
 	// another, with their input and cached input tokens and the cached
-	// share (0 without such requests). Lean mode changes the effort per
+	// share (0 without such requests). Adaptive effort changes the effort per
 	// request; these show whether the cache follows.
 	SameEffortRequests      int     `json:"same_effort_requests"`
 	SameEffortInput         int64   `json:"same_effort_input"`

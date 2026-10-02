@@ -346,9 +346,28 @@ func TestResolve(t *testing.T) {
 			want: func(r *app.Resolved) { r.WebSearch = app.WebSearchDisabled },
 		},
 		{
-			name: "lean takes 2-steps",
-			cfg:  config.Config{Lean: "2-steps"},
-			want: func(r *app.Resolved) { r.Lean = app.LeanTwoSteps },
+			name: "adaptive_effort is the default for a new session",
+			cfg:  config.Config{AdaptiveEffort: "2-steps"},
+			want: func(r *app.Resolved) { r.Settings.AdaptiveEffort = session.AdaptiveTwoSteps },
+		},
+		{
+			name:    "the resumed session's adaptive effort wins over the configuration",
+			resumed: session.Info{AdaptiveEffort: "1-step"},
+			cfg:     config.Config{AdaptiveEffort: "2-steps"},
+			want:    func(r *app.Resolved) { r.Settings.AdaptiveEffort = session.AdaptiveOneStep },
+		},
+		{
+			name:    "a session from before adaptive effort takes the configuration's",
+			resumed: session.Info{Saved: true},
+			cfg:     config.Config{AdaptiveEffort: "1-step"},
+			want:    func(r *app.Resolved) { r.Settings.AdaptiveEffort = session.AdaptiveOneStep },
+		},
+		{
+			name:    "--adaptive-effort wins over the resumed session's",
+			in:      func(in *app.Inputs) { in.AdaptiveEffort = "off" },
+			resumed: session.Info{AdaptiveEffort: "2-steps"},
+			cfg:     config.Config{AdaptiveEffort: "2-steps"},
+			want:    func(r *app.Resolved) {},
 		},
 		{
 			name: "the prompt file is read by Setup",
@@ -366,7 +385,7 @@ func TestResolve(t *testing.T) {
 				Settings: session.Settings{
 					Provider: app.CodexProvider, Model: app.FallbackCodexModel, Effort: app.DefaultEffort,
 					Workspace: "/ws", Mode: approval.ModeWorkspace, Sandbox: string(sandbox.WorkspaceWrite),
-					MaxAttempts: engine.DefaultMaxAttempts,
+					MaxAttempts: engine.DefaultMaxAttempts, AdaptiveEffort: session.AdaptiveOff,
 				},
 				MaxDisk: 5 << 30, Instructions: true,
 				Sandbox: sandbox.Policy{Mode: sandbox.WorkspaceWrite}, Compaction: compaction.Settings{Percent: 90, Elision: compaction.DefaultElision, KeepCalls: compaction.DefaultKeepCalls, Remote: true}, Approval: approval.OnRequest,
@@ -374,7 +393,6 @@ func TestResolve(t *testing.T) {
 				Review:            review.Config{Model: review.CodexModel, Effort: llm.ReasoningEffortLow, Timeout: review.DefaultTimeout},
 				Agents:            app.Agents{Enabled: true, MaxThreads: 4, MaxDepth: 1},
 				WebSearch:         app.WebSearchLive,
-				Lean:              app.LeanOff,
 			}
 			tt.want(&want)
 			// No test names a fallback model itself.
@@ -413,7 +431,7 @@ func TestResolveUsageErrors(t *testing.T) {
 		{name: "relative experimental_compact_prompt_file", cfg: config.Config{ExperimentalCompactPromptFile: "prompt.md"}, want: `invalid experimental_compact_prompt_file "prompt.md"`},
 		{name: "invalid web_search", cfg: config.Config{WebSearch: "sometimes"}, want: `invalid web_search "sometimes"`},
 		{name: "cached web_search", cfg: config.Config{WebSearch: "cached"}, want: `web_search = "cached" is not available`},
-		{name: "invalid lean", cfg: config.Config{Lean: "on"}, want: `invalid lean "on" (want off, 1-step, or 2-steps)`},
+		{name: "invalid adaptive_effort", cfg: config.Config{AdaptiveEffort: "on"}, want: `invalid adaptive effort "on" (want off, 1-step, or 2-steps)`},
 		{name: "invalid approvals_reviewer", cfg: config.Config{ApprovalsReviewer: "robot"}, want: `invalid approvals_reviewer "robot"`},
 		{name: "invalid review effort", cfg: config.Config{Review: config.Review{Effort: "huge"}}, want: `invalid review.effort "huge"`},
 		{name: "invalid review timeout", cfg: config.Config{Review: config.Review{Timeout: "-1s"}}, want: `invalid review.timeout "-1s"`},

@@ -2,6 +2,7 @@ package state
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/viktordanov/uah/internal/approval"
 	"github.com/viktordanov/uah/internal/session"
@@ -35,8 +36,8 @@ func modeHelp(m approval.Mode) string {
 	return "commands write the workspace; you approve anything more (the auto-reviewer first)"
 }
 
-// settingsChanged shows what changed: the permission mode when it did,
-// else the model, effort, and fast mode.
+// settingsChanged shows what changed: the permission mode or adaptive
+// effort when it did, else the model, effort, and fast mode.
 func (s *State) settingsChanged(e session.SettingsChanged) {
 	prev := s.Settings
 	s.Settings = e.Settings
@@ -46,6 +47,11 @@ func (s *State) settingsChanged(e session.SettingsChanged) {
 	}
 	if e.Settings.Mode != prev.Mode {
 		s.notice(session.LevelInfo, fmt.Sprintf("%s mode: %s. Applies %s.", e.Settings.Mode.Label(), modeHelp(e.Settings.Mode), when))
+
+		return
+	}
+	if e.Settings.AdaptiveEffort != prev.AdaptiveEffort {
+		s.notice(session.LevelInfo, fmt.Sprintf("adaptive effort %s, applies %s", strings.Replace(adaptiveText(e.Settings), "-", " ", 1), when))
 
 		return
 	}

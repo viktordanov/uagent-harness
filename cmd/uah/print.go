@@ -38,6 +38,9 @@ func (p *printer) print(event core.Event) { //nolint:gocyclo // a dispatch switc
 		if e.Settings.ServiceTier != "" {
 			fast = " · fast"
 		}
+		if session.AdaptiveSteps(e.Settings.AdaptiveEffort) > 0 {
+			fast += " · adaptive effort " + e.Settings.AdaptiveEffort
+		}
 		fmt.Fprintf(p.w, "uah · session %s%s · %s/%s · effort %s%s · %s engine · sandbox %s · %s\n",
 			short(e.ID), resumed, e.Settings.Provider, modelLabel(e.Settings.Model), e.Settings.Effort, fast, e.Engine, sandboxLabel(e.Settings), e.Settings.Workspace)
 	case session.InstructionsLoaded:

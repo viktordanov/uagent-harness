@@ -54,6 +54,9 @@ type Inputs struct {
 	MaxAttempts int
 	Fast        bool
 	FastSet     bool
+	// AdaptiveEffort is --adaptive-effort or its environment variable
+	// ("": unset).
+	AdaptiveEffort string
 	// Sandbox is the --sandbox mode.
 	Sandbox string
 	// Ask is the --ask approval policy.
@@ -100,8 +103,6 @@ type Resolved struct {
 	// WebSearch is live or disabled; the engine offers live search only
 	// on a provider that has it.
 	WebSearch string
-	// Lean is Lean mode: LeanOff, LeanOneStep, or LeanTwoSteps.
-	Lean string
 	// DefaultModel reports that no flag, resumed session, or file named the
 	// model on openai-codex or openai: Settings.Model is then the provider's
 	// fallback until SettleModel sees the provider's list.
@@ -128,6 +129,8 @@ func Resolve(in Inputs, resumed session.Info, cfg config.Config) (Resolved, erro
 		Workspace:   workspaceFor(in, resumed),
 		BaseURL:     in.BaseURL,
 		AllowDotenv: in.AllowDotenv,
+		// The flag, the resumed session's, or the configured default.
+		AdaptiveEffort: first(in.AdaptiveEffort, resumed.AdaptiveEffort, cfg.AdaptiveEffort, session.AdaptiveOff),
 	}
 	s.Model = pickModel(in, resumed, cfg)
 	defaulted := s.Model == "" && fallbackModels[s.Provider] != ""
@@ -181,15 +184,11 @@ func Resolve(in Inputs, resumed session.Info, cfg config.Config) (Resolved, erro
 	if err != nil {
 		return Resolved{}, err
 	}
-	lean, err := pickLean(cfg)
-	if err != nil {
-		return Resolved{}, err
-	}
 
 	return Resolved{
 		Settings: s, MaxDisk: maxDisk, Instructions: !in.NoInstructions && cfg.InstructionsEnabled(),
 		Sandbox: policy, Env: envPolicy, Compaction: compact, CompactPromptFile: promptFile, Approval: approvalPolicy, Rules: configured,
-		ApprovalsReviewer: reviewer, Review: reviewCfg, Agents: agentSettings, WebSearch: webSearch, Lean: lean, DefaultModel: defaulted,
+		ApprovalsReviewer: reviewer, Review: reviewCfg, Agents: agentSettings, WebSearch: webSearch, DefaultModel: defaulted,
 	}, nil
 }
 

@@ -150,7 +150,7 @@ func TestSession_RunnerSharedBehavior(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, found)
 	require.NotNil(t, sc.Settings)
-	assert.Equal(t, session.Saved{Provider: "openai-codex", Model: "gpt-6-sol", Effort: "low", Mode: approval.ModeReadOnly}, *sc.Settings)
+	assert.Equal(t, session.Saved{Provider: "openai-codex", Model: "gpt-6-sol", Effort: "low", AdaptiveEffort: "off", Mode: approval.ModeReadOnly}, *sc.Settings)
 
 	require.NoError(t, s.Close())
 	assert.FileExists(t, filepath.Join(marks, "end"))

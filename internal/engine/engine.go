@@ -70,6 +70,11 @@ type Rewinder interface {
 type Options struct {
 	// ServiceTier is "" or "priority" (needs Engine.Priority).
 	ServiceTier string
+	// AdaptiveEffort is "1-step" or "2-steps": a follow-up request after
+	// tool results goes that many effort levels below the session's, and a
+	// new main session starts with the workspace's context ("" or "off":
+	// neither).
+	AdaptiveEffort string
 	// Mode is the permission mode: the sandbox commands run in and who
 	// decides what needs approval ("": the engine's configured sandbox).
 	Mode approval.Mode
@@ -120,6 +125,9 @@ type Run interface {
 	// SetServiceTier changes the tier for the next model request (an
 	// error when the provider has no priority tier).
 	SetServiceTier(tier string) error
+	// SetAdaptiveEffort changes adaptive effort ("off", "1-step", or
+	// "2-steps") from the next model request.
+	SetAdaptiveEffort(value string) error
 	// SetMode changes the permission mode from the next command and the
 	// next model request.
 	SetMode(mode approval.Mode) error

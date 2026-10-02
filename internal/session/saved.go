@@ -18,19 +18,24 @@ import (
 
 // Saved are the settings a session keeps in its sidecar whenever they
 // change, so a resumed session starts with what it last used: its model
-// (with the provider it belongs to), effort, fast mode, and permission
-// mode. A flag still wins over them, and they win over the configuration.
+// (with the provider it belongs to), effort, fast mode, adaptive effort,
+// and permission mode. A flag still wins over them, and they win over the
+// configuration.
 type Saved struct {
-	Provider string        `json:"provider,omitempty"`
-	Model    string        `json:"model,omitempty"`
-	Effort   string        `json:"effort,omitempty"`
-	Fast     bool          `json:"fast"`
-	Mode     approval.Mode `json:"permission_mode,omitempty"`
+	Provider       string        `json:"provider,omitempty"`
+	Model          string        `json:"model,omitempty"`
+	Effort         string        `json:"effort,omitempty"`
+	Fast           bool          `json:"fast"`
+	AdaptiveEffort string        `json:"adaptive_effort,omitempty"`
+	Mode           approval.Mode `json:"permission_mode,omitempty"`
 }
 
 // savedOf is what the sidecar keeps of the settings.
 func savedOf(s Settings) Saved {
-	return Saved{Provider: s.Provider, Model: s.Model, Effort: s.Effort, Fast: s.ServiceTier != "", Mode: s.Mode}
+	return Saved{
+		Provider: s.Provider, Model: s.Model, Effort: s.Effort, Fast: s.ServiceTier != "",
+		AdaptiveEffort: cmp.Or(s.AdaptiveEffort, AdaptiveOff), Mode: s.Mode,
+	}
 }
 
 // ApplySidecar adds what the sidecar records to the summary: the source,
@@ -50,7 +55,7 @@ func (in *Info) ApplySidecar(sc Sidecar) {
 	in.Saved = true
 	in.Provider, in.Model, in.Effort = cmp.Or(sv.Provider, in.Provider), cmp.Or(sv.Model, in.Model), cmp.Or(sv.Effort, in.Effort)
 	fast := sv.Fast
-	in.Fast, in.Mode = &fast, sv.Mode
+	in.Fast, in.AdaptiveEffort, in.Mode = &fast, sv.AdaptiveEffort, sv.Mode
 }
 
 // saveSettings records the settings in the session's sidecar, creating the

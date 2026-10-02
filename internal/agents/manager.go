@@ -272,6 +272,7 @@ func (m *Manager) childOptions(p engine.AgentParent, c *child, role Role, rec re
 	}
 	s := opts.Settings.WithRequest(p.Request)
 	s.ServiceTier = m.serviceTier(p.ServiceTier, role)
+	s.AdaptiveEffort = p.AdaptiveEffort
 	if p.Mode != nil && p.Mode() != "" {
 		s = s.WithMode(p.Mode())
 	}

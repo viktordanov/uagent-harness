@@ -142,22 +142,10 @@ func (s *Session) onSettings(next Settings) Applied {
 	s.settings = next
 	applied := AppliedNextRun
 	if s.state == StateRunning && s.run != nil {
-		live := true
-		if next.Effort != prev.Effort {
-			live = live && s.run.SetEffort(next.Effort) == nil
-		}
-		if next.Model != prev.Model {
-			live = live && s.run.SetModel(next.Model) == nil
-		}
-		if next.ServiceTier != prev.ServiceTier {
-			live = live && s.run.SetServiceTier(next.ServiceTier) == nil
-		}
-		if next.Mode != prev.Mode {
-			live = live && s.run.SetMode(next.Mode) == nil
-		}
 		onlyLiveFields := next.Provider == prev.Provider && next.Workspace == prev.Workspace && next.BaseURL == prev.BaseURL
-		changed := next.Effort != prev.Effort || next.Model != prev.Model || next.ServiceTier != prev.ServiceTier || next.Mode != prev.Mode
-		if live && onlyLiveFields && changed {
+		changed := next.Effort != prev.Effort || next.Model != prev.Model || next.ServiceTier != prev.ServiceTier ||
+			next.AdaptiveEffort != prev.AdaptiveEffort || next.Mode != prev.Mode
+		if s.setLive(prev, next) && onlyLiveFields && changed {
 			applied = AppliedLive
 		}
 	}
@@ -165,6 +153,29 @@ func (s *Session) onSettings(next Settings) Applied {
 	s.saveSettings(next)
 
 	return applied
+}
+
+// setLive passes the fields that changed to the live run, and reports
+// whether it took them all.
+func (s *Session) setLive(prev, next Settings) bool {
+	live := true
+	if next.Effort != prev.Effort {
+		live = live && s.run.SetEffort(next.Effort) == nil
+	}
+	if next.Model != prev.Model {
+		live = live && s.run.SetModel(next.Model) == nil
+	}
+	if next.ServiceTier != prev.ServiceTier {
+		live = live && s.run.SetServiceTier(next.ServiceTier) == nil
+	}
+	if next.AdaptiveEffort != prev.AdaptiveEffort {
+		live = live && s.run.SetAdaptiveEffort(next.AdaptiveEffort) == nil
+	}
+	if next.Mode != prev.Mode {
+		live = live && s.run.SetMode(next.Mode) == nil
+	}
+
+	return live
 }
 
 // interruptLive stops the live run, or the run that is starting.

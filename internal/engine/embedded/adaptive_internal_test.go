@@ -8,7 +8,7 @@ import (
 	"github.com/viktordanov/unreal-agent/harness/llm"
 )
 
-func TestLeanRoute(t *testing.T) {
+func TestAdaptiveRoute(t *testing.T) {
 	msg := func(role llm.Role) llm.Item {
 		return llm.Item{Type: llm.ItemMessage, Data: llm.Message{Role: role, Text: "x"}}
 	}
@@ -31,12 +31,12 @@ func TestLeanRoute(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, leanRouter{steps: 1}.route(tt.input, llm.ReasoningEffortHigh, false))
+			assert.Equal(t, tt.want, adaptiveRouter{steps: 1}.route(tt.input, llm.ReasoningEffortHigh, false))
 		})
 	}
-	two := leanRouter{steps: 2}.route([]llm.Item{system, user, call, result}, llm.ReasoningEffortMax, true)
+	two := adaptiveRouter{steps: 2}.route([]llm.Item{system, user, call, result}, llm.ReasoningEffortMax, true)
 	assert.Equal(t, effortChoice{effort: llm.ReasoningEffortXHigh, reason: "2-steps: tool results only"}, two, "ultra, two steps down, on the plain client")
-	kept := leanRouter{steps: 2}.route([]llm.Item{system, user}, llm.ReasoningEffortMax, true)
+	kept := adaptiveRouter{steps: 2}.route([]llm.Item{system, user}, llm.ReasoningEffortMax, true)
 	assert.Equal(t, effortChoice{effort: llm.ReasoningEffortMax, ultra: true, reason: "2-steps: first request"}, kept)
 }
 

@@ -87,10 +87,11 @@ type Scope struct {
 // AgentParent is a parent session's live run.
 type AgentParent struct {
 	SessionID string
-	// Request and ServiceTier are the parent run's: its children start
-	// with the same settings.
-	Request     core.Request
-	ServiceTier string
+	// Request, ServiceTier, and AdaptiveEffort are the parent run's: its
+	// children start with the same settings.
+	Request        core.Request
+	ServiceTier    string
+	AdaptiveEffort string
 	// Mode is the parent run's permission mode now: a child starts with
 	// it, so a stricter mode chosen during the run holds for new children
 	// too (nil: the engine's configured sandbox).

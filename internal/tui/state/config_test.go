@@ -22,7 +22,7 @@ func configValues() map[string]state.ConfigValue {
 		"fast":                           {Value: "false", Source: "default"},
 		"permission_mode":                {Value: "workspace", Source: "default"},
 		"web_search":                     {Value: "live", Source: "default"},
-		"lean":                           {Value: "off", Source: "default"},
+		"adaptive_effort":                {Value: "off", Source: "default"},
 		"tui.details":                    {Value: "false", Source: "default"},
 		"tui.mouse":                      {Value: "false", Source: "user file"},
 	}
@@ -64,7 +64,7 @@ func TestConfig_OpensAndShowsValuesWithSources(t *testing.T) {
 	assert.Equal(t, [2]string{"gpt-6-sol", "user file"}, got["Model"])
 	assert.Equal(t, [2]string{"off", "user file"}, got["Mouse"])
 	assert.Equal(t, [2]string{"live", "default"}, got["Web search"])
-	assert.Equal(t, [2]string{"off", "default"}, got["Lean mode"], "off is shown as is")
+	assert.Equal(t, [2]string{"off", "default"}, got["Adaptive effort"], "off is shown as is")
 
 	s, _ = apply(s, state.ConfigEsc{})
 	assert.Nil(t, s.Config, "esc closes")
@@ -97,34 +97,64 @@ func TestConfig_WebSearch(t *testing.T) {
 	assert.Contains(t, s.Items[len(s.Items)-1].Text, "applies to sessions opened from now on")
 }
 
-// TestConfig_LeanMode: the row cycles off, 1 step, and 2 steps, says what
-// Lean mode does while it is selected, and applies to the sessions opened
-// next.
-func TestConfig_LeanMode(t *testing.T) {
-	s := openConfig(t, opened(), "Lean mode")
+// TestConfig_AdaptiveEffort: the row cycles off, 1 step, and 2 steps, says
+// what adaptive effort does while it is selected, and changes the current
+// session too.
+func TestConfig_AdaptiveEffort(t *testing.T) {
+	s := openConfig(t, opened(), "Adaptive effort")
 	row := func(s state.State) state.ConfigRow {
 		for _, r := range s.ConfigRows() {
-			if r.Key == "lean" {
+			if r.Key == "adaptive_effort" {
 				return r
 			}
 		}
-		t.Fatal("no lean row")
+		t.Fatal("no adaptive_effort row")
 
 		return state.ConfigRow{}
 	}
+	with := func(value string) session.Settings {
+		next := settings()
+		next.AdaptiveEffort = value
+
+		return next
+	}
 	assert.Equal(t, "off", row(s).Value)
-	assert.Equal(t, "Lean mode: think one or two effort levels less on follow-up turns, and start with the workspace's context", row(s).Help)
+	assert.Contains(t, row(s).Help, "Adaptive effort: think one or two effort levels less on follow-up turns")
 	s, effects := apply(s, state.ConfigChange{Delta: 1})
-	assert.Equal(t, []state.Effect{state.EffSaveConfig{Key: "lean", Value: "1-step"}}, effects, "no session change")
+	assert.Equal(t, []state.Effect{state.EffSaveConfig{Key: "adaptive_effort", Value: "1-step"}, state.EffSetSettings{Settings: with("1-step")}}, effects)
 	assert.Equal(t, "1 step", row(s).Value)
-	s, _ = apply(s, state.ConfigSaved{Key: "lean", Value: "1-step"})
-	assert.Contains(t, s.Items[len(s.Items)-1].Text, "saved lean = 1-step")
-	assert.Contains(t, s.Items[len(s.Items)-1].Text, "applies to sessions opened from now on")
+	s, _ = apply(s, state.ConfigSaved{Key: "adaptive_effort", Value: "1-step"})
+	assert.Contains(t, s.Items[len(s.Items)-1].Text, "saved adaptive_effort = 1-step")
+	assert.Contains(t, s.Items[len(s.Items)-1].Text, "this session changes too")
+	s, _ = apply(s, session.SettingsChanged{At: t0, Settings: with("1-step"), Applied: session.AppliedLive})
+	assert.Contains(t, s.Items[len(s.Items)-1].Text, "adaptive effort 1 step, applies now")
 	s, effects = apply(s, state.ConfigChange{Delta: 1})
-	assert.Equal(t, []state.Effect{state.EffSaveConfig{Key: "lean", Value: "2-steps"}}, effects)
+	assert.Equal(t, []state.Effect{state.EffSaveConfig{Key: "adaptive_effort", Value: "2-steps"}, state.EffSetSettings{Settings: with("2-steps")}}, effects)
 	assert.Equal(t, "2 steps", row(s).Value)
+	s, _ = apply(s, session.SettingsChanged{At: t0, Settings: with("2-steps")})
 	_, effects = apply(s, state.ConfigChange{Delta: 1})
-	assert.Equal(t, []state.Effect{state.EffSaveConfig{Key: "lean", Value: "off"}}, effects, "and off again")
+	assert.Equal(t, []state.Effect{state.EffSaveConfig{Key: "adaptive_effort", Value: "off"}, state.EffSetSettings{Settings: with("off")}}, effects, "and off again")
+}
+
+// TestAdaptiveCommand: /adaptive steps to the next value, takes one by
+// name, and shows the current one for anything else; /status shows it.
+func TestAdaptiveCommand(t *testing.T) {
+	with := func(value string) session.Settings {
+		next := settings()
+		next.AdaptiveEffort = value
+
+		return next
+	}
+	s, effects := apply(opened(), state.Submit{Text: "/adaptive"})
+	assert.Equal(t, []state.Effect{state.EffSetSettings{Settings: with("1-step")}}, effects)
+	_, effects = apply(s, state.Submit{Text: "/adaptive 2-steps"})
+	assert.Equal(t, []state.Effect{state.EffSetSettings{Settings: with("2-steps")}}, effects)
+	s, effects = apply(s, state.Submit{Text: "/adaptive max"})
+	assert.Empty(t, effects)
+	assert.Contains(t, s.Items[len(s.Items)-1].Text, "adaptive effort: off (set it with /adaptive off|1-step|2-steps)")
+	s, _ = apply(s, session.SettingsChanged{At: t0, Settings: with("2-steps")})
+	s, _ = apply(s, state.Submit{Text: "/status"})
+	assert.Contains(t, s.Items[len(s.Items)-3].Text, "effort high · adaptive effort 2-steps ·")
 }
 
 func TestConfig_ModelEffortAndFastChangeTheSession(t *testing.T) {

@@ -15,6 +15,31 @@ import (
 // Efforts are the thinking levels the runner accepts.
 var Efforts = []string{"low", "medium", "high", "xhigh", "max", "ultra"}
 
+// Adaptive effort's values: how many effort levels below the session's a
+// follow-up request after tool results goes. On, a new main session also
+// starts with the workspace's context.
+const (
+	AdaptiveOff      = "off"
+	AdaptiveOneStep  = "1-step"
+	AdaptiveTwoSteps = "2-steps"
+)
+
+// AdaptiveEfforts are adaptive effort's values, in /config's cycle order.
+var AdaptiveEfforts = []string{AdaptiveOff, AdaptiveOneStep, AdaptiveTwoSteps}
+
+// AdaptiveSteps is the number of effort levels a follow-up goes down: 0
+// when adaptive effort is off ("" or "off").
+func AdaptiveSteps(value string) int {
+	switch value {
+	case AdaptiveOneStep:
+		return 1
+	case AdaptiveTwoSteps:
+		return 2
+	}
+
+	return 0
+}
+
 // Providers are the backends the runner supports.
 var Providers = []string{"openai", "openai-codex", "openrouter", "fireworks", "ollama"}
 
@@ -25,9 +50,12 @@ type Settings struct {
 	Model       string
 	Effort      string
 	ServiceTier string // "" or "priority"
-	Workspace   string
-	BaseURL     string
-	AllowDotenv bool
+	// AdaptiveEffort is AdaptiveOff, AdaptiveOneStep, or AdaptiveTwoSteps
+	// ("": off).
+	AdaptiveEffort string
+	Workspace      string
+	BaseURL        string
+	AllowDotenv    bool
 	// MaxAttempts is how many times a model request is sent before the
 	// run fails (0: the engine's default).
 	MaxAttempts int
@@ -58,6 +86,9 @@ func (s Settings) Validate() error {
 	}
 	if s.ServiceTier != "" && s.ServiceTier != "priority" {
 		return fmt.Errorf("invalid service tier %q (want priority or empty)", s.ServiceTier)
+	}
+	if s.AdaptiveEffort != "" && !slices.Contains(AdaptiveEfforts, s.AdaptiveEffort) {
+		return fmt.Errorf("invalid adaptive effort %q (want off, 1-step, or 2-steps)", s.AdaptiveEffort)
 	}
 	if s.Workspace == "" {
 		return errors.New("the workspace is not set")

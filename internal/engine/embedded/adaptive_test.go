@@ -10,17 +10,23 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uah/internal/engine/embedded"
 	"github.com/viktordanov/uah/internal/session"
 	"github.com/viktordanov/uah/testing/fakellm"
 )
 
-// leanEngine is the env's engine in Lean mode with steps (0: off).
-func (e *env) leanEngine(steps int) *embedded.Engine {
-	return embedded.New(embedded.Config{StateDir: e.StateDir, Provider: "openai", LeanSteps: steps, Getenv: e.getenv})
+// openAdaptive opens a new session at adaptive effort value.
+func (e *env) openAdaptive(t *testing.T, value string) (*session.Session, *events) {
+	t.Helper()
+	settings := e.settings()
+	settings.AdaptiveEffort = value
+	s, err := session.Open(t.Context(), e.embedded(), session.Options{Settings: settings})
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = s.Close() })
+
+	return s, &events{t: t, s: s}
 }
 
-// TestPrimedFirstTurn: in Lean mode, a new session's first request carries the workspace
+// TestPrimedFirstTurn: with adaptive effort on, a new session's first request carries the workspace
 // context before the user's message, with git's state, the tracked files,
 // and the file AGENTS.md includes; the system prompt is the same as
 // without it, and a later run of the session adds no second context.
@@ -42,7 +48,8 @@ func TestPrimedFirstTurn(t *testing.T) {
 		}
 		settings := e.settings()
 		settings.SystemPrompt = "Base.\n\n# Project instructions\n\n## " + agents + "\n\n@INC.md\n"
-		s, err := session.Open(t.Context(), e.leanEngine(map[bool]int{true: 1}[on]), session.Options{Settings: settings})
+		settings.AdaptiveEffort = map[bool]string{true: session.AdaptiveOneStep, false: session.AdaptiveOff}[on]
+		s, err := session.Open(t.Context(), e.embedded(), session.Options{Settings: settings})
 		require.NoError(t, err)
 		t.Cleanup(func() { _ = s.Close() })
 		ev := &events{t: t, s: s}
@@ -77,26 +84,26 @@ func TestPrimedFirstTurn(t *testing.T) {
 	assert.Equal(t, systems[false], systems[true], "the system prompt is unchanged")
 }
 
-// TestLean_Effort: in Lean mode, the first request and one with a user
+// TestAdaptiveEffort: with adaptive effort on, the first request and one with a user
 // message go at the session's effort, and one after tool results only, a
 // read as much as a command that confirms, goes one or two levels lower.
-// Without Lean mode, every request keeps it.
-func TestLean_Effort(t *testing.T) {
+// Off, every request keeps it.
+func TestAdaptiveEffort(t *testing.T) {
 	tests := []struct {
 		name    string
-		steps   int
+		value   string
 		command string
 		want    []string
 	}{
-		{"off", 0, "echo one", []string{"high", "high", "high"}},
-		{"1 step", 1, "echo one", []string{"high", "medium", "high"}},
-		{"1 step after a read", 1, "cat go.mod", []string{"high", "medium", "high"}},
-		{"2 steps", 2, "echo one", []string{"high", "low", "high"}},
+		{"off", "off", "echo one", []string{"high", "high", "high"}},
+		{"1 step", "1-step", "echo one", []string{"high", "medium", "high"}},
+		{"1 step after a read", "1-step", "cat go.mod", []string{"high", "medium", "high"}},
+		{"2 steps", "2-steps", "echo one", []string{"high", "low", "high"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := newEnv(t, fakellm.Reply{Commands: []string{tt.command}}, fakellm.Reply{Text: "done"}, fakellm.Reply{Text: "again"})
-			s, ev := e.open(t, e.leanEngine(tt.steps), "")
+			s, ev := e.openAdaptive(t, tt.value)
 			_, err := s.Submit("run it")
 			require.NoError(t, err)
 			ev.finished()
@@ -110,7 +117,7 @@ func TestLean_Effort(t *testing.T) {
 				efforts = append(efforts, r.Effort)
 			}
 			assert.Equal(t, tt.want, efforts)
-			if tt.steps != 2 {
+			if tt.value != session.AdaptiveTwoSteps {
 				return
 			}
 			logs, _ := filepath.Glob(filepath.Join(e.StateDir, "runs", "*", "stderr.log"))
@@ -123,4 +130,36 @@ func TestLean_Effort(t *testing.T) {
 			assert.Contains(t, all, `"effort":"high","effort_reason":"2-steps: user message"`)
 		})
 	}
+}
+
+// TestAdaptiveEffort_ChangesLive: turning adaptive effort on during a run
+// lowers the run's next follow-up, without priming the session; turning it
+// off brings the next follow-up back to the session's effort.
+func TestAdaptiveEffort_ChangesLive(t *testing.T) {
+	gate, again := make(chan struct{}), make(chan struct{})
+	e := newEnv(t, fakellm.Reply{Commands: []string{"true"}, Gate: gate}, fakellm.Reply{Commands: []string{"true"}, Gate: again}, fakellm.Reply{Text: "done"})
+	s, ev := e.openAdaptive(t, session.AdaptiveOff)
+
+	_, err := s.Submit("go")
+	require.NoError(t, err)
+	waitSeen(t, e.llm, 1)
+	next := e.settings()
+	next.AdaptiveEffort = session.AdaptiveTwoSteps
+	applied, err := s.SetSettings(next)
+	require.NoError(t, err)
+	assert.Equal(t, session.AppliedLive, applied)
+	close(gate)
+	waitSeen(t, e.llm, 2)
+	next.AdaptiveEffort = session.AdaptiveOff
+	_, err = s.SetSettings(next)
+	require.NoError(t, err)
+	close(again)
+	ev.finished()
+
+	var efforts []string
+	for _, r := range e.llm.Requests() {
+		efforts = append(efforts, r.Effort)
+	}
+	assert.Equal(t, []string{"high", "low", "high"}, efforts)
+	assert.Equal(t, []string{"go"}, e.llm.Requests()[0].UserTexts, "no workspace context")
 }

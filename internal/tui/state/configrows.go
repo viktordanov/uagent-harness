@@ -36,7 +36,7 @@ const (
 	keyDetails      = "tui.details"
 	keyMouse        = "tui.mouse"
 	keyWebSearch    = "web_search"
-	keyLean         = "lean"
+	keyAdaptive     = "adaptive_effort"
 )
 
 // rowKind is how a /config row changes.
@@ -76,9 +76,9 @@ var configKeys = []struct {
 	{keyModel, "Model", rowModel, ""},
 	{keyEffort, "Effort", rowChoice, ""},
 	{keyFast, "Fast mode", rowToggle, ""},
+	{keyAdaptive, "Adaptive effort", rowChoice, adaptiveHelp},
 	{keyMode, "Permission mode", rowChoice, ""},
 	{keyWebSearch, "Web search", rowChoice, ""},
-	{keyLean, "Lean mode", rowChoice, "Lean mode: think one or two effort levels less on follow-up turns, and start with the workspace's context"},
 	{keyDetails, "Details view", rowToggle, ""},
 	{keyMouse, "Mouse", rowToggle, ""},
 }
@@ -96,9 +96,8 @@ var webSearchModes = []string{"live", "disabled"}
 // shownOff is how the panel shows a setting that is off.
 const shownOff = "off"
 
-// leanModes are lean's values: off, then one and two effort levels lower
-// on follow-up turns.
-var leanModes = []string{shownOff, "1-step", "2-steps"}
+// adaptiveHelp says what adaptive effort does.
+const adaptiveHelp = "Adaptive effort: think one or two effort levels less on follow-up turns after tool results, and start a new session with the workspace's context"
 
 // sessionModel is the compaction model's choice for "the session's model".
 const sessionModel = "session model"
@@ -130,7 +129,7 @@ func shown(key string, v ConfigValue) string {
 		return "none"
 	case key == keyCompactModel && v.Source == sourceDefault:
 		return sessionModel + " (" + v.Value + ")"
-	case key == keyLean:
+	case key == keyAdaptive:
 		return strings.Replace(v.Value, "-", " ", 1)
 	case v.Value == "true":
 		return "on"
@@ -160,8 +159,8 @@ func (s State) next(row ConfigRow, delta int) (value any, ok bool) {
 		return cycle(cycledModes, current, delta), true
 	case keyWebSearch:
 		return cycle(webSearchModes, current, delta), true
-	case keyLean:
-		return cycle(leanModes, current, delta), true
+	case keyAdaptive:
+		return cycle(session.AdaptiveEfforts, current, delta), true
 	}
 	percent, _ := strconv.Atoi(current)
 	i := slices.Index(autoPercents, percent)
