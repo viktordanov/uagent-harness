@@ -16,7 +16,7 @@ Design:
 7. [Subagents](design/subagents.md): how Codex and Claude Code run subagents, and the plan for uah.
 8. [Compaction](design/compaction.md): how Codex compacts, locally and remotely, what the runner supports, the design, the offline evaluation over recorded sessions and its numbers, the state ledger, elision, the kept calls and the summary prompt, remote compaction with its probes, and the open decisions.
 9. [MCP](design/mcp.md): how Codex runs MCP servers, how their tools run as the runner's remote jobs, OAuth, the validation findings, and the open decisions.
-10. [Subscription usage (spike)](design/usage.md): how Codex reads the ChatGPT plan's rate limits, what uah can read with the same login, and the recommended design; the prototype is [internal/usage](../internal/usage/README.md), wired to nothing yet.
+10. [Subscription usage](design/usage.md): how Codex reads the ChatGPT plan's rate limits, what uah can read with the same login, and the design uah built in [internal/usage](../internal/usage/README.md), which `uah usage`, `/status`, the footer, and `uah doctor` read.
 11. [Pasting images](design/images.md): how Codex and Claude Code paste images, what the runner and uagent carry, and the design with its open decisions.
 12. [Shell mode](design/shell-mode.md): how Codex and Claude Code run a `!` command the user types, and how uah runs it and adds it to the conversation.
 13. [Streaming the answer](design/streaming.md): how Codex streams the answer, why the runner needs no change, and how the embedded engine tees each turn request's stream into the TUI.

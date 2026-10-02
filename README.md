@@ -67,7 +67,8 @@ Keys worth knowing:
 
 | Key | Does |
 | --- | --- |
-| enter | Send. While the agent works, it reads the message after its running tool calls, before its next model request, as in Codex rust-v0.159.1. On an empty prompt, it sends the queued messages now, in order. ctrl+enter and alt+enter do the same |
+| enter | Send. While the agent works, it reads the message after its running tool calls, before its next model request, as in Codex rust-v0.159.1. On an empty prompt, it sends the queued messages now, in order |
+| ctrl+enter, alt+enter | While the agent works, send now: the model's response under way is dropped and asked for again with the message; running tool calls go on. Where the terminal cannot tell ctrl+enter from enter (tmux without extended keys), use alt+enter. While idle, as enter |
 | tab | While the agent works, queue the message: it goes out when the run ends. While idle, send |
 | ctrl+j, shift+enter | New line; ctrl+j works in every terminal. In tmux without extended keys, shift+enter arrives as enter and sends; see the [keys design](docs/design/keys.md) |
 | esc esc | Interrupt; queued messages stay. While the agent is idle, on an empty prompt: go back to an earlier message and edit it |
@@ -163,7 +164,7 @@ To remove an image, delete its placeholder: one backspace at its end removes it 
 - At start: `uah -m gpt-6-luna -e medium`, and `--fast` for priority processing.
 - For every session: `model` and `effort` in the [configuration](#configuration).
 - Adaptive effort: the model thinks less on the turns that only follow tool results, and a new session starts with the workspace's context (the git branch and status, the tracked files, and the files AGENTS.md includes), so it need not look them up. `1-step` goes one effort level below yours on those turns, `2-steps` two, never below low; the first request and every turn with your message stay at your effort. `off` is the default. On the agent benchmark at high effort, at the same pass rate, it cut wall time by 18–35% and cost by 16–25%, more at 2 steps. Set it with alt+e, `/adaptive [off|1-step|2-steps]`, or the `/config` row (from the next model request, even mid-run); the footer then shows `high↓` or `high⇊`, and `high→low` while a lowered follow-up is out, `--adaptive-effort` at start, or `adaptive_effort` for new sessions. A session keeps its own value, as it keeps its effort.
-- See what the provider offers: `uah models` (`--json`, `--refresh`), `/model ` then tab in the TUI, or tab after `-m`. A model the provider does not list is refused with the nearest names ("gpt-luna-6 is not available on openai-codex; did you mean gpt-6-luna?").
+- See what the provider offers: `uah models` (`--json`, `--refresh`), `/model ` then tab in the TUI, or tab after `-m`. In the TUI, `/model` refuses a model the provider does not list, with the nearest names ("gpt-luna-6 is not available on openai-codex; did you mean gpt-6-luna?"), and `uah doctor` warns about one; `-m` and the configuration are not checked: the model goes to the provider as written.
 
 ### Usage limits
 
