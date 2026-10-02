@@ -3,7 +3,7 @@ package render
 import (
 	"cmp"
 	"fmt"
-	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -142,7 +142,7 @@ func transcript(s state.State, c *Cache, w, height int, head []string) []string 
 func (st *Styles) headerLine(s state.State, w int) string {
 	full, short, _ := effortLabel(s)
 	header := func(effort string) string {
-		return fmt.Sprintf(" uah · %s · %s/%s · %s · %s · %s", session.ShortID(s.SessionID), s.Settings.Provider, s.Settings.Model, effort, cmp.Or(modeText(s), "sandbox none"), home(s.Settings.Workspace))
+		return fmt.Sprintf(" uah · %s · %s/%s · %s · %s · %s", session.ShortID(s.SessionID), s.Settings.Provider, s.Settings.Model, effort, cmp.Or(modeText(s), "sandbox none"), home(s.Home, s.Settings.Workspace))
 	}
 	left := header(full)
 	var right string
@@ -352,7 +352,7 @@ func footerRest(s state.State) string {
 	if s.Settings.ServiceTier != "" {
 		b.WriteString(" · fast")
 	}
-	for _, p := range []string{modeText(s), home(s.Settings.Workspace)} {
+	for _, p := range []string{modeText(s), home(s.Home, s.Settings.Workspace)} {
 		if p != "" {
 			b.WriteString(" · " + p)
 		}
@@ -387,7 +387,7 @@ func (st *Styles) picker(s state.State, f Frame) string {
 		in := list[i]
 		row := fmt.Sprintf(" %s  %-9s %7s  %-11s %-12s ", session.ShortID(in.ID), age(s.Now, in.LastActivity), plural(in.Runs, "run"), in.Status, in.Model)
 		if s.Picker.All {
-			row += fmt.Sprintf("%-24s ", ansi.Truncate(home(in.Workspace), 24, "…"))
+			row += fmt.Sprintf("%-24s ", ansi.Truncate(home(s.Home, in.Workspace), 24, "…"))
 		}
 		row += oneLine(in.FirstPrompt)
 		row = ansi.Truncate(row, f.Width, "…")
@@ -414,9 +414,18 @@ func plural(n int, noun string) string {
 
 func oneLine(s string) string { return strings.Join(strings.Fields(s), " ") }
 
-func home(path string) string {
-	if h, err := os.UserHomeDir(); err == nil && strings.HasPrefix(path, h) {
-		return "~" + strings.TrimPrefix(path, h)
+// home shows path under the home directory h as ~: h itself, or a path
+// below it, never a sibling that only starts with its name.
+func home(h, path string) string {
+	h = strings.TrimSuffix(h, string(filepath.Separator))
+	switch {
+	case h == "":
+		return path
+	case path == h:
+		return "~"
+	}
+	if rest, ok := strings.CutPrefix(path, h+string(filepath.Separator)); ok {
+		return "~" + string(filepath.Separator) + rest
 	}
 
 	return path

@@ -208,7 +208,7 @@ func (st *Styles) banner(s state.State, version string, w int) []string {
 		st.accent.Render("λ uah") + st.dim.Render(version),
 		"",
 		st.dim.Render("model:     ") + strings.TrimSpace(s.Settings.Model+" "+s.Settings.Effort) + st.dim.Render("   /model to change"),
-		st.dim.Render("directory: ") + home(s.Settings.Workspace),
+		st.dim.Render("directory: ") + home(s.Home, s.Settings.Workspace),
 	}
 	inner := 0
 	for _, r := range rows {

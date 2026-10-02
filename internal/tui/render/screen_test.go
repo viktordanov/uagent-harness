@@ -164,3 +164,14 @@ func TestTranscriptScrolls(t *testing.T) {
 	assert.Contains(t, top, "line A", "scrolling past the top stops at the first line")
 	assert.Equal(t, 24, strings.Count(bottom, "\n"), "the screen is exactly the terminal height")
 }
+
+// TestScreen_HomeFromState: the workspace is shown under the state's home
+// directory, not the process's.
+func TestScreen_HomeFromState(t *testing.T) {
+	s := base()
+	s.Home = "/workspace"
+	assert.Contains(t, screen(s, ""), "~/proj")
+	s.Home = "/work"
+	assert.NotContains(t, screen(s, ""), "~")
+	assert.Contains(t, screen(s, ""), "/workspace/proj")
+}

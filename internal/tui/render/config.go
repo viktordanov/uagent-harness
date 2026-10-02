@@ -15,7 +15,7 @@ func (st *Styles) configLines(s state.State, w int) []string {
 	p := s.Config
 	title := st.accent.Render(" Settings")
 	if p.Path != "" {
-		title += st.dim.Render(" · saved to " + home(p.Path))
+		title += st.dim.Render(" · saved to " + home(s.Home, p.Path))
 	}
 	out := []string{ansi.Truncate(title, w, "…")}
 	if p.Values == nil {
