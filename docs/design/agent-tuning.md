@@ -184,6 +184,19 @@ R0 at 1 and 2 steps against Lean off: 12 tasks (half reading or judgment work: b
 
 The reading tasks alone took 1197 s with Lean off, 861 s at 1 step and 735 s at 2 steps. The failures are spread: both of 2-steps' are the branch review, which also fails with Lean off; 1 step missed the spec and the findings report once each. Three repeats cannot separate a one- or two-run difference in pass rate, so the speed is the result and the quality reads as "no visible loss". Both levels stay: 1 step as the safe one, 2 steps as the aggressive one.
 
+### Escalation on failure
+
+Should a follow-up after a failure think harder? The rule, behind a switch (`UAH_EXPERIMENTS=lean-escalate`): a follow-up carries a failure when one of its tool results failed (a command that exited nonzero or did not run, a refusal, a tool error, or an `apply_patch` that did not apply), and each one in a row takes a step back up, to E at most. At 2 steps the first goes at E−1 and the second at E; at 1 step the first goes at E. A follow-up without a failure, or a user message, goes back down. The same 12 tasks × 3 repeats, at high effort, 144 runs ([raw](../../tools/agentbench/history/2026-10-02-lean-escalate.jsonl)).
+
+| | Passed | Wall | Estimated cost | Cached input | Escalated requests |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 1 step | 34/36 | 1676 s | $0.88 | 86.3% | — |
+| 1 step, escalation | 34/36 | 1663 s | $0.99 (+13%) | 82.4% | 24 |
+| 2 steps | 35/36 | 1339 s | $0.73 | 85.4% | — |
+| 2 steps, escalation | 35/36 | 1324 s | $0.77 (+5%) | 81.0% | 23 |
+
+The escalations fell mostly on the test-fixing, race, slow-suite, bug-hunt, branch-review and findings-report tasks. The failures are the same with and without it (the branch review, and once the spec at 1 step). Requests whose effort changed hit the cache 67–80%, against about 88% for the rest, so escalation changed the effort more often and cost more. Dropped: no quality gain, cache cost.
+
 ## Decisions
 
 | Date | Decision | Ledger |
@@ -196,6 +209,7 @@ The reading tasks alone took 1197 s with Lean off, 861 s at 1 step and 735 s at 
 | 2026-10-02 | The corrected preamble is dropped, from uah and the runner fork (v0.5.2): it changed nothing measurable | |
 | 2026-10-02 | Lower effort for follow-up turns and the primed first turn become Lean mode, a setting off by default (`lean = "off" | "1-step" | "2-steps"`, `/config`): a request after tool results only goes one or two effort levels below the user's, never below low | [92](../ledger.md) |
 | 2026-10-02 | Lean mode keeps r0, every follow-up after tool results lower; r1 to r3 and their classifier are removed: changing the effort between requests more often cost more cache than the lower effort saved ([Lean mode rules](#lean-mode-rules)) | [92](../ledger.md) |
+| 2026-10-02 | Escalation on failure is dropped: a step back up per failing follow-up in a row brought no quality gain and cost cache ([Escalation on failure](#escalation-on-failure)) | [92](../ledger.md) |
 
 ## Still running and next
 
