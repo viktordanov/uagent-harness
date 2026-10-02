@@ -40,7 +40,7 @@ func modelsServer(t *testing.T) *httptest.Server {
 
 func TestModels(t *testing.T) {
 	e, env := fakeEnv(t)
-	env = append(env, "UNREAL_HARNESS_LLM_BASE_URL="+modelsServer(t).URL)
+	env = append(env, "UAH_LLM_BASE_URL="+modelsServer(t).URL)
 
 	res := uahWith(t, env, "", "models", "-C", e.Workspace)
 	require.Equal(t, 0, res.code, res.stderr)
@@ -85,7 +85,7 @@ func TestModelsMarksNewDefault(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 	e, env := fakeEnv(t)
-	env = append(env, "UNREAL_HARNESS_LLM_BASE_URL="+srv.URL)
+	env = append(env, "UAH_LLM_BASE_URL="+srv.URL)
 
 	res := uahWith(t, env, "", "models", "-C", e.Workspace)
 

@@ -87,7 +87,7 @@ func TestSources(t *testing.T) {
 			headers: map[string]string{"Authorization": "Bearer sk-test"},
 		},
 		"openrouter: /api/v1/models with context_length": {
-			provider: models.ProviderOpenRouter, path: "/api/v1/models", baseSuffix: "/api/v1", vars: map[string]string{"UNREAL_HARNESS_LLM_API_KEY": "or-key"},
+			provider: models.ProviderOpenRouter, path: "/api/v1/models", baseSuffix: "/api/v1", vars: map[string]string{"UAH_LLM_API_KEY": "or-key"},
 			body:    `{"data":[{"id":"openai/gpt-5.5","name":"OpenAI: GPT-5.5","context_length":400000,"top_provider":{"context_length":272000}}]}`,
 			want:    []models.Model{{ID: "openai/gpt-5.5", DisplayName: "OpenAI: GPT-5.5", ContextWindow: 400000}},
 			headers: map[string]string{"Authorization": "Bearer or-key"},
@@ -141,7 +141,7 @@ func TestSources(t *testing.T) {
 
 func TestNewSource_Errors(t *testing.T) {
 	_, err := models.NewSource(models.ProviderOpenAI, "", env(nil))
-	require.ErrorContains(t, err, "UNREAL_HARNESS_LLM_API_KEY or OPENAI_API_KEY must be set")
+	require.ErrorContains(t, err, "UAH_LLM_API_KEY or OPENAI_API_KEY must be set")
 	_, err = models.NewSource("bedrock", "", env(nil))
 	require.ErrorIs(t, err, models.ErrUnsupported)
 	_, err = models.NewSource(models.ProviderCodex, "https://example.com/codex", env(map[string]string{"CODEX_HOME": codexHome(t, "a")}))

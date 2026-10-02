@@ -321,7 +321,7 @@ func UAHConfigFile(mode string, extra []string) (string, error) {
 }
 
 func dropEnv(name string) bool {
-	for _, p := range []string{"UAH_", "UNREAL_HARNESS_", "WEBTTY_", "OPENAI_", "CLAUDE", "GO", "TMPDIR", "PYTHON"} {
+	for _, p := range []string{"UAH_", "WEBTTY_", "OPENAI_", "CLAUDE", "GO", "TMPDIR", "PYTHON"} {
 		if strings.HasPrefix(name, p) {
 			return true
 		}

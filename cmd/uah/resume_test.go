@@ -51,7 +51,7 @@ func TestRunResumesAProcessSession(t *testing.T) {
 	}
 	require.NoError(t, s.Close())
 	env := []string{
-		"UAH_STATE_DIR=" + e.StateDir, "UNREAL_HARNESS_LLM_PROVIDER=", "UNREAL_HARNESS_LLM_MODEL=",
+		"UAH_STATE_DIR=" + e.StateDir, "UAH_LLM_PROVIDER=", "UAH_LLM_MODEL=",
 		"UAH_HOME=" + filepath.Join(e.StateDir, "..", "home"),
 	}
 

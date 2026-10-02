@@ -124,9 +124,9 @@ func modelEnv(t *testing.T, llm *fakellm.Server) (*harnesstest.Env, []string) {
 	return e, []string{
 		"UAH_STATE_DIR=" + e.StateDir,
 		"CODEX_HOME=" + e.CodexHome,
-		"UNREAL_HARNESS_LLM_PROVIDER=",
-		"UNREAL_HARNESS_LLM_MODEL=",
-		"UNREAL_HARNESS_LLM_BASE_URL=" + llm.URL,
+		"UAH_LLM_PROVIDER=",
+		"UAH_LLM_MODEL=",
+		"UAH_LLM_BASE_URL=" + llm.URL,
 		"UAH_HOME=" + filepath.Join(e.StateDir, "..", "home"),
 	}
 }
@@ -274,7 +274,7 @@ func TestRunFailures(t *testing.T) {
 
 	t.Run("a blocked preflight fails the run", func(t *testing.T) {
 		e, env := fakeEnv(t)
-		require.NoError(t, os.WriteFile(filepath.Join(e.Workspace, ".env"), []byte("UNREAL_HARNESS_LLM_BASE_URL=http://evil\n"), 0o600))
+		require.NoError(t, os.WriteFile(filepath.Join(e.Workspace, ".env"), []byte("UAH_LLM_BASE_URL=http://evil\n"), 0o600))
 
 		res := uahWith(t, env, "", "run", "-C", e.Workspace, "hi")
 
@@ -297,8 +297,8 @@ func TestRunEmbedded(t *testing.T) {
 	env := []string{
 		"UAH_STATE_DIR=" + e.StateDir,
 		"OPENAI_API_KEY=test-key",
-		"UNREAL_HARNESS_LLM_PROVIDER=",
-		"UNREAL_HARNESS_LLM_MODEL=",
+		"UAH_LLM_PROVIDER=",
+		"UAH_LLM_MODEL=",
 		"UAH_HOME=" + filepath.Join(e.StateDir, "..", "home"),
 	}
 
@@ -348,7 +348,7 @@ func TestRunEmbeddedCompaction(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(configHome, "config.toml"), []byte("auto_compact_percent = 90\nremote_compaction = false\n"), 0o600))
 	env := []string{
 		"UAH_STATE_DIR=" + e.StateDir, "OPENAI_API_KEY=test-key",
-		"UNREAL_HARNESS_LLM_PROVIDER=", "UNREAL_HARNESS_LLM_MODEL=", "UAH_HOME=" + configHome,
+		"UAH_LLM_PROVIDER=", "UAH_LLM_MODEL=", "UAH_HOME=" + configHome,
 	}
 
 	res := uahWith(t, env, "", "run", "--stream", "--provider", "openai", "-m", "gpt-test", "--base-url", llm.URL, "-C", e.Workspace, "go")

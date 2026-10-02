@@ -26,7 +26,7 @@ const (
 )
 
 // EnvAPIKey overrides every provider's key variable, as in the engine.
-const EnvAPIKey = "UNREAL_HARNESS_LLM_API_KEY"
+const EnvAPIKey = "UAH_LLM_API_KEY"
 
 // Endpoint is how uah reaches a provider: the engine's provider table
 // (internal/engine/embedded/providers.go), which a test keeps in step.
@@ -70,7 +70,7 @@ var ErrUnsupported = errors.New("unsupported provider")
 
 // NewSource builds the provider's source with the engine's configuration:
 // the base URL (empty for the provider's default) and the credentials the
-// environment selects (UNREAL_HARNESS_LLM_API_KEY, the provider's key
+// environment selects (UAH_LLM_API_KEY, the provider's key
 // variable, or for openai-codex the OPENAI_CODEX_* variables and the Codex
 // auth file). It reads credentials but makes no request.
 func NewSource(provider, baseURL string, getenv func(string) string) (Source, error) {

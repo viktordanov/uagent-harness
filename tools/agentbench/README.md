@@ -23,7 +23,7 @@ A task with [follow-up prompts](#follow-up-prompts) runs on uah alone: `uah exec
 
 `-mode` sets the permission mode of both. `auto`, the default and the owner's everyday mode, has a reviewer model decide what needs approval: uah's `permission_mode = "auto"` (the generated configuration file holds only that key) and Codex's `--approve-for-me`, which implies the workspace-write sandbox. `workspace` refuses it: uah's `--sandbox workspace-write --ask never` and Codex's `-s workspace-write -c approval_policy="never"`. A task that needs the network or files outside the workspace passes only in `auto`.
 
-Both load `~/.codex/AGENTS.md`, as both do by default. The environment drops `UAH_*`, `UNREAL_HARNESS_*`, `OPENAI_*`, `GO*`, and web-tty's variables, and sets `TMPDIR` to a shared directory in the scratch directory, which both sandboxes let commands write; the Go build cache lives there (`GOCACHE`), with `GOFLAGS=-count=1` so a slow suite is slow every time, `GOPROXY=off`, and `GOTOOLCHAIN=local`.
+Both load `~/.codex/AGENTS.md`, as both do by default. The environment drops `UAH_*`, `OPENAI_*`, `GO*`, and web-tty's variables, and sets `TMPDIR` to a shared directory in the scratch directory, which both sandboxes let commands write; the Go build cache lives there (`GOCACHE`), with `GOFLAGS=-count=1` so a slow suite is slow every time, `GOPROXY=off`, and `GOTOOLCHAIN=local`.
 
 The uah binary is built from the working tree into the scratch directory at the start, unless `-uah` names one.
 <!-- /memoria:section -->

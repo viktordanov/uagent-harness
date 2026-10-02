@@ -166,7 +166,7 @@ func TestExplainSources(t *testing.T) {
 			},
 		},
 		{
-			name: "UNREAL_HARNESS_LLM_MAX_ATTEMPTS beats request_max_attempts",
+			name: "UAH_LLM_MAX_ATTEMPTS beats request_max_attempts",
 			in:   func(in *app.Inputs) { in.MaxAttempts = 4 },
 			o:    app.Origins{Env: map[string]string{app.EnvMaxAttempts: "4"}, Layers: config.Layers{User: config.Config{RequestMaxAttempts: 20}}},
 			want: map[string]string{"request_max_attempts": "env"},

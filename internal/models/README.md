@@ -38,7 +38,7 @@ Lists are ordered by Codex's `priority`, lowest first; a model without a priorit
 <!-- memoria:section id="sources" files="source.go providers.go" -->
 ## Sources
 
-A `Source` lists one provider's models for one login. `NewSource` builds it from the engine's configuration: the base URL (`--base-url`, `UNREAL_HARNESS_LLM_BASE_URL`), then `UNREAL_HARNESS_LLM_API_KEY`, then the provider's key variable. A test keeps `Endpoints` equal to the engine's provider table.
+A `Source` lists one provider's models for one login. `NewSource` builds it from the engine's configuration: the base URL (`--base-url`, `UAH_LLM_BASE_URL`), then `UAH_LLM_API_KEY`, then the provider's key variable. A test keeps `Endpoints` equal to the engine's provider table.
 
 | Provider | Request | Notes |
 | --- | --- | --- |
