@@ -284,11 +284,11 @@ Three ways set these keys without editing by hand, each in the file that configu
 - `uah mcp approve <name> [tool] --mode approve|prompt|writes|auto` sets the server's default, or one tool's mode. Without `--mode`, it prints the current modes.
 - "Yes, and don't ask again for this tool" in the TUI's approval prompt writes `approval_mode = "approve"` for that tool, as Codex's "Allow and don't ask me again" does. The session stops asking at once.
 
-OAuth for streamable HTTP servers, with Codex's keys. A server that answers 401 and advertises OAuth needs `uah mcp login <name>`; until then it shows "needs login" in `/mcp` and `uah doctor`. A server with `bearer_token_env_var` or an `Authorization` header never uses OAuth.
+OAuth for streamable HTTP servers, with Codex's keys. A server that answers 401 and advertises OAuth, at startup or on a later call, needs `uah mcp login <name>`; until then it shows "needs login" in `/mcp` and `uah doctor`, and its calls fail with that instruction. A server with `bearer_token_env_var` or an `Authorization` header never uses OAuth.
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `auth` | string | `oauth` | How uah authorizes; only `oauth` is supported (Codex's `chatgpt` and `ema_auth` need a Codex account) |
+| `auth` | string | `oauth` | How uah authorizes; only `oauth` is supported (Codex's `chatgpt` and `ema_auth` need a Codex account). A server with another value does not start: it shows as failed with the reason, and the other servers start |
 | `scopes` | list of strings | the scopes the server advertises | The scopes `uah mcp login` asks for; `--scopes` replaces them |
 | `oauth_resource` | string | the server's own | The RFC 8707 resource sent with the authorization and token requests |
 | `oauth.client_id` | string | none: uah registers a client dynamically | A client registered with the authorization server ahead of time, in `[mcp_servers.<name>.oauth]` |

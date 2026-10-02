@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
@@ -45,11 +46,18 @@ func (m *Manager) Call(ctx context.Context, serverName, tool string, args json.R
 	if errors.Is(err, sdk.ErrSessionMissing) && ctx.Err() == nil {
 		// The server forgot the session, so it never ran the call; start a
 		// new session and call once more, as Codex does.
-		if session, err = m.reconnect(ctx, s, session); err == nil {
+		var next *sdk.ClientSession
+		if next, err = m.reconnect(ctx, s, session); err == nil {
+			session = next
 			r, err = session.CallTool(ctx, params)
 		}
 	}
 	if err != nil {
+		if login, ok := errors.AsType[*LoginError](err); ok {
+			m.needsLogin(ctx, s, session, login)
+
+			return Result{}, login
+		}
 		if ctx.Err() != nil {
 			return Result{}, callError(ctx, timeout)
 		}
@@ -58,6 +66,21 @@ func (m *Manager) Call(ctx context.Context, serverName, tool string, args json.R
 	}
 
 	return convert(r), nil
+}
+
+// needsLogin marks a running server needs_login when it answered a call
+// with a 401, as a 401 at startup does, so /mcp and `uah doctor` say to log
+// in and later calls fail at once.
+func (m *Manager) needsLogin(ctx context.Context, s *server, session *sdk.ClientSession, login *LoginError) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if s.state != StateReady || s.session != session {
+		return
+	}
+	s.state, s.err = StateNeedsLogin, login
+	m.opts.Logger.LogAttrs(ctx, slog.LevelWarn, "MCP server needs a login",
+		slog.String("server", s.name),
+		slog.Any("err", login))
 }
 
 // ready returns the server if it can take calls.
