@@ -32,6 +32,9 @@ type uahEvent struct {
 	Stop       string    `json:"stop"`
 	Mode       string    `json:"mode"`
 	Effort     string    `json:"effort"`
+	Trigger    string    `json:"trigger"`
+	Tokens     int64     `json:"tokens"`
+	Error      string    `json:"error"`
 	Usage      struct {
 		Input     int64 `json:"input"`
 		Cached    int64 `json:"cached_input"`
@@ -55,7 +58,7 @@ func ParseUAH(stream io.Reader, start time.Time, stateDir string) (*Timeline, er
 		if e.At.After(tl.End) {
 			tl.End = e.At
 		}
-		if !p.model(e) {
+		if !p.model(e) && !p.compaction(e) {
 			p.tool(e)
 		}
 
@@ -67,6 +70,11 @@ func ParseUAH(stream io.Reader, start time.Time, stateDir string) (*Timeline, er
 	// A request that never answered (the run was stopped) ends with the run.
 	tl.Requests = closeRequests(tl.Requests, ms(start, tl.End))
 	closeCalls(tl.Calls, ms(start, tl.End))
+	for i := range tl.Compactions {
+		if tl.Compactions[i].EndMS < 0 {
+			tl.Compactions[i].EndMS = ms(start, tl.End)
+		}
+	}
 	if stateDir != "" {
 		if err := addSubagents(tl, stateDir, p.session); err != nil {
 			return nil, err
@@ -131,6 +139,23 @@ func (p *uahParser) model(e uahEvent) bool {
 		}
 	case eventError, "run_failed":
 		tl.Errors = append(tl.Errors, cmpOr(e.Message, e.Text, e.Detail))
+	default:
+		return false
+	}
+
+	return true
+}
+
+// compaction reads the compactions' events, reporting whether e was one.
+func (p *uahParser) compaction(e uahEvent) bool {
+	tl := p.tl
+	switch e.Type {
+	case "compaction_started":
+		tl.Compactions = append(tl.Compactions, Compaction{StartMS: ms(tl.Start, e.At), EndMS: -1, Trigger: e.Trigger, Tokens: e.Tokens})
+	case "compacted":
+		if n := len(tl.Compactions); n > 0 && tl.Compactions[n-1].EndMS < 0 {
+			tl.Compactions[n-1].EndMS, tl.Compactions[n-1].Error = ms(tl.Start, e.At), e.Error
+		}
 	default:
 		return false
 	}

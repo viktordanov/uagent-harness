@@ -112,7 +112,7 @@ type Result struct {
 
 // Plan lists the runs of cfg in the order they start: repeats outermost,
 // and the harnesses' order alternating by repeat so neither always goes
-// first.
+// first. A uah-only task has no other harness's runs.
 func Plan(cfg Config) []Key {
 	var keys []Key
 	for r := 1; r <= cfg.Repeat; r++ {
@@ -122,6 +122,9 @@ func Plan(cfg Config) []Key {
 				hs = []string{hs[1], hs[0]}
 			}
 			for _, h := range hs {
+				if t.UAHOnly() && h != HarnessUAH {
+					continue
+				}
 				k := Key{Task: t.Name, Harness: h, Model: cfg.Model, Effort: cfg.Effort, Repeat: r}
 				if h == HarnessUAH {
 					k.Variant = cfg.Variant

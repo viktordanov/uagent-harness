@@ -37,6 +37,11 @@ type Task struct {
 	Dir  string `json:"-"`
 	// Prompt is the message both harnesses get.
 	Prompt string `json:"prompt"`
+	// FollowUps are more messages, each sent when the agent is done with
+	// the one before, in the same session: one line each, as uah exec
+	// --stdin reads them. Codex cannot take one without saving its
+	// session, so a task with follow-ups is tagged uah-only.
+	FollowUps []string `json:"follow_ups,omitempty"`
 	// Check is a shell command run in the result, after check/ is laid
 	// over it; exit status 0 passes.
 	Check string `json:"check"`
@@ -64,6 +69,12 @@ type Task struct {
 	// may edit files under ~ without touching the user's.
 	FakeHome bool `json:"fake_home,omitempty"`
 }
+
+// TagUAHOnly marks a task only uah runs: the plan leaves Codex out.
+const TagUAHOnly = "uah-only"
+
+// UAHOnly reports whether only uah runs the task.
+func (t Task) UAHOnly() bool { return slices.Contains(t.Tags, TagUAHOnly) }
 
 // Duration is a time.Duration written as "90s" in JSON.
 type Duration time.Duration
@@ -129,6 +140,14 @@ func LoadTask(dir string) (Task, error) {
 	}
 	if t.Exercises == "" {
 		problems = append(problems, "no exercises")
+	}
+	for _, f := range t.FollowUps {
+		if strings.TrimSpace(f) == "" || strings.Contains(f, "\n") {
+			problems = append(problems, "a follow-up must be one non-empty line")
+		}
+	}
+	if len(t.FollowUps) > 0 && !t.UAHOnly() {
+		problems = append(problems, "follow-ups need the tag "+TagUAHOnly)
 	}
 	for _, d := range []string{repoDir, solutionDir} {
 		if d == solutionDir && t.SolutionScript != "" {

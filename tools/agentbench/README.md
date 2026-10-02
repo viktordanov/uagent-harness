@@ -19,6 +19,8 @@ Each run gets a fresh copy of its task's repository, committed to a new git repo
 - uah: `uah exec --json --model M --effort E --config <scratch>/uah-<mode>.toml --state-dir <run>/uah-state`, with `UAH_HOME` in the scratch directory, so the owner's `config.toml`, `config.d` hooks, and history are not read or written. uah's Codex login is `$CODEX_HOME/auth.json`, which it reads in place; the harness copies no credential and never reads it.
 - Codex: `codex exec --json --ephemeral --ignore-user-config --skip-git-repo-check -m M -c model_reasoning_effort=E`, with stdin closed. `--ephemeral` keeps the runs out of `~/.codex/sessions`.
 
+A task with [follow-up prompts](#follow-up-prompts) runs on uah alone: `uah exec --stdin` takes them in the same session, and Codex has no way to without saving its session.
+
 `-mode` sets the permission mode of both. `auto`, the default and the owner's everyday mode, has a reviewer model decide what needs approval: uah's `permission_mode = "auto"` (the generated configuration file holds only that key) and Codex's `--approve-for-me`, which implies the workspace-write sandbox. `workspace` refuses it: uah's `--sandbox workspace-write --ask never` and Codex's `-s workspace-write -c approval_policy="never"`. A task that needs the network or files outside the workspace passes only in `auto`.
 
 Both load `~/.codex/AGENTS.md`, as both do by default. The environment drops `UAH_*`, `UNREAL_HARNESS_*`, `OPENAI_*`, `GO*`, and web-tty's variables, and sets `TMPDIR` to a shared directory in the scratch directory, which both sandboxes let commands write; the Go build cache lives there (`GOCACHE`), with `GOFLAGS=-count=1` so a slow suite is slow every time, `GOPROXY=off`, and `GOTOOLCHAIN=local`.
@@ -84,14 +86,14 @@ go run ./tools/agentbench -harness uah -repeat 3 -uah-env UAH_EXPERIMENTS=NAME -
 A prompt variant, for example, is `-uah-config 'model_instructions_file = "/tmp/uah-agentbench/prompts/runner.md"' -variant prompt-runner`. The report then has `uah+NAME` as a harness of its own in the per-harness tables, and a table of the variant against the control per task.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="tasks" files="bench/task.go bench/fixture.go bench/dry.go" -->
+<!-- memoria:section id="tasks" files="bench/task.go bench/fixture.go bench/dry.go bench/harness.go bench/run.go" -->
 ## Tasks
 
 A task is a folder in `testdata/tasks/`:
 
 | Path | Holds |
 | --- | --- |
-| `task.json` | `prompt` (what both harnesses get), `check` (a shell command; exit status 0 passes), `exercises` (one line), `tags`, and optionally `check_timeout` (default 3m), `timeout` (the run's limit), `solution_delete`, and the fixtures below |
+| `task.json` | `prompt` (what both harnesses get), `check` (a shell command; exit status 0 passes), `exercises` (one line), `tags`, and optionally `follow_ups` (below), `check_timeout` (default 3m), `timeout` (the run's limit), `solution_delete`, and the fixtures below |
 | `repo/` | the repository the agent starts from |
 | `solution/` | files laid over `repo/` that solve the task: the reference solution |
 | `check/` | files laid over the agent's result before the check runs: hidden tests, and the original visible tests, so editing a test does not pass it |
@@ -101,14 +103,21 @@ A task may also need more than files. `setup` is a shell script run in the works
 
 The agent sees only `repo/`. The check runs in a copy of the agent's result, so the workspace stays as the agent left it.
 
+### Follow-up prompts
+
+`follow_ups` lists more messages, sent in the same session one after another, each when the agent is done with the one before: "now also handle X", "rename what you just added". uah gets them through `uah exec --stdin`: the harness keeps uah's stdin open, writes the next follow-up as one line each time the stream reports `idle` (the run ended), and closes stdin after the last, so uah exits when that one is done. A follow-up is therefore one line. The check runs once, after the last.
+
+Codex cannot take a follow-up without keeping its session: `codex exec` takes one prompt, and `codex exec resume` continues a session saved in `~/.codex/sessions`, which `--ephemeral` does not save and the harness keeps out of. So a task with follow-ups must carry the tag `uah-only` (`LoadTask` refuses it otherwise), and the plan has no Codex run for a `uah-only` task; the report shows it in uah's tables only.
+
 **Validation.** `-dry` runs each task's check twice, with no model: on the untouched repository, where it must fail, and on the reference solution, where it must pass. A task that does not do both is not valid, and the command exits non-zero. Run it after any change to a task. It also warms the shared Go build cache.
 
 To add a task: write `repo/` as a user's repository would be (a README, tests that a developer would have), a `prompt` as the user would type it, without naming the hidden tests, a `check` that is deterministic and needs no network, and the `solution/` that passes it. Then run `go run ./tools/agentbench -dry -tasks '^<name>$'`.
 
-The suite has 35 tasks. The tag `slow` marks a task whose tests take 10 to 60 s, where a good agent works while they run; `subagents` marks work that splits across subagents; `archetype` marks the ten taken from the kinds of work the owner's own sessions do most, as the mining of those sessions found them (P7), where the model's time, not the tools', is most of the wall time.
+The suite has 40 tasks. The tag `slow` marks a task whose tests take 10 to 60 s, where a good agent works while they run; `subagents` marks work that splits across subagents; `archetype` marks the ten taken from the kinds of work the owner's own sessions do most, as the mining of those sessions found them (P7), where the model's time, not the tools', is most of the wall time. Five are larger than the rest, as real sessions are: `large-repo` works in a vendored open-source project of a few hundred files where the agent must search for the place to change; `follow-up` marks several prompts in one session (and `uah-only`); `large-input` gives the agent megabytes to read; and `compaction` marks a session long enough to fill uah's context past its automatic compaction limit (90% of the model's window, about 245,000 tokens for gpt-6.1-sol). In the owner's sessions a compaction came only after 13 to 64 prompts and 145 to 414 model requests, so the long task is several prompts, each needing wide reading, in one context: a single prompt of logs did not do it, as the agent extracts what it needs with a script.
 
 | Task | Tags | Exercises |
 | --- | --- | --- |
+| `ci-log-triage` | investigate, logs, large-input | 40 CI logs (2.7 MB, up to 110 KB each, generated by `gen.py` at setup) triaged into a CSV of causes, failing tests, and culprit commits, and a summary, past flakes that passed on a rerun and warnings after the tests |
 | `curl-local-api` | network, escalation, archetype | Many curl calls against a local API (five pages, then details of each flagged item), which need an escalation out of the sandbox; then merged, sorted JSON |
 | `fullstack-go-js` | go, javascript, feature, archetype | A filter across a Go HTTP API and a plain-JS front end, with tests on both sides |
 | `git-changelog-two-repos` | git, docs, archetype | Release notes between two tags of two local repositories, from conventional commit subjects |
@@ -121,13 +130,17 @@ The suite has 35 tasks. The tag `slow` marks a task whose tests take 10 to 60 s,
 | `go-data-race` | go, fix, concurrency | A counter made safe for concurrent use; the check runs `go test -race` |
 | `go-docs-and-code` | go, feature, docs | A `retries` setting through configuration and the fetch loop, documented in the README |
 | `go-errors-sentinel` | go, refactor | Sentinel errors from `docs/errors.md`, wrapped through three layers and matched with `errors.Is` |
+| `go-followup-flag` | go, feature, follow-up, uah-only | Three prompts in one session: a `--since` time filter for a log CLI, then relative durations for it, then a rename to `--after` with a deprecated alias |
 | `go-fix-failing-tests` | go, fix | Three independent bugs in three files behind one failing suite |
 | `go-ini-parser` | go, feature | A half-finished INI parser completed to the rules in its README |
 | `go-investigate-answer` | go, investigate | A question with no code change: which function drops a record, written to `ANSWER.txt` |
+| `go-large-repo-guide` | go, docs, investigate, large-repo, follow-up, uah-only, long, compaction | Four prompts in one session over smithy-go (the repository of `go-large-repo-bug`, without its bug, copied in by `setup`): an `ARCHITECTURE.md` of every package, then sections on the middleware stack, the encoders, and verified gotchas; wide reading in one context, enough for uah's automatic compaction |
+| `go-large-repo-bug` | go, investigate, fix, large-repo | A broken URL path reported from a client, found and fixed in a vendored [smithy-go](https://github.com/aws/smithy-go) v1.22.4 (242 files, 27,000 lines of Go): a path-label replacement that loses the rest of the path when a value outgrows its placeholder's spare capacity |
 | `go-multi-module` | go, fix, workspace | A `go.work` of three modules, each with a bug; independent builds and tests |
 | `go-multifile-feature` | go, feature | `-format json` for a CLI: flag, formatter, and wiring |
 | `go-perf-quadratic` | go, performance, slow | A quadratic dedupe made fast for 200,000 IDs without changing its semantics; the untouched code takes 20 s to time out |
 | `go-py-fixtures` | go, python, feature | A new column through a Python fixture generator, its golden files, and the Go loader |
+| `go-plan-handoff-implement` | go, feature, docs, follow-up, uah-only, archetype | The owner's plan-then-build shape in three prompts: a design question with no code change, a handoff file, then a file-backed store behind `-data` that survives a kill |
 | `go-race-tests` | go, fix, concurrency, archetype | Three data races in three packages under `go test -race`, fixed without changing the tests |
 | `go-rename-refactor` | go, refactor | A type and its constructor renamed across 14 files in 5 packages and the README |
 | `go-repo-overview` | go, docs, investigate, archetype | An `ARCHITECTURE.md` for a 15-file service: packages, the request flow, retries, and where to add a feature |
@@ -145,7 +158,9 @@ The suite has 35 tasks. The tag `slow` marks a task whose tests take 10 to 60 s,
 | `py-log-parser` | python, investigate | A symptom only (durations over an hour are wrong), traced through a Python log parser |
 | `py-slow-tests` | python, slow | A Python suite with 20 s of sleeps, a bug fix, and a new function from `docs/` |
 
-Python tasks need `python3`, the JavaScript task needs `node`; neither needs a package.
+Python tasks, the generator and check of `ci-log-triage`, and the check of `go-large-repo-guide` need `python3`, the JavaScript task needs `node`; neither needs a package.
+
+`go-large-repo-bug`'s repository is aws/smithy-go v1.22.4 as published, under the Apache License 2.0 (its `LICENSE` and `NOTICE` are in the repository), with one change, the planted bug: three lines removed from `encoding/httpbinding/path_replace.go` (`solution/` restores them). [THIRD_PARTY_NOTICES.md](../../THIRD_PARTY_NOTICES.md) records it; the file itself carries no notice, which would point the agent at the bug.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="timeline" files="bench/timeline.go bench/parse_uah.go bench/parse_codex.go" -->
@@ -157,7 +172,8 @@ Both streams become one `Timeline` (`timeline.json`), with times in milliseconds
 | --- | --- |
 | `requests` | each model request: `start_ms`, `first_byte_ms` (when known), `end_ms`, `tokens` (`input`, `cached`, `output`, `reasoning`), `tool_calls` it issued, `effort`, `stop` (`complete`, or how it was cut off), `text_bytes` (the assistant text it wrote), and `agent` (a subagent's session ID, or empty for the main agent) |
 | `calls` | each tool call: `name`, `kind` (`tool`, `wait`, or `agent`), `args` (a one-line summary), `args_bytes`, `escalated` (it asked to run outside the sandbox), `request` (the index of the request that issued it), `issued_ms`, `start_ms`, `end_ms`, `ok`, `detail` (an exit status), and `agent` |
-| `turns` | user turns: one per prompt |
+| `turns` | user turns: one per prompt, follow-ups included |
+| `compactions` | uah's context compactions: `start_ms`, `end_ms` (the summary call), `trigger` (`auto` when the context reached the limit), `tokens` (the context then), and `error` if it failed. Codex's events show none |
 | `tokens` | the run's totals; input includes cached, output includes reasoning |
 | `inferred` | what was estimated rather than read |
 | `answer`, `errors` | the final message, and errors the stream reported |
@@ -175,7 +191,7 @@ Each result line holds the run's `metrics`:
 | Metric | Meaning |
 | --- | --- |
 | `wall_ms` | the process's wall time |
-| `model_ms` | time at least one model request was in flight |
+| `model_ms` | time at least one model request, or a compaction's summary call, was in flight |
 | `tool_ms` | time at least one tool call ran; waits are not work |
 | `overlap_ms` | time a request and a tool call ran at once: what async scheduling gains |
 | `model_only_ms`, `tool_only_ms`, `idle_ms` | with `overlap_ms`, a split of the wall time: the critical path was the model alone, the tools alone, both, or neither (startup, the harness, a wait on nothing) |
@@ -198,6 +214,7 @@ The mining of the owner's sessions (P7) found the model is about 89% of the wall
 | `escalations`, `escalations_refused`, `review_ms`, `review_median_ms` | calls that asked to run outside the sandbox (uah's `sandbox_permissions: require_escalated`), how many failed, and the time from issuing them to starting them, which is the approval's latency. Codex's events show neither, so its counts are 0 |
 | `approval_waits`, `approval_wait_ms` | every call that started 300 ms or more after it was issued, which in uah means it waited for an approval (an escalation, or a patch outside the workspace), and the total wait |
 | `aborted`, `aborted_ms` | requests that did not complete (canceled, failed, or cut off by the limit) and the model time they took |
+| `compactions`, `compaction_ms` | context compactions and the time their summary calls took (uah only) |
 
 The report has, per model and effort: a table per harness (runs, pass rate, medians of the times and counts, token totals, total cost); a table per harness of `behavior` summed over its runs; a table per task with uah against Codex (pass counts, median wall times and their ratio, uah's overlap, each one's most concurrent calls, median input tokens, median cost); for each [variant](#variants), a table per task and over all its runs against the control (pass counts, median wall times and their ratio, requests, output tokens, and patch tokens); and every run, with its status, the split of its wall time, its longest call, and the size of its diff. A run's status is `done` (exit 0), `failed` (non-zero), `timeout`, or `error`; a timed-out run does not pass, even if its check does.
 <!-- /memoria:section -->
@@ -210,10 +227,10 @@ The estimate is uncached input, cached input, and output tokens at the `-price-*
 As a scale, each smoke pass (two tasks, both harnesses, effort low, 4 runs) took 40 to 95 s a run, about 510,000 input tokens (85% cached) and 3,000 to 5,000 output tokens in all: under $0.20 at the default rates. A full pass of 35 tasks × 2 harnesses × 3 repeats is 210 runs (raise `-max-runs`): at low effort about 27 million input tokens, $10, and 4 hours at `-parallel 1`; at high effort expect two to four times the tokens and the time.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="test" files="bench/bench_test.go bench/variant_test.go bench/testdata/uah.jsonl bench/testdata/codex.jsonl" -->
+<!-- memoria:section id="test" files="bench/bench_test.go bench/variant_test.go bench/followup_test.go bench/testdata/uah.jsonl bench/testdata/codex.jsonl" -->
 ## The test
 
-`go test ./tools/agentbench/...` makes no model calls. It parses a recorded uah stream and a stamped Codex stream of the same prompt (two commands in parallel, then an answer) and checks the requests, calls, tokens, and metrics; checks the metrics' arithmetic and the `behavior` counts on synthetic timelines; loads every task; dry-runs every task not tagged `slow` (about 5 s with a warm build cache, which it keeps in `$TMPDIR/uah-agentbench-test`; `-short` skips it); and checks the plan's order, a variant's keys, its configuration file, and the report's variant table.
+`go test ./tools/agentbench/...` makes no model calls. It parses a recorded uah stream and a stamped Codex stream of the same prompt (two commands in parallel, then an answer) and checks the requests, calls, tokens, and metrics; checks the metrics' arithmetic and the `behavior` counts on synthetic timelines; loads every task; dry-runs every task not tagged `slow` (about 5 s with a warm build cache, which it keeps in `$TMPDIR/uah-agentbench-test`; `-short` skips it); checks the plan's order, a variant's keys, its configuration file, and the report's variant table; checks that a `uah-only` task has no Codex run and that follow-ups need that tag; runs a task with two follow-ups against a fake `uah` script that answers each message and goes idle, to see each sent after the run before it ended; and parses compactions from a synthetic stream.
 <!-- /memoria:section -->
 
 ## History

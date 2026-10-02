@@ -196,7 +196,7 @@ func oneLine(v string, n int) string {
 
 // behaviorTable sums each harness's Behavior over its runs.
 func behaviorTable(b *strings.Builder, rs []Result) {
-	b.WriteString("\n### Where the model time goes, per harness\n\nOutput tokens split by what they wrote (patch, tool arguments, and text by bytes written; Codex's split is rough), then sums over the runs: requests spent on a startup ritual and their time, patch-only requests followed by a separate command request, escalations with the total and median approval latency, and requests that did not complete.\n\n| Harness | Reasoning | Patch | Tool args | Text | Ritual req. (s) | Patch then verify | Escalations (refused) | Review s (median) | Approval waits (s) | Aborted (s) | Requests by effort |\n| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |\n")
+	b.WriteString("\n### Where the model time goes, per harness\n\nOutput tokens split by what they wrote (patch, tool arguments, and text by bytes written; Codex's split is rough), then sums over the runs: requests spent on a startup ritual and their time, patch-only requests followed by a separate command request, escalations with the total and median approval latency, requests that did not complete, and context compactions with their summary time.\n\n| Harness | Reasoning | Patch | Tool args | Text | Ritual req. (s) | Patch then verify | Escalations (refused) | Review s (median) | Approval waits (s) | Aborted (s) | Compactions (s) | Requests by effort |\n| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |\n")
 	for _, h := range harnesses(rs) {
 		var t Behavior
 		efforts := map[string]int{}
@@ -217,6 +217,8 @@ func behaviorTable(b *strings.Builder, rs []Result) {
 			t.ApprovalWaitMS += x.ApprovalWaitMS
 			t.Aborted += x.Aborted
 			t.AbortedMS += x.AbortedMS
+			t.Compactions += x.Compactions
+			t.CompactionMS += x.CompactionMS
 			for e, n := range x.Efforts {
 				efforts[e] += n
 			}
@@ -236,9 +238,9 @@ func behaviorTable(b *strings.Builder, rs []Result) {
 			es = append(es, fmt.Sprintf("%s %d", e, n))
 		}
 		slices.Sort(es)
-		fmt.Fprintf(b, "| %s | %s | %s | %s | %s | %d (%.1f) | %d | %d (%d) | %.1f (%.1f) | %d (%.1f) | %d (%.1f) | %s |\n",
+		fmt.Fprintf(b, "| %s | %s | %s | %s | %s | %d (%.1f) | %d | %d (%d) | %.1f (%.1f) | %d (%.1f) | %d (%.1f) | %d (%.1f) | %s |\n",
 			h, pct(t.OutputReasoning), pct(t.OutputPatch), pct(t.OutputToolArgs), pct(t.OutputText),
 			t.RitualRequests, s(t.RitualMS), t.PatchThenVerify, t.Escalations, t.EscalationsRefused, s(t.ReviewMS), med, t.ApprovalWaits, s(t.ApprovalWaitMS),
-			t.Aborted, s(t.AbortedMS), strings.Join(es, ", "))
+			t.Aborted, s(t.AbortedMS), t.Compactions, s(t.CompactionMS), strings.Join(es, ", "))
 	}
 }

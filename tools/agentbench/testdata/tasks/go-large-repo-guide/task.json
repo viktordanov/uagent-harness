@@ -1,0 +1,22 @@
+{
+  "prompt": "I'm new to this codebase. Write docs/ARCHITECTURE.md: what smithy-go is, every package (each directory with Go code) with a line or two on its job, and how a request flows through it.",
+  "follow_ups": [
+    "Now add a section called \"The middleware stack\": the five steps, each step's input and output types, how ordering works (Before/After and relative positions), and what happens when the same ID is added twice. Cite file paths.",
+    "Add a section called \"Encoding\" covering the httpbinding, json, xml, and cbor encoders and decoders: what each is for and its main types, with file paths.",
+    "Last one: add a \"Gotchas\" section with at least five non-obvious behaviors you found while reading, each with its file and function. Check each against the code before you write it."
+  ],
+  "setup": "rm .gitkeep && cp -R \"$TASK_DIR/../go-large-repo-bug/repo/.\" . && cp \"$TASK_DIR/../go-large-repo-bug/solution/encoding/httpbinding/path_replace.go\" encoding/httpbinding/ && git add -A && git -c user.name=agentbench -c user.email=agentbench@localhost commit -q -m 'smithy-go v1.22.4'",
+  "check": "python3 check_guide.py",
+  "timeout": "45m",
+  "exercises": "a long session in a real codebase (smithy-go v1.22.4, the large-repo task's repository without its bug): four prompts that each need wide reading (every package, the middleware steps, the encoders, verified gotchas) in one context, enough to reach uah's automatic compaction",
+  "tags": [
+    "go",
+    "docs",
+    "investigate",
+    "large-repo",
+    "follow-up",
+    "uah-only",
+    "long",
+    "compaction"
+  ]
+}
