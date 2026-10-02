@@ -46,7 +46,7 @@ const (
 // primed adds the workspace context before the messages of a new main
 // session, when the experiment is on.
 func (w *wiring) primed(ctx context.Context, req core.Request, messages []core.UserInput) []core.UserInput {
-	if !w.e.cfg.Lean || strings.HasPrefix(req.SessionID, session.SubagentIDPrefix) {
+	if w.e.cfg.LeanSteps == 0 || strings.HasPrefix(req.SessionID, session.SubagentIDPrefix) {
 		return messages
 	}
 	if req.SessionID != "" {

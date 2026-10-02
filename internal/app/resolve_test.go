@@ -346,9 +346,9 @@ func TestResolve(t *testing.T) {
 			want: func(r *app.Resolved) { r.WebSearch = app.WebSearchDisabled },
 		},
 		{
-			name: "lean turns Lean mode on",
-			cfg:  config.Config{Lean: true},
-			want: func(r *app.Resolved) { r.Lean = true },
+			name: "lean takes 2-steps",
+			cfg:  config.Config{Lean: "2-steps"},
+			want: func(r *app.Resolved) { r.Lean = app.LeanTwoSteps },
 		},
 		{
 			name: "the prompt file is read by Setup",
@@ -374,6 +374,7 @@ func TestResolve(t *testing.T) {
 				Review:            review.Config{Model: review.CodexModel, Effort: llm.ReasoningEffortLow, Timeout: review.DefaultTimeout},
 				Agents:            app.Agents{Enabled: true, MaxThreads: 4, MaxDepth: 1},
 				WebSearch:         app.WebSearchLive,
+				Lean:              app.LeanOff,
 			}
 			tt.want(&want)
 			// No test names a fallback model itself.
@@ -412,6 +413,7 @@ func TestResolveUsageErrors(t *testing.T) {
 		{name: "relative experimental_compact_prompt_file", cfg: config.Config{ExperimentalCompactPromptFile: "prompt.md"}, want: `invalid experimental_compact_prompt_file "prompt.md"`},
 		{name: "invalid web_search", cfg: config.Config{WebSearch: "sometimes"}, want: `invalid web_search "sometimes"`},
 		{name: "cached web_search", cfg: config.Config{WebSearch: "cached"}, want: `web_search = "cached" is not available`},
+		{name: "invalid lean", cfg: config.Config{Lean: "on"}, want: `invalid lean "on" (want off, 1-step, or 2-steps)`},
 		{name: "invalid approvals_reviewer", cfg: config.Config{ApprovalsReviewer: "robot"}, want: `invalid approvals_reviewer "robot"`},
 		{name: "invalid review effort", cfg: config.Config{Review: config.Review{Effort: "huge"}}, want: `invalid review.effort "huge"`},
 		{name: "invalid review timeout", cfg: config.Config{Review: config.Review{Timeout: "-1s"}}, want: `invalid review.timeout "-1s"`},

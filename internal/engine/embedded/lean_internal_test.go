@@ -104,7 +104,7 @@ func TestClassify(t *testing.T) {
 
 // routeAt is the effort the rule picks at high for the input.
 func routeAt(rule leanRule, in *leanInput, top llm.ReasoningEffort) effortChoice {
-	l := &leanRouter{rule: rule, top: func(string) llm.ReasoningEffort { return top }}
+	l := &leanRouter{rule: rule, steps: 1, top: func(string) llm.ReasoningEffort { return top }}
 
 	return l.route(in.items, llm.ReasoningEffortHigh, false, "m")
 }
@@ -113,10 +113,10 @@ func TestLeanRules_KeepTheEffortForTheUser(t *testing.T) {
 	for _, rule := range []leanRule{leanR0, leanR1, leanR2, leanR3} {
 		c := routeAt(rule, newLeanInput("fix it"), "")
 		assert.Equal(t, llm.ReasoningEffortHigh, c.effort, "%s: the first request", rule)
-		assert.Equal(t, rule.String()+": first request", c.reason)
+		assert.Equal(t, rule.String()+", 1-step: first request", c.reason)
 		c = routeAt(rule, newLeanInput("fix it").turn(patched).user("also this"), "")
 		assert.Equal(t, llm.ReasoningEffortHigh, c.effort, "%s: a user message came with the results", rule)
-		assert.Equal(t, rule.String()+": user message", c.reason)
+		assert.Equal(t, rule.String()+", 1-step: user message", c.reason)
 	}
 }
 
@@ -131,32 +131,32 @@ func TestLeanRules(t *testing.T) {
 		{
 			name: "confirmations only", in: newLeanInput("fix it").turn(patched, testsPassed),
 			want:  map[leanRule]llm.ReasoningEffort{leanR0: "medium", leanR1: "medium", leanR2: "medium", leanR3: "medium"},
-			since: "r1: confirmations: patch applied, test or build passed",
+			since: "r1, 1-step: confirmations: patch applied, test or build passed",
 		},
 		{
 			name: "a read keeps the effort, but not under r0", in: newLeanInput("fix it").turn(patched, read),
 			want:  map[leanRule]llm.ReasoningEffort{leanR0: "medium", leanR1: "high", leanR2: "high", leanR3: "high"},
-			since: "r1: read",
+			since: "r1, 1-step: read",
 		},
 		{
 			name: "a failure keeps the effort", in: newLeanInput("fix it").turn(testsFailed),
 			want:  map[leanRule]llm.ReasoningEffort{leanR0: "medium", leanR1: "high", leanR2: "high", leanR3: "high"},
-			since: "r1: exit 1",
+			since: "r1, 1-step: exit 1",
 		},
 		{
 			name: "the same command failed twice: r2 and r3 think harder", in: newLeanInput("fix it").turn(testsFailed).turn(testsFailed),
 			want:  map[leanRule]llm.ReasoningEffort{leanR0: "medium", leanR1: "high", leanR2: "xhigh", leanR3: "xhigh"},
-			since: "r1: exit 1",
+			since: "r1, 1-step: exit 1",
 		},
 		{
 			name: "different commands failed", in: newLeanInput("fix it").turn(testsFailed).turn(shell("go vet ./...", "Exit code: 1")),
 			want:  map[leanRule]llm.ReasoningEffort{leanR0: "medium", leanR1: "high", leanR2: "high", leanR3: "high"},
-			since: "r1: exit 1",
+			since: "r1, 1-step: exit 1",
 		},
 		{
 			name: "a reading task: r3 never goes lower", in: newLeanInput("Review the branch and report why it fails").turn(shell("mkdir -p x", "")),
 			want:  map[leanRule]llm.ReasoningEffort{leanR0: "medium", leanR1: "medium", leanR2: "medium", leanR3: "high"},
-			since: "r1: confirmations: short output",
+			since: "r1, 1-step: confirmations: short output",
 		},
 	}
 	for _, tt := range tests {
@@ -173,17 +173,17 @@ func TestLeanRules_EscalationCap(t *testing.T) {
 	in := newLeanInput("fix it").turn(testsFailed).turn(testsFailed)
 	c := routeAt(leanR2, in, llm.ReasoningEffortXHigh)
 	assert.Equal(t, llm.ReasoningEffortXHigh, c.effort)
-	assert.Equal(t, "r2: failed twice: go test ./...", c.reason)
+	assert.Equal(t, "r2, 1-step: failed twice: go test ./...", c.reason)
 	c = routeAt(leanR2, in, llm.ReasoningEffortHigh)
 	assert.Equal(t, llm.ReasoningEffortHigh, c.effort, "the model's highest effort caps it")
-	assert.Equal(t, "r2: failed twice, at the highest effort: go test ./...", c.reason)
+	assert.Equal(t, "r2, 1-step: failed twice, at the highest effort: go test ./...", c.reason)
 
-	l := &leanRouter{rule: leanR2, top: func(string) llm.ReasoningEffort { return "" }}
+	l := &leanRouter{rule: leanR2, steps: 1, top: func(string) llm.ReasoningEffort { return "" }}
 	c = l.route(in.items, llm.ReasoningEffortMax, true, "m")
 	assert.Equal(t, llm.ReasoningEffortMax, c.effort, "nothing above ultra")
 	assert.True(t, c.ultra)
 	c = l.route(newLeanInput("x").turn(patched).items, llm.ReasoningEffortMax, true, "m")
-	assert.Equal(t, effortChoice{effort: llm.ReasoningEffortMax, reason: "r2: confirmations: patch applied"}, c, "ultra lowers to max")
+	assert.Equal(t, effortChoice{effort: llm.ReasoningEffortMax, reason: "r2, 1-step: confirmations: patch applied"}, c, "ultra lowers to max")
 }
 
 func TestLeanRules_ReadingHeavy(t *testing.T) {
@@ -196,7 +196,7 @@ func TestLeanRules_ReadingHeavy(t *testing.T) {
 	in.turn(short)
 	c := routeAt(leanR3, in, "")
 	assert.Equal(t, llm.ReasoningEffortHigh, c.effort)
-	assert.Equal(t, "r3: reading-heavy: no edit in 4 turns", c.reason)
+	assert.Equal(t, "r3, 1-step: reading-heavy: no edit in 4 turns", c.reason)
 	in.turn(patched)
 	assert.Equal(t, llm.ReasoningEffortMedium, routeAt(leanR3, in, "").effort, "an edit flips it off")
 
@@ -204,16 +204,34 @@ func TestLeanRules_ReadingHeavy(t *testing.T) {
 	primed.items = []llm.Item{msg(llm.RoleSystem, "sys"), msg(llm.RoleUser, primedOpen+"\nreview of nothing"), msg(llm.RoleUser, "add a flag")}
 	primed.turn(short)
 	assert.Equal(t, llm.ReasoningEffortMedium, routeAt(leanR3, primed, "").effort, "the workspace context is not the task")
-	assert.Equal(t, "r3: reading-heavy: the task says why", routeAt(leanR3, newLeanInput("Why does it crash?").turn(short), "").reason)
+	assert.Equal(t, "r3, 1-step: reading-heavy: the task says why", routeAt(leanR3, newLeanInput("Why does it crash?").turn(short), "").reason)
+}
+
+// TestLeanRules_TwoSteps: routine requests go two levels down, never below
+// low; the escalation is the same, one level above E.
+func TestLeanRules_TwoSteps(t *testing.T) {
+	l := &leanRouter{rule: leanR2, steps: 2, top: func(string) llm.ReasoningEffort { return "" }}
+	routine := newLeanInput("fix it").turn(patched)
+	for e, want := range map[llm.ReasoningEffort]llm.ReasoningEffort{"max": "high", "xhigh": "medium", "high": "low", "medium": "low", "low": "low"} {
+		assert.Equal(t, want, l.route(routine.items, e, false, "m").effort, e)
+	}
+	c := l.route(routine.items, llm.ReasoningEffortMax, true, "m")
+	assert.Equal(t, effortChoice{effort: llm.ReasoningEffortXHigh, reason: "r2, 2-steps: confirmations: patch applied"}, c, "ultra goes to xhigh")
+	c = l.route(newLeanInput("fix it").turn(testsFailed).items, llm.ReasoningEffortHigh, false, "m")
+	assert.Equal(t, effortChoice{effort: llm.ReasoningEffortHigh, reason: "r2, 2-steps: exit 1"}, c, "a failure keeps E")
+	c = l.route(newLeanInput("fix it").turn(testsFailed).turn(testsFailed).items, llm.ReasoningEffortHigh, false, "m")
+	assert.Equal(t, llm.ReasoningEffortXHigh, c.effort, "a repeated failure goes one level above E")
 }
 
 func TestLowerAndRaiseEffort(t *testing.T) {
 	for in, want := range map[llm.ReasoningEffort]llm.ReasoningEffort{
 		"low": "low", "medium": "low", "high": "medium", "xhigh": "high", "max": "xhigh",
 	} {
-		assert.Equal(t, want, lowerEffort(in, false), in)
+		assert.Equal(t, want, lowerEffort(in, false, 1), in)
 	}
-	assert.Equal(t, llm.ReasoningEffortMax, lowerEffort(llm.ReasoningEffortMax, true), "ultra")
+	assert.Equal(t, llm.ReasoningEffortMax, lowerEffort(llm.ReasoningEffortMax, true, 1), "ultra")
+	assert.Equal(t, llm.ReasoningEffortXHigh, lowerEffort(llm.ReasoningEffortMax, true, 2), "ultra, two steps")
+	assert.Equal(t, llm.ReasoningEffortLow, lowerEffort(llm.ReasoningEffortHigh, false, 2))
 	up, ok := raiseEffort("high", false, "")
 	assert.True(t, ok)
 	assert.Equal(t, llm.ReasoningEffortXHigh, up)

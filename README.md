@@ -328,7 +328,7 @@ Hooks in a project's `.uah/config.toml` run only after `uah hooks trust`; hooks 
 
 ### The `/config` panel
 
-Type `/config` in the TUI. It lists the basic settings (compaction, the model and effort, fast mode, the permission mode, web search, Lean mode, the details view, and the mouse) with each value and its source. Lean mode (`lean = true`, off by default) has the model think less on routine turns, one effort level below yours after a patch that applied or a test that passed, and starts a new session with the workspace's context. ↑↓ choose, enter or space changes, esc closes. Each change is saved to your user file, keeping its comments, and applies to the running session where it can; compaction settings apply from the next session. A flag, a configuration layer, or a trusted project file that sets the same key still wins, and `/config` says so.
+Type `/config` in the TUI. It lists the basic settings (compaction, the model and effort, fast mode, the permission mode, web search, Lean mode, the details view, and the mouse) with each value and its source. Lean mode (`lean = "1-step"` or `"2-steps"`, `"off"` by default) has the model think one or two effort levels below yours on routine turns, such as after a patch that applied or a test that passed, and starts a new session with the workspace's context. ↑↓ choose, enter or space changes, esc closes. Each change is saved to your user file, keeping its comments, and applies to the running session where it can; compaction settings apply from the next session. A flag, a configuration layer, or a trusted project file that sets the same key still wins, and `/config` says so.
 
 ### Inspect the configuration
 
@@ -337,7 +337,7 @@ Type `/config` in the TUI. It lists the basic settings (compaction, the model an
 
 ---
 
-<!-- memoria:section id="configuration" files="internal/config/config.go internal/config/layers.go internal/config/merge.go cmd/uah/flags.go cmd/uah/config.go internal/app/resolve.go internal/app/setup.go internal/app/explain.go internal/app/explain_files.go internal/app/compaction.go internal/app/configedit.go internal/app/websearch.go internal/config/edit.go internal/config/legacy.go internal/home/home.go internal/home/migrate/migrate.go .uah/config.toml" -->
+<!-- memoria:section id="configuration" files="internal/config/config.go internal/config/layers.go internal/config/merge.go cmd/uah/flags.go cmd/uah/config.go internal/app/resolve.go internal/app/setup.go internal/app/explain.go internal/app/explain_files.go internal/app/compaction.go internal/app/configedit.go internal/app/websearch.go internal/app/lean.go internal/config/edit.go internal/config/legacy.go internal/home/home.go internal/home/migrate/migrate.go .uah/config.toml" -->
 ## Configuration
 
 Everything uah reads and writes lives in `~/.uah`, as Codex keeps `~/.codex`: the configuration, `AGENTS.md`, agents, prompts, skills, hook trust, MCP credentials, sessions, run records, the session index, pasted images, the model cache, and logs. `UAH_HOME` names another home; `--config` (`UAH_CONFIG`) and `--state-dir` (`UAH_STATE_DIR`) move just the user file or the state.

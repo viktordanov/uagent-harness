@@ -22,7 +22,7 @@ func configValues() map[string]state.ConfigValue {
 		"fast":                           {Value: "false", Source: "default"},
 		"permission_mode":                {Value: "workspace", Source: "default"},
 		"web_search":                     {Value: "live", Source: "default"},
-		"lean":                           {Value: "false", Source: "default"},
+		"lean":                           {Value: "off", Source: "default"},
 		"tui.details":                    {Value: "false", Source: "default"},
 		"tui.mouse":                      {Value: "false", Source: "user file"},
 	}
@@ -64,7 +64,7 @@ func TestConfig_OpensAndShowsValuesWithSources(t *testing.T) {
 	assert.Equal(t, [2]string{"gpt-6-sol", "user file"}, got["Model"])
 	assert.Equal(t, [2]string{"off", "user file"}, got["Mouse"])
 	assert.Equal(t, [2]string{"live", "default"}, got["Web search"])
-	assert.Equal(t, [2]string{"off", "default"}, got["Lean mode"])
+	assert.Equal(t, [2]string{"off", "default"}, got["Lean mode"], "off is shown as is")
 
 	s, _ = apply(s, state.ConfigEsc{})
 	assert.Nil(t, s.Config, "esc closes")
@@ -97,25 +97,34 @@ func TestConfig_WebSearch(t *testing.T) {
 	assert.Contains(t, s.Items[len(s.Items)-1].Text, "applies to sessions opened from now on")
 }
 
-// TestConfig_LeanMode: the row toggles lean, says what Lean mode does while
-// it is selected, and applies to the sessions opened next.
+// TestConfig_LeanMode: the row cycles off, 1 step, and 2 steps, says what
+// Lean mode does while it is selected, and applies to the sessions opened
+// next.
 func TestConfig_LeanMode(t *testing.T) {
 	s := openConfig(t, opened(), "Lean mode")
-	var row state.ConfigRow
-	for _, r := range s.ConfigRows() {
-		if r.Key == "lean" {
-			row = r
+	row := func(s state.State) state.ConfigRow {
+		for _, r := range s.ConfigRows() {
+			if r.Key == "lean" {
+				return r
+			}
 		}
+		t.Fatal("no lean row")
+
+		return state.ConfigRow{}
 	}
-	assert.True(t, row.Toggle())
-	assert.Equal(t, "Lean mode: think less on routine turns, and start with the workspace's context", row.Help)
+	assert.Equal(t, "off", row(s).Value)
+	assert.Equal(t, "Lean mode: think one or two effort levels less on routine turns, and start with the workspace's context", row(s).Help)
 	s, effects := apply(s, state.ConfigChange{Delta: 1})
-	assert.Equal(t, []state.Effect{state.EffSaveConfig{Key: "lean", Value: true}}, effects, "no session change")
-	s, _ = apply(s, state.ConfigSaved{Key: "lean", Value: true})
-	assert.Contains(t, s.Items[len(s.Items)-1].Text, "saved lean = true")
+	assert.Equal(t, []state.Effect{state.EffSaveConfig{Key: "lean", Value: "1-step"}}, effects, "no session change")
+	assert.Equal(t, "1 step", row(s).Value)
+	s, _ = apply(s, state.ConfigSaved{Key: "lean", Value: "1-step"})
+	assert.Contains(t, s.Items[len(s.Items)-1].Text, "saved lean = 1-step")
 	assert.Contains(t, s.Items[len(s.Items)-1].Text, "applies to sessions opened from now on")
+	s, effects = apply(s, state.ConfigChange{Delta: 1})
+	assert.Equal(t, []state.Effect{state.EffSaveConfig{Key: "lean", Value: "2-steps"}}, effects)
+	assert.Equal(t, "2 steps", row(s).Value)
 	_, effects = apply(s, state.ConfigChange{Delta: 1})
-	assert.Equal(t, []state.Effect{state.EffSaveConfig{Key: "lean", Value: false}}, effects, "and off again")
+	assert.Equal(t, []state.Effect{state.EffSaveConfig{Key: "lean", Value: "off"}}, effects, "and off again")
 }
 
 func TestConfig_ModelEffortAndFastChangeTheSession(t *testing.T) {

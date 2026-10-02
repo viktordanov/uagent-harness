@@ -12,13 +12,14 @@ import (
 )
 
 // Lean mode's effort routing: every change is relative to the effort the
-// user picked, E, and within one step of it. The first request and every
-// request that carries a user message go at E. The rules, picked for a
-// benchmark with UAH_EXPERIMENTS=lean-rule=rN:
+// user picked, E. A routine request goes the mode's steps lower, E-1 or
+// E-2, never below low; the first request and every request that carries
+// a user message go at E. The rules, picked for a benchmark with
+// UAH_EXPERIMENTS=lean-rule=rN, decide which requests are routine:
 //
 //   - r0: a request whose input since the model's last output is only tool
-//     results goes at E-1.
-//   - r1 (the default): E-1 only when every one of those results is a plain
+//     results.
+//   - r1 (the default): only when every one of those results is a plain
 //     confirmation (leanclass.go); anything that brings content keeps E.
 //   - r2: r1, and a request after the same command failed in each of the
 //     last two turns goes at E+1, capped at the model's highest effort.
@@ -63,12 +64,14 @@ const readingTurns = 4
 // leanRouter picks each turn request's effort.
 type leanRouter struct {
 	rule leanRule
+	// steps is how many levels a routine request goes down: 1 or 2.
+	steps int
 	// top is the highest effort the model accepts, "" when unknown.
 	top func(model string) llm.ReasoningEffort
 }
 
-func newLeanRouter(rule leanRule, catalog *models.Manager, provider string) *leanRouter {
-	return &leanRouter{rule: rule, top: func(model string) llm.ReasoningEffort {
+func newLeanRouter(rule leanRule, steps int, catalog *models.Manager, provider string) *leanRouter {
+	return &leanRouter{rule: rule, steps: steps, top: func(model string) llm.ReasoningEffort {
 		if catalog == nil {
 			return ""
 		}
@@ -79,6 +82,15 @@ func newLeanRouter(rule leanRule, catalog *models.Manager, provider string) *lea
 
 		return reasoningEffort(md.ReasoningLevels[len(md.ReasoningLevels)-1])
 	}}
+}
+
+// tag starts each reason: the rule and the steps, as "r1, 2-steps: ".
+func (l *leanRouter) tag() string {
+	if l.steps == 1 {
+		return l.rule.String() + ", 1-step: "
+	}
+
+	return fmt.Sprintf("%s, %d-steps: ", l.rule, l.steps)
 }
 
 // effortChoice is a request's effort: the runner's level, ultra when the
@@ -92,8 +104,9 @@ type effortChoice struct {
 // route picks the effort for a request at e (ultra: at effort ultra).
 func (l *leanRouter) route(input []llm.Item, e llm.ReasoningEffort, ultra bool, model string) effortChoice {
 	h := readHistory(input)
+	tag := l.tag()
 	keep := func(why string) effortChoice {
-		return effortChoice{effort: e, ultra: ultra, reason: l.rule.String() + ": " + why}
+		return effortChoice{effort: e, ultra: ultra, reason: tag + why}
 	}
 	if len(h.turns) == 0 {
 		return keep("first request")
@@ -106,7 +119,7 @@ func (l *leanRouter) route(input []llm.Item, e llm.ReasoningEffort, ultra bool, 
 		return keep("no tool results")
 	}
 	lower := func(why string) effortChoice {
-		return effortChoice{effort: lowerEffort(e, ultra), reason: l.rule.String() + ": " + why}
+		return effortChoice{effort: lowerEffort(e, ultra, l.steps), reason: tag + why}
 	}
 	if l.rule == leanR0 {
 		return lower("tool results only")
@@ -114,7 +127,7 @@ func (l *leanRouter) route(input []llm.Item, e llm.ReasoningEffort, ultra bool, 
 	if l.rule >= leanR2 {
 		if cmd := h.repeatedFailure(); cmd != "" {
 			if up, ok := raiseEffort(e, ultra, l.top(model)); ok {
-				return effortChoice{effort: up, reason: l.rule.String() + ": failed twice: " + cmd}
+				return effortChoice{effort: up, reason: tag + "failed twice: " + cmd}
 			}
 
 			return keep("failed twice, at the highest effort: " + cmd)
@@ -246,18 +259,19 @@ func (h history) readingHeavy() string {
 // efforts are the runner's levels, lowest first.
 var efforts = []llm.ReasoningEffort{llm.ReasoningEffortLow, llm.ReasoningEffortMedium, llm.ReasoningEffortHigh, llm.ReasoningEffortXHigh, llm.ReasoningEffortMax}
 
-// lowerEffort is the effort one level below effort, never below low; at
-// ultra (the runner's max with the ultra client) it is max.
-func lowerEffort(effort llm.ReasoningEffort, ultra bool) llm.ReasoningEffort {
-	if ultra {
-		return llm.ReasoningEffortMax
-	}
+// lowerEffort is the effort steps levels below effort, never below low;
+// ultra (the runner's max with the ultra client) is the level above max,
+// so one step from it is max and two are xhigh.
+func lowerEffort(effort llm.ReasoningEffort, ultra bool, steps int) llm.ReasoningEffort {
 	i := slices.Index(efforts, effort)
+	if ultra {
+		i = len(efforts)
+	}
 	if i < 0 {
 		return effort
 	}
 
-	return efforts[max(i-1, 0)]
+	return efforts[max(i-steps, 0)]
 }
 
 // raiseEffort is the effort one level above effort, unless that passes

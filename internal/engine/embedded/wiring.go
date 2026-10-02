@@ -131,8 +131,8 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 	sw.tools = w.bashTools
 	sw.images = w.e.pastedImages
 	sw.stream, sw.text, sw.diag = w.emit, opts.Stream, w.l.Stderr
-	if w.e.cfg.Lean {
-		sw.lean = newLeanRouter(w.e.experiments.leanRule, w.e.models, req.Provider)
+	if w.e.cfg.LeanSteps > 0 {
+		sw.lean = newLeanRouter(w.e.experiments.leanRule, w.e.cfg.LeanSteps, w.e.models, req.Provider)
 	}
 	operations := operation.NewLocalOperationManager(runCtx, newMCPJobs(runCtx, w.e.cfg.MCP), newAgentJobs(runCtx, w.e.cfg.Subagents, string(s.id)), newPatchJobs(runCtx))
 	first := compaction.Trigger("")

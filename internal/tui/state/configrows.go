@@ -78,7 +78,7 @@ var configKeys = []struct {
 	{keyFast, "Fast mode", rowToggle, ""},
 	{keyMode, "Permission mode", rowChoice, ""},
 	{keyWebSearch, "Web search", rowChoice, ""},
-	{keyLean, "Lean mode", rowToggle, "Lean mode: think less on routine turns, and start with the workspace's context"},
+	{keyLean, "Lean mode", rowChoice, "Lean mode: think one or two effort levels less on routine turns, and start with the workspace's context"},
 	{keyDetails, "Details view", rowToggle, ""},
 	{keyMouse, "Mouse", rowToggle, ""},
 }
@@ -92,6 +92,13 @@ var cycledModes = []string{string(approval.ModeReadOnly), string(approval.ModeWo
 
 // webSearchModes are web_search's values (docs/design/web-search.md).
 var webSearchModes = []string{"live", "disabled"}
+
+// shownOff is how the panel shows a setting that is off.
+const shownOff = "off"
+
+// leanModes are lean's values: off, then one and two effort levels lower
+// on routine turns.
+var leanModes = []string{shownOff, "1-step", "2-steps"}
 
 // sessionModel is the compaction model's choice for "the session's model".
 const sessionModel = "session model"
@@ -116,17 +123,19 @@ func shown(key string, v ConfigValue) string {
 	case v.Value == "":
 		return "…"
 	case key == keyAutoCompact && v.Value == "0":
-		return "off"
+		return shownOff
 	case key == keyAutoCompact:
 		return "on at " + v.Value + "%"
 	case key == keyTokenLimit && v.Value == "0":
 		return "none"
 	case key == keyCompactModel && v.Source == sourceDefault:
 		return sessionModel + " (" + v.Value + ")"
+	case key == keyLean:
+		return strings.Replace(v.Value, "-", " ", 1)
 	case v.Value == "true":
 		return "on"
 	case v.Value == "false":
-		return "off"
+		return shownOff
 	}
 
 	return v.Value
@@ -151,6 +160,8 @@ func (s State) next(row ConfigRow, delta int) (value any, ok bool) {
 		return cycle(cycledModes, current, delta), true
 	case keyWebSearch:
 		return cycle(webSearchModes, current, delta), true
+	case keyLean:
+		return cycle(leanModes, current, delta), true
 	}
 	percent, _ := strconv.Atoi(current)
 	i := slices.Index(autoPercents, percent)

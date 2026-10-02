@@ -26,10 +26,10 @@ func withExperiments(getenv func(string) string, names string) func(string) stri
 	}
 }
 
-// leanEngine is the env's engine, in Lean mode when lean, with the
-// experiments on.
-func (e *env) leanEngine(lean bool, names string) *embedded.Engine {
-	return embedded.New(embedded.Config{StateDir: e.StateDir, Provider: "openai", Lean: lean, Getenv: withExperiments(e.getenv, names)})
+// leanEngine is the env's engine in Lean mode with steps (0: off), with
+// the experiments on.
+func (e *env) leanEngine(steps int, names string) *embedded.Engine {
+	return embedded.New(embedded.Config{StateDir: e.StateDir, Provider: "openai", LeanSteps: steps, Getenv: withExperiments(e.getenv, names)})
 }
 
 // TestPrimedFirstTurn: in Lean mode, a new session's first request carries the workspace
@@ -54,7 +54,7 @@ func TestPrimedFirstTurn(t *testing.T) {
 		}
 		settings := e.settings()
 		settings.SystemPrompt = "Base.\n\n# Project instructions\n\n## " + agents + "\n\n@INC.md\n"
-		s, err := session.Open(t.Context(), e.leanEngine(on, ""), session.Options{Settings: settings})
+		s, err := session.Open(t.Context(), e.leanEngine(map[bool]int{true: 1}[on], ""), session.Options{Settings: settings})
 		require.NoError(t, err)
 		t.Cleanup(func() { _ = s.Close() })
 		ev := &events{t: t, s: s}
@@ -96,20 +96,21 @@ func TestPrimedFirstTurn(t *testing.T) {
 func TestLean_Effort(t *testing.T) {
 	tests := []struct {
 		name  string
-		lean  bool
+		steps int
 		rule  string
 		reply fakellm.Reply
 		want  []string
 	}{
-		{"off", false, "", fakellm.Reply{Commands: []string{"echo one"}}, []string{"high", "high", "high"}},
-		{"a confirmation", true, "", fakellm.Reply{Commands: []string{"echo one"}}, []string{"high", "medium", "high"}},
-		{"a read under r1", true, "", fakellm.Reply{Commands: []string{"cat go.mod"}}, []string{"high", "high", "high"}},
-		{"a read under r0", true, "lean-rule=r0", fakellm.Reply{Commands: []string{"cat go.mod"}}, []string{"high", "medium", "high"}},
+		{"off", 0, "", fakellm.Reply{Commands: []string{"echo one"}}, []string{"high", "high", "high"}},
+		{"a confirmation", 1, "", fakellm.Reply{Commands: []string{"echo one"}}, []string{"high", "medium", "high"}},
+		{"a confirmation, 2 steps", 2, "", fakellm.Reply{Commands: []string{"echo one"}}, []string{"high", "low", "high"}},
+		{"a read under r1", 1, "", fakellm.Reply{Commands: []string{"cat go.mod"}}, []string{"high", "high", "high"}},
+		{"a read under r0", 1, "lean-rule=r0", fakellm.Reply{Commands: []string{"cat go.mod"}}, []string{"high", "medium", "high"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			e := newEnv(t, tt.reply, fakellm.Reply{Text: "done"}, fakellm.Reply{Text: "again"})
-			s, ev := e.open(t, e.leanEngine(tt.lean, tt.rule), "")
+			s, ev := e.open(t, e.leanEngine(tt.steps, tt.rule), "")
 			_, err := s.Submit("run it")
 			require.NoError(t, err)
 			ev.finished()
@@ -129,8 +130,8 @@ func TestLean_Effort(t *testing.T) {
 				for _, l := range logs {
 					all += readFile(t, l)
 				}
-				assert.Contains(t, all, `"effort":"medium","effort_reason":"r1: confirmations: short output"`, "the attempt's diagnostics say why")
-				assert.Contains(t, all, `"effort":"high","effort_reason":"r1: first request"`)
+				assert.Contains(t, all, `"effort":"medium","effort_reason":"r1, 1-step: confirmations: short output"`, "the attempt's diagnostics say why")
+				assert.Contains(t, all, `"effort":"high","effort_reason":"r1, 1-step: first request"`)
 			}
 		})
 	}
