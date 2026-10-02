@@ -2,6 +2,8 @@ package bench_test
 
 import (
 	"context"
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
@@ -258,4 +260,49 @@ func TestBehavior(t *testing.T) {
 	assert.InDelta(t, 580.0/600, b.SameEffortCacheRatio, 1e-9)
 	assert.Equal(t, 1, b.ChangedEffortRequests)
 	assert.InDelta(t, 0.5, b.ChangedEffortCacheRatio, 1e-9)
+}
+
+// TestFixtureReadmes: each task stores its repository's READMEs as
+// README.fixture.md, so Memoria tracks none of them, and the agent's
+// workspace gets them as README.md, byte for byte; the reference solution's
+// replace them the same way.
+func TestFixtureReadmes(t *testing.T) {
+	tasks, err := bench.LoadTasks(tasksDir, nil)
+	require.NoError(t, err)
+	seen := 0
+	for _, task := range tasks {
+		task.Setup, task.SolutionScript = "", "" // the copies only
+		ws := t.TempDir()
+		require.NoError(t, task.Prepare(context.Background(), ws, os.Environ()), task.Name)
+		for _, dir := range []string{"repo", "solution"} {
+			if dir == "solution" {
+				require.NoError(t, task.ApplySolution(context.Background(), ws, os.Environ()), task.Name)
+			}
+			root := filepath.Join(task.Dir, dir)
+			err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
+				if err != nil || d.IsDir() {
+					return err
+				}
+				assert.NotEqual(t, "README.md", d.Name(), "%s is stored as README.fixture.md", p)
+				if d.Name() != "README.fixture.md" {
+					return nil
+				}
+				seen++
+				rel, err := filepath.Rel(root, filepath.Dir(p))
+				require.NoError(t, err)
+				want, err := os.ReadFile(p)
+				require.NoError(t, err)
+				got, err := os.ReadFile(filepath.Join(ws, rel, "README.md"))
+				require.NoError(t, err, p)
+				assert.Equal(t, string(want), string(got), p)
+				assert.NoFileExists(t, filepath.Join(ws, rel, "README.fixture.md"))
+
+				return nil
+			})
+			if !errors.Is(err, fs.ErrNotExist) {
+				require.NoError(t, err)
+			}
+		}
+	}
+	assert.Equal(t, 26, seen, "every fixture README, the vendored project's nested ones too")
 }

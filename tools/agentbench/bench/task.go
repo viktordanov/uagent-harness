@@ -28,7 +28,11 @@ const (
 	taskFile    = "task.json"
 	repoDir     = "repo"
 	solutionDir = "solution"
-	checkDir    = "check"
+	// fixtureReadme is a README.md in repo/ or solution/ as stored here,
+	// so that Memoria does not track each one as a document of uah's;
+	// copyFixture names it README.md again in the workspace.
+	fixtureReadme = "README.fixture.md"
+	checkDir      = "check"
 )
 
 // Task is one benchmark task.
@@ -168,7 +172,7 @@ func LoadTask(dir string) (Task, error) {
 // starts in a clean git repository and its changes show in git, then runs
 // the task's setup.
 func (t Task) Prepare(ctx context.Context, ws string, env []string) error {
-	if err := copyTree(filepath.Join(t.Dir, repoDir), ws); err != nil {
+	if err := copyFixture(filepath.Join(t.Dir, repoDir), ws); err != nil {
 		return err
 	}
 	for _, args := range [][]string{
@@ -199,7 +203,7 @@ func (t Task) ApplySolution(ctx context.Context, ws string, env []string) error 
 		}
 	}
 	if _, err := os.Stat(filepath.Join(t.Dir, solutionDir)); err == nil {
-		if err := copyTree(filepath.Join(t.Dir, solutionDir), ws); err != nil {
+		if err := copyFixture(filepath.Join(t.Dir, solutionDir), ws); err != nil {
 			return err
 		}
 	}
@@ -274,7 +278,13 @@ func tail(s string, n int) string {
 
 // copyTree copies the regular files and directories under src into dst,
 // keeping file modes; it follows no links.
-func copyTree(src, dst string) error {
+func copyTree(src, dst string) error { return copyFiles(src, dst, false) }
+
+// copyFixture copies a task's repo/ or solution/ as copyTree does, with
+// each README.fixture.md as README.md.
+func copyFixture(src, dst string) error { return copyFiles(src, dst, true) }
+
+func copyFiles(src, dst string, fixture bool) error {
 	return filepath.WalkDir(src, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -284,6 +294,9 @@ func copyTree(src, dst string) error {
 			return err
 		}
 		target := filepath.Join(dst, rel)
+		if fixture && !d.IsDir() && d.Name() == fixtureReadme {
+			target = filepath.Join(filepath.Dir(target), "README.md")
+		}
 		info, err := d.Info()
 		if err != nil {
 			return err
