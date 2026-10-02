@@ -1,0 +1,12 @@
+{
+  "prompt": "The ops status API is running at {{URL}}. Snapshot its four endpoints with curl (/v1/regions, /v1/deploys/latest, /v1/incidents, /v1/flags) and write data/snapshot.json as the README describes.",
+  "check": "python3 .check/verify.py",
+  "service": "cd service && go run .",
+  "exercises": "curl-parallel-endpoints without the prompt's hint that the sandbox has no network, so only the Bash tool's description says it: whether the model escalates the four curl calls up front, in one response",
+  "tags": [
+    "network",
+    "escalation",
+    "parallel"
+  ],
+  "solution_script": "set -e\nmkdir -p data .fetch\ncurl -sf \"$SERVICE_URL/v1/regions\" > .fetch/regions.json &\ncurl -sf \"$SERVICE_URL/v1/deploys/latest\" > .fetch/deploy.json &\ncurl -sf \"$SERVICE_URL/v1/incidents\" > .fetch/incidents.json &\ncurl -sf \"$SERVICE_URL/v1/flags\" > .fetch/flags.json &\nwait\npython3 - <<'PY'\nimport json\nsnap = {k: json.load(open(f\".fetch/{k}.json\")) for k in (\"regions\", \"deploy\", \"incidents\", \"flags\")}\njson.dump(snap, open(\"data/snapshot.json\", \"w\"), indent=2)\nPY\nrm -rf .fetch\n"
+}

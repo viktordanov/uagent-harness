@@ -1,0 +1,10 @@
+{
+  "regions": [
+    {"name": "eu-west", "healthy": true, "latency_ms": 41},
+    {"name": "us-east", "healthy": true, "latency_ms": 23},
+    {"name": "ap-south", "healthy": false, "latency_ms": 310}
+  ],
+  "deploy": {"service": "checkout", "version": "4.12.3", "deployed_at": "2026-09-30T14:02:11Z", "by": "release-bot"},
+  "incidents": {"open": [{"id": "INC-2207", "severity": "sev2", "title": "ap-south elevated latency"}], "resolved_this_week": 4},
+  "flags": {"new_checkout": true, "dark_mode": false, "bulk_export": true}
+}

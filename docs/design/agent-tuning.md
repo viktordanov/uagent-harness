@@ -16,10 +16,11 @@ This record collects every measurement made with the agent benchmark ([`tools/ag
 8. [The full suite, 10 repeats](#the-full-suite-10-repeats)
 9. [Lean mode rules](#lean-mode-rules)
 10. [Parallel approvals](#parallel-approvals)
-11. [Adaptive effort in chats](#adaptive-effort-in-chats)
-12. [Decisions](#decisions)
-13. [Still running and next](#still-running-and-next)
-14. [For release notes](#for-release-notes)
+11. [Network commands escalated up front](#network-commands-escalated-up-front)
+12. [Adaptive effort in chats](#adaptive-effort-in-chats)
+13. [Decisions](#decisions)
+14. [Still running and next](#still-running-and-next)
+15. [For release notes](#for-release-notes)
 
 ## How runs are measured
 
@@ -218,6 +219,45 @@ The wait columns are medians per run. The approval waits are agentbench's `appro
 - On `curl-local-api` most responses carry one escalation, so there is little to overlap; its difference is within the task's run-to-run spread.
 - In a smoke run with a prompt that did not mention the sandbox, the model first tried the four calls in the sandbox, at once, then asked once to run them all in one escalated command. The task's prompt says the calls need to run outside the sandbox, as a user who knows the sandbox would, and then the model asked for the four escalations together in every run.
 
+## Network commands escalated up front
+
+The sandbox has no network unless `network_access` is set: on macOS seatbelt denies every socket, and on Linux bwrap gives the command a network namespace of its own, so localhost is out of reach as well. The `Bash` tool's description said only "no network access"; Codex, in its on-request permissions prompt, tells the model to rerun a command with `require_escalated` after it fails with a likely network error, and the model does that unprompted. So it tried its curl calls in the sandbox, read the failures, and then asked for the escalations: one wasted request per run, and the [parallel approvals](#parallel-approvals) only showed when the task's prompt said the sandbox has no network. The change adds one sentence to the sandbox note in `Bash`'s description, only when the sandbox has no network (read-only and workspace-write; yolo has no note, and `network_access = true` gets none):
+
+> A command that needs the network, localhost included, fails in the sandbox, so run it with require_escalated from the first try.
+
+It goes in the tool description, which follows the permission mode from request to request, rather than in the system prompt, which is fixed for the session's prompt cache and cannot know the mode.
+
+Two rounds, gpt-6.1-sol at high effort in auto mode, uah only. The control is uah v1.7.4 (`main`); `full` is the sentence above plus "send independent ones as separate calls in the same response"; `short` is the sentence alone. `curl-parallel-nohint`, added for this, is `curl-parallel-endpoints` without its prompt's hint that the sandbox has no network, so only the tool description tells the model. Round 1 ran the control and `full` side by side: the network tasks × 8 (`curl-local-api` × 16) and four Go fix tasks × 6, 128 runs ([raw](../../tools/agentbench/history/2026-10-03-netprompt.jsonl)). Round 2 ran all three side by side: `curl-parallel-nohint` and `curl-local-api` × 8 and the Go tasks × 6, and `short` alone on the other two network tasks × 8, 136 runs ([raw](../../tools/agentbench/history/2026-10-03-netprompt-short.jsonl)). The table pools both rounds. Wasted tries are curl calls run in the sandbox that failed for want of network (runs with any in brackets); "together" counts runs with two or more escalations in one response; the waits are medians per run, the critical path as in [parallel approvals](#parallel-approvals).
+
+| Task | Arm | Passed | Wall | Requests | Escalations per run | Wasted tries | Together | Approval wait | Critical path | Output tokens |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| curl-parallel-nohint | control | 16/16 | 60.3 s | 6 | 3.6 | 64 (16 runs) | 14/16 | 11.3 s | 3.0 s | 1286 |
+| | full | 16/16 | 45.2 s | 5 | 3.8 | 0 | 15/16 | 11.9 s | 3.3 s | 897 |
+| | **short** | 8/8 | **44.8 s (−26%)** | 5 | 4.0 | **0** | 8/8 | 12.3 s | 3.6 s | 920 |
+| curl-local-api | control | 24/24 | 85.8 s | 7 | 4.0 | 23 (23 runs) | 7/24 | 13.3 s | 10.1 s | 1807 |
+| | full | 24/24 | 75.1 s | 6 | 3.7 | 0 | 4/24 | 12.1 s | 9.7 s | 1613 |
+| | **short** | 8/8 | **79.2 s (−8%)** | 6 | 4.1 | **0** | 1/8 | 15.5 s | 11.1 s | 1738 |
+| curl-parallel-endpoints (hint in the prompt) | control | 8/8 | 46.3 s | 5 | 4.0 | 0 | 8/8 | 16.9 s | 4.8 s | 949 |
+| | full | 8/8 | 47.5 s | 5 | 4.0 | 0 | 8/8 | 14.4 s | 3.5 s | 962 |
+| | short | 8/8 | 47.0 s | 4.5 | 4.0 | 0 | 8/8 | 13.4 s | 3.2 s | 964 |
+| home-config-surgery (escalation, no network) | control | 8/8 | 64.4 s | 7 | 1.0 | 0 | 0/8 | 2.5 s | 2.5 s | 1380 |
+| | full | 8/8 | 62.4 s | 7 | 1.0 | 0 | 0/8 | 3.2 s | 3.2 s | 1284 |
+| | short | 8/8 | 59.4 s | 7 | 0.6 | 0 | 0/8 | 3.4 s | 3.4 s | 1275 |
+
+On the four Go tasks with no network (`go-cli-exit-codes`, `go-data-race`, `go-fix-failing-tests`, `go-vet-fixes`) no arm escalated anything, and all 120 runs passed. Wall times, as sums of per-task medians:
+
+| Go tasks | Control | Full | Short |
+| --- | ---: | ---: | ---: |
+| Round 1 (× 6) | 406.2 s | 444.8 s (+9%) | — |
+| Round 2 (× 6, side by side) | 416.0 s | 432.3 s (+4%) | 412.3 s (−1%) |
+
+- **The sentence does what it says.** With it, no run tried a network command in the sandbox: 0 wasted tries in 56 runs on the two tasks without a hint, against 87 in the control's 40. On `curl-parallel-nohint` the model sends the four escalated curl calls in its first network response, one request fewer, and the run takes 45 s instead of 60 s (−26%), the same as the task with the hint (47 s). In the control the four calls went together too, in 14 of 16 runs, once the sandbox had failed them, so the gain is the wasted request; the reviews overlap as before.
+- **`curl-local-api` gains less.** The model guesses the API's paths (`/items`, `/`) before reading the README, so some escalations still fail, now with a 404 outside the sandbox instead of a refused connection inside it; the wasted sandbox tries are gone, and the wall time is −8% (short) and −12% (full), within the task's spread (53 to 139 s in the control).
+- **The second clause cost time elsewhere.** "Send independent ones as separate calls in the same response" gave no gain on the network tasks over the short sentence, and on the Go tasks `full` was slower in both rounds (+5% over 48 runs per arm, p ≈ 0.006 in a permutation test on log wall time per task), with about 5% more output tokens and 5% more tool calls. `short` measured level with the control (−1%, 24 runs per arm). uah's prompt already asks for independent calls in parallel, and the model followed it here.
+- No needless escalations: none on the Go tasks, and on `home-config-surgery`, whose escalation is a write under `~`, the count and pass rate did not change.
+
+Kept: the short sentence ([ledger](../ledger.md) 106).
+
 ## Adaptive effort in chats
 
 The cost model, its charts, and the projections are in [Adaptive effort costs](adaptive-effort-costs.md).
@@ -292,6 +332,7 @@ Next: the sticky rule behind an experiment switch, checked for quality on these 
 | 2026-10-02 | Escalation on failure is dropped: a step back up per failing follow-up in a row brought no quality gain and cost cache ([Escalation on failure](#escalation-on-failure)) | [92](../ledger.md) |
 | 2026-10-02 | Lean mode is renamed adaptive effort and becomes a session setting like the effort: the session keeps it in its sidecar, `--adaptive-effort` wins, `adaptive_effort` is the default for new sessions, and `/adaptive` or `/config` changes the current session from its next model request | [92](../ledger.md) |
 | 2026-10-02 | The approvals of one response's calls run at once: hooks, auto-reviews, and prompts start when the response is stored, an interrupt ends them, and "don't ask again" settles the other open prompts it covers ([Parallel approvals](#parallel-approvals)) | [94](../ledger.md) |
+| 2026-10-03 | Without network in the sandbox, `Bash`'s description tells the model that a network command, localhost included, fails there and should ask for `require_escalated` from the first try; the clause asking for separate calls in one response is left out, since it slowed tasks without network ([Network commands escalated up front](#network-commands-escalated-up-front)) | [106](../ledger.md) |
 
 ## Still running and next
 
@@ -304,4 +345,5 @@ Next: the sticky rule behind an experiment switch, checked for quality on these 
 - With both, uah matches Codex on wall time on slow tasks and is cheaper (estimated $0.34 against $0.44 on the 6 slow tasks). Over the full suite (35 tasks × 10 repeats), uah's default is level with Codex on wall time and 14% cheaper.
 - New setting, adaptive effort (`/adaptive`, `/config`, `--adaptive-effort`, `adaptive_effort`; off by default): the model thinks one or two effort levels less on turns that only follow tool results, and a new session starts with the workspace's context. A session keeps it, as it keeps its effort. On the full suite (35 × 10) at 1 step, uah is 22% faster and 31% cheaper than Codex, and faster on 33 of 35 tasks. On 12 tasks × 3, against off, 1 step cut wall time by 27% and cost by 16%, and 2 steps by 35% and 25%, at the same pass rate. Raising the effort again after failures was measured and left out: no quality gain, and it cost prompt-cache hits.
 - Escalations the model asks for together are reviewed together: four auto-reviews in one response now take about one review's time (3.5 s against 11.9 s), −24% wall time on that task, and an interrupt during reviews stops them at once.
+- Network commands go out of the sandbox on the first try: the `Bash` tool now tells the model that the sandbox blocks the network, localhost included, so it asks for the escalation up front instead of after a failed run. On a task of four API calls whose prompt does not mention the sandbox, −26% wall time and one model request fewer; no change on tasks without network.
 - The agent benchmark has 40 tasks, including a 27,000-line open-source repo, follow-up prompts, and a session long enough to compact ([ledger P7](../ledger.md), [agentbench](../../tools/agentbench/README.md)); its smoke run passed all 9 runs.

@@ -43,18 +43,24 @@ func property(typ, description string, extra ...any) map[string]any {
 	return p
 }
 
+// noNetworkNote follows the sandbox note when the sandbox has no network,
+// so the model escalates a network command on its first run instead of
+// after a failed run in the sandbox.
+const noNetworkNote = " A command that needs the network, localhost included, fails in the sandbox, " +
+	"so run it with require_escalated from the first try."
+
 // sandboxNote tells the model what its commands may do.
 func sandboxNote(p sandbox.Policy) string {
-	network := "no network access"
-	if p.Network {
-		network = "network access"
+	network, offline := "network access", ""
+	if !p.Network {
+		network, offline = "no network access", noNetworkNote
 	}
 	switch p.Mode {
 	case sandbox.ReadOnly:
-		return "Commands run in a read-only sandbox: they can read files but write nothing, with " + network + "."
+		return "Commands run in a read-only sandbox: they can read files but write nothing, with " + network + "." + offline
 	case sandbox.WorkspaceWrite:
 		return "Commands run in a sandbox: they can read any file, write only the workspace and temporary directories " +
-			"(.git, .uah, .agents, and .codex stay read-only), and have " + network + "."
+			"(.git, .uah, .agents, and .codex stay read-only), and have " + network + "." + offline
 	case sandbox.FullAccess:
 	}
 
