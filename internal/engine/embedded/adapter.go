@@ -1,6 +1,7 @@
 package embedded
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -41,9 +42,8 @@ type switcher struct {
 	// searches, when set, records the session's web searches and puts
 	// them back into later turn requests (searchlog.go).
 	searches *searchLog
-	// effortByTurn lowers the effort of a request that only continues
-	// after tool results (effortturn.go).
-	effortByTurn bool
+	// lean, in Lean mode, picks each turn request's effort (lean.go).
+	lean *leanRouter
 	// max is the attempt limit; diag gets the diagnostics (modelcall.go).
 	max  int
 	diag io.Writer
@@ -72,17 +72,19 @@ func (s *switcher) Respond(ctx context.Context, req llm.Request, opts llm.Reques
 	_, compacting := ctx.Value(remoteCallKey{}).(*remoteCall)
 	s.mu.Lock()
 	v, model := s.variant, s.model
-	lower := s.effortByTurn && !compacting && continuation(req.Input)
-	if lower {
-		req.Model.ReasoningEffort, v.ultra = lowerEffort(req.Model.ReasoningEffort, v.ultra), false
+	reason := ""
+	if s.lean != nil && !compacting {
+		c := s.lean.route(req.Input, req.Model.ReasoningEffort, v.ultra, cmp.Or(model, req.Model.ID))
+		req.Model.ReasoningEffort, v.ultra, reason = c.effort, c.ultra, c.reason
 	}
 	client, err := s.clientLocked(v)
 	s.mu.Unlock()
 	if err != nil {
 		return llm.Response{}, err
 	}
-	if lower && s.diag != nil {
-		_, _ = fmt.Fprintf(s.diag, "embedded: effort-by-turn: continuation at %s\n", req.Model.ReasoningEffort)
+	effort := string(req.Model.ReasoningEffort)
+	if v.ultra {
+		effort = effortUltra
 	}
 	if model != "" {
 		req.Model.ID = model
@@ -100,6 +102,9 @@ func (s *switcher) Respond(ctx context.Context, req llm.Request, opts llm.Reques
 		opts.CacheKey = s.cacheKey
 	}
 	ctx, done := s.observe(ctx, kindTurn)
+	if c, ok := ctx.Value(callKey{}).(*modelCall); ok {
+		c.setEffort(effort, reason)
+	}
 	resp, err := client.Respond(ctx, req, opts)
 	err = done(err)
 	if err == nil && s.seen != nil && !compacting {

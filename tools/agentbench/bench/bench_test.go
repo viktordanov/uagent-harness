@@ -51,6 +51,44 @@ func TestParseUAH(t *testing.T) {
 	assert.InDelta(t, (25846-7680)*1e-6+7680*0.1e-6+70*10e-6, m.CostUSD, 1e-9)
 }
 
+// TestParseUAH_EffortFromDiagnostics: a request's model_attempt line in the
+// run's stderr.log gives its effort and, in Lean mode, why.
+func TestParseUAH_EffortFromDiagnostics(t *testing.T) {
+	start := time.Date(2026, 10, 1, 18, 57, 5, 700_000_000, time.UTC)
+	parse := func(stateDir string) *bench.Timeline {
+		f, err := os.Open("testdata/uah.jsonl")
+		require.NoError(t, err)
+		defer f.Close()
+		tl, err := bench.ParseUAH(f, start, stateDir)
+		require.NoError(t, err)
+
+		return tl
+	}
+	plain := parse("")
+	assert.Equal(t, "low", plain.Requests[1].Effort, "the session's")
+	state := t.TempDir()
+	logDir := filepath.Join(state, "runs", "r1")
+	require.NoError(t, os.MkdirAll(logDir, 0o700))
+	var lines string
+	for i, r := range plain.Requests {
+		at := start.Add(time.Duration(r.StartMS) * time.Millisecond).Format(time.RFC3339Nano)
+		effort, reason := "low", "r1: first request"
+		if i == 1 {
+			effort, reason = "medium", "r1: confirmations: short output"
+		}
+		lines += `{"diag":"model_attempt","at":"` + at + `","kind":"turn","first_byte_ms":100,"result":"ok","effort":"` + effort + `","effort_reason":"` + reason + `"}` + "\n"
+	}
+	require.NoError(t, os.WriteFile(filepath.Join(logDir, "stderr.log"), []byte(lines), 0o600))
+
+	tl := parse(state)
+	assert.Equal(t, "low", tl.Requests[0].Effort)
+	assert.Equal(t, "medium", tl.Requests[1].Effort)
+	assert.Equal(t, "r1: confirmations: short output", tl.Requests[1].EffortReason)
+	b := tl.Compute(8400*time.Millisecond, price).Behavior
+	assert.Equal(t, 1, b.ChangedEffortRequests)
+	assert.Equal(t, 0, b.SameEffortRequests)
+}
+
 func TestParseCodex(t *testing.T) {
 	f, err := os.Open("testdata/codex.jsonl")
 	require.NoError(t, err)
@@ -189,10 +227,10 @@ func TestParseCodexBackgroundCall(t *testing.T) {
 func TestBehavior(t *testing.T) {
 	tl := &bench.Timeline{
 		Requests: []bench.Request{
-			{StartMS: 0, EndMS: 1000, Effort: "high", Stop: "complete", Tokens: bench.Tokens{Output: 10}},
-			{StartMS: 1100, EndMS: 3000, Effort: "high", Stop: "complete", Tokens: bench.Tokens{Output: 110, Reasoning: 10}},
-			{StartMS: 3100, EndMS: 4000, Effort: "medium", Stop: "complete", Tokens: bench.Tokens{Output: 20}, TextBytes: 100},
-			{StartMS: 5000, EndMS: 5500, Effort: "medium", Stop: "canceled"},
+			{StartMS: 0, EndMS: 1000, Effort: "high", Stop: "complete", Tokens: bench.Tokens{Output: 10, Input: 100}},
+			{StartMS: 1100, EndMS: 3000, Effort: "high", Stop: "complete", Tokens: bench.Tokens{Output: 110, Reasoning: 10, Input: 200, Cached: 180}},
+			{StartMS: 3100, EndMS: 4000, Effort: "medium", Stop: "complete", Tokens: bench.Tokens{Output: 20, Input: 300, Cached: 150}, TextBytes: 100},
+			{StartMS: 5000, EndMS: 5500, Effort: "medium", Stop: "canceled", Tokens: bench.Tokens{Input: 400, Cached: 400}},
 		},
 		Calls: []bench.Call{
 			{Name: "SkillUse", Request: 0, ArgsBytes: 0},
@@ -215,4 +253,9 @@ func TestBehavior(t *testing.T) {
 	assert.Equal(t, int64(100), b.OutputPatch)
 	assert.Equal(t, int64(10), b.OutputToolArgs)
 	assert.Equal(t, int64(20), b.OutputText)
+	assert.Equal(t, 2, b.SameEffortRequests)
+	assert.Equal(t, int64(600), b.SameEffortInput)
+	assert.InDelta(t, 580.0/600, b.SameEffortCacheRatio, 1e-9)
+	assert.Equal(t, 1, b.ChangedEffortRequests)
+	assert.InDelta(t, 0.5, b.ChangedEffortCacheRatio, 1e-9)
 }

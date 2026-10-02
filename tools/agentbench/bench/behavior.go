@@ -48,6 +48,19 @@ type Behavior struct {
 	// CompactionMS the time their summary calls took.
 	Compactions  int   `json:"compactions"`
 	CompactionMS int64 `json:"compaction_ms"`
+	// The prompt cache split by effort: the main agent's requests after
+	// its first, at the same effort as the request before them or at
+	// another, with their input and cached input tokens and the cached
+	// share (0 without such requests). Lean mode changes the effort per
+	// request; these show whether the cache follows.
+	SameEffortRequests      int     `json:"same_effort_requests"`
+	SameEffortInput         int64   `json:"same_effort_input"`
+	SameEffortCached        int64   `json:"same_effort_cached"`
+	SameEffortCacheRatio    float64 `json:"same_effort_cache_ratio"`
+	ChangedEffortRequests   int     `json:"changed_effort_requests"`
+	ChangedEffortInput      int64   `json:"changed_effort_input"`
+	ChangedEffortCached     int64   `json:"changed_effort_cached"`
+	ChangedEffortCacheRatio float64 `json:"changed_effort_cache_ratio"`
 }
 
 // approvalWait is the shortest wait between issuing and starting a call
@@ -118,8 +131,38 @@ func (tl *Timeline) behavior() Behavior {
 	if len(b.Efforts) == 0 {
 		b.Efforts = nil
 	}
+	tl.cacheByEffort(&b)
 
 	return b
+}
+
+// cacheByEffort splits the main agent's cached input by whether each
+// request's effort is its previous request's.
+func (tl *Timeline) cacheByEffort(b *Behavior) {
+	prev := ""
+	for _, r := range tl.Requests {
+		if r.Agent != "" {
+			continue
+		}
+		switch {
+		case prev == "" || r.Effort == "":
+		case r.Effort == prev:
+			b.SameEffortRequests++
+			b.SameEffortInput += r.Tokens.Input
+			b.SameEffortCached += r.Tokens.Cached
+		default:
+			b.ChangedEffortRequests++
+			b.ChangedEffortInput += r.Tokens.Input
+			b.ChangedEffortCached += r.Tokens.Cached
+		}
+		prev = r.Effort
+	}
+	if b.SameEffortInput > 0 {
+		b.SameEffortCacheRatio = float64(b.SameEffortCached) / float64(b.SameEffortInput)
+	}
+	if b.ChangedEffortInput > 0 {
+		b.ChangedEffortCacheRatio = float64(b.ChangedEffortCached) / float64(b.ChangedEffortInput)
+	}
 }
 
 // nextStart is when the main agent's next request after i starts, else

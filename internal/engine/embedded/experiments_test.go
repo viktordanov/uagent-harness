@@ -26,38 +26,13 @@ func withExperiments(getenv func(string) string, names string) func(string) stri
 	}
 }
 
-// experimentEngine is the env's engine with the experiments on.
-func (e *env) experimentEngine(names string) *embedded.Engine {
-	return embedded.New(embedded.Config{StateDir: e.StateDir, Provider: "openai", Getenv: withExperiments(e.getenv, names)})
+// leanEngine is the env's engine, in Lean mode when lean, with the
+// experiments on.
+func (e *env) leanEngine(lean bool, names string) *embedded.Engine {
+	return embedded.New(embedded.Config{StateDir: e.StateDir, Provider: "openai", Lean: lean, Getenv: withExperiments(e.getenv, names)})
 }
 
-// TestPreambleWake: with preamble-wake, the system message starts with the
-// preamble that describes the wake policy, and the rest of it is the same;
-// without it, with the runner's.
-func TestPreambleWake(t *testing.T) {
-	systems := map[bool]string{}
-	for _, on := range []bool{true, false} {
-		e := newEnv(t, fakellm.Reply{Text: "done"})
-		names := ""
-		if on {
-			names = "preamble-wake"
-		}
-		s, ev := e.open(t, e.experimentEngine(names), "")
-		_, err := s.Submit("hello")
-		require.NoError(t, err)
-		ev.finished()
-		systems[on] = e.llm.Requests()[0].System
-	}
-	assert.Contains(t, systems[true], "Their results arrive together")
-	assert.Contains(t, systems[true], "A call still running after 5 minutes wakes you with its output so far")
-	assert.NotContains(t, systems[true], "placeholder")
-	assert.Contains(t, systems[false], "a call still running shows a placeholder")
-	_, rest, _ := strings.Cut(systems[true], "I believe in you!")
-	_, restOff, _ := strings.Cut(systems[false], "I believe in you!")
-	assert.Equal(t, restOff, rest, "only the preamble changes")
-}
-
-// TestPrimedFirstTurn: a new session's first request carries the workspace
+// TestPrimedFirstTurn: in Lean mode, a new session's first request carries the workspace
 // context before the user's message, with git's state, the tracked files,
 // and the file AGENTS.md includes; the system prompt is the same as
 // without it, and a later run of the session adds no second context.
@@ -77,13 +52,9 @@ func TestPrimedFirstTurn(t *testing.T) {
 			out, err := exec.Command("git", append([]string{"-C", e.Workspace}, args...)...).CombinedOutput()
 			require.NoError(t, err, string(out))
 		}
-		names := ""
-		if on {
-			names = "primed-first-turn"
-		}
 		settings := e.settings()
 		settings.SystemPrompt = "Base.\n\n# Project instructions\n\n## " + agents + "\n\n@INC.md\n"
-		s, err := session.Open(t.Context(), e.experimentEngine(names), session.Options{Settings: settings})
+		s, err := session.Open(t.Context(), e.leanEngine(on, ""), session.Options{Settings: settings})
 		require.NoError(t, err)
 		t.Cleanup(func() { _ = s.Close() })
 		ev := &events{t: t, s: s}
@@ -118,33 +89,49 @@ func TestPrimedFirstTurn(t *testing.T) {
 	assert.Equal(t, systems[false], systems[true], "the system prompt is unchanged")
 }
 
-// TestEffortByTurn: the first request and one with a user message run at
-// the configured effort; a request that only continues after tool results
-// runs one level lower. Without the experiment, every request keeps it.
-func TestEffortByTurn(t *testing.T) {
-	for _, on := range []bool{true, false} {
-		e := newEnv(t, fakellm.Reply{Commands: []string{"echo one"}}, fakellm.Reply{Text: "done"}, fakellm.Reply{Text: "again"})
-		names := ""
-		if on {
-			names = "effort-by-turn"
-		}
-		s, ev := e.open(t, e.experimentEngine(names), "")
-		_, err := s.Submit("run it")
-		require.NoError(t, err)
-		ev.finished()
-		ev.idle()
-		_, err = s.Submit("more")
-		require.NoError(t, err)
-		ev.finished()
+// TestLean_Effort: in Lean mode, the first request and one with a user
+// message go at the session's effort, and one after a command that only
+// confirms goes one level lower; a read keeps the effort under the default
+// rule, r1, and not under r0. Without Lean mode, every request keeps it.
+func TestLean_Effort(t *testing.T) {
+	tests := []struct {
+		name  string
+		lean  bool
+		rule  string
+		reply fakellm.Reply
+		want  []string
+	}{
+		{"off", false, "", fakellm.Reply{Commands: []string{"echo one"}}, []string{"high", "high", "high"}},
+		{"a confirmation", true, "", fakellm.Reply{Commands: []string{"echo one"}}, []string{"high", "medium", "high"}},
+		{"a read under r1", true, "", fakellm.Reply{Commands: []string{"cat go.mod"}}, []string{"high", "high", "high"}},
+		{"a read under r0", true, "lean-rule=r0", fakellm.Reply{Commands: []string{"cat go.mod"}}, []string{"high", "medium", "high"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			e := newEnv(t, tt.reply, fakellm.Reply{Text: "done"}, fakellm.Reply{Text: "again"})
+			s, ev := e.open(t, e.leanEngine(tt.lean, tt.rule), "")
+			_, err := s.Submit("run it")
+			require.NoError(t, err)
+			ev.finished()
+			ev.idle()
+			_, err = s.Submit("more")
+			require.NoError(t, err)
+			ev.finished()
 
-		var efforts []string
-		for _, r := range e.llm.Requests() {
-			efforts = append(efforts, r.Effort)
-		}
-		if on {
-			assert.Equal(t, []string{"high", "medium", "high"}, efforts)
-		} else {
-			assert.Equal(t, []string{"high", "high", "high"}, efforts)
-		}
+			var efforts []string
+			for _, r := range e.llm.Requests() {
+				efforts = append(efforts, r.Effort)
+			}
+			assert.Equal(t, tt.want, efforts)
+			if tt.name == "a confirmation" {
+				logs, _ := filepath.Glob(filepath.Join(e.StateDir, "runs", "*", "stderr.log"))
+				var all string
+				for _, l := range logs {
+					all += readFile(t, l)
+				}
+				assert.Contains(t, all, `"effort":"medium","effort_reason":"r1: confirmations: short output"`, "the attempt's diagnostics say why")
+				assert.Contains(t, all, `"effort":"high","effort_reason":"r1: first request"`)
+			}
+		})
 	}
 }

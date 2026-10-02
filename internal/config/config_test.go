@@ -256,6 +256,28 @@ func TestMouse(t *testing.T) {
 	assert.True(t, cfg.TUI.MouseOn(), "the project file wins")
 }
 
+// TestLean: lean is off by default, the user file turns it on, and a
+// trusted project file can turn it on too.
+func TestLean(t *testing.T) {
+	root := t.TempDir()
+	ws := filepath.Join(root, "ws")
+	user := filepath.Join(root, "config.toml")
+	cfg, _, err := config.Load(user, ws)
+	require.NoError(t, err)
+	assert.False(t, cfg.Lean, "off by default")
+
+	write(t, user, "lean = true\n")
+	cfg, _, err = config.Load(user, ws)
+	require.NoError(t, err)
+	assert.True(t, cfg.Lean)
+
+	write(t, user, "lean = false\n[projects.\""+ws+"\"]\ntrusted = true\n")
+	write(t, config.ProjectFile(ws), "lean = true\n")
+	cfg, _, err = config.Load(user, ws)
+	require.NoError(t, err)
+	assert.True(t, cfg.Lean, "a project file turns it on")
+}
+
 // TestTitle: the TUI sets the terminal's title unless a file sets title =
 // false, and a trusted project file can turn it on again.
 func TestTitle(t *testing.T) {

@@ -21,7 +21,7 @@ import (
 	"github.com/viktordanov/uah/internal/session"
 )
 
-// The primed-first-turn experiment: a new session of the main agent starts
+// Lean mode's primed first turn: a new session of the main agent starts
 // with one more user message before the user's, a compact workspace
 // context that uah gathers cheaply, so the model's first turns need not
 // explore or read what AGENTS.md includes: the files git tracks, by top
@@ -29,6 +29,9 @@ import (
 // with an @ line (such as @RTK.md), which uah does not expand in the
 // system prompt. The system prompt stays the same, byte for byte, so the
 // prompt cache holds. Subagents, forks, and resumed sessions get none.
+
+// primedOpen starts the workspace context message.
+const primedOpen = "<workspace_context>"
 
 // Primed context's limits: the whole block, the git commands, the status
 // lines, and the listing's entries.
@@ -43,7 +46,7 @@ const (
 // primed adds the workspace context before the messages of a new main
 // session, when the experiment is on.
 func (w *wiring) primed(ctx context.Context, req core.Request, messages []core.UserInput) []core.UserInput {
-	if !w.e.experiments.primedFirstTurn || strings.HasPrefix(req.SessionID, session.SubagentIDPrefix) {
+	if !w.e.cfg.Lean || strings.HasPrefix(req.SessionID, session.SubagentIDPrefix) {
 		return messages
 	}
 	if req.SessionID != "" {
@@ -80,7 +83,7 @@ func primedContext(ctx context.Context, workspace, systemPrompt string) string {
 	if len(parts) == 0 {
 		return ""
 	}
-	text := "<workspace_context>\nuah gathered this at the start of the session, so you need not look it up again.\n\n" +
+	text := primedOpen + "\nuah gathered this at the start of the session, so you need not look it up again.\n\n" +
 		strings.Join(parts, "\n\n") + "\n</workspace_context>"
 
 	return text

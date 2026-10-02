@@ -22,6 +22,7 @@ func configValues() map[string]state.ConfigValue {
 		"fast":                           {Value: "false", Source: "default"},
 		"permission_mode":                {Value: "workspace", Source: "default"},
 		"web_search":                     {Value: "live", Source: "default"},
+		"lean":                           {Value: "false", Source: "default"},
 		"tui.details":                    {Value: "false", Source: "default"},
 		"tui.mouse":                      {Value: "false", Source: "user file"},
 	}
@@ -52,7 +53,7 @@ func TestConfig_OpensAndShowsValuesWithSources(t *testing.T) {
 
 	s, _ = apply(s, state.ConfigLoaded{Path: "/cfg.toml", Values: configValues()})
 	rows := s.ConfigRows()
-	require.Len(t, rows, 10)
+	require.Len(t, rows, 11)
 	got := map[string][2]string{}
 	for _, r := range rows {
 		got[r.Label] = [2]string{r.Value, r.Source}
@@ -63,6 +64,7 @@ func TestConfig_OpensAndShowsValuesWithSources(t *testing.T) {
 	assert.Equal(t, [2]string{"gpt-6-sol", "user file"}, got["Model"])
 	assert.Equal(t, [2]string{"off", "user file"}, got["Mouse"])
 	assert.Equal(t, [2]string{"live", "default"}, got["Web search"])
+	assert.Equal(t, [2]string{"off", "default"}, got["Lean mode"])
 
 	s, _ = apply(s, state.ConfigEsc{})
 	assert.Nil(t, s.Config, "esc closes")
@@ -73,8 +75,8 @@ func TestConfig_TogglesAndAppliesLive(t *testing.T) {
 	s, effects := apply(s, state.ConfigChange{Delta: 1})
 	assert.Equal(t, []state.Effect{state.EffSaveConfig{Key: "tui.mouse", Value: true}}, effects)
 	assert.True(t, s.Mouse, "the TUI reports the mouse at once")
-	assert.Equal(t, "on", s.ConfigRows()[9].Value)
-	assert.Equal(t, state.SourceUser, s.ConfigRows()[9].Source)
+	assert.Equal(t, "on", s.ConfigRows()[10].Value)
+	assert.Equal(t, state.SourceUser, s.ConfigRows()[10].Source)
 
 	s, effects = apply(s, state.ConfigSaved{Key: "tui.mouse", Value: true})
 	assert.Equal(t, []state.Effect{state.EffLoadConfig{}}, effects, "reload the sources")
@@ -93,6 +95,27 @@ func TestConfig_WebSearch(t *testing.T) {
 	assert.Equal(t, []state.Effect{state.EffSaveConfig{Key: "web_search", Value: "disabled"}}, effects, "no session change")
 	s, _ = apply(s, state.ConfigSaved{Key: "web_search", Value: "disabled"})
 	assert.Contains(t, s.Items[len(s.Items)-1].Text, "applies to sessions opened from now on")
+}
+
+// TestConfig_LeanMode: the row toggles lean, says what Lean mode does while
+// it is selected, and applies to the sessions opened next.
+func TestConfig_LeanMode(t *testing.T) {
+	s := openConfig(t, opened(), "Lean mode")
+	var row state.ConfigRow
+	for _, r := range s.ConfigRows() {
+		if r.Key == "lean" {
+			row = r
+		}
+	}
+	assert.True(t, row.Toggle())
+	assert.Equal(t, "Lean mode: think less on routine turns, and start with the workspace's context", row.Help)
+	s, effects := apply(s, state.ConfigChange{Delta: 1})
+	assert.Equal(t, []state.Effect{state.EffSaveConfig{Key: "lean", Value: true}}, effects, "no session change")
+	s, _ = apply(s, state.ConfigSaved{Key: "lean", Value: true})
+	assert.Contains(t, s.Items[len(s.Items)-1].Text, "saved lean = true")
+	assert.Contains(t, s.Items[len(s.Items)-1].Text, "applies to sessions opened from now on")
+	_, effects = apply(s, state.ConfigChange{Delta: 1})
+	assert.Equal(t, []state.Effect{state.EffSaveConfig{Key: "lean", Value: false}}, effects, "and off again")
 }
 
 func TestConfig_ModelEffortAndFastChangeTheSession(t *testing.T) {

@@ -53,6 +53,10 @@ type Config struct {
 	// WebSearch offers the provider's hosted web search tool: live (the
 	// default where the provider has it) or disabled, as Codex's key.
 	WebSearch string `toml:"web_search"`
+	// Lean is Lean mode: the model thinks less on routine turns (requests
+	// that only follow tool results that confirm), and a new session starts
+	// with the workspace's context. Off by default.
+	Lean bool `toml:"lean"`
 
 	// AutoCompactPercent compacts the context once a response used this
 	// share of the model's window (default 90; 0 turns it off).

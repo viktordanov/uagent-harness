@@ -346,6 +346,11 @@ func TestResolve(t *testing.T) {
 			want: func(r *app.Resolved) { r.WebSearch = app.WebSearchDisabled },
 		},
 		{
+			name: "lean turns Lean mode on",
+			cfg:  config.Config{Lean: true},
+			want: func(r *app.Resolved) { r.Lean = true },
+		},
+		{
 			name: "the prompt file is read by Setup",
 			cfg:  config.Config{ExperimentalCompactPromptFile: "/prompts/compact.md"},
 			want: func(r *app.Resolved) { r.CompactPromptFile = "/prompts/compact.md" },

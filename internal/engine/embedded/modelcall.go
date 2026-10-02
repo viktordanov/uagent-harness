@@ -45,6 +45,8 @@ type modelCall struct {
 	max        int
 	diag       io.Writer // a line per attempt: the run's stderr.log
 	wake, done chan struct{}
+	// effort and effortReason go in each attempt's line.
+	effort, effortReason string
 
 	mu       sync.Mutex
 	pending  []core.Event
@@ -65,23 +67,27 @@ type modelCall struct {
 
 // attemptDiag is an attempt's line in the diagnostics.
 type attemptDiag struct {
-	Diag          string    `json:"diag"`
-	At            time.Time `json:"at"`
-	Kind          string    `json:"kind"`
-	Attempt       int       `json:"attempt"`
-	Max           int       `json:"max"`
-	SentBytes     int64     `json:"sent_bytes"`
-	ConnectMS     int64     `json:"connect_ms"`
-	FirstByteMS   int64     `json:"first_byte_ms"`
-	Status        int       `json:"status"`
-	Events        int       `json:"events"`
-	RecvBytes     int64     `json:"recv_bytes"`
-	LongestGapMS  int64     `json:"longest_gap_ms"`
-	Tool          string    `json:"tool,omitempty"`
-	NetworkWaitMS int64     `json:"network_wait_ms"`
-	Result        string    `json:"result"`
-	Reason        string    `json:"reason,omitempty"`
-	DelayMS       int64     `json:"delay_ms,omitempty"`
+	Diag         string    `json:"diag"`
+	At           time.Time `json:"at"`
+	Kind         string    `json:"kind"`
+	Attempt      int       `json:"attempt"`
+	Max          int       `json:"max"`
+	SentBytes    int64     `json:"sent_bytes"`
+	ConnectMS    int64     `json:"connect_ms"`
+	FirstByteMS  int64     `json:"first_byte_ms"`
+	Status       int       `json:"status"`
+	Events       int       `json:"events"`
+	RecvBytes    int64     `json:"recv_bytes"`
+	LongestGapMS int64     `json:"longest_gap_ms"`
+	Tool         string    `json:"tool,omitempty"`
+	// Effort is the effort the request went at; EffortReason, in Lean
+	// mode, why (lean.go).
+	Effort        string `json:"effort,omitempty"`
+	EffortReason  string `json:"effort_reason,omitempty"`
+	NetworkWaitMS int64  `json:"network_wait_ms"`
+	Result        string `json:"result"`
+	Reason        string `json:"reason,omitempty"`
+	DelayMS       int64  `json:"delay_ms,omitempty"`
 }
 
 // observe gives a request its modelCall; the func it returns sends what is
@@ -211,12 +217,22 @@ func (c *modelCall) phase(phase string, ms *int64) {
 	c.progressLocked(phase, true)
 }
 
+// setEffort records the request's effort and why, for its attempts' lines.
+func (c *modelCall) setEffort(effort, reason string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.effort, c.effortReason = effort, reason
+}
+
 // start begins an attempt: the one before it was a retry, its text void.
 func (c *modelCall) start(sent int64) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.writeLocked("retry")
-	c.a = attemptDiag{Diag: "model_attempt", At: time.Now(), Kind: c.kind, Attempt: c.a.Attempt + 1, Max: c.max, SentBytes: sent}
+	c.a = attemptDiag{
+		Diag: "model_attempt", At: time.Now(), Kind: c.kind, Attempt: c.a.Attempt + 1, Max: c.max, SentBytes: sent,
+		Effort: c.effort, EffortReason: c.effortReason,
+	}
 	c.last, c.lost, c.terminal, c.failure, c.tool, c.outputs = c.a.At, false, "", apiError{}, toolCall{}, attemptOutputs{}
 	c.remote.reset()
 	c.resetLocked()

@@ -83,6 +83,10 @@ type Config struct {
 	// WebSearch offers the provider's hosted web search tool to a run on a
 	// provider that has it (Provider.WebSearch), subagents' runs included.
 	WebSearch bool
+	// Lean is Lean mode: a request after tool results that only confirm
+	// goes one effort level lower (lean.go), and a new main session starts
+	// with the workspace's context (primed.go).
+	Lean bool
 	// Subagents, when set, offers its tools to the runs it attaches and
 	// hears when the user interrupts a run; the engine closes it when it is
 	// an io.Closer.

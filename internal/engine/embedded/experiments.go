@@ -9,29 +9,18 @@ const experimentsEnv = "UAH_EXPERIMENTS"
 
 // experiments are the switches UAH_EXPERIMENTS turns on.
 type experiments struct {
-	// preambleWake gives the runner's preamble the wake policy's words: a
-	// turn's results arrive together, and a call still running after the
-	// hold wakes the model with its output so far (wake.go).
-	preambleWake bool
-	// primedFirstTurn gives a new session's first request a compact
-	// workspace context: the files, git status, and the AGENTS.md
-	// includes (primed.go).
-	primedFirstTurn bool
-	// effortByTurn sends a request that only continues after tool results
-	// one effort level lower (effortturn.go).
-	effortByTurn bool
+	// leanRule is the rule Lean mode routes effort by (lean.go), from
+	// lean-rule=r0, r1, r2, or r3; the default rule without one.
+	leanRule leanRule
 }
 
 func readExperiments(getenv func(string) string) experiments {
-	var x experiments
+	x := experiments{leanRule: defaultLeanRule}
 	for name := range strings.SplitSeq(getenv(experimentsEnv), ",") {
-		switch strings.TrimSpace(name) {
-		case "preamble-wake":
-			x.preambleWake = true
-		case "primed-first-turn":
-			x.primedFirstTurn = true
-		case "effort-by-turn":
-			x.effortByTurn = true
+		if rule, ok := strings.CutPrefix(strings.TrimSpace(name), "lean-rule="); ok {
+			if r, ok := parseLeanRule(rule); ok {
+				x.leanRule = r
+			}
 		}
 	}
 

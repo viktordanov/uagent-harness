@@ -16,8 +16,9 @@ The embedded engine runs unreal-agent-runner's packages inside uah, so messages,
 5. [The ChatGPT login](#the-chatgpt-login)
 6. [Remote jobs](#remote-jobs)
 7. [Extending the engine](#extending-the-engine)
-8. [Experiments](#experiments)
-9. [Tests](#tests)
+8. [Lean mode](#lean-mode)
+9. [Experiments](#experiments)
+10. [Tests](#tests)
 <!-- /memoria:section -->
 
 <!-- memoria:section id="interface" files="engine.go events.go subagents.go patch.go tooloutput.go embedded/scope.go" -->
@@ -111,7 +112,7 @@ The embedded engine is a uagent `harness.Backend`. uagent still owns the run: th
 2. The session store (`store.go`).
 3. The tool registry (`tools.go`, below).
 4. The operation manager with the remote job handlers.
-5. The inbox, with "stop when idle" (`agent.go`). The initial effort and the messages go into the session before the coordinator restores it (`openStore`), so it asks the model once with them and any input a stopped run left unread; a session with an operation still to finish gets them through the inbox instead, so the model is asked once that result is in. The items are written to the run's output before the coordinator starts. With the `primed-first-turn` [experiment](#experiments), a new main session's messages start with the workspace context.
+5. The inbox, with "stop when idle" (`agent.go`). The initial effort and the messages go into the session before the coordinator restores it (`openStore`), so it asks the model once with them and any input a stopped run left unread; a session with an operation still to finish gets them through the inbox instead, so the model is asked once that result is in. The items are written to the run's output before the coordinator starts. In [Lean mode](#lean-mode), a new main session's messages start with the workspace context.
 6. The context builder with the host prompt (uah's default prompt when the request has none), the skills, and the tools.
 7. The coordinator, on its own goroutine. A panic in runner code becomes an error, so it cannot take down the TUI.
 
@@ -127,15 +128,15 @@ Upstream's coordinator wakes the model for each finished tool call a second afte
 - A call still running after 5 minutes (the longest wait of Codex's `write_stdin` on a running command, codex-rs `main`, checked 2026-10-02) wakes the model with "Still running after 5 minutes" and the tail of its output so far (`bash.Progress`); the call goes on, and its result wakes the model when it finishes.
 - An inbox input, such as a user message or the 10-minute heartbeat, ends the wait at once.
 
-On six slow-test tasks × 3 (the agent benchmark, gpt-6.1-sol, high effort), the medians against the old wake: model time −19%, requests −25%, cost −19%, wall time unchanged; on edit tasks, unchanged. `wake_test.go` runs a quick and a slow command in one turn and checks that both results arrive in one request; the fork's `coordinator/wake_test.go` checks the hold and the valve. The runner's preamble still says each finished call wakes a turn and a running call shows a placeholder; the `preamble-wake` [experiment](#experiments) gives the model one that describes this policy.
+On six slow-test tasks × 3 (the agent benchmark, gpt-6.1-sol, high effort), the medians against the old wake: model time −19%, requests −25%, cost −19%, wall time unchanged; on edit tasks, unchanged. `wake_test.go` runs a quick and a slow command in one turn and checks that both results arrive in one request; the fork's `coordinator/wake_test.go` checks the hold and the valve.
 
 ### The runner fork
 
-uah builds on [github.com/viktordanov/unreal-agent](https://github.com/viktordanov/unreal-agent), a fork of [unreallabsai/unreal-agent](https://github.com/unreallabsai/unreal-agent): upstream v0.2.0 with two performance fixes, custom tools (v0.4.0), a wake policy (v0.5.0, on the branch `wake`), and a preamble for it (v0.5.1, on the branch `radical`), under its own module path so that `go install github.com/viktordanov/uah/cmd/uah@latest` works without a `replace` directive. The fork's `main` is upstream `main`, the fixes, custom tools, and the rename; each change alone is on its branches `pr/request-encoding`, `pr/resume-write-state`, and `pr/custom-tools`, proposed upstream.
+uah builds on [github.com/viktordanov/unreal-agent](https://github.com/viktordanov/unreal-agent), a fork of [unreallabsai/unreal-agent](https://github.com/unreallabsai/unreal-agent): upstream v0.2.0 with two performance fixes, custom tools (v0.4.0), and a wake policy (v0.5.0, on the branch `wake`; v0.5.2, on the branch `radical`, has only the hold and the valve), under its own module path so that `go install github.com/viktordanov/uah/cmd/uah@latest` works without a `replace` directive. The fork's `main` is upstream `main`, the fixes, custom tools, and the rename; each change alone is on its branches `pr/request-encoding`, `pr/resume-write-state`, and `pr/custom-tools`, proposed upstream.
 
 - **Request encoding.** The Responses client encodes each history item once, writes the encoded items into the request without re-encoding the history, and keeps the previous request's encodings, so a run's next request encodes only its new items. The request bytes are unchanged (a test compares them with the old encoder). The encodings of the last request stay in memory between requests, about the size of one request body. On the large fixture (48 MB), `turn/large` went from 2.58 GB allocated and 1.30 s to 0.86 GB and 0.77 s; see the [ledger](../../docs/ledger.md) item P5.
 - **Custom tools.** `llm.ToolCustom` offers a Responses API custom tool, whose input is free text, optionally sampled from a grammar (`llm.ToolGrammar`). A `custom_tool_call` becomes an `llm.ToolCall` with `Custom` set and the raw input in `Arguments`; it goes back as a `custom_tool_call`, and the adapter sends a tool result as a `custom_tool_call_output` when its call was custom. Function tools encode as before. `apply_patch` is one.
-- **Wake policy.** `coordinator.Dependencies.Wake` holds a turn's results until its calls finish, with a valve for a call that runs long ([below](#the-wake-policy)); its zero value wakes as upstream's coordinator does. `contextbuilder.NewBuilderWithOptions` with `Options.Hold` starts from a preamble that describes that hold; `NewBuilder` keeps upstream's.
+- **Wake policy.** `coordinator.Dependencies.Wake` holds a turn's results until its calls finish, with a valve for a call that runs long ([below](#the-wake-policy)); its zero value wakes as upstream's coordinator does.
 - **Resume.** `localfile.Store.Resume` keeps its decoded state with the file's identity, size, and modification time. While the file is unchanged, history pages come from it until a page reaches the end, and the first write's state comes from it, where every page and the first append decoded the file again. `load/large`'s first request went from 454 to 292 ms.
 
 To go back to upstream once it has merged both fixes and tagged a release, from the repository root:
@@ -160,7 +161,7 @@ The coordinator calls one `llm.Adapter`. Two adapters sit in front of the provid
 | Adapter | File | Does |
 | --- | --- | --- |
 | `compactor` | `compact.go`, `compactrun.go`, `compactremote.go` | Decides when to compact (`/compact`, or the context in use reaching the automatic limit of `Config.Compaction`), runs the compaction as a job under the run's context, and rewrites every request with the session's latest compaction. An automatic compaction first tries elision; the summary covers all but the last tool calls and carries the state ledger. On a provider with `Provider.RemoteCompaction` and `Compaction.Remote`, the compaction goes to the provider (below) and falls back to the summary. Each record carries its stats, and `Config.Logger` gets a line per compaction. An automatic compaction that leaves the context above the limit reports `Compacted.Warning` and stops automatic compaction for the run. The rewrite, the ledger, elision, the summary call, and the log live in [internal/compaction](../compaction/README.md) |
-| `switcher` | `adapter.go` | Applies the live model to each request, Bash's definition for the live permission mode, and routes to the priority client when fast mode is on, so `/model`, `/fast`, and shift+tab apply from the next request. Effort ultra goes the same way: the runner's `llm.ReasoningEffort` stops at `max` (v0.1.1), so the runner runs at max and the ultra client sends `reasoning` itself, as a request extension. It records each session's last request for `/context` (`context.go`). With the `effort-by-turn` [experiment](#experiments), it lowers the effort of a request that only continues after tool results |
+| `switcher` | `adapter.go` | Applies the live model to each request, Bash's definition for the live permission mode, and routes to the priority client when fast mode is on, so `/model`, `/fast`, and shift+tab apply from the next request. Effort ultra goes the same way: the runner's `llm.ReasoningEffort` stops at `max` (v0.1.1), so the runner runs at max and the ultra client sends `reasoning` itself, as a request extension. It records each session's last request for `/context` (`context.go`). In [Lean mode](#lean-mode), its `leanRouter` picks each turn request's effort |
 | `switcher.images` | `images.go` | Gives the model the images pasted into user messages. The runner's `llm.Message` holds text only (v0.1.1), so each request is rewritten: a message loses its `<uah-image …/>` tag lines, and each image follows it as a `ViewImage` call and its result with the image's data URL from `<state>/images`, the one image input the runner's Responses encoder sends. The call IDs follow the item's place, so the prompt cache still matches; a missing file becomes an error text. See the [images design](../../docs/design/images.md) |
 
 `switcher.direct()` is the same client without the live model override, for one-shot calls that choose their own model: the auto-reviewer and the compaction summary. Such a call runs at ultra when it asks for ultra (`compact_effort`), or keeps the session's effort while that is ultra. It adds pasted images too, so a summary sees them. The switcher also replaces the prompt cache key when the session has another (`SetCacheKey`).
@@ -265,21 +266,46 @@ A job that had already started before the run stopped fails with "interrupted" w
 The runner stays unchanged: uah reproduces its wiring instead of patching it, and the equivalence test below keeps the two in step.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="experiments" files="embedded/experiments.go embedded/primed.go embedded/effortturn.go embedded/wake_internal_test.go" -->
+<!-- memoria:section id="lean" files="embedded/lean.go embedded/leanclass.go embedded/primed.go embedded/lean_internal_test.go" -->
+## Lean mode
+
+Lean mode (`lean = true`, `Config.Lean`, off by default; `/config` toggles it for the sessions opened next) makes the model think less on routine turns and start with the workspace's context. Every effort change is relative to the effort the user picked, E, and within one step of it.
+
+**Effort routing.** The switcher (`adapter.go`) asks the run's `leanRouter` (`lean.go`) for each turn request's effort; a remote compaction and the direct calls (summaries, the auto-reviewer) keep theirs. The router reads the request's input as turns, each a model output and what came back after it, and classifies every tool result by the call it answers (`leanclass.go`):
+
+| Result | Kind |
+| --- | --- |
+| `apply_patch` that applied; a Bash test, build, type check, or formatter that exited 0 (`go test`, `go build`, `npm run build`, `pytest`, `cargo test`, `make`, …, after `cmdparse.Strip` removes `rtk` and `sh -c`); another Bash command that exited 0 with at most 1.5 KB and 30 lines of output | confirmation |
+| A read, a listing, or a search (`cmdparse`'s classification), a dump (`cat`, `git diff`, `git show`, `git log`, `jq`, …), a longer output, a call still running, MCP, the agent tools, `SkillUse`, `ViewImage`, an image, a call the input no longer has | content |
+| A nonzero exit (`Exit code: N`), a command that did not run (`Error: …`), a refusal or a decline (`not run: …`), a patch that failed | failure |
+
+The first request and every request with a user message go at E. Otherwise the rule decides; `UAH_EXPERIMENTS=lean-rule=r0` to `r3` picks it for a benchmark, and r1 is the default until one wins:
+
+| Rule | Effort |
+| --- | --- |
+| r0 | E−1 whenever the input since the model's last output is only tool results |
+| r1 | E−1 only when every one of those results is a confirmation; else E |
+| r2 | r1, and E+1 when the same command (Bash's without its wrappers and with single spaces, else the tool and its input) failed in each of the last two turns, at most the model's highest effort (`ReasoningLevels` in its catalog entry) and never above max or ultra |
+| r3 | r2, and never below E in a reading-heavy session: its first message (not the workspace context) says review, investigate, explain, summarize, report, audit, analyse, or why, or no patch applied in 4 model turns; an edit later flips it back |
+
+One level lower is high to medium, xhigh to high, max to xhigh, ultra to max (the plain client), and medium and low to low. Each attempt's `model_attempt` line in the run's `stderr.log` carries `effort` and, in Lean mode, `effort_reason` (the rule and the signal, such as `r1: confirmations: patch applied, test or build passed`), which the agent benchmark reads.
+
+**Primed first turn.** A new session of the main agent (not a subagent, a fork, or a resumed session) gets one more user message before the user's: a `<workspace_context>` block of at most about 4 KB that `primed.go` gathers before the first request. It holds the files that instruction files include with an `@` line (such as `@RTK.md`; the system prompt keeps each instruction file under a `## <path>` header, which resolves a relative include), the git branch and `git status --short` (at most 20 lines), and `git ls-files` by top directory with file counts (at most 40 entries). Each git command has 2 seconds. The system prompt does not change, so the prompt cache holds.
+<!-- /memoria:section -->
+
+<!-- memoria:section id="experiments" files="embedded/experiments.go embedded/wake_internal_test.go embedded/experiments_internal_test.go" -->
 ## Experiments
 
 An experiment is a switch for an A/B benchmark (`tools/agentbench -uah-env`), not a setting: it has no config key and may go away. The environment variable `UAH_EXPERIMENTS` names the experiments to turn on, separated by commas; the engine reads it once, through `Config.Getenv`, in `embedded/experiments.go`, and a subagent's run gets its parent's engine and so the same switches. An unknown name is ignored.
 
 | Name | What it does |
 | --- | --- |
-| `preamble-wake` | The runner's preamble, which starts the system message, describes the [wake policy](#the-wake-policy): a turn's results arrive together once all its calls finish, a call still running after 5 minutes wakes the model with its output so far, and ending a turn while calls run means waiting for them. Without it, the preamble says each finished call wakes a new turn and a running call shows a placeholder. `wake.go` passes the hold to the fork's `contextbuilder.Options`; the rest of the preamble is the same |
-| `primed-first-turn` | A new session of the main agent (not a subagent, a fork, or a resumed session) gets one more user message before the user's: a `<workspace_context>` block of at most about 4 KB that `primed.go` gathers before the first request. It holds the files that instruction files include with an `@` line (such as `@RTK.md`; the system prompt keeps each instruction file under a `## <path>` header, which resolves a relative include), the git branch and `git status --short` (at most 20 lines), and `git ls-files` by top directory with file counts (at most 40 entries). Each git command has 2 seconds. The system prompt does not change, so the prompt cache holds |
-| `effort-by-turn` | The switcher (`adapter.go`) sends a request whose input ends in tool results, with no user message since the model's last output (`effortturn.go`), one effort level lower: high goes to medium, xhigh to high, max to xhigh, ultra to max, and medium and low to low. The first request and every request that carries a user message keep the configured effort; a remote compaction and direct calls keep theirs. Each lowered request writes a line to the run's diagnostics |
+| `lean-rule=r0`, `r1`, `r2`, `r3` | The rule [Lean mode](#lean-mode) routes effort by; without Lean mode it does nothing |
 
-`wake_internal_test.go` checks the wake policy and the preamble option `preamble-wake` sets.
+`wake_internal_test.go` checks the wake policy.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="tests" files="embedded/embedded_test.go embedded/patch_test.go embedded/patch_tool_test.go embedded/approval_test.go embedded/compact_test.go embedded/compact_settings_test.go embedded/context_test.go embedded/mcp_test.go embedded/mcpjobs_internal_test.go embedded/sandbox_test.go embedded/mode_test.go embedded/images_test.go embedded/clients_test.go embedded/reconnect_test.go embedded/transport_internal_test.go embedded/stream_test.go embedded/stream_internal_test.go embedded/rewind_test.go embedded/rewind_internal_test.go embedded/fork_internal_test.go embedded/store_internal_test.go embedded/sessionlog_test.go embedded/sessionlog_internal_test.go embedded/codexlogin_test.go codexauth/codexauth_test.go codexauth/login_test.go codexauth/file_internal_test.go embedded/websearch_test.go embedded/searchlog_internal_test.go embedded/compact_remote_test.go embedded/remotecompact_internal_test.go embedded/compact_probe_test.go embedded/remote_probe_test.go embedded/experiments_test.go embedded/experiments_internal_test.go" -->
+<!-- memoria:section id="tests" files="embedded/embedded_test.go embedded/patch_test.go embedded/patch_tool_test.go embedded/approval_test.go embedded/compact_test.go embedded/compact_settings_test.go embedded/context_test.go embedded/mcp_test.go embedded/mcpjobs_internal_test.go embedded/sandbox_test.go embedded/mode_test.go embedded/images_test.go embedded/clients_test.go embedded/reconnect_test.go embedded/transport_internal_test.go embedded/stream_test.go embedded/stream_internal_test.go embedded/rewind_test.go embedded/rewind_internal_test.go embedded/fork_internal_test.go embedded/store_internal_test.go embedded/sessionlog_test.go embedded/sessionlog_internal_test.go embedded/codexlogin_test.go codexauth/codexauth_test.go codexauth/login_test.go codexauth/file_internal_test.go embedded/websearch_test.go embedded/searchlog_internal_test.go embedded/compact_remote_test.go embedded/remotecompact_internal_test.go embedded/compact_probe_test.go embedded/remote_probe_test.go embedded/experiments_test.go" -->
 ## Tests
 
 The tests run against `testing/fakellm`, a scripted Responses API, and need no tokens. The ones that compare with the real runner drive it through `harnesstest.RunnerEngine`, a test-only engine over uagent's harness that spawns a runner binary.
@@ -290,7 +316,7 @@ The tests run against `testing/fakellm`, a scripted Responses API, and need no t
 | `TestEmbedded_SteersALiveRun`, `TestEmbedded_ChangesSettingsLive`, `TestEmbedded_InterruptThenContinue` | Live input, live settings, and interrupts |
 | `TestEmbedded_ResumesAProcessSession` | A session the real runner started resumes on the embedded engine with its history. `go test -short` skips it |
 | `patch_test.go`, `patch_tool_test.go` | `apply_patch` end to end: the custom tool's definition, patches inside and outside the workspace, read only, protected paths, declines, verification, hooks and their `updatedInput`, the approver's input, the live mode; a session recorded with the function tool rewinds, resumes, and goes on with a custom call, its old call sent back as recorded |
-| `experiments_test.go`, `experiments_internal_test.go` | The experiments on and off: the preamble that describes the wake policy, with the rest of the system message unchanged; the primed context before the first message only, with the include, git's state, and the files, and the same system prompt; effort one level lower for a continuation only, and the effort mapping |
+| `experiments_test.go`, `lean_internal_test.go`, `experiments_internal_test.go` | Lean mode on and off: the primed context before the first message only, with the include, git's state, and the files, and the same system prompt; each request's effort and its reason in the attempt's diagnostics, and a rule picked through `UAH_EXPERIMENTS`; the classifier on each kind of result; each rule, the escalation's cap, and reading-heavy sessions; the effort steps |
 | `approval_test.go`, `sandbox_test.go` | Escalation, rules, "don't ask again", headless denial, PermissionRequest hooks, auto-review (its start always paired with its end), and the sandbox |
 | `mode_test.go` | Permission modes: a live switch to read only makes the next write fail in the sandbox and the next request describe it; Auto mode lets the reviewer allow or decline without asking, also once its breaker opens |
 | `compact_test.go`, `compact_settings_test.go`, `clear_test.go`, `context_test.go` | Manual and automatic compaction, the configured summary model, prompt, focus, token limit, and kept-message cap, the stop when compacting cannot get under the limit, `/clear` in the same session, resume after both, the PreCompact hook, and `/context`; each compaction's stats in the event and the record, the state ledger after the summary, elision before an automatic summary (no summary call when the stubs free enough, the same stubs on later requests and after a resume), and the last calls kept verbatim |

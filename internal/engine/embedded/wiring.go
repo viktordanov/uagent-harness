@@ -131,7 +131,9 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 	sw.tools = w.bashTools
 	sw.images = w.e.pastedImages
 	sw.stream, sw.text, sw.diag = w.emit, opts.Stream, w.l.Stderr
-	sw.effortByTurn = w.e.experiments.effortByTurn
+	if w.e.cfg.Lean {
+		sw.lean = newLeanRouter(w.e.experiments.leanRule, w.e.models, req.Provider)
+	}
 	operations := operation.NewLocalOperationManager(runCtx, newMCPJobs(runCtx, w.e.cfg.MCP), newAgentJobs(runCtx, w.e.cfg.Subagents, string(s.id)), newPatchJobs(runCtx))
 	first := compaction.Trigger("")
 	switch {
@@ -151,7 +153,7 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 	}
 	a.compactor, a.mode = comp, w.mode
 
-	builder := newContextBuilder(registry, model, req, w.e.experiments.builderOptions())
+	builder := newContextBuilder(registry, model, req)
 	for _, t := range w.hostedTools(req.Provider, req.SessionID) {
 		builder.AddTool(t)
 	}
@@ -259,10 +261,9 @@ func newAgent(ctx context.Context, cancel context.CancelFunc, sw *switcher, rest
 }
 
 // newContextBuilder returns the builder with the model, the system prompt
-// (uah's default base instructions when the request has none), the registry's skills and tools, and
-// the runner's preamble that opts choose.
-func newContextBuilder(registry tool.Registry, model string, req core.Request, opts contextbuilder.Options) contextbuilder.Builder {
-	builder := contextbuilder.NewBuilderWithOptions(opts, registry.Skills()...)
+// (uah's default base instructions when the request has none), and the registry's skills and tools.
+func newContextBuilder(registry tool.Registry, model string, req core.Request) contextbuilder.Builder {
+	builder := contextbuilder.NewBuilder(registry.Skills()...)
 	builder.SetModel(llm.Model{ID: model, ReasoningEffort: reasoningEffort(req.Effort)})
 	prompt := req.SystemPrompt
 	if prompt == "" {

@@ -38,7 +38,7 @@ func Commands() []Command {
 		{Name: "diff", Help: "the workspace's git changes, staged, unstaged, and untracked; not sent to the agent", WhileBusy: true, run: cmdDiff},
 		{Name: cmdReviewName, Args: "[target]", Help: "a read-only reviewer looks at your changes (uncommitted, branch <name>, commit <sha>, or instructions) and lists findings", run: cmdReview},
 		{Name: "context", Help: "what fills the context window: prompt, instructions, skills, tools, messages", WhileBusy: true, run: cmdContext},
-		{Name: "config", Help: "settings: auto-compact, compaction model, model, effort, fast mode, details, mouse; saved to the user file", WhileBusy: true, run: cmdConfig},
+		{Name: "config", Help: "settings: auto-compact, compaction model, model, effort, fast mode, permission mode, web search, Lean mode, details, mouse; saved to the user file", WhileBusy: true, run: cmdConfig},
 		{Name: "status", Help: "session, settings, totals, and your plan's usage", WhileBusy: true, run: cmdStatus},
 		{Name: "usage", Help: "your plan's usage: each limit, what is left, and when it resets (openai-codex)", WhileBusy: true, run: cmdUsage},
 		{Name: "mcp", Args: "[verbose]", Help: "MCP servers: state, transport, and tool count; verbose adds auth and each tool", WhileBusy: true, run: cmdMCP},

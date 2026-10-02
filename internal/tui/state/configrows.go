@@ -36,6 +36,7 @@ const (
 	keyDetails      = "tui.details"
 	keyMouse        = "tui.mouse"
 	keyWebSearch    = "web_search"
+	keyLean         = "lean"
 )
 
 // rowKind is how a /config row changes.
@@ -54,7 +55,10 @@ type ConfigRow struct {
 	Label  string
 	Value  string // as shown
 	Source string
-	kind   rowKind
+	// Help says what the setting does, under the panel while it is
+	// selected ("" for none).
+	Help string
+	kind rowKind
 }
 
 // Toggle reports whether the row switches on and off.
@@ -64,17 +68,19 @@ func (r ConfigRow) Toggle() bool { return r.kind == rowToggle }
 var configKeys = []struct {
 	key, label string
 	kind       rowKind
+	help       string
 }{
-	{keyAutoCompact, "Auto-compact", rowChoice},
-	{keyTokenLimit, "Auto-compact token limit", rowNumber},
-	{keyCompactModel, "Compaction model", rowModel},
-	{keyModel, "Model", rowModel},
-	{keyEffort, "Effort", rowChoice},
-	{keyFast, "Fast mode", rowToggle},
-	{keyMode, "Permission mode", rowChoice},
-	{keyWebSearch, "Web search", rowChoice},
-	{keyDetails, "Details view", rowToggle},
-	{keyMouse, "Mouse", rowToggle},
+	{keyAutoCompact, "Auto-compact", rowChoice, ""},
+	{keyTokenLimit, "Auto-compact token limit", rowNumber, ""},
+	{keyCompactModel, "Compaction model", rowModel, ""},
+	{keyModel, "Model", rowModel, ""},
+	{keyEffort, "Effort", rowChoice, ""},
+	{keyFast, "Fast mode", rowToggle, ""},
+	{keyMode, "Permission mode", rowChoice, ""},
+	{keyWebSearch, "Web search", rowChoice, ""},
+	{keyLean, "Lean mode", rowToggle, "Lean mode: think less on routine turns, and start with the workspace's context"},
+	{keyDetails, "Details view", rowToggle, ""},
+	{keyMouse, "Mouse", rowToggle, ""},
 }
 
 // autoPercents are the auto-compact choices; 0 is off.
@@ -98,7 +104,7 @@ func (s State) ConfigRows() []ConfigRow {
 	rows := make([]ConfigRow, 0, len(configKeys))
 	for _, k := range configKeys {
 		v := s.Config.Values[k.key]
-		rows = append(rows, ConfigRow{Key: k.key, Label: k.label, Value: shown(k.key, v), Source: v.Source, kind: k.kind})
+		rows = append(rows, ConfigRow{Key: k.key, Label: k.label, Value: shown(k.key, v), Source: v.Source, Help: k.help, kind: k.kind})
 	}
 
 	return rows

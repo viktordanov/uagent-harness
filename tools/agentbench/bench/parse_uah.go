@@ -359,12 +359,17 @@ type diagAttempt struct {
 	Kind        string    `json:"kind"`
 	FirstByteMS int64     `json:"first_byte_ms"`
 	Result      string    `json:"result"`
+	// Effort and EffortReason are the request's effort and, in Lean mode,
+	// why.
+	Effort       string `json:"effort"`
+	EffortReason string `json:"effort_reason"`
 }
 
 // addFirstBytes sets the first byte of each request from the runner's
 // model_attempt diagnostics, the attempt that started nearest the request's
 // start within a second; a request without one keeps its first streamed
-// text, which comes later.
+// text, which comes later. The attempt's effort, when it has one, replaces
+// the session's: in Lean mode a request's effort is its own.
 func addFirstBytes(tl *Timeline, stateDir string) {
 	logs, _ := filepath.Glob(filepath.Join(stateDir, "runs", "*", "stderr.log"))
 	var attempts []diagAttempt
@@ -398,6 +403,9 @@ func addFirstBytes(tl *Timeline, stateDir string) {
 		if best >= 0 {
 			a := attempts[best]
 			r.FirstMS = ms(tl.Start, a.At) + a.FirstByteMS
+			if a.Effort != "" {
+				r.Effort, r.EffortReason = a.Effort, a.EffortReason
+			}
 		}
 	}
 }

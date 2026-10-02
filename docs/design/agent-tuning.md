@@ -153,10 +153,12 @@ Lower effort costs about 3 points of prompt-cache hits (the effort level appears
 | 2026-10-02 | The prompt stays Codex's adapted prompt; prompt-only async changes did not pay off | |
 | 2026-10-02 | The wake valve stays at 5 minutes (A); a 60 s valve (B) measured the same and releasing quick results early (C) was worse | [91](../ledger.md) |
 | 2026-10-02 | Automatic checks after an edit are dropped: the model still ran the tests after each edit, so the check added work | |
+| 2026-10-02 | The corrected preamble is dropped, from uah and the runner fork (v0.5.2): it changed nothing measurable | |
+| 2026-10-02 | Lower effort for follow-up turns and the primed first turn become Lean mode, a setting off by default (`lean`, `/config`); every effort stays within one step of the user's. Lower effort narrows to follow-ups after plain confirmations (r1) until a test of the rules (r0 to r3) picks one | [92](../ledger.md) |
 
 ## Still running and next
 
-- The whole suite (35 tasks) × 10 repeats at 64 concurrency: Codex; uah's default; uah with lower effort for follow-up turns; uah with lower effort and a primed first turn; uah with a preamble that describes the new wake policy.
+- Lean mode's effort rules ([engine README](../../internal/engine/README.md#lean-mode)), each with the primed first turn, against uah's default: r0 (every follow-up after tool results one level lower, as in the full suite), r1 (only after plain confirmations: an applied patch, a passing test or build, a short command that is not a read), r2 (r1, one level higher after the same command failed twice), and r3 (r2, never lower in a reading-heavy session: a review, an investigation, a report, or no edit in 4 turns). The question is whether r1 to r3 keep the speed and win back the branch review's and the findings report's passes. Each run records each request's effort and why, and the cache hit rate for requests whose effort changed against those whose did not.
 
 ## For release notes
 

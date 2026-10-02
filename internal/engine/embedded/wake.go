@@ -3,7 +3,6 @@ package embedded
 import (
 	"time"
 
-	"github.com/viktordanov/unreal-agent/harness/contextbuilder"
 	"github.com/viktordanov/unreal-agent/harness/coordinator"
 	"github.com/viktordanov/unreal-agent/harness/tool/bash"
 )
@@ -18,15 +17,4 @@ const wakeHold = 5 * time.Minute
 // call it issued has finished, or a call has run for wakeHold.
 func wakePolicy() coordinator.WakePolicy {
 	return coordinator.WakePolicy{Hold: wakeHold, Progress: bash.Progress}
-}
-
-// builderOptions choose the runner's preamble: with preamble-wake, the one
-// that describes the wake policy; without it, the runner's, which says each
-// finished call wakes a turn and a running call shows a placeholder.
-func (x experiments) builderOptions() contextbuilder.Options {
-	if x.preambleWake {
-		return contextbuilder.Options{Hold: wakeHold}
-	}
-
-	return contextbuilder.Options{}
 }

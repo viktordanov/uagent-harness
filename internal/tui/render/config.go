@@ -36,6 +36,9 @@ func (st *Styles) configLines(s state.State, w int) []string {
 		}
 		out = append(out, ansi.Truncate(line, w, "…"))
 	}
+	if rows := s.ConfigRows(); p.Index < len(rows) && rows[p.Index].Help != "" {
+		out = append(out, st.dim.Render(ansi.Truncate("   "+rows[p.Index].Help, w, "…")))
+	}
 	hint := "   ↑↓ choose · enter or space change · ←→ cycle · esc close"
 	if p.Editing {
 		hint = "   type a value · enter save · esc cancel"

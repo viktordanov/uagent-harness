@@ -100,6 +100,8 @@ type Resolved struct {
 	// WebSearch is live or disabled; the engine offers live search only
 	// on a provider that has it.
 	WebSearch string
+	// Lean is Lean mode (config.Config.Lean).
+	Lean bool
 	// DefaultModel reports that no flag, resumed session, or file named the
 	// model on openai-codex or openai: Settings.Model is then the provider's
 	// fallback until SettleModel sees the provider's list.
@@ -183,7 +185,7 @@ func Resolve(in Inputs, resumed session.Info, cfg config.Config) (Resolved, erro
 	return Resolved{
 		Settings: s, MaxDisk: maxDisk, Instructions: !in.NoInstructions && cfg.InstructionsEnabled(),
 		Sandbox: policy, Env: envPolicy, Compaction: compact, CompactPromptFile: promptFile, Approval: approvalPolicy, Rules: configured,
-		ApprovalsReviewer: reviewer, Review: reviewCfg, Agents: agentSettings, WebSearch: webSearch, DefaultModel: defaulted,
+		ApprovalsReviewer: reviewer, Review: reviewCfg, Agents: agentSettings, WebSearch: webSearch, Lean: cfg.Lean, DefaultModel: defaulted,
 	}, nil
 }
 
