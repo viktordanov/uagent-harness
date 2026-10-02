@@ -22,6 +22,18 @@ const (
 	EnvExtraConfig = "UAH_EXTRA_CONFIG"
 )
 
+// Variables are the environment variables, besides Env, that change what
+// uah does: where its files are, the flags' defaults, the model's endpoint,
+// key, and attempts, the engine's experiments, and the legacy names it warns
+// about. Tests and the perf harness clear them, so a developer's settings
+// stay out of a run; TestVariables keeps the list to what uah reads.
+var Variables = []string{
+	EnvConfig, EnvStateDir, EnvExtraConfig, "UAGENT_CONFIG", "UAGENT_STATE_DIR",
+	"UAH_SANDBOX", "UAH_ASK", "UAH_ADAPTIVE_EFFORT", "UAH_EXPERIMENTS",
+	"UNREAL_HARNESS_LLM_PROVIDER", "UNREAL_HARNESS_LLM_MODEL", "UNREAL_HARNESS_LLM_BASE_URL",
+	"UNREAL_HARNESS_LLM_MAX_ATTEMPTS", "UNREAL_HARNESS_LLM_API_KEY", "CODEX_REFRESH_TOKEN_URL_OVERRIDE",
+}
+
 // Name is the home directory's name in the user's home directory, and the
 // project directory's name in a workspace.
 const Name = ".uah"

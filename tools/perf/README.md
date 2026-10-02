@@ -5,7 +5,7 @@
 `go run ./tools/perf` measures what uah costs outside the model: loading a session, the TUI's first frame and scrolling, an active turn, subagents and forks, the idle TUI, and leaks, on synthetic sessions of 100 to 10,000 records or on copies of real ones, against a scripted fake model. It prints a table, saves JSON, and compares a run with a baseline.
 <!-- /memoria:export -->
 
-The harness drives uah's real stack: `app.Setup` and `session.Open` as `uah` resumes a session, the embedded engine with its sandbox, and the TUI in a real Bubble Tea program. The model is [`testing/fakellm`](../../testing/fakellm/fakellm.go), so no run needs a network, a login, or tokens. Every scenario runs in its own scratch home, and the process environment points `HOME`, `UAH_HOME`, `CODEX_HOME`, and the XDG directories there, so the harness never reads `~/.uah`, `~/.codex`, or the user's configuration.
+The harness drives uah's real stack: `app.Setup` and `session.Open` as `uah` resumes a session, the embedded engine with its sandbox, and the TUI in a real Bubble Tea program. The model is [`testing/fakellm`](../../testing/fakellm/fakellm.go), so no run needs a network, a login, or tokens. Every scenario runs in its own scratch home, and the process environment points `HOME`, `UAH_HOME`, `CODEX_HOME`, and the XDG directories there and clears the variables that change what uah does (`home.Variables`: the provider, model, endpoint, key, sandbox, approval policy, and the rest), so the harness never reads `~/.uah`, `~/.codex`, the user's configuration, or settings exported in the shell.
 
 1. [Run it](#run-it)
 2. [Scenarios](#scenarios)

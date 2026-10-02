@@ -8,15 +8,15 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/viktordanov/uah/internal/home"
 	"github.com/viktordanov/uah/tools/perf/perf"
 )
 
-// environment are the variables perf.NewEnv sets; the test restores them.
-var environment = []string{
+// environment are the variables perf.NewEnv sets or clears; the test
+// restores them.
+var environment = append([]string{
 	"HOME", "UAH_HOME", "CODEX_HOME", "XDG_CONFIG_HOME", "XDG_STATE_HOME", "XDG_CACHE_HOME", "OPENAI_API_KEY", "SHELL",
-	"UAH_CONFIG", "UAH_STATE_DIR", "UAH_EXTRA_CONFIG", "UAGENT_CONFIG", "UAGENT_STATE_DIR",
-	"UAH_SANDBOX", "UAH_PROVIDER", "UAH_MODEL", "UAH_EFFORT", "UAH_LOG_LEVEL",
-}
+}, home.Variables...)
 
 // bound is a ceiling for one metric of one scenario: about ten times what
 // the scenario costs on a laptop (and five times that again under the race

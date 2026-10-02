@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/viktordanov/uah/internal/home"
 	"github.com/viktordanov/uah/testing/fakellm"
 	"github.com/viktordanov/uah/testing/harnesstest"
 )
@@ -27,11 +28,12 @@ func TestMain(m *testing.M) {
 	}
 	uahBin = filepath.Join(dir, "uah")
 	// Every uah the tests start has its own home, so none reads, or copies
-	// into, the real ~/.uah; the tests that need another home set one.
+	// into, the real ~/.uah, and none takes the user's settings from the
+	// environment; the tests that need another home set one.
 	if err := os.Setenv("UAH_HOME", filepath.Join(dir, "home")); err != nil {
 		panic(err)
 	}
-	for _, name := range []string{"UAH_CONFIG", "UAH_STATE_DIR", "UAH_EXTRA_CONFIG", "UAGENT_CONFIG", "UAGENT_STATE_DIR"} {
+	for _, name := range home.Variables {
 		if err := os.Unsetenv(name); err != nil {
 			panic(err)
 		}

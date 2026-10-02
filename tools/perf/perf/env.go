@@ -19,6 +19,7 @@ import (
 
 	"github.com/viktordanov/uah/internal/app"
 	"github.com/viktordanov/uah/internal/approval"
+	"github.com/viktordanov/uah/internal/home"
 	"github.com/viktordanov/uah/internal/sandbox"
 	"github.com/viktordanov/uah/internal/session"
 	"github.com/viktordanov/uah/testing/fakellm"
@@ -57,13 +58,6 @@ func Sandboxed(workspace string) bool {
 	return err == nil
 }
 
-// isolatedVariables are cleared: they would move uah's files or bring the
-// user's settings in.
-var isolatedVariables = []string{
-	"UAH_CONFIG", "UAH_STATE_DIR", "UAH_EXTRA_CONFIG", "UAGENT_CONFIG", "UAGENT_STATE_DIR",
-	"UAH_SANDBOX", "UAH_PROVIDER", "UAH_MODEL", "UAH_EFFORT", "UAH_LOG_LEVEL",
-}
-
 // NewEnv makes an environment under root (which it creates) and starts the
 // fake model. It sets the process environment: HOME, UAH_HOME, CODEX_HOME,
 // and the XDG directories move under root, and OPENAI_API_KEY is a dummy.
@@ -84,7 +78,7 @@ func NewEnv(root string) (*Env, error) {
 			return nil, fmt.Errorf("failed to set %s: %w", k, err)
 		}
 	}
-	for _, k := range isolatedVariables {
+	for _, k := range home.Variables { // they would move uah's files or bring the user's settings in
 		if err := os.Unsetenv(k); err != nil {
 			return nil, fmt.Errorf("failed to unset %s: %w", k, err)
 		}

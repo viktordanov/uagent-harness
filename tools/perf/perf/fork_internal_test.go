@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/viktordanov/uah/internal/home"
 	"github.com/viktordanov/uah/testing/fakellm"
 )
 
@@ -15,8 +16,8 @@ import (
 // command as history only, so it ran once (a fork's first run used to
 // start every copied operation again).
 func TestForkRerun(t *testing.T) {
-	for _, k := range []string{"HOME", "UAH_HOME", "CODEX_HOME", "XDG_CONFIG_HOME", "XDG_STATE_HOME", "XDG_CACHE_HOME", "OPENAI_API_KEY", "SHELL"} {
-		t.Setenv(k, os.Getenv(k)) // NewEnv changes them; restored after the test
+	for _, k := range append([]string{"HOME", "UAH_HOME", "CODEX_HOME", "XDG_CONFIG_HOME", "XDG_STATE_HOME", "XDG_CACHE_HOME", "OPENAI_API_KEY", "SHELL"}, home.Variables...) {
+		t.Setenv(k, os.Getenv(k)) // NewEnv sets or clears them; restored after the test
 	}
 	e, err := NewEnv(t.TempDir())
 	require.NoError(t, err)
