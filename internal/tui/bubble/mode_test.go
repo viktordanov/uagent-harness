@@ -36,3 +36,21 @@ func TestTUI_YoloIsPreselectedAndCycles(t *testing.T) {
 		d.waitFor(want)
 	}
 }
+
+// TestTUI_AltECyclesAdaptiveEffort: alt+e steps adaptive effort through 1
+// step, 2 steps, and off for this session; the footer marks the effort and
+// a notice says where follow-ups go.
+func TestTUI_AltECyclesAdaptiveEffort(t *testing.T) {
+	d := start(t, deps(t, "simple.jsonl"))
+	d.waitFor("gpt-6-sol high ·")
+
+	d.key('e', tea.ModAlt)
+	d.waitFor("adaptive effort: 1 step (follow-ups at medium)")
+	d.waitFor("gpt-6-sol high↓ ·")
+	d.key('e', tea.ModAlt)
+	d.waitFor("adaptive effort: 2 steps (follow-ups at low)")
+	d.waitFor("gpt-6-sol high⇊ ·")
+	d.key('e', tea.ModAlt)
+	d.waitFor("adaptive effort: off")
+	d.waitFor("gpt-6-sol high ·")
+}

@@ -40,6 +40,18 @@ func AdaptiveSteps(value string) int {
 	return 0
 }
 
+// FollowUpEffort is the effort a follow-up after tool results goes at with
+// adaptive effort value: steps levels below effort in Efforts, never below
+// low (ultra is the level above max).
+func FollowUpEffort(effort, value string) string {
+	i := slices.Index(Efforts, effort)
+	if i < 0 {
+		return effort
+	}
+
+	return Efforts[max(i-AdaptiveSteps(value), 0)]
+}
+
 // Providers are the backends the runner supports.
 var Providers = []string{"openai", "openai-codex", "openrouter", "fireworks", "ollama"}
 

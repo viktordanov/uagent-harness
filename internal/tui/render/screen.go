@@ -140,7 +140,11 @@ func transcript(s state.State, c *Cache, w, height int, head []string) []string 
 }
 
 func (st *Styles) headerLine(s state.State, w int) string {
-	left := fmt.Sprintf(" uah · %s · %s/%s · %s · %s · %s", session.ShortID(s.SessionID), s.Settings.Provider, s.Settings.Model, s.Settings.Effort, cmp.Or(modeText(s), "sandbox none"), home(s.Settings.Workspace))
+	full, short, _ := effortLabel(s)
+	header := func(effort string) string {
+		return fmt.Sprintf(" uah · %s · %s/%s · %s · %s · %s", session.ShortID(s.SessionID), s.Settings.Provider, s.Settings.Model, effort, cmp.Or(modeText(s), "sandbox none"), home(s.Settings.Workspace))
+	}
+	left := header(full)
 	var right string
 	switch {
 	case s.SessionID == "":
@@ -155,6 +159,10 @@ func (st *Styles) headerLine(s state.State, w int) string {
 		right = "idle "
 	}
 	gap := w - ansi.StringWidth(left) - ansi.StringWidth(right)
+	if gap < 1 { // the live →low part goes first
+		left = header(short)
+		gap = w - ansi.StringWidth(left) - ansi.StringWidth(right)
+	}
 	if gap < 1 {
 		left = ansi.Truncate(left, max(w-ansi.StringWidth(right)-1, 0), "…")
 		gap = max(w-ansi.StringWidth(left)-ansi.StringWidth(right), 0)
@@ -253,41 +261,7 @@ func (st *Styles) footerLine(s state.State, w int) string {
 		return st.searchLine(s.History.Search, w)
 	}
 	if !s.Details {
-		var parts []string
-		fast := ""
-		if s.Settings.ServiceTier != "" {
-			fast = "fast"
-		}
-		for _, p := range []string{strings.TrimSpace(s.Settings.Model + " " + s.Settings.Effort), fast, modeText(s), home(s.Settings.Workspace)} {
-			if p != "" {
-				parts = append(parts, p)
-			}
-		}
-		if len(s.Queue) > 0 {
-			parts = append(parts, plural(len(s.Queue), "queued message"))
-		}
-		left := " " + strings.Join(parts, " · ")
-		hint := compactHint(s)
-		if s.Scroll > 0 {
-			hint = "scrolled up · end returns "
-		}
-		if s.Shell {
-			hint = shellHint
-		}
-		if pct, ok := s.ContextLeft(); ok {
-			hint = fmt.Sprintf("%d%% context left · %s", pct, hint)
-		}
-		if u, ok := s.UsageLeft(); ok {
-			hint = u + " · " + hint // the plan's tightest window
-		}
-		// The hint wins over the left side, which is cut when the line is full.
-		room := w - ansi.StringWidth(hint)
-		if room > 0 {
-			left = ansi.Truncate(left, room-1, "…")
-			left += strings.Repeat(" ", room-ansi.StringWidth(left)) + hint
-		}
-
-		return markYolo(ansi.Truncate(left, w, ""), st.dim, st.warn)
+		return st.compactFooter(s, w)
 	}
 	if s.Status != "" {
 		return st.warn.Render(ansi.Truncate(" "+s.Status, w, "…"))
@@ -317,6 +291,77 @@ func (st *Styles) footerLine(s state.State, w int) string {
 	}
 
 	return st.dim.Render(ansi.Truncate(text, w, ""))
+}
+
+// compactFooter is the compact view's footer: the model and effort, the
+// rest of the settings, and the hint on the right.
+func (st *Styles) compactFooter(s state.State, w int) string {
+	full, short, accent := effortLabel(s)
+	model := " " + s.Settings.Model
+	if s.Settings.Model != "" {
+		model += " "
+	}
+	line := func(effort string) string {
+		if model+effort == " " { // no settings yet
+			return " " + strings.TrimPrefix(footerRest(s), " · ")
+		}
+
+		return model + effort + footerRest(s)
+	}
+	left := line(full)
+	hint := compactHint(s)
+	if s.Scroll > 0 {
+		hint = "scrolled up · end returns "
+	}
+	if s.Shell {
+		hint = shellHint
+	}
+	if pct, ok := s.ContextLeft(); ok {
+		hint = fmt.Sprintf("%d%% context left · %s", pct, hint)
+	}
+	if u, ok := s.UsageLeft(); ok {
+		hint = u + " · " + hint // the plan's tightest window
+	}
+	// The hint wins over the left side, which is cut when the line is
+	// full: the live →low part first, then the end.
+	room := w - ansi.StringWidth(hint)
+	if room > 0 {
+		if ansi.StringWidth(left) > room-1 {
+			full = short
+			left = line(full)
+		}
+		left = ansi.Truncate(left, room-1, "…")
+		left += strings.Repeat(" ", room-ansi.StringWidth(left)) + hint
+	}
+	text := ansi.Truncate(left, w, "")
+	var spans []span
+	if accent && strings.HasPrefix(text[min(len(model), len(text)):], full) { // not when cut
+		spans = append(spans, span{from: len(model), to: len(model) + len(full), style: st.accent})
+	}
+	if i := strings.Index(text, yoloText); i >= 0 {
+		spans = append(spans, span{from: i, to: i + len(yoloText), style: st.warn})
+	}
+
+	return paint(text, st.dim, spans...)
+}
+
+// footerRest is the compact footer after the effort: fast mode, the
+// permission mode, the directory, and the queue.
+func footerRest(s state.State) string {
+	var b strings.Builder
+	if s.Settings.ServiceTier != "" {
+		b.WriteString(" · fast")
+	}
+	for _, p := range []string{modeText(s), home(s.Settings.Workspace)} {
+		if p != "" {
+			b.WriteString(" · " + p)
+		}
+	}
+	if len(s.Queue) > 0 {
+		b.WriteString(" · " + plural(len(s.Queue), "queued message"))
+	}
+
+	return b.String()
 }
 
 // shellHint replaces the footer's hint in shell mode.

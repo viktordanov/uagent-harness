@@ -10,6 +10,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/viktordanov/uagent/core"
+
+	"github.com/viktordanov/uah/internal/engine"
 	"github.com/viktordanov/uah/internal/session"
 	"github.com/viktordanov/uah/testing/fakellm"
 )
@@ -150,6 +153,11 @@ func TestAdaptiveEffort_ChangesLive(t *testing.T) {
 	assert.Equal(t, session.AppliedLive, applied)
 	close(gate)
 	waitSeen(t, e.llm, 2)
+	ev.until("the held follow-up's progress at low", func(e core.Event) bool {
+		p, ok := e.(engine.ModelProgress)
+
+		return ok && p.Effort == "low" // what the TUI shows as high→low
+	})
 	next.AdaptiveEffort = session.AdaptiveOff
 	_, err = s.SetSettings(next)
 	require.NoError(t, err)

@@ -104,7 +104,9 @@ const (
 // ModelProgress reports where the turn's model request is: its Phase, the
 // Bytes sent (while sending) or received, and the tool call the model is
 // writing (Tool, the file it names in Target, ToolBytes so far; Tool is
-// empty once the call is written). At is when data last arrived.
+// empty once the call is written). At is when data last arrived. Effort is
+// the effort the request went at, which adaptive effort may set below the
+// session's.
 type ModelProgress struct {
 	At        time.Time
 	Phase     string
@@ -113,6 +115,7 @@ type ModelProgress struct {
 	Tool      string
 	Target    string
 	ToolBytes int64
+	Effort    string
 }
 
 func (e ModelProgress) OccurredAt() time.Time { return e.At }

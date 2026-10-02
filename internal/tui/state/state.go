@@ -197,6 +197,9 @@ type (
 	ScrollToBottom struct{}
 	// StepEffort lowers (-1) or raises (+1) the effort.
 	StepEffort struct{ Delta int }
+	// CycleAdaptive is alt+e: adaptive effort's next value, off, 1 step,
+	// then 2 steps, for this session.
+	CycleAdaptive struct{}
 	// OpenPicker loads the session list.
 	OpenPicker struct{}
 	// Tick advances the clock for timers and spinners.

@@ -275,6 +275,12 @@ func (s *State) onIntent(ev any) (State, []Effect) { //nolint:gocyclo // a dispa
 		s.Scroll = 0
 	case StepEffort:
 		return s.stepEffort(e.Delta)
+	case CycleAdaptive:
+		if s.SessionID == "" {
+			return *s, nil
+		}
+
+		return *s, cmdAdaptive(s, "")
 	case CycleMode:
 		return s.cycleMode()
 	case OpenPicker:

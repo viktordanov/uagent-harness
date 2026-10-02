@@ -2,7 +2,6 @@ package state
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/viktordanov/uah/internal/approval"
 	"github.com/viktordanov/uah/internal/session"
@@ -51,7 +50,7 @@ func (s *State) settingsChanged(e session.SettingsChanged) {
 		return
 	}
 	if e.Settings.AdaptiveEffort != prev.AdaptiveEffort {
-		s.notice(session.LevelInfo, fmt.Sprintf("adaptive effort %s, applies %s", strings.Replace(adaptiveText(e.Settings), "-", " ", 1), when))
+		s.notice(session.LevelInfo, fmt.Sprintf("adaptive effort: %s, applies %s", AdaptiveLabel(e.Settings), when))
 
 		return
 	}

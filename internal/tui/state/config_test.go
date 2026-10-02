@@ -127,13 +127,25 @@ func TestConfig_AdaptiveEffort(t *testing.T) {
 	assert.Contains(t, s.Items[len(s.Items)-1].Text, "saved adaptive_effort = 1-step")
 	assert.Contains(t, s.Items[len(s.Items)-1].Text, "this session changes too")
 	s, _ = apply(s, session.SettingsChanged{At: t0, Settings: with("1-step"), Applied: session.AppliedLive})
-	assert.Contains(t, s.Items[len(s.Items)-1].Text, "adaptive effort 1 step, applies now")
+	assert.Contains(t, s.Items[len(s.Items)-1].Text, "adaptive effort: 1 step (follow-ups at medium), applies now")
 	s, effects = apply(s, state.ConfigChange{Delta: 1})
 	assert.Equal(t, []state.Effect{state.EffSaveConfig{Key: "adaptive_effort", Value: "2-steps"}, state.EffSetSettings{Settings: with("2-steps")}}, effects)
 	assert.Equal(t, "2 steps", row(s).Value)
 	s, _ = apply(s, session.SettingsChanged{At: t0, Settings: with("2-steps")})
 	_, effects = apply(s, state.ConfigChange{Delta: 1})
 	assert.Equal(t, []state.Effect{state.EffSaveConfig{Key: "adaptive_effort", Value: "off"}, state.EffSetSettings{Settings: with("off")}}, effects, "and off again")
+}
+
+// TestCycleAdaptive: alt+e steps adaptive effort for this session only,
+// through the session, which saves it in the sidecar; the user file is
+// not written.
+func TestCycleAdaptive(t *testing.T) {
+	next := settings()
+	next.AdaptiveEffort = "1-step"
+	_, effects := apply(opened(), state.CycleAdaptive{})
+	assert.Equal(t, []state.Effect{state.EffSetSettings{Settings: next}}, effects)
+	_, effects = apply(state.New(t0), state.CycleAdaptive{})
+	assert.Empty(t, effects, "no session yet")
 }
 
 // TestAdaptiveCommand: /adaptive steps to the next value, takes one by

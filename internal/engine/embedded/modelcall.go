@@ -204,7 +204,7 @@ func (c *modelCall) progressLocked(phase string, force bool) {
 		bytes = c.a.SentBytes
 	}
 	c.shown = now
-	c.pushLocked(engine.ModelProgress{At: c.last, Phase: phase, Attempt: c.a.Attempt, Bytes: bytes, Tool: c.tool.name, Target: c.tool.target, ToolBytes: c.tool.bytes})
+	c.pushLocked(engine.ModelProgress{At: c.last, Phase: phase, Attempt: c.a.Attempt, Bytes: bytes, Tool: c.tool.name, Target: c.tool.target, ToolBytes: c.tool.bytes, Effort: c.effort})
 }
 
 // phase reports a new phase, and its time into the attempt in ms.

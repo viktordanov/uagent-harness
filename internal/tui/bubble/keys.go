@@ -138,6 +138,8 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) { //nolint:gocycl
 		return m.dispatch(state.StepEffort{Delta: -1})
 	case "alt+.":
 		return m.dispatch(state.StepEffort{Delta: 1})
+	case "alt+e":
+		return m.dispatch(state.CycleAdaptive{})
 	case "ctrl+s":
 		return m.dispatch(state.OpenPicker{})
 	case keyCtrlN:
