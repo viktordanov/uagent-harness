@@ -16,9 +16,10 @@ This record collects every measurement made with the agent benchmark ([`tools/ag
 8. [The full suite, 10 repeats](#the-full-suite-10-repeats)
 9. [Lean mode rules](#lean-mode-rules)
 10. [Parallel approvals](#parallel-approvals)
-11. [Decisions](#decisions)
-12. [Still running and next](#still-running-and-next)
-13. [For release notes](#for-release-notes)
+11. [Adaptive effort in chats](#adaptive-effort-in-chats)
+12. [Decisions](#decisions)
+13. [Still running and next](#still-running-and-next)
+14. [For release notes](#for-release-notes)
 
 ## How runs are measured
 
@@ -217,6 +218,47 @@ The wait columns are medians per run. The approval waits are agentbench's `appro
 - On `curl-local-api` most responses carry one escalation, so there is little to overlap; its difference is within the task's run-to-run spread.
 - In a smoke run with a prompt that did not mention the sandbox, the model first tried the four calls in the sandbox, at once, then asked once to run them all in one escalated command. The task's prompt says the calls need to run outside the sandbox, as a user who knows the sandbox would, and then the model asked for the four escalations together in every run.
 
+## Adaptive effort in chats
+
+The provider keeps a prompt cache per effort. A controlled test sent the same 33k prefix twice: at the same effort, 99.5% of it was cached; at another effort, 0%. With adaptive effort (R0), each later user turn of a chat therefore misses twice:
+
+1. Its first request (the opener) goes at E. E's cache holds only what the previous opener sent, so the opener re-bills all of the previous turn's tool work.
+2. Its first follow-up goes at the lowered effort and misses the new message and one response. On turn 1 it misses everything, because that cache is empty.
+
+The suite had only one-message tasks, so (1) was never measured. Five chat tasks (`chat-*`, 6 or 7 messages each, with real read, edit, and test work) and `go-large-repo-guide` (7 messages) were run with adaptive effort off, at 1 step, at 2 steps, and with everything at medium: 6 tasks × 5 repeats × 4 groups, 120 runs. All were gpt-6.1-sol at high effort in auto mode, uah only ([raw](../../tools/agentbench/history/2026-10-02-multiturn.jsonl); [requests](../../tools/agentbench/history/2026-10-02-multiturn-requests.jsonl), from which `go run ./tools/agentbench -turns -out <requests file>` rebuilds the [per-turn report](../../tools/agentbench/README.md#the-per-turn-report)). Totals are sums of per-task medians, for the main agent; the prices are $1.25, $0.125, and $10 per million uncached input, cached input, and output tokens.
+
+| | Off | 1 step (R0) | 2 steps (R0) | All medium, off |
+| --- | ---: | ---: | ---: | ---: |
+| Passed | 30/30 | 30/30 | 30/30 | 30/30 |
+| Wall | 6040 s | 4139 s (−31%) | 3302 s (−45%) | 3834 s (−37%) |
+| Uncached input | 839k | 1074k (+28%) | 909k (+8%) | 575k (−31%) |
+| Cached input | 15.43M | 11.43M | 9.69M | 10.45M |
+| Output tokens | 157k | 103k (−34%) | 81k (−49%) | 97k (−38%) |
+| Estimated cost | $4.57 | $3.85 (−16%) | $3.15 (−31%) | $2.96 (−35%) |
+
+- As recorded, off passed 29/30 and 1 step 28/30. All three failures were in `chat-go-jobqueue`: its check restored the original `store/memory_test.go`, which deleted a helper the agent had added there and used from another test. That overlay is removed, and all 20 of the task's diffs pass the corrected check.
+- **Miss (1) is the previous turn's work.** In 249 of 260 later turns at 1 or 2 steps, the opener's uncached input was within 20% of the context's growth since the previous opener; the mean was 9.9k tokens. It grows with the size of a turn, not with the size of the context: by context at the opener, the misses averaged 7.1k under 32k, 7.4k at 32k to 64k, 14.1k at 64k to 128k, and 15.9k above.
+- **At 1 step, miss (1) costs about what the lower effort saves on the same turns.** Paired with the control turn by turn, the extra uncached input over the suite costs about $0.50, and the output saved is worth about $0.53. With the runs' requests kept the same, R0 at 1 step costs 2% more than off. The measured −16% comes from shorter sessions: with less output, every later request re-reads a smaller context. At 2 steps the saving is 1.2 to 4 times the miss.
+- **Miss (2) is small after turn 1**, about what off misses. On turn 1 the empty cache adds about 8k tokens per task.
+- The reasoning tokens the API reports are small for this model, 3k to 10k per turn over the 6 tasks at high, against 20k to 26k of output. The lower effort saves mostly visible output (patches and text) and time.
+
+**Replays.** `-turns` replays each run's main-agent requests under other rules, with a cache model. Each effort keeps the longest prompt sent at it, and a request finds cached what that prompt covers, in 128-token blocks. A request moved to the other effort has its output scaled by the measured follow-up output ratio: high over medium 1.47, high over low 1.95. The model reproduces the runs: $3.76 against a measured $3.85 at 1 step, with the same cached share, 91.6%. The replay keeps each run's requests, so it does not count the shorter sessions a cheaper rule also brings.
+
+| Rule, replayed on the adaptive runs | 1 step | 2 steps |
+| --- | ---: | ---: |
+| Off | $3.69 | $3.31 |
+| R0, as now | $3.76 (+2%) | $3.02 (−9%) |
+| A later user message lowered too when its miss at E is over 8k | **$3.30 (−11%)** | **$2.66 (−20%)** |
+| The same, over 16k | $3.44 (−7%) | $2.79 (−16%) |
+| R0 below 64k of context, off above | $3.79 (+3%) | $3.14 (−5%) |
+| R0 below 128k of context, off above | $3.79 (+3%) | $3.07 (−7%) |
+
+- Lowering a later user message keeps the session on one cache after turn 1 and removes miss (1). Over 8k, it keeps E for a message after a turn with little tool work, whose miss is small.
+- Turning adaptive effort off above a context size helps nothing. It gives up the output saving, which is largest there, and keeps miss (1) below the size.
+- The benchmark sends a follow-up as soon as the turn before it ends. When a person pauses for longer than the cache keeps an idle prefix, both caches expire. Then R0's first follow-up misses the whole context a second time, and the sticky rule misses it once, as off does. So in a real chat the rule gains more than this.
+
+Next: the sticky rule behind an experiment switch, checked for quality on these chats and on the reading and judgment tasks of [One step or two](#one-step-or-two). All-medium passed 30/30 here, but the branch review has been sensitive to effort. R0 stays until then: in chats it is still −16% (1 step) and −31% (2 steps) in cost, and −31% and −45% in wall time.
+
 ## Decisions
 
 | Date | Decision | Ledger |
@@ -235,7 +277,7 @@ The wait columns are medians per run. The approval waits are agentbench's `appro
 
 ## Still running and next
 
-- Nothing is running. Next: a decision model for effort routing against adaptive effort ([ledger](../ledger.md)).
+- Nothing is running. Next: adaptive effort's sticky rule for later user messages ([Adaptive effort in chats](#adaptive-effort-in-chats)), and a decision model for effort routing against adaptive effort ([ledger](../ledger.md)).
 
 ## For release notes
 

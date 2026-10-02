@@ -1,0 +1,16 @@
+{
+  "prompt": "Explain how a job moves through jobq from `jobq add` to done or failed (which packages and functions it passes through, and where retries are decided), then add a `--max-attempts` flag to `jobq run` that caps how many times a job is attempted, the first attempt included; its default must stay what the code does today. Add tests.",
+  "follow_ups": [
+    "Now make the retry delay exponential with jitter, never longer than a new `--max-backoff` flag on `jobq run`; the jitter must come from an injectable random source (like the injectable clock) so the tests are deterministic. Add tests.",
+    "Add a dead-letter state `dead`: a job that uses up its attempts moves there instead of `failed`, `jobq list --state dead` shows those jobs, and the file store saves and loads them. Add tests.",
+    "Rename the `Task` type to `Job` across all packages, and `NewTask` to `NewJob`, without changing behavior; go vet and the tests must keep passing.",
+    "Under load, two workers sometimes pick up the same job and run it twice. Find the cause, fix it, and add a concurrent test that would catch it and passes with go test -race.",
+    "Add a `jobq stats` command (with the same --store flag as the others) that prints the number of jobs in each state as one JSON object of exactly this shape: {\"pending\":N,\"running\":N,\"done\":N,\"dead\":N}. Add tests.",
+    "Update the README for everything this session changed: the --max-attempts and --max-backoff flags, the exponential backoff, the dead-letter state, and the stats command."
+  ],
+  "check": "go vet ./... && go test -race -count=1 ./... && grep -q -- '--max-attempts' README.md && grep -q -- '--max-backoff' README.md && grep -q 'dead' README.md && grep -q 'stats' README.md",
+  "check_timeout": "5m",
+  "timeout": "40m",
+  "exercises": "seven chat messages in one session over a 27-file, 3,100-line Go job queue (queue, store, worker, retry, metrics, internal/clock, cmd/jobq): an explanation and a --max-attempts flag, exponential backoff with injectable jitter and --max-backoff, a dead-letter state persisted by the file store, a Task to Job rename across every package, a check-then-act race in the in-memory store's claim, a stats command with a fixed JSON shape, and the README; context grows past 100k tokens as each message builds on the last",
+  "tags": ["go", "feature", "refactor", "concurrency", "follow-up", "uah-only", "chat", "large-repo"]
+}

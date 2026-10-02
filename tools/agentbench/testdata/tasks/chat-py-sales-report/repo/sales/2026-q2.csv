@@ -1,0 +1,9 @@
+date,region,product,quantity,unit_price,discount
+2026-04-03,North,Widget,12,12.50,
+2026-04-10,East,Gadget,1,19.99,20
+2026-04-18,South,Gizmo,9,4.15,
+2026-05-02,North,Gadget,2,10.05,50
+2026-05-19,East,Widget,6,12.50,10
+2026-06-07,South,Widget,3,12.50,
+2026-06-21,North,Gizmo,5,4.15,7.5
+2026-06-29,East,Gadget,4,6.99,

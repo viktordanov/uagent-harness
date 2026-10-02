@@ -110,13 +110,17 @@ func (p *uahParser) model(e uahEvent) bool {
 			p.effort = e.Effort
 		}
 	case "user_message":
-		tl.Turns++
+		// Adaptive effort's primed first turn is a message of uah's, not the
+		// user's: its requests go with the prompt that follows it.
+		if !strings.HasPrefix(e.Text, "<workspace_context>") {
+			tl.Turns++
+		}
 	case "turn_started":
 		p.turnStart = e.At
 		p.pendingFirst = len(tl.Requests)
 	case "text_delta", "reasoning_delta", "reasoning_summary_delta":
 		if p.pendingFirst == len(tl.Requests) && !p.turnStart.IsZero() {
-			tl.Requests = append(tl.Requests, Request{StartMS: ms(start, p.turnStart), FirstMS: ms(start, e.At)})
+			tl.Requests = append(tl.Requests, Request{Turn: tl.Turns, StartMS: ms(start, p.turnStart), FirstMS: ms(start, e.At)})
 			p.pendingFirst = -1
 		}
 	case "model_responded":
@@ -127,7 +131,7 @@ func (p *uahParser) model(e uahEvent) bool {
 			tl.Requests = append(tl.Requests, Request{})
 		}
 		r := &tl.Requests[len(tl.Requests)-1]
-		r.StartMS, r.EndMS, r.Tokens, r.Stop, r.Effort = ms(start, begin), ms(start, end), tok, e.Stop, p.effort
+		r.StartMS, r.EndMS, r.Tokens, r.Stop, r.Effort, r.Turn = ms(start, begin), ms(start, end), tok, e.Stop, p.effort, tl.Turns
 		p.pendingFirst = -1
 		tl.Tokens = tl.Tokens.Add(tok)
 	case "assistant_message":

@@ -1,0 +1,14 @@
+{
+  "prompt": "Add a `lint` subcommand to cfgtool: `python3 -m cfgtool lint FILE...` should report every key the schema doesn't know inside a known section, one line each as `FILE:LINE: unknown key 'KEY' in [SECTION]`, and exit 1 when it finds any (0 otherwise). Add tests.",
+  "follow_ups": [
+    "Now also make lint warn about deprecated keys without failing: add a `DEPRECATED` dict to cfgtool/schema.py mapping (section, old key) tuples to the new key name, with [http] timeout -> request_timeout, [database] pool -> pool_size and [logging] file -> path; lint should print `FILE:LINE: warning: 'timeout' in [http] is deprecated, use 'request_timeout'` for those, not report them as unknown, and still exit 0 when there are only warnings. Tests please.",
+    "Add a `migrate FILE...` subcommand that rewrites deprecated keys to their replacements in place, changing nothing but the key names (comments, blank lines, spacing, values and key order stay exactly as they are), only in the section where the key is deprecated, and prints how many keys it changed per file; exit 0. Add tests.",
+    "`migrate` should also take `--dry-run`: print a unified diff of what it would change (file name in the ---/+++ headers) to stdout, leave the file untouched, and exit 0. Tests too.",
+    "I just noticed values with an inline `;` comment are parsed wrong: `port = 8080 ; public port` makes `check` fail with 'not an integer', while `#` comments work. Fix that (a `;` with no whitespace before it, like `a;b`, is still part of the value) and make sure `migrate` keeps those comments on the lines it rewrites. Add tests.",
+    "Last thing: update the README to document `lint` and `migrate` (including `--dry-run`), the deprecated keys, what each command prints, and the exit statuses of every command."
+  ],
+  "check": "python3 -m unittest discover -s tests -q && grep -q 'lint' README.md && grep -q 'migrate' README.md && grep -q -- '--dry-run' README.md",
+  "exercises": "six messages in one chat over a 13-file Python config tool: a lint subcommand, deprecated-key warnings from a new schema mapping, an in-place migrate that keeps comments and order, a --dry-run diff, a pre-existing inline-comment parsing bug the user discovers, then the README; each builds on the last",
+  "tags": ["python", "follow-up", "uah-only", "chat", "feature", "fix", "docs"],
+  "timeout": "30m"
+}

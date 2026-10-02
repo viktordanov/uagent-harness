@@ -46,6 +46,7 @@ func run() error {
 	out := fs.String("out", "", "results file, JSON lines; runs already in it are skipped (default: tools/agentbench/results/<model>-<effort>-<mode>.jsonl)")
 	reportOnly := fs.Bool("report", false, "only write the markdown report of the results file")
 	remeasure := fs.Bool("remeasure", false, "parse every run in the results file again (after a change to the parsers, the metrics, or the prices), then write the report")
+	turns := fs.Bool("turns", false, "write the per-turn report of the results file's uah runs (<results>-turns.md) and their requests (<results>-requests.jsonl); a -requests.jsonl file is read as is")
 	work := fs.String("work", filepath.Join(os.TempDir(), "uah-agentbench"), "scratch directory: workspaces, the shared Go build cache, uah's home")
 	uahBin := fs.String("uah", "", "uah binary (default: built from this tree into the scratch directory)")
 	codexBin := fs.String("codex", "codex", "codex binary")
@@ -73,13 +74,8 @@ func run() error {
 		*out = filepath.Join(root, "tools", "agentbench", "results", *model+"-"+*effort+"-"+*mode+".jsonl")
 	}
 	price := bench.Price{Input: *priceIn, Cached: *priceCached, Output: *priceOut}
-	if *remeasure {
-		if err := bench.Remeasure(*out, price); err != nil {
-			return err
-		}
-	}
-	if *reportOnly || *remeasure {
-		return writeReport(*out, price)
+	if *remeasure || *reportOnly || *turns {
+		return analyze(*out, price, *remeasure, *turns)
 	}
 	var re *regexp.Regexp
 	if *tasksRe != "" {
@@ -208,4 +204,52 @@ func repoRoot(ctx context.Context) (string, error) {
 	}
 
 	return filepath.Dir(mod), nil
+}
+
+// analyze parses the results file's runs again when remeasure is set,
+// then writes the per-turn report when turns is set, else the report.
+func analyze(out string, price bench.Price, remeasure, turns bool) error {
+	if remeasure {
+		if err := bench.Remeasure(out, price); err != nil {
+			return err
+		}
+	}
+	if turns {
+		return writeTurns(out, price)
+	}
+
+	return writeReport(out, price)
+}
+
+// writeTurns writes the per-turn report of a results file, and the
+// requests it read beside it, so history can keep them; a requests file
+// is read as is.
+func writeTurns(out string, price bench.Price) error {
+	base, isRequests := strings.CutSuffix(out, "-requests.jsonl")
+	var runs []bench.RunRequests
+	if isRequests {
+		var err error
+		if runs, err = bench.ReadRunRequests(out); err != nil {
+			return err
+		}
+	} else {
+		base = strings.TrimSuffix(out, filepath.Ext(out))
+		results, err := bench.LoadResults(out)
+		if err != nil {
+			return err
+		}
+		if runs, err = bench.LoadRunRequests(results); err != nil {
+			return err
+		}
+		if err := bench.WriteRunRequests(base+"-requests.jsonl", runs); err != nil {
+			return err
+		}
+	}
+	md := base + "-turns.md"
+	if err := os.WriteFile(md, []byte(bench.TurnReport(runs, price)), 0o644); err != nil {
+		return err
+	}
+	fmt.Fprintln(os.Stderr, "per-turn report:", md)
+
+	return nil
 }

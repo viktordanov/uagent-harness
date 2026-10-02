@@ -1,0 +1,7 @@
+[
+  {"id": "acme", "name": "Acme Corp", "plan": "team", "start": "2025-11-01"},
+  {"id": "globex", "name": "Globex", "plan": "pro", "start": "2026-03-15"},
+  {"id": "initech", "name": "Initech", "plan": "starter", "timezone": "Asia/Tokyo", "start": "2026-01-20", "end": "2026-03-11"},
+  {"id": "umbrella", "name": "Umbrella GmbH", "plan": "pro", "timezone": "Europe/Berlin", "start": "2026-03-15"},
+  {"id": "hooli", "name": "Hooli", "plan": "team", "timezone": "America/New_York", "start": "2026-04-02"}
+]
