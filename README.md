@@ -529,7 +529,7 @@ Read more: [compaction](internal/compaction/README.md), and the [design and vali
 ### Model catalog
 
 <!-- memoria:import src="internal/models/README.md#summary" -->
-uah asks the provider which models the login can use, as Codex does: the list comes from the provider at runtime, is cached for five minutes with its ETag, and falls back to Codex's bundled catalog only when the provider cannot be asked. A new model therefore needs no uah release, and a mistyped model is refused before a run starts, with the nearest model names.
+uah asks the provider which models the login can use, as Codex does: the list comes from the provider at runtime, is cached for five minutes with its ETag, and falls back to Codex's bundled catalog only when the provider cannot be asked. A new model therefore needs no uah release. When the provider's list is at hand, a model it lacks is refused with the nearest names: by `/model`, by `spawn_agent`, and as a warning in `uah doctor`; `-m` at start and the configuration's `model` are not checked: the model goes to the provider as written.
 <!-- /memoria:import -->
 
 `/model`, `-m` completion, `uah models`, and `uah doctor` read the catalog, and the context window comes from it when the provider gives one. Read more: [the model catalog](internal/models/README.md).
