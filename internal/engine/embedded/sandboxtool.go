@@ -43,7 +43,8 @@ type sandboxedBash struct {
 	mode     *modeCell
 	approver *approval.Approver
 	ask      approval.Ask
-	// ctx is the run's context, which bounds a wait for the user.
+	// ctx bounds the approval of a call decided in Translate: the run's,
+	// ended early by an interrupt (prefetch.go decides most calls).
 	ctx  context.Context
 	cwd  string
 	warn io.Writer
@@ -110,6 +111,11 @@ func (b sandboxedBash) current() (sandbox.Mode, sandboxShell) {
 
 // Translate asks the approver how the command runs.
 func (b sandboxedBash) Translate(ctx tool.Context, call llm.ToolCall) tool.CallStatus {
+	return b.decide(b.ctx, call)(ctx)
+}
+
+// decide asks the approver how the command runs, under ctx.
+func (b sandboxedBash) decide(ctx context.Context, call llm.ToolCall) submit {
 	var args struct {
 		Command       string   `json:"command"`
 		Permissions   string   `json:"sandbox_permissions"`
@@ -117,11 +123,11 @@ func (b sandboxedBash) Translate(ctx tool.Context, call llm.ToolCall) tool.CallS
 		PrefixRule    []string `json:"prefix_rule"`
 	}
 	if err := json.Unmarshal([]byte(call.Arguments), &args); err != nil || args.Command == "" {
-		return b.Translator.Translate(ctx, call) // the runner's translator reports bad arguments
+		return func(tc tool.Context) tool.CallStatus { return b.Translator.Translate(tc, call) } // the runner's translator reports bad arguments
 	}
 	mode, box := b.current()
 	sandboxed := box.shell != ""
-	d := b.approver.Decide(b.ctx, approval.Request{
+	d := b.approver.Decide(ctx, approval.Request{
 		Command: args.Command, Cwd: b.cwd, Justification: args.Justification, PrefixRule: args.PrefixRule,
 		Escalated: args.Permissions == permEscalated && sandboxed,
 		NoSandbox: !sandboxed && mode != sandbox.FullAccess, Bypass: b.mode.get().AsksNoOne(),
@@ -131,13 +137,13 @@ func (b sandboxedBash) Translate(ctx tool.Context, call llm.ToolCall) tool.CallS
 	}
 	switch d.Run {
 	case approval.Unsandboxed:
-		return b.Translator.Translate(ctx, call)
+		return func(tc tool.Context) tool.CallStatus { return b.Translator.Translate(tc, call) }
 	case approval.Sandboxed:
-		return box.Translate(ctx, call)
+		return func(tc tool.Context) tool.CallStatus { return box.Translate(tc, call) }
 	case approval.Deny:
 	}
 
-	return tool.CallStatus{Error: d.Reason}
+	return refuse(tool.CallStatus{Error: d.Reason})
 }
 
 // TranslateResult adds a hint when the sandbox likely blocked the command.

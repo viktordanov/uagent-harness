@@ -150,11 +150,17 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 	// The run stops through the inbox; the harness cancels only after the grace period.
 	runCtx, cancel := context.WithCancel(context.WithoutCancel(ctx))
 	w.closers = append(w.closers, closer{close: func() error { cancel(); return nil }})
+	// An interrupt ends the approvals at once: the coordinator waits for
+	// them before it reads the stop.
+	approvals, stopApprovals := context.WithCancel(runCtx)
+	w.closers = append(w.closers, closer{close: func() error { stopApprovals(); return nil }})
 
-	registry, err := w.tools(runCtx, req, s.id)
+	registry, err := w.tools(runCtx, approvals, req, s.id)
 	if err != nil {
 		return nil, err
 	}
+	prefetch := newPrefetcher(approvals, registry, s.id, w.e.transcript(req.SessionID).note)
+	registry = prefetch.wrap(registry)
 	sw.tools = w.bashTools
 	sw.images = w.e.pastedImages
 	sw.stream, sw.text, sw.diag = w.emit, opts.Stream, w.l.Stderr
@@ -176,7 +182,7 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 	if err != nil {
 		return nil, err
 	}
-	a.compactor, a.mode = comp, w.mode
+	a.compactor, a.mode, a.stopApprovals = comp, w.mode, stopApprovals
 
 	builder := newContextBuilder(registry, model, req)
 	for _, t := range w.hostedTools(req.Provider, req.SessionID) {
@@ -184,6 +190,7 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 	}
 	obs := &observer{sessionID: s.id, out: w.l.Stdout, cancel: cancel, emit: w.emit, early: s.early}
 	observerID := s.store.AddObserver(obs.observe)
+	prefetchID := s.store.AddObserver(prefetch.observe) // after obs, which writes the response first
 	coord := coordinator.New(coordinator.Dependencies{
 		ToolHeartbeatInterval: toolHeartbeatInterval,
 		SessionID:             s.id,
@@ -196,7 +203,7 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 		Operations:            operations,
 		Wake:                  wakePolicy(),
 	})
-	w.launch(runCtx, a, coord, obs, func() { s.store.RemoveObserver(observerID) })
+	w.launch(runCtx, a, coord, obs, func() { s.store.RemoveObserver(prefetchID); s.store.RemoveObserver(observerID) })
 
 	return a, nil
 }

@@ -2,9 +2,12 @@ package embedded
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/viktordanov/uah-core/harness/llm"
 
 	"github.com/viktordanov/uagent/core"
 
@@ -47,7 +50,7 @@ func (t *transcript) observe(e core.Event) {
 			t.onUser()
 		}
 	case core.ToolCalled:
-		t.calls = keepLast(append(t.calls, recentCall{id: v.CallID, call: review.ToolCall{Name: v.Name, Arguments: v.Arguments}}), keepToolCalls)
+		t.addLocked(v.CallID, v.Name, v.Arguments)
 	case core.ToolFinished:
 		for i := range t.calls {
 			if t.calls[i].id == v.CallID {
@@ -55,6 +58,25 @@ func (t *transcript) observe(e core.Event) {
 			}
 		}
 	}
+}
+
+// note records a model response's calls before their events arrive: the
+// calls' approvals start at once (prefetch.go), and each review sees all
+// of the response's calls, as a review in turn after the events would.
+func (t *transcript) note(calls []llm.ToolCall) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	for _, c := range calls {
+		t.addLocked(c.CallID, c.Name, c.Arguments)
+	}
+}
+
+// addLocked records a call once.
+func (t *transcript) addLocked(id, name, arguments string) {
+	if slices.ContainsFunc(t.calls, func(c recentCall) bool { return c.id == id }) {
+		return
+	}
+	t.calls = keepLast(append(t.calls, recentCall{id: id, call: review.ToolCall{Name: name, Arguments: arguments}}), keepToolCalls)
 }
 
 func (t *transcript) snapshot() (users []string, calls []review.ToolCall) {

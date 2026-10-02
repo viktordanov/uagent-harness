@@ -24,8 +24,10 @@ import (
 // tools builds the registry the coordinator runs: Bash, ViewImage, and
 // workspace skills, as the runner registers them, MCP tools, and Codex's
 // apply_patch, with PreToolUse hooks around them. Its static definitions are the tools the model is offered,
-// so a tool added or changed here reaches both.
-func (w *wiring) tools(ctx context.Context, req core.Request, sessionID session.ID) (tool.Registry, error) {
+// so a tool added or changed here reaches both. approvals bounds the hooks
+// and approvals of the calls: the run's context, ended early by an
+// interrupt.
+func (w *wiring) tools(ctx, approvals context.Context, req core.Request, sessionID session.ID) (tool.Registry, error) {
 	scope := w.e.scope(string(sessionID))
 	req.DisallowedTools = scope.disallow(req.DisallowedTools)
 	translators, err := w.translators(req, sessionID) //nolint:contextcheck,nolintlint // on Linux, the sandbox probes bwrap once per process, with its own timeout; not on darwin
@@ -34,7 +36,7 @@ func (w *wiring) tools(ctx context.Context, req core.Request, sessionID session.
 	}
 	b, sandboxed := translators.Bash.(sandboxedBash)
 	if sandboxed {
-		b.ctx = ctx // approvals wait on the run
+		b.ctx = approvals
 		translators.Bash = b
 	}
 	skills, skillErrs := discoverSkills(req.Workspace, w.getenv)
@@ -53,14 +55,14 @@ func (w *wiring) tools(ctx context.Context, req core.Request, sessionID session.
 		return nil, err
 	}
 	never := w.e.cfg.Approver != nil && w.e.cfg.Approver.Policy() == approval.Never
-	gate := w.mcpGate(ctx, never)
+	gate := w.mcpGate(approvals, never)
 	gate.approved = scope.approvesTool
 	registry = withMCP(registry, scope.mcpTools(mcpTools), req.DisallowedTools, gate)
-	registry = withPatch(registry, offersPatch(w.e.models, req), w.patchGate(ctx, req))
+	registry = withPatch(registry, offersPatch(w.e.models, req), w.patchGate(approvals, req))
 	req.SessionID = string(sessionID)
 	registry = w.withAgents(registry, req)
 
-	return withPreToolUse(ctx, registry, w.e.cfg.Hooks, req, w.l.SessionsDir), nil
+	return withPreToolUse(approvals, registry, w.e.cfg.Hooks, req, w.l.SessionsDir), nil
 }
 
 // withSandbox offers Bash with the escalation arguments and a note on the
@@ -128,7 +130,12 @@ func (w *wiring) mcpGate(ctx context.Context, never bool) mcpGate {
 
 	mode := w.mode
 
-	return mcpGate{ctx: ctx, ask: w.ask, never: never, m: w.e.cfg.MCP, warn: warn, yolo: func() bool { return mode.get().AsksNoOne() }}
+	g := mcpGate{ctx: ctx, ask: w.ask, never: never, m: w.e.cfg.MCP, warn: warn, yolo: func() bool { return mode.get().AsksNoOne() }}
+	if g.m != nil {
+		g.changes = &approval.Changes{}
+	}
+
+	return g
 }
 
 // mcpTools returns the MCP servers' tools, starting the servers on the

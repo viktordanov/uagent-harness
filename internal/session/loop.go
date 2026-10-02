@@ -6,7 +6,6 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
-	"github.com/viktordanov/uah/internal/approval"
 	"github.com/viktordanov/uah/internal/engine"
 	"github.com/viktordanov/uah/internal/hooks"
 )
@@ -130,7 +129,7 @@ func (s *Session) loop() {
 		case cmdAsk:
 			s.onAsk(m)
 		case cmdAskGone:
-			s.answer(m.id, approval.Decline)
+			s.answer(m.id, m.answer)
 		}
 		s.saveQueue()
 	}

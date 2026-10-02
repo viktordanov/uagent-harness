@@ -15,9 +15,10 @@ This record collects every measurement made with the agent benchmark ([`tools/ag
 7. [Experiment 4: cutting turns](#experiment-4-cutting-turns-quick-round)
 8. [The full suite, 10 repeats](#the-full-suite-10-repeats)
 9. [Lean mode rules](#lean-mode-rules)
-10. [Decisions](#decisions)
-11. [Still running and next](#still-running-and-next)
-12. [For release notes](#for-release-notes)
+10. [Parallel approvals](#parallel-approvals)
+11. [Decisions](#decisions)
+12. [Still running and next](#still-running-and-next)
+13. [For release notes](#for-release-notes)
 
 ## How runs are measured
 
@@ -201,6 +202,21 @@ Should a follow-up after a failure think harder? The rule, behind a switch (`UAH
 
 The escalations fell mostly on the test-fixing, race, slow-suite, bug-hunt, branch-review and findings-report tasks. The failures are the same with and without it (the branch review, and once the spec at 1 step). Requests whose effort changed hit the cache 67–80%, against about 88% for the rest, so escalation changed the effort more often and cost more. Dropped: no quality gain, cache cost.
 
+## Parallel approvals
+
+The coordinator translated a response's calls one at a time, and each escalated call waited there for its auto-review, so four escalations in one response were reviewed one after another, about 3.5 s each. Now the approvals of a response's calls start together when the response is stored, and each call's translation takes its own decision ([engine README](../../internal/engine/README.md#approvals-for-parallel-calls)). The control is uah before the change, the variant `parapprove` uah after it: 2 tasks × 5 repeats, gpt-6.1-sol at high effort in auto mode, uah only, 20 runs ([raw](../../tools/agentbench/history/2026-10-02-parallel-approvals.jsonl)). `curl-parallel-endpoints`, added for this, snapshots four slow, independent endpoints of a local API, so the model asks for four escalated curl calls in one response; `curl-local-api` pages through an API, so its escalations come mostly one per response.
+
+The wait columns are medians per run. The approval waits are agentbench's `approval_wait_ms`, every call's wait from being issued to starting, summed; the critical path sums, over the responses, the longest wait among each response's calls, which is what the run waited.
+
+| Task | Wall ctl | Wall var | Ratio | Approval waits ctl | var | Critical path ctl | var | Escalations in one response |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| curl-parallel-endpoints | 64.8 s | 49.4 s | 0.76 | 31.1 s | 12.8 s | 11.9 s | 3.5 s | 4 |
+| curl-local-api | 97.1 s | 85.3 s | 0.88 | 15.3 s | 13.0 s | 13.0 s | 10.6 s | 1–3 |
+
+- All 20 runs passed. On four escalations in one response, the run waited for one review instead of four: 3.5 s against 11.9 s, and the wall time fell by a quarter.
+- On `curl-local-api` most responses carry one escalation, so there is little to overlap; its difference is within the task's run-to-run spread.
+- In a smoke run with a prompt that did not mention the sandbox, the model first tried the four calls in the sandbox, at once, then asked once to run them all in one escalated command. The task's prompt says the calls need to run outside the sandbox, as a user who knows the sandbox would, and then the model asked for the four escalations together in every run.
+
 ## Decisions
 
 | Date | Decision | Ledger |
@@ -215,6 +231,7 @@ The escalations fell mostly on the test-fixing, race, slow-suite, bug-hunt, bran
 | 2026-10-02 | Lean mode keeps r0, every follow-up after tool results lower; r1 to r3 and their classifier are removed: changing the effort between requests more often cost more cache than the lower effort saved ([Lean mode rules](#lean-mode-rules)) | [92](../ledger.md) |
 | 2026-10-02 | Escalation on failure is dropped: a step back up per failing follow-up in a row brought no quality gain and cost cache ([Escalation on failure](#escalation-on-failure)) | [92](../ledger.md) |
 | 2026-10-02 | Lean mode is renamed adaptive effort and becomes a session setting like the effort: the session keeps it in its sidecar, `--adaptive-effort` wins, `adaptive_effort` is the default for new sessions, and `/adaptive` or `/config` changes the current session from its next model request | [92](../ledger.md) |
+| 2026-10-02 | The approvals of one response's calls run at once: hooks, auto-reviews, and prompts start when the response is stored, an interrupt ends them, and "don't ask again" settles the other open prompts it covers ([Parallel approvals](#parallel-approvals)) | [94](../ledger.md) |
 
 ## Still running and next
 
@@ -226,4 +243,5 @@ The escalations fell mostly on the test-fixing, race, slow-suite, bug-hunt, bran
 - The model is no longer woken just to hear that a command is still running: on long builds and test suites, −25% model requests and −19% model time and cost, with a 5-minute safety valve for commands that never end.
 - With both, uah matches Codex on wall time on slow tasks and is cheaper (estimated $0.34 against $0.44 on the 6 slow tasks). Over the full suite (35 tasks × 10 repeats), uah's default is level with Codex on wall time and 14% cheaper.
 - New setting, adaptive effort (`/adaptive`, `/config`, `--adaptive-effort`, `adaptive_effort`; off by default): the model thinks one or two effort levels less on turns that only follow tool results, and a new session starts with the workspace's context. A session keeps it, as it keeps its effort. On the full suite (35 × 10) at 1 step, uah is 22% faster and 31% cheaper than Codex, and faster on 33 of 35 tasks. On 12 tasks × 3, against off, 1 step cut wall time by 27% and cost by 16%, and 2 steps by 35% and 25%, at the same pass rate. Raising the effort again after failures was measured and left out: no quality gain, and it cost prompt-cache hits.
+- Escalations the model asks for together are reviewed together: four auto-reviews in one response now take about one review's time (3.5 s against 11.9 s), −24% wall time on that task, and an interrupt during reviews stops them at once.
 - The agent benchmark has 40 tasks, including a 27,000-line open-source repo, follow-up prompts, and a session long enough to compact ([ledger P7](../ledger.md), [agentbench](../../tools/agentbench/README.md)); its smoke run passed all 9 runs.
