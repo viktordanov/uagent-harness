@@ -139,10 +139,14 @@ func waitPort(ctx context.Context, port int, limit time.Duration) error {
 }
 
 // gitIdentity lets a task's scripts commit where git has no user configured,
-// as on a CI runner.
+// as on a CI runner. It also turns off git's background maintenance, whose
+// lock files come and go while the workspace is copied.
 var gitIdentity = []string{
 	"GIT_AUTHOR_NAME=agentbench", "GIT_AUTHOR_EMAIL=agentbench@localhost",
 	"GIT_COMMITTER_NAME=agentbench", "GIT_COMMITTER_EMAIL=agentbench@localhost",
+	"GIT_CONFIG_COUNT=2",
+	"GIT_CONFIG_KEY_0=maintenance.auto", "GIT_CONFIG_VALUE_0=false",
+	"GIT_CONFIG_KEY_1=gc.auto", "GIT_CONFIG_VALUE_1=0",
 }
 
 // runScript runs a task's shell script (its setup or its solution script)
