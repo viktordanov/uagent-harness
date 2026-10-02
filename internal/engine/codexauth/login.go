@@ -41,7 +41,7 @@ type Login struct {
 func Open(getenv func(string) string) (*Login, error) {
 	config, err := openaicodex.EnvironmentConfig(getenv)
 	if err != nil {
-		return nil, err //nolint:wrapcheck // the caller wraps it
+		return nil, err // the caller wraps it
 	}
 	r, err := newRefresher(getenv(TokenURLEnv))
 	if err != nil {
@@ -140,11 +140,11 @@ func BeforeRun(ctx context.Context, provider string, getenv func(string) string)
 	}
 	l, err := Open(getenv)
 	if err != nil || l.file == nil {
-		return nil //nolint:nilerr // preflight reports it
+		return nil // preflight reports it
 	}
 	auth, err := l.file.read()
 	if err != nil || !expiresWithin(auth, runWindow) && !staleWithoutExpiry(auth) {
-		return nil //nolint:nilerr // preflight reports it
+		return nil // preflight reports it
 	}
 	_, err = l.renew(ctx, func(a fileAuth) bool { return expiresWithin(a, runWindow) || staleWithoutExpiry(a) })
 	if err != nil && expiresWithin(auth, 0) {

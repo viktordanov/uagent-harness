@@ -108,7 +108,7 @@ func (l *logStore) RemoveObserver(id sessionstore.ObserverID) {
 }
 
 func (l *logStore) AppendInput(ctx context.Context, id session.ID, in inbox.Input) error {
-	return l.append(ctx, id, sessionstore.ItemInput, in, nil, false, func(*logHead) error { return in.Validate() }) //nolint:wrapcheck // localfile's message
+	return l.append(ctx, id, sessionstore.ItemInput, in, nil, false, func(*logHead) error { return in.Validate() }) // localfile's message
 }
 
 func (l *logStore) AppendTurn(ctx context.Context, id session.ID, t session.Turn) error {
@@ -209,7 +209,7 @@ func (l *logStore) append(ctx context.Context, id session.ID, kind sessionstore.
 // set or schedules a sync.
 func (l *logStore) write(ctx context.Context, id session.ID, record func(*logHead) ([]byte, error), durable bool) error {
 	if err := context.Cause(ctx); err != nil {
-		return err //nolint:wrapcheck // as localfile returns it
+		return err // as localfile returns it
 	}
 	l.mu.Lock()
 	err := l.open(ctx, id)
@@ -285,7 +285,7 @@ func (l *logStore) Items(ctx context.Context, id session.ID, after sessionstore.
 		}
 	}
 	if id != l.id || limit <= 0 || l.items == nil {
-		return l.Store.Items(ctx, id, after, limit) //nolint:wrapcheck // localfile's errors pass through
+		return l.Store.Items(ctx, id, after, limit) // localfile's errors pass through
 	}
 	l.served = true
 	rest := l.items[min(after, sessionstore.Sequence(len(l.items))):] // item i has sequence i+1
@@ -298,14 +298,14 @@ func (l *logStore) Items(ctx context.Context, id session.ID, after sessionstore.
 func committedSize(f *os.File) (int64, error) {
 	st, err := f.Stat()
 	if err != nil {
-		return 0, err //nolint:wrapcheck // the caller wraps it
+		return 0, err // the caller wraps it
 	}
 	buf := make([]byte, 4096)
 	for end := st.Size(); end > 0; {
 		start := max(0, end-int64(len(buf)))
 		n, err := f.ReadAt(buf[:end-start], start)
 		if err != nil {
-			return 0, err //nolint:wrapcheck // as above
+			return 0, err
 		}
 		if i := bytes.LastIndexByte(buf[:n], '\n'); i >= 0 {
 			return start + int64(i) + 1, nil

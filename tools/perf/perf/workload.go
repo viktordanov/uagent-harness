@@ -32,7 +32,7 @@ var workspaceFiles = []struct {
 // fillWorkspace writes the workspace files: Go-like source with comments,
 // and a test log, from a fixed seed so every run reads the same bytes.
 func fillWorkspace(dir string) error {
-	rng := rand.New(rand.NewPCG(1, 2)) //nolint:gosec // fixture text, not security
+	rng := rand.New(rand.NewPCG(1, 2)) // fixture text, not security
 	for _, f := range workspaceFiles {
 		path := filepath.Join(dir, f.path)
 		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {

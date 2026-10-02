@@ -120,7 +120,7 @@ func Browser(authURL string) error {
 	if err != nil {
 		return fmt.Errorf("no redirect (%s): %w", resp.Status, err)
 	}
-	resp, err = http.Get(callback.String()) //nolint:noctx,gosec // the client's own loopback callback
+	resp, err = http.Get(callback.String()) //nolint:noctx // the client's own loopback callback
 	if err != nil {
 		return fmt.Errorf("failed to call back: %w", err)
 	}

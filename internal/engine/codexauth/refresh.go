@@ -39,7 +39,7 @@ const (
 // refresh token expired, was used already, or was revoked. Codex asks the
 // user to sign in again in that case. The message is a sentence the user
 // reads as it is.
-var ErrLoginExpired = errors.New("Your ChatGPT login expired; run `codex login`") //nolint:staticcheck,revive // shown as is
+var ErrLoginExpired = errors.New("Your ChatGPT login expired; run `codex login`") //nolint:staticcheck // shown as is
 
 // tokens are the token endpoint's answer (manager.rs RefreshResponse); each
 // may be missing.
@@ -97,12 +97,12 @@ func (r refresher) refresh(ctx context.Context, token string) (tokens, error) {
 	if err != nil {
 		// Not wrapped: a request that fails here is not a lost
 		// connection to the model, which the runner would retry.
-		return tokens{}, fmt.Errorf("failed to refresh the ChatGPT login: %v", err) //nolint:errorlint // see above
+		return tokens{}, fmt.Errorf("failed to refresh the ChatGPT login: %v", err)
 	}
 	defer resp.Body.Close()
 	data, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
-		return tokens{}, fmt.Errorf("failed to refresh the ChatGPT login: %v", err) //nolint:errorlint // as above
+		return tokens{}, fmt.Errorf("failed to refresh the ChatGPT login: %v", err)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return tokens{}, refused(resp.StatusCode, data)

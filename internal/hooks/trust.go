@@ -152,7 +152,7 @@ func scriptKey(command, script string) string { return hash(command + "\x00" + s
 func fileHash(path string) (string, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return "", err //nolint:wrapcheck // the callers say what failed
+		return "", err // the callers say what failed
 	}
 	sum := sha256.Sum256(data)
 

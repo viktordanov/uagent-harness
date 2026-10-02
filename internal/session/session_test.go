@@ -487,7 +487,7 @@ func TestSession_CloseInterruptsTheLiveRun(t *testing.T) {
 	require.NoError(t, h.s.Close())
 
 	assert.Equal(t, core.StatusInterrupted, run.result.Status)
-	for range h.s.Events() { //nolint:revive // drain until closed
+	for range h.s.Events() { // drain until closed
 	}
 	_, err = h.s.Submit("after close")
 	require.ErrorIs(t, err, session.ErrClosed)

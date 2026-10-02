@@ -152,7 +152,7 @@ func Live(provider, model string, effort llm.ReasoningEffort, prompt string, get
 		call := compaction.SummaryCall{Adapter: client, Model: model, Effort: effort, Window: compaction.DefaultContextWindow, Prompt: prompt, CacheKey: "uah-compaction-eval"}
 
 		return func(ctx context.Context, view []llm.Item) (compaction.Summary, error) {
-			return compaction.Summarize(ctx, call, view) //nolint:wrapcheck // Summarize wraps its errors
+			return compaction.Summarize(ctx, call, view) // Summarize wraps its errors
 		}, client.Close, nil
 	}
 

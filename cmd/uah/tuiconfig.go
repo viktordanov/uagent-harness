@@ -33,6 +33,6 @@ func tuiConfig(cmd *cli.Command) func(context.Context) state.ConfigLoaded {
 // add` uses, keeping its comments.
 func tuiSaveConfig(ctx context.Context, cmd *cli.Command) func(key string, value any) error {
 	return func(key string, value any) error {
-		return app.SaveSetting(ctx, inputs(cmd), key, value) //nolint:wrapcheck // SaveSetting says what failed
+		return app.SaveSetting(ctx, inputs(cmd), key, value) // SaveSetting says what failed
 	}
 }

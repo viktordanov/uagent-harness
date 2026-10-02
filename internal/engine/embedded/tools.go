@@ -28,7 +28,7 @@ import (
 func (w *wiring) tools(ctx context.Context, req core.Request, sessionID session.ID) (tool.Registry, error) {
 	scope := w.e.scope(string(sessionID))
 	req.DisallowedTools = scope.disallow(req.DisallowedTools)
-	translators, err := w.translators(req, sessionID) //nolint:contextcheck // on Linux, the sandbox probes bwrap once per process, with its own timeout
+	translators, err := w.translators(req, sessionID) //nolint:contextcheck,nolintlint // on Linux, the sandbox probes bwrap once per process, with its own timeout; not on darwin
 	if err != nil {
 		return nil, err
 	}

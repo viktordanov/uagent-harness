@@ -182,7 +182,7 @@ func private(file *os.File) error {
 // lock takes an advisory lock, trying ten times 100 ms apart as Codex
 // does, so a stuck process cannot hang the caller.
 func lock(file *os.File, how int) (func(), error) {
-	fd := int(file.Fd()) //nolint:gosec // a descriptor fits an int
+	fd := int(file.Fd()) // a descriptor fits an int
 	for try := 0; ; try++ {
 		err := syscall.Flock(fd, how|syscall.LOCK_NB)
 		if err == nil {

@@ -53,7 +53,7 @@ func MCPLogin(ctx context.Context, configPath, workspace, name string, opts mcp.
 	opts.Store = store
 	opts.Settings = mcp.OAuthSettings{CallbackPort: cfg.MCPOAuthCallbackPort, CallbackURL: cfg.MCPOAuthCallbackURL}
 
-	return mcp.Login(ctx, name, server, opts) //nolint:wrapcheck // Login's errors name the server
+	return mcp.Login(ctx, name, server, opts) // Login's errors name the server
 }
 
 // MCPLogout forgets a server's OAuth login; ok is false when none was stored.
@@ -67,7 +67,7 @@ func MCPLogout(configPath, workspace, name string) (bool, error) {
 		return false, err
 	}
 
-	return mcp.Logout(name, server, store) //nolint:wrapcheck // Logout's errors are the user's to read
+	return mcp.Logout(name, server, store) // Logout's errors are the user's to read
 }
 
 func loadMCP(configPath, workspace string) (config.Config, mcp.CredentialStore, error) {

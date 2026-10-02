@@ -36,11 +36,11 @@ func (j *patchJobs) RemoteJobUpdates() <-chan operation.Operation       { return
 func (j *patchJobs) AddRemoteJob(op operation.Operation) error {
 	state, err := operation.DecodeRemoteJobState(op)
 	if err != nil {
-		return err //nolint:wrapcheck // the runner's own error
+		return err // the runner's own error
 	}
 	var plan patchPlan
 	if err := json.Unmarshal(state.Plan.Data, &plan); err != nil {
-		return err //nolint:wrapcheck // the operation manager reports it
+		return err // the operation manager reports it
 	}
 	if op.Status != operation.StatusReady {
 		go j.finish(operation.FailRemoteJob(op, errPatchInterrupted))
@@ -77,14 +77,14 @@ func (j *patchJobs) run(op operation.Operation, state operation.RemoteJobState, 
 func applyPatch(plan patchPlan) ([]patch.Change, error) {
 	hunks, err := patch.Parse(plan.Patch)
 	if err != nil {
-		return nil, err //nolint:wrapcheck // Codex's message
+		return nil, err // Codex's message
 	}
 	changes, err := patch.Compute(plan.Cwd, hunks)
 	if err != nil {
-		return nil, err //nolint:wrapcheck // Codex's message
+		return nil, err // Codex's message
 	}
 
-	return changes, patch.Write(changes) //nolint:wrapcheck // Codex's message
+	return changes, patch.Write(changes) // Codex's message
 }
 
 func (j *patchJobs) finish(step operation.Step, err error) {

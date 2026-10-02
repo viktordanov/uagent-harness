@@ -112,14 +112,14 @@ func (o overlay) read(path string) (string, error) {
 	}
 	info, err := os.Stat(path)
 	if err != nil {
-		return "", err //nolint:wrapcheck // the caller names the file
+		return "", err // the caller names the file
 	}
 	if info.IsDir() {
 		return "", errors.New("it is a directory")
 	}
 	data, err := os.ReadFile(path)
 
-	return string(data), err //nolint:wrapcheck // the caller names the file
+	return string(data), err // the caller names the file
 }
 
 // Write applies the changes to the files in order, creating missing

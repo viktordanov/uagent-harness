@@ -111,7 +111,7 @@ func (s *switcher) Respond(ctx context.Context, req llm.Request, opts llm.Reques
 		s.seen(req, resp.Usage)
 	}
 
-	return resp, err //nolint:wrapcheck // the coordinator wraps model errors
+	return resp, err // the coordinator wraps model errors
 }
 
 func (s *switcher) setModel(model string) {
@@ -228,7 +228,7 @@ func (s *switcher) direct() llm.Adapter {
 		ctx, done := s.observe(ctx, kindDirect)
 		resp, err := client.Respond(ctx, req, opts)
 
-		return resp, done(err) //nolint:wrapcheck // llmcall wraps model errors
+		return resp, done(err) // llmcall wraps model errors
 	})
 }
 

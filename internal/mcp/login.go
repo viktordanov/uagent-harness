@@ -154,7 +154,7 @@ func loginConfig(name string, c ServerConfig, opts LoginOptions, cb *callback, s
 				TokenURL: oc.Endpoint.TokenURL, AuthStyle: int(oc.Endpoint.AuthStyle), Scopes: oc.Scopes,
 			}.withToken(tok)
 			if err := opts.Store.Save(creds); err != nil {
-				return nil, err //nolint:wrapcheck // the store's own error
+				return nil, err // the store's own error
 			}
 			saved.mu.Lock()
 			saved.saved = true
@@ -185,5 +185,5 @@ func Logout(name string, c ServerConfig, store CredentialStore) (bool, error) {
 		return false, errors.New("OAuth logout is only supported for streamable_http transports")
 	}
 
-	return store.Delete(name, c.URL) //nolint:wrapcheck // the store's own error
+	return store.Delete(name, c.URL) // the store's own error
 }

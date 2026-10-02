@@ -56,5 +56,5 @@ func (s *Session) WatchAgent(id string) (*AgentWatch, error) {
 		return nil, ErrNoSubagents
 	}
 
-	return w.WatchAgent(s.id, id) //nolint:wrapcheck // the agents' own errors
+	return w.WatchAgent(s.id, id) // the agents' own errors
 }

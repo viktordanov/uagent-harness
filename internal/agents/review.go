@@ -60,7 +60,7 @@ func (m *Manager) Review(ctx context.Context, req session.ReviewRequest) (string
 	}
 	defer func() {
 		go func() {
-			for range rs.Events() { //nolint:revive // drained, so the session's loop never blocks while it closes
+			for range rs.Events() { // drained, so the session's loop never blocks while it closes
 			}
 		}()
 		_ = rs.Close()

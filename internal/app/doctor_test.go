@@ -89,7 +89,7 @@ func TestDoctor_Problems(t *testing.T) {
 		},
 		"a Codex auth file others can read": {
 			prepare: func(t *testing.T, e *harnesstest.Env, _ *app.Inputs, _ *app.DoctorOptions) {
-				require.NoError(t, os.Chmod(filepath.Join(e.CodexHome, "auth.json"), 0o644)) //nolint:gosec // the point of the test
+				require.NoError(t, os.Chmod(filepath.Join(e.CodexHome, "auth.json"), 0o644)) // the point of the test
 			},
 			check: "credentials", status: app.CheckFail, detail: "private permissions",
 		},

@@ -2,7 +2,7 @@
 // 2025 OpenAI): the tests in codex-rs/shell-command/src/parse_command.rs,
 // without the PowerShell ones.
 
-package cmdparse //nolint:testpackage // the formatting helpers are tested directly, as in Codex
+package cmdparse // the formatting helpers are tested directly, as in Codex
 
 import (
 	"strings"

@@ -55,7 +55,7 @@ func (c *checkpointStore) SaveOperation(ctx context.Context, id session.ID, v op
 			return err
 		}
 
-		return c.Store.SaveOperation(ctx, id, v) //nolint:wrapcheck // the coordinator wraps store errors
+		return c.Store.SaveOperation(ctx, id, v) // the coordinator wraps store errors
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -81,11 +81,11 @@ func (c *checkpointStore) AppendToolCallStatus(ctx context.Context, id session.I
 		return err
 	}
 	if err := c.Store.AppendToolCallStatus(ctx, id, s); err != nil {
-		return err //nolint:wrapcheck // the coordinator wraps store errors
+		return err // the coordinator wraps store errors
 	}
 	for _, op := range carried {
 		if err := c.Store.SaveOperation(ctx, id, op); err != nil {
-			return err //nolint:wrapcheck // as above
+			return err
 		}
 	}
 
@@ -100,7 +100,7 @@ func (c *checkpointStore) flush(ctx context.Context) error {
 	c.mu.Unlock()
 	for _, op := range held {
 		if err := c.Store.SaveOperation(ctx, id, op); err != nil {
-			return err //nolint:wrapcheck // the coordinator wraps store errors
+			return err // the coordinator wraps store errors
 		}
 	}
 

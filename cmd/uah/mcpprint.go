@@ -42,7 +42,7 @@ func printServers(w io.Writer, entries []app.MCPEntry) error {
 		}
 	}
 
-	return tw.Flush() //nolint:wrapcheck // writing to stdout
+	return tw.Flush() // writing to stdout
 }
 
 // printServer writes `uah mcp get`: the name, then a line per set value.

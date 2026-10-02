@@ -29,7 +29,7 @@ func SetApproval(path, server, tool string, mode ApprovalMode) error {
 	}
 	data, perm, err := tomledit.Read(path)
 	if err != nil {
-		return err //nolint:wrapcheck // Read names the file
+		return err // Read names the file
 	}
 	key := []string{"mcp_servers", server, "default_tools_approval_mode"}
 	if tool != "" {
@@ -42,7 +42,7 @@ func SetApproval(path, server, tool string, mode ApprovalMode) error {
 		return fmt.Errorf("mcp_servers.%s in %s: %w", server, path, err)
 	}
 
-	return tomledit.Write(path, data, perm) //nolint:wrapcheck // Write names the file
+	return tomledit.Write(path, data, perm) // Write names the file
 }
 
 // ToolApproval is the current approval mode of the tool with the

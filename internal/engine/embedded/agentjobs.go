@@ -38,11 +38,11 @@ func (j *agentJobs) RemoteJobUpdates() <-chan operation.Operation       { return
 func (j *agentJobs) AddRemoteJob(op operation.Operation) error {
 	state, err := operation.DecodeRemoteJobState(op)
 	if err != nil {
-		return err //nolint:wrapcheck // the runner's own error
+		return err // the runner's own error
 	}
 	var plan agentPlan
 	if err := json.Unmarshal(state.Plan.Data, &plan); err != nil {
-		return err //nolint:wrapcheck // the operation manager reports it
+		return err // the operation manager reports it
 	}
 	if op.Status != operation.StatusReady {
 		go j.finish(operation.FailRemoteJob(op, errAgentInterrupted))
@@ -99,7 +99,7 @@ func (j *agentJobs) call(ctx context.Context, plan agentPlan) (string, error) {
 		return "", errors.New("subagents are not enabled")
 	}
 
-	return j.agents.Call(ctx, engine.AgentCall{ParentID: j.parentID, CallID: plan.CallID, Tool: plan.Tool, Args: plan.Arguments}) //nolint:wrapcheck // the subagents' errors are for the model
+	return j.agents.Call(ctx, engine.AgentCall{ParentID: j.parentID, CallID: plan.CallID, Tool: plan.Tool, Args: plan.Arguments}) // the subagents' errors are for the model
 }
 
 // finish sends a step's operation; a step that cannot be built was already

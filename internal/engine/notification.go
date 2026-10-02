@@ -22,7 +22,7 @@ func SubagentNotification(agentID string, status json.Marshaler) (string, error)
 		Status    json.Marshaler `json:"status"`
 	}{agentID, status})
 	if err != nil {
-		return "", err //nolint:wrapcheck // a plain encoding
+		return "", err // a plain encoding
 	}
 
 	return notificationOpen + "\n" + string(body) + "\n" + notificationClose, nil

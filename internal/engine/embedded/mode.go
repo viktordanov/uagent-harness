@@ -51,7 +51,7 @@ func (a *agent) SetMode(m approval.Mode) error {
 	default:
 	}
 	if _, err := approval.ParseMode(string(m)); err != nil {
-		return err //nolint:wrapcheck // ParseMode names the value
+		return err // ParseMode names the value
 	}
 	a.mode.set(m)
 

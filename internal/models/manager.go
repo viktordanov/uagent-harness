@@ -159,7 +159,7 @@ func (m *Manager) fetch(ctx context.Context, src Source, etag string) (Fetched, 
 	ctx, cancel := context.WithTimeout(ctx, m.opts.Timeout)
 	defer cancel()
 
-	return src.Fetch(ctx, etag) //nolint:wrapcheck // sources wrap their errors
+	return src.Fetch(ctx, etag) // sources wrap their errors
 }
 
 func withErr(c Catalog, err error) Catalog {
@@ -240,7 +240,7 @@ type UnavailableError struct {
 // by "Did you mean `Y`?".
 func (e *UnavailableError) Error() string {
 	if e.Tool != "" {
-		msg := fmt.Sprintf("Unknown model `%s` for %s. Available models: %s", e.Model, e.Tool, strings.Join(e.Available, ", "))
+		msg := "Unknown model `" + e.Model + "` for " + e.Tool + ". Available models: " + strings.Join(e.Available, ", ")
 		if len(e.Suggestions) > 0 {
 			msg += ". Did you mean `" + strings.Join(e.Suggestions, "` or `") + "`?"
 		}

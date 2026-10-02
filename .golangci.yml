@@ -2,6 +2,7 @@
 version: "2"
 run:
   timeout: 5m
+  # Test files are not linted, so no linter or rule here is about them.
   tests: false
 
 linters:
@@ -19,7 +20,6 @@ linters:
     - errcheck
     - embeddedstructfieldcheck
     - forcetypeassert
-    - funlen
     - gocyclo
     - gocheckcompilerdirectives
     - goconst
@@ -27,10 +27,10 @@ linters:
     - misspell
     - nilnesserr
     - nlreturn
+    - nolintlint
     - predeclared
     - reassign
     - rowserrcheck
-    - testpackage
     - unconvert
     - usestdlibvars
     - wastedassign
@@ -74,7 +74,9 @@ linters:
     gocyclo:
       # A backstop for runaway functions, not the target: aim for about 15
       # (docs/documentation/architecture.md); the dispatch switches say why
-      # they are over.
+      # they are over. It is the one size rule: funlen is off, because the
+      # rules limit complexity, not length, and the long functions over
+      # 80 lines are the dispatch switches and straight setup sequences.
       min-complexity: 20
     errcheck:
       exclude-functions:
@@ -95,11 +97,6 @@ linters:
         - pattern: ^print.*$
         - pattern: fmt\.Print.*
         - pattern: ioutil\.*
-    funlen:
-      lines: -1
-      statements: -1
-      ignore-comments: true
-
     gocritic:
       disable-all: true
       enabled-checks:
@@ -163,6 +160,13 @@ linters:
     nlreturn:
       block-size: 6
 
+    nolintlint:
+      # A directive names the linter it silences, says why, and is reported
+      # once that linter has nothing to silence there (or is not enabled).
+      allow-unused: false
+      require-specific: true
+      require-explanation: true
+
     modernize:
       disable:
         - minmax
@@ -221,11 +225,6 @@ linters:
       - std-error-handling
 
     rules:
-      - linters:
-          - dupl
-          - err113
-          - funlen
-        path: _test\.go
       - path: (.+)\.go$
         text: ST1000
 

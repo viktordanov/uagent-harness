@@ -26,7 +26,7 @@ func (t Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 	resp, err := base.RoundTrip(req)
 	if err != nil || t.Observe == nil {
-		return resp, err //nolint:wrapcheck // a transport returns its base's errors unchanged
+		return resp, err // a transport returns its base's errors unchanged
 	}
 	now := time.Now
 	if t.Now != nil {

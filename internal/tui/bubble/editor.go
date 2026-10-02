@@ -108,7 +108,7 @@ func draftDirExposed(p sandbox.Policy, dir string) bool {
 // file (0600) in dir, <uah home>/editor (0700), runs the editor on it, reads
 // it back into saved, and removes it.
 type editorRun struct {
-	ctx            context.Context //nolint:containedctx // a tea.ExecCommand's Run takes none
+	ctx            context.Context // a tea.ExecCommand's Run takes none
 	dir            string
 	args           []string
 	text           string
@@ -138,13 +138,13 @@ func (r *editorRun) Run() error {
 	if err != nil {
 		return fmt.Errorf("failed to write the file to edit: %w", err)
 	}
-	//nolint:gosec // the user's own editor, from $VISUAL or $EDITOR
+	// The user's own editor, from $VISUAL or $EDITOR.
 	cmd := exec.CommandContext(r.ctx, r.args[0], append(r.args[1:], path)...)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = r.stdin, r.stdout, r.stderr
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("%s: %w", filepath.Base(r.args[0]), err)
 	}
-	saved, err := os.ReadFile(path) //nolint:gosec // the file this run made
+	saved, err := os.ReadFile(path) // the file this run made
 	if err != nil {
 		return fmt.Errorf("failed to read the edited file: %w", err)
 	}

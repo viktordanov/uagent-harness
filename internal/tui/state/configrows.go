@@ -235,7 +235,7 @@ func typed(row ConfigRow, text string) (any, error) {
 	}
 	check := session.Settings{Provider: session.Providers[0], Model: text, Workspace: "."}
 	if err := check.Validate(); err != nil {
-		return nil, err //nolint:wrapcheck // the message is for the user as is
+		return nil, err // the message is for the user as is
 	}
 
 	return text, nil

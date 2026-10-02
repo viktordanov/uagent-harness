@@ -89,7 +89,7 @@ func CheckCredentials(provider string, getenv func(string) string) error {
 			return fmt.Errorf("failed to create the %s client: %w", p.Name, err)
 		}
 
-		return c.Close() //nolint:wrapcheck // closing an unused client
+		return c.Close() // closing an unused client
 	}
 
 	return fmt.Errorf("unsupported provider %q", provider)

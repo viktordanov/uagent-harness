@@ -122,13 +122,13 @@ func (c *compactor) Respond(ctx context.Context, req llm.Request, opts llm.Reque
 		select {
 		case <-job.done:
 		case <-ctx.Done():
-			return llm.Response{}, ctx.Err() //nolint:wrapcheck // the coordinator drops a canceled request
+			return llm.Response{}, ctx.Err() // the coordinator drops a canceled request
 		}
 		if job.interrupted {
 			// The stop that interrupted it cancels this request next.
 			<-ctx.Done()
 
-			return llm.Response{}, ctx.Err() //nolint:wrapcheck // as above
+			return llm.Response{}, ctx.Err()
 		}
 	}
 	req.Input = c.apply(req.Input)

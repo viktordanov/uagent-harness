@@ -47,7 +47,7 @@ func newBackend(t *testing.T, body string) *backend {
 			return
 		}
 		w.Header().Set("ETag", b.etag)
-		_, _ = w.Write([]byte(b.body.Load().(string))) //nolint:forcetypeassert // only strings
+		_, _ = w.Write([]byte(b.body.Load().(string))) // only strings
 	}))
 	t.Cleanup(b.srv.Close)
 

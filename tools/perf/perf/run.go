@@ -96,7 +96,7 @@ func Run(ctx context.Context, opts Options) (*Report, error) {
 	small := target{name: Small.Name, build: func(e *Env) (Fixture, error) { return tmpl.Build(e, Small) }}
 	r := &run{ctx: ctx, opts: opts, scratch: opts.Scratch}
 	rep := newReport(ctx, opts)
-	if !Sandboxed(opts.Scratch) { //nolint:contextcheck // on Linux, the sandbox probes bwrap once per process, with its own timeout
+	if !Sandboxed(opts.Scratch) { //nolint:contextcheck,nolintlint // on Linux, the sandbox probes bwrap once per process, with its own timeout; not on darwin
 		rep.Sandbox = "none"
 	}
 	for _, sc := range scenarios {

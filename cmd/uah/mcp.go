@@ -298,7 +298,7 @@ func openBrowser(url string) error {
 	case runtime.GOOS == "windows":
 		name, args = "rundll32", []string{"url.dll,FileProtocolHandler", url}
 	}
-	c := exec.Command(name, args...) //nolint:gosec,noctx // the user's browser; it returns at once
+	c := exec.Command(name, args...) //nolint:noctx // the user's browser; it returns at once
 	if err := c.Start(); err != nil {
 		return fmt.Errorf("failed to open a browser: %w", err)
 	}

@@ -69,7 +69,7 @@ func summarized(keep int, ledger bool) apply {
 		}
 		out, err := compaction.Apply(c.Before, rec)
 
-		return out, callInput(c, rec), err //nolint:wrapcheck // Apply's errors say what failed
+		return out, callInput(c, rec), err // Apply's errors say what failed
 	}
 }
 
@@ -102,7 +102,7 @@ func elided(rules compaction.Elision) apply {
 	return func(_ context.Context, c eval.Case, _ *Summaries) ([]llm.Item, int64, error) {
 		out, err := compaction.Apply(c.Before, compaction.Record{}.WithElided(rules.Elidable(c.Before, nil)))
 
-		return out, 0, err //nolint:wrapcheck // as above
+		return out, 0, err
 	}
 }
 
@@ -136,7 +136,7 @@ func remote(ctx context.Context, c eval.Case, s *Summaries) ([]llm.Item, int64, 
 	rec.Summary = opaque(compaction.ApproxTokens(rec.Summary))
 	out, err := compaction.Apply(c.Before, rec)
 
-	return out, callInput(c, rec), err //nolint:wrapcheck // as above
+	return out, callInput(c, rec), err
 }
 
 // opaque is text of about tokens tokens that no fact matches.

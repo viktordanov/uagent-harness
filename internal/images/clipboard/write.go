@@ -41,7 +41,7 @@ func runInput(ctx context.Context, stdin, name string, args ...string) error {
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Stdin = strings.NewReader(stdin)
 
-	return cmd.Run() //nolint:wrapcheck // WriteText explains the failure
+	return cmd.Run() // WriteText explains the failure
 }
 
 // WriteText puts text on the clipboard, or returns ErrNoTextTool.

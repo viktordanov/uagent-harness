@@ -61,7 +61,7 @@ func withImages(req llm.Request, dataURL func(ref string) (string, error)) llm.R
 
 // imageItems are one pasted image as a ViewImage call and its result.
 func imageItems(callID string, img images.Image, dataURL func(string) (string, error)) []llm.Item {
-	args, _ := json.Marshal(map[string]string{"path": img.Label}) //nolint:errchkjson // a string map always encodes
+	args, _ := json.Marshal(map[string]string{"path": img.Label}) // a string map always encodes
 	result := llm.ToolResult{CallID: callID}
 	if url, err := dataURL(img.Ref); err != nil {
 		result.Output = []llm.ToolResultOutput{{Kind: llm.ToolResultText, Value: "Error: " + img.Label + " pasted by the user is no longer available: " + err.Error()}}

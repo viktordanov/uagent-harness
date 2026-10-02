@@ -144,7 +144,7 @@ func (b sandboxedBash) Translate(ctx tool.Context, call llm.ToolCall) tool.CallS
 func (b sandboxedBash) TranslateResult(callID string, status tool.CallStatus, ops []operation.Operation) (llm.ToolResult, error) {
 	result, err := b.Translator.TranslateResult(callID, status, ops)
 	if err != nil || len(ops) != 1 || !b.available() {
-		return result, err //nolint:wrapcheck // the coordinator wraps tool errors
+		return result, err // the coordinator wraps tool errors
 	}
 	state, derr := operation.DecodeShellState(ops[0])
 	if derr != nil || state.Result == nil || state.Result.ExitCode == 0 || !sandbox.Denied(state.Result.ExitCode, state.Result.Out+"\n"+state.Result.Err) {

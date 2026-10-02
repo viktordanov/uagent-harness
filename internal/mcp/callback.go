@@ -116,7 +116,7 @@ func (cb *callback) close() {
 func checkCallbackURL(raw string) error {
 	u, err := url.Parse(raw)
 	if err != nil {
-		return err //nolint:wrapcheck // the caller names the key
+		return err // the caller names the key
 	}
 	if (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
 		return fmt.Errorf("%q is not an http(s) URL", raw)
@@ -165,7 +165,7 @@ type resourceTransport struct {
 
 func (t resourceTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	if r.Method != http.MethodPost || r.Body == nil || r.Header.Get("Content-Type") != "application/x-www-form-urlencoded" {
-		return t.base.RoundTrip(r) //nolint:wrapcheck // a transport passes errors through
+		return t.base.RoundTrip(r) // a transport passes errors through
 	}
 	body, err := io.ReadAll(r.Body)
 	_ = r.Body.Close()
@@ -181,5 +181,5 @@ func (t resourceTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	r.Body = io.NopCloser(bytes.NewReader(body))
 	r.ContentLength = int64(len(body))
 
-	return t.base.RoundTrip(r) //nolint:wrapcheck // a transport passes errors through
+	return t.base.RoundTrip(r) // a transport passes errors through
 }

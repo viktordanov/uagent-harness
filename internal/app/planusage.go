@@ -35,7 +35,7 @@ func ReadUsage(ctx context.Context, in Inputs, getenv func(string) string) (Usag
 	}
 	s, err := NewUsage(r.Settings, getenv).Usage(ctx, 0)
 	if err != nil {
-		return UsageReport{Provider: r.Settings.Provider}, err //nolint:wrapcheck // the reader's errors say what failed
+		return UsageReport{Provider: r.Settings.Provider}, err // the reader's errors say what failed
 	}
 
 	return UsageReport{Provider: r.Settings.Provider, Snapshot: s}, nil

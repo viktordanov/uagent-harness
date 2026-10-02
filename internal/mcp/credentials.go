@@ -171,12 +171,12 @@ func (s autoStore) Load(server, url string) (Credentials, error) {
 		return c, nil
 	}
 
-	return s.file.Load(server, url) //nolint:wrapcheck // the file store's own error
+	return s.file.Load(server, url) // the file store's own error
 }
 
 func (s autoStore) Save(c Credentials) error {
 	if err := s.keyring.Save(c); err != nil {
-		return s.file.Save(c) //nolint:wrapcheck // the file store's own error
+		return s.file.Save(c) // the file store's own error
 	}
 	_, _ = s.file.Delete(c.ServerName, c.ServerURL)
 

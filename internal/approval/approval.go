@@ -292,5 +292,5 @@ func (a *Approver) allow(prefix []string) error {
 	}
 	_, err := rules.AppendAllow(a.cfg.RulesFile, prefix)
 
-	return err //nolint:wrapcheck // AppendAllow's errors name the file
+	return err // AppendAllow's errors name the file
 }

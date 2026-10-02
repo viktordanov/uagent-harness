@@ -42,7 +42,7 @@ func (s Status) MarshalJSON() ([]byte, error) {
 		v = map[string]string{"errored": s.Message}
 	}
 
-	return json.Marshal(v) //nolint:wrapcheck // plain values
+	return json.Marshal(v) // plain values
 }
 
 // bound shares resultBudget among the statuses' messages, keeping the head

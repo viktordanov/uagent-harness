@@ -85,7 +85,7 @@ func TestAppendKeepsTheFilePrivate(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, os.FileMode(0o600), info.Mode().Perm())
 
-	require.NoError(t, os.Chmod(f.Path, 0o644)) //nolint:gosec // the test widens it on purpose
+	require.NoError(t, os.Chmod(f.Path, 0o644)) // the test widens it on purpose
 	require.NoError(t, f.Append(history.Entry{Text: "b"}))
 	info, err = os.Stat(f.Path)
 	require.NoError(t, err)

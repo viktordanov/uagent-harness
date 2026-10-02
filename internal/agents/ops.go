@@ -211,7 +211,7 @@ func (m *Manager) start(parentID, id string, role Role, rec record, resumed bool
 	m.scope(id, role, rec)
 
 	// Children outlive the call that started them; Close stops them.
-	s, err := session.Open(context.Background(), eng, opts) //nolint:contextcheck // children outlive the spawning call
+	s, err := session.Open(context.Background(), eng, opts) // children outlive the spawning call
 	if err != nil {
 		m.mu.Lock()
 		delete(m.children, id)

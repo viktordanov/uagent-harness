@@ -97,7 +97,7 @@ func Auto(ctx context.Context, getenv func(string) string) (bool, error) {
 	}
 	userHome, err := os.UserHomeDir()
 	if err != nil {
-		return false, nil //nolint:nilerr // no home directory, nothing to migrate
+		return false, nil // no home directory, nothing to migrate
 	}
 	p := Old(getenv, userHome)
 	if !p.Pending() {

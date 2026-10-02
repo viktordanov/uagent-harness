@@ -71,12 +71,12 @@ func commit(ctx context.Context) string {
 func flatten(s Sample) map[string]float64 {
 	m := map[string]float64{
 		"wall_ms": ms(s.Wall), metricCPU: ms(s.CPU), "child_cpu_ms": ms(s.ChildCPU),
-		"alloc_mb": mb(int64(s.AllocBytes)), metricAllocs: float64(s.Allocs), "peak_heap_mb": mb(int64(s.PeakHeap)), //nolint:gosec // sizes fit
+		"alloc_mb": mb(int64(s.AllocBytes)), metricAllocs: float64(s.Allocs), "peak_heap_mb": mb(int64(s.PeakHeap)), // sizes fit
 		metricGoroutinesBefore: float64(s.GoroutinesBefore), metricGoroutinesAfter: float64(s.GoroutinesAfter),
 		// Each connection still open holds one goroutine of the fake model's
 		// server, which is not uah's.
 		metricGoroutinesLeft: float64(s.GoroutinesAfter - s.GoroutinesBefore - s.ConnsAfter),
-		metricConnsAfter:     float64(s.ConnsAfter), "disk_written_mb": mb(int64(s.DiskWritten)), //nolint:gosec // sizes fit
+		metricConnsAfter:     float64(s.ConnsAfter), "disk_written_mb": mb(int64(s.DiskWritten)), // sizes fit
 		"state_growth_mb": mb(s.StateGrowth), "wakeups": float64(s.Wakeups),
 	}
 	maps.Copy(m, s.Extra)
@@ -182,7 +182,7 @@ func (rep *Report) Write(w io.Writer) {
 		}
 		fmt.Fprintln(tw)
 	}
-	tw.Flush() //nolint:errcheck // printing
+	tw.Flush() // printing
 	fmt.Fprintln(w)
 	for _, r := range rep.Results {
 		var extras []string

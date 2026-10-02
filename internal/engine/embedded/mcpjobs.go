@@ -38,11 +38,11 @@ func (j *mcpJobs) RemoteJobUpdates() <-chan operation.Operation       { return j
 func (j *mcpJobs) AddRemoteJob(op operation.Operation) error {
 	state, err := operation.DecodeRemoteJobState(op)
 	if err != nil {
-		return err //nolint:wrapcheck // the runner's own error
+		return err // the runner's own error
 	}
 	var plan mcpPlan
 	if err := json.Unmarshal(state.Plan.Data, &plan); err != nil {
-		return err //nolint:wrapcheck // the operation manager reports it
+		return err // the operation manager reports it
 	}
 	if op.Status != operation.StatusReady {
 		go j.finish(operation.FailRemoteJob(op, errInterrupted))

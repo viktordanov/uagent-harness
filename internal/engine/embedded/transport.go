@@ -71,7 +71,7 @@ type callTransport struct{ base http.RoundTripper }
 func (t callTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	c, _ := req.Context().Value(callKey{}).(*modelCall)
 	if c == nil {
-		return t.base.RoundTrip(req) //nolint:wrapcheck // a transport returns its base's errors unchanged
+		return t.base.RoundTrip(req) // a transport returns its base's errors unchanged
 	}
 	req, err := c.rewriteBody(req)
 	if err != nil {
@@ -100,7 +100,7 @@ func (t callTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 			continue
 		}
 
-		return resp, err //nolint:wrapcheck // a transport returns its base's errors unchanged
+		return resp, err // a transport returns its base's errors unchanged
 	}
 }
 
@@ -129,7 +129,7 @@ var errNoSuchHost = errors.New("no such host")
 // request waits notFoundWait for it in all, then ends with no such host:
 // the runner would retry the error with nothing new to learn.
 func (c *modelCall) waitForNetwork(ctx context.Context, err error, wait time.Duration) bool {
-	wait += time.Duration((rand.Float64()*0.2 - 0.1) * float64(wait)) //nolint:gosec // jitter
+	wait += time.Duration((rand.Float64()*0.2 - 0.1) * float64(wait)) // jitter
 	if dns, ok := errors.AsType[*net.DNSError](err); ok && dns.IsNotFound {
 		c.mu.Lock()
 		wait = min(wait, notFoundWait-c.notFound)
@@ -233,7 +233,7 @@ func (b *attemptBody) Close() error {
 	err := b.ReadCloser.Close()
 	_ = b.finish(nil)
 
-	return err //nolint:wrapcheck // a body returns its base's errors unchanged
+	return err // a body returns its base's errors unchanged
 }
 
 // finish reports the attempt's end: EOF, a read error, or a close.

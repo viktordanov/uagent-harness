@@ -36,7 +36,7 @@ func (t transport) RoundTrip(req *http.Request) (*http.Response, error) {
 	resp, err := t.base.RoundTrip(withCreds(req, creds))
 	if err != nil || resp.StatusCode != http.StatusUnauthorized || !t.login.FromFile() ||
 		(req.Body != nil && req.Body != http.NoBody && req.GetBody == nil) {
-		return resp, err //nolint:wrapcheck // a transport's errors pass through
+		return resp, err // a transport's errors pass through
 	}
 	renewed, err := t.login.Renew(req.Context(), creds)
 	switch {
@@ -53,13 +53,13 @@ func (t transport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if req.GetBody != nil {
 		body, err := req.GetBody()
 		if err != nil {
-			return resp, nil //nolint:nilerr // the caller reads the 401
+			return resp, nil // the caller reads the 401
 		}
 		retry.Body = body
 	}
 	discard(resp)
 
-	return t.base.RoundTrip(retry) //nolint:wrapcheck // as above
+	return t.base.RoundTrip(retry)
 }
 
 func discard(resp *http.Response) {

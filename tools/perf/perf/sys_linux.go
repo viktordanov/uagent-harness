@@ -18,5 +18,5 @@ func diskAndWakeups(self syscall.Rusage) (disk, wakeups uint64) {
 		}
 	}
 
-	return disk, uint64(self.Nvcsw) //nolint:gosec // a count, never negative
+	return disk, uint64(self.Nvcsw) // a count, never negative
 }

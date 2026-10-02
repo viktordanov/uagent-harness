@@ -239,7 +239,7 @@ type saving struct {
 func (s *saving) Token() (*oauth2.Token, error) {
 	t, err := s.base.Token()
 	if err != nil {
-		return nil, err //nolint:wrapcheck // the SDK checks for *oauth2.RetrieveError
+		return nil, err // the SDK checks for *oauth2.RetrieveError
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()

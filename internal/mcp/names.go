@@ -1,7 +1,7 @@
 package mcp
 
 import (
-	"crypto/sha1" //nolint:gosec // a name suffix, as Codex's, not security
+	"crypto/sha1" // a name suffix, as Codex's, not security
 	"encoding/hex"
 	"fmt"
 	"strings"
@@ -55,7 +55,7 @@ func (n *namer) name(server, tool string) string {
 		if attempt > 0 {
 			input = fmt.Sprintf("%s\x00%d", identity, attempt)
 		}
-		sum := sha1.Sum([]byte(input)) //nolint:gosec // see the import
+		sum := sha1.Sum([]byte(input))
 		suffix := "_" + hex.EncodeToString(sum[:])[:hashLength]
 		name := base[:min(len(base), MaxNameLength-len(suffix))] + suffix
 		if !n.used[name] {

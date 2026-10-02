@@ -77,7 +77,7 @@ func (s Store) Put(data []byte) (Image, error) {
 
 // PutFile reads an image file and puts it in the store.
 func (s Store) PutFile(path string) (Image, error) {
-	f, err := os.Open(path) //nolint:gosec // the user chose the file
+	f, err := os.Open(path) // the user chose the file
 	if err != nil {
 		return Image{}, fmt.Errorf("failed to open the image: %w", err)
 	}

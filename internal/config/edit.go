@@ -16,7 +16,7 @@ import (
 func SetValue(path, key string, value any) error {
 	data, mode, err := tomledit.Read(path)
 	if err != nil {
-		return err //nolint:wrapcheck // Read names the file
+		return err // Read names the file
 	}
 	parts := strings.Split(key, ".")
 	if value == nil {
@@ -32,7 +32,7 @@ func SetValue(path, key string, value any) error {
 		return fmt.Errorf("the edit would break the file: %w", err)
 	}
 
-	return tomledit.Write(path, data, mode) //nolint:wrapcheck // Write names the file
+	return tomledit.Write(path, data, mode) // Write names the file
 }
 
 // decodeBytes decodes a configuration file's contents; unknown keys are

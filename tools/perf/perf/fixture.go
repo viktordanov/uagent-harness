@@ -71,7 +71,7 @@ type runFiles struct {
 // Record runs the seed and the workload turn in a new environment under
 // root and keeps what they wrote.
 func Record(ctx context.Context, root string) (*Template, error) {
-	e, err := NewEnv(root) //nolint:contextcheck // on Linux, the sandbox probes bwrap once per process, with its own timeout
+	e, err := NewEnv(root) //nolint:contextcheck,nolintlint // on Linux, the sandbox probes bwrap once per process, with its own timeout; not on darwin
 	if err != nil {
 		return nil, err
 	}

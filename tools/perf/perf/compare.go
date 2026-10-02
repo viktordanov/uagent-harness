@@ -114,7 +114,7 @@ func WriteChanges(w io.Writer, changes []Change, all bool) {
 		}
 		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\t\n", c.Scenario, c.Metric, format(c.Metric, c.Old), format(c.Metric, c.New), percent(c.Old, c.New), mark)
 	}
-	tw.Flush() //nolint:errcheck // printing
+	tw.Flush() // printing
 	if shown == 0 {
 		fmt.Fprintln(w, "no change beyond the threshold")
 	}

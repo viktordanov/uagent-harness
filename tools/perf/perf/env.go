@@ -53,7 +53,7 @@ type Env struct {
 // (workspace-write) here; where they cannot, the harness runs in yolo
 // mode, as Linux without bubblewrap must.
 func Sandboxed(workspace string) bool {
-	_, err := sandbox.Policy{Mode: sandbox.WorkspaceWrite, Workspace: workspace}.Wrap([]string{"/bin/sh"}) //nolint:contextcheck // on Linux, Wrap probes bwrap once per process, with its own timeout
+	_, err := sandbox.Policy{Mode: sandbox.WorkspaceWrite, Workspace: workspace}.Wrap([]string{"/bin/sh"}) // on Linux, Wrap probes bwrap once per process, with its own timeout
 
 	return err == nil
 }

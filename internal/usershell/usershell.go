@@ -82,7 +82,7 @@ type Result struct {
 func (r *Runner) Run(ctx context.Context, req Request) Result {
 	var res Result
 	res.Command, res.ExitCode = req.Command, ExitNotRun
-	shell, mode, refused := r.shellFor(req) //nolint:contextcheck // on Linux, the sandbox probes bwrap once per process, with its own timeout
+	shell, mode, refused := r.shellFor(req) //nolint:contextcheck,nolintlint // on Linux, the sandbox probes bwrap once per process, with its own timeout; not on darwin
 	res.Sandbox = mode
 	if refused != "" {
 		res.Refused, res.Output = refused, refused

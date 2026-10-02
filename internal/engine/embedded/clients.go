@@ -83,7 +83,7 @@ func newClient(hc *http.Client, c ClientConfig, config responsesapi.Config) (rem
 	if err != nil {
 		_ = remote.Close()
 
-		return remoteAdapter{}, err //nolint:wrapcheck // the provider wraps it
+		return remoteAdapter{}, err // the provider wraps it
 	}
 
 	return remoteAdapter{Adapter: adapter, remote: remote}, nil
@@ -147,7 +147,7 @@ func ollamaClient(c ClientConfig) (Client, error) {
 func codexClient(c ClientConfig) (Client, error) {
 	login, err := codexauth.Open(c.Getenv)
 	if err != nil {
-		return nil, err //nolint:wrapcheck // the provider wraps it
+		return nil, err // the provider wraps it
 	}
 	baseURL, err := codexBaseURL(c.BaseURL)
 	if err != nil {
@@ -157,7 +157,7 @@ func codexClient(c ClientConfig) (Client, error) {
 		return nil, errors.New("max attempts must be positive")
 	}
 	if _, err := login.Check(); err != nil {
-		return nil, err //nolint:wrapcheck // the provider wraps it
+		return nil, err // the provider wraps it
 	}
 	ra, err := newClient(codexHTTPClient(c.transports, login, baseURL), c, responsesapi.Config{
 		Endpoint: baseURL + "/responses",
@@ -202,7 +202,7 @@ type codexAdapter struct {
 
 func (a codexAdapter) Respond(ctx context.Context, req llm.Request, opts llm.RequestOptions) (llm.Response, error) {
 	if err := ctx.Err(); err != nil {
-		return llm.Response{}, err //nolint:wrapcheck // as the runner's client
+		return llm.Response{}, err // as the runner's client
 	}
 	if req.Model.MaxOutputTokens != nil {
 		return llm.Response{}, errors.New("codex does not support max_output_tokens")
@@ -219,5 +219,5 @@ func (a codexAdapter) Respond(ctx context.Context, req llm.Request, opts llm.Req
 		return llm.Response{}, fmt.Errorf("codex credentials rejected; renew them externally and recreate the client: %w", err)
 	}
 
-	return resp, err //nolint:wrapcheck // the coordinator wraps model errors
+	return resp, err // the coordinator wraps model errors
 }

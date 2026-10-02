@@ -317,7 +317,7 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 	}
 	if reply.Cut {
 		_, _ = fmt.Fprintf(w, "data: %s", event[:len(event)/2])
-		http.NewResponseController(w).Flush() //nolint:errcheck // the connection closes next
+		http.NewResponseController(w).Flush() // the connection closes next
 		_ = hijack(w).Close()
 
 		return

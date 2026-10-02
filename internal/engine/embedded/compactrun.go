@@ -161,7 +161,7 @@ func (c *compactor) elide(input []llm.Item, ask compactionAsk, start time.Time) 
 	c.mu.Unlock()
 	view, err := compaction.Apply(input, base)
 	if err != nil {
-		return compaction.Record{}, false, nil //nolint:nilerr // the summary handles a mismatch
+		return compaction.Record{}, false, nil // the summary handles a mismatch
 	}
 	ids := c.settings.Elision.Elidable(view, base.Elided)
 	if len(ids) == 0 {
@@ -236,7 +236,7 @@ func (c *compactor) localSummary(effort llm.ReasoningEffort, cacheKey, focus str
 	}
 
 	return func(ctx context.Context, view []llm.Item) (compaction.Summary, error) {
-		return compaction.Summarize(ctx, compaction.SummaryCall{ //nolint:wrapcheck // Summarize wraps its errors
+		return compaction.Summarize(ctx, compaction.SummaryCall{ // Summarize wraps its errors
 			Adapter: c.next.direct(), Model: c.settings.Model, Effort: effort, CacheKey: cacheKey,
 			Window: window, Prompt: c.settings.SummaryPrompt(focus),
 		}, view)

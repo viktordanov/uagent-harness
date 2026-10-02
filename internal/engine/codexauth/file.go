@@ -138,7 +138,7 @@ func (f *file) lock(ctx context.Context) (func(), error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open the Codex auth lock: %w", err)
 	}
-	fd := int(lf.Fd()) //nolint:gosec // a descriptor fits an int
+	fd := int(lf.Fd()) // a descriptor fits an int
 	for {
 		err := syscall.Flock(fd, syscall.LOCK_EX|syscall.LOCK_NB)
 		if err == nil {
@@ -192,7 +192,7 @@ func (f *file) write(base []byte, t tokens, now time.Time) (fileAuth, error) {
 func write(w io.Writer, data []byte) error {
 	_, err := w.Write(data)
 
-	return err //nolint:wrapcheck // the caller wraps it
+	return err // the caller wraps it
 }
 
 // updated is base with the refreshed tokens and last_refresh, indented as

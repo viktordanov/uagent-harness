@@ -183,13 +183,13 @@ func Run(ctx context.Context, deps Deps, opts ...tea.ProgramOption) (Exit, error
 	final, err := p.Run()
 	fm, ok := final.(Model)
 	if !ok {
-		return Exit{}, err //nolint:wrapcheck // the caller wraps it
+		return Exit{}, err // the caller wraps it
 	}
 	if fm.sess != nil {
 		_ = fm.sess.Close() // the program ended without /quit, for example on SIGTERM
 	}
 
-	return fm.Exit(), err //nolint:wrapcheck // the caller wraps it
+	return fm.Exit(), err // the caller wraps it
 }
 
 func (m Model) Init() tea.Cmd {

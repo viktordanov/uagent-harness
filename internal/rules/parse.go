@@ -51,7 +51,7 @@ func parseRule(name string, args starlark.Tuple, kwargs []starlark.Tuple) (Rule,
 	if err := starlark.UnpackArgs(name, args, kwargs,
 		"pattern", &pattern, "decision?", &decision, "justification?", &justification,
 		"match?", &match, "not_match?", &notMatch); err != nil {
-		return Rule{}, err //nolint:wrapcheck // Starlark's message names the call
+		return Rule{}, err // Starlark's message names the call
 	}
 	d, err := ParseDecision(decision)
 	if err != nil {

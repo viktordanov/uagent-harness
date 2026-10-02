@@ -16,10 +16,10 @@ import (
 func SaveSetting(ctx context.Context, in Inputs, key string, value any) error {
 	before, mode, err := tomledit.Read(in.ConfigPath)
 	if err != nil {
-		return err //nolint:wrapcheck // Read names the file
+		return err // Read names the file
 	}
 	if err := config.SetValue(in.ConfigPath, key, value); err != nil {
-		return err //nolint:wrapcheck // SetValue names the file
+		return err // SetValue names the file
 	}
 	in.SessionRef = ""
 	if _, err := Inspect(ctx, in); err != nil {

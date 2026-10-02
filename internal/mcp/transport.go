@@ -33,7 +33,7 @@ func (m *Manager) transport(s *server) (sdk.Transport, error) {
 
 		return t, nil
 	}
-	cmd := exec.Command(c.Command, c.Args...) //nolint:gosec,noctx // the user configured it; the transport stops it
+	cmd := exec.Command(c.Command, c.Args...) //nolint:noctx // the user configured it; the transport stops it
 	cmd.Dir = c.Cwd
 	if cmd.Dir == "" {
 		cmd.Dir = m.opts.Workspace
@@ -98,5 +98,5 @@ func (t headerTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	r = r.Clone(r.Context())
 	maps.Copy(r.Header, t.headers)
 
-	return t.base.RoundTrip(r) //nolint:wrapcheck // a transport passes errors through
+	return t.base.RoundTrip(r) // a transport passes errors through
 }

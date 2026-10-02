@@ -162,7 +162,7 @@ func (patchTranslator) hookInput(arguments string) json.RawMessage { return patc
 
 // fromHookInput turns a hook's updatedInput back into arguments.
 func (patchTranslator) fromHookInput(updated json.RawMessage) (string, error) {
-	return patch.FromHookInput(updated) //nolint:wrapcheck // the patch package's own message
+	return patch.FromHookInput(updated) // the patch package's own message
 }
 
 // patchGate decides whether a patch applies without asking: writes inside

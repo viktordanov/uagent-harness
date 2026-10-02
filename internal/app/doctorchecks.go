@@ -115,7 +115,7 @@ func checkSandbox(ctx context.Context, p sandbox.Policy) Check {
 	if err != nil {
 		return fail("sandbox", "cannot find `true` to test the sandbox: "+err.Error(), "check PATH")
 	}
-	argv, err := p.Wrap([]string{bin}) //nolint:contextcheck // on Linux, Wrap probes bwrap once per process, with its own timeout
+	argv, err := p.Wrap([]string{bin}) //nolint:contextcheck,nolintlint // on Linux, Wrap probes bwrap once per process, with its own timeout; not on darwin
 	if errors.Is(err, sandbox.ErrUnavailable) {
 		return warn("sandbox", "no sandbox is available on this system; commands run without one", "on Linux, install bubblewrap (bwrap)")
 	}

@@ -37,7 +37,7 @@ func modeOf(in Inputs, resumed session.Info, cfg config.Config) (approval.Mode, 
 	case in.Sandbox != "":
 		return sandboxMode(in.Sandbox)
 	case resumed.Mode != "" && !resumed.Mode.AsksNoOne():
-		return approval.ParseMode(string(resumed.Mode)) //nolint:wrapcheck // ParseMode names the value
+		return approval.ParseMode(string(resumed.Mode)) // ParseMode names the value
 	case cfg.PermissionMode != "":
 		return permissionMode(cfg.PermissionMode)
 	}

@@ -36,7 +36,7 @@ func System() Reader {
 }
 
 func runCommand(ctx context.Context, name string, args ...string) ([]byte, error) {
-	return exec.CommandContext(ctx, name, args...).Output() //nolint:wrapcheck // the reader explains the failure
+	return exec.CommandContext(ctx, name, args...).Output() // the reader explains the failure
 }
 
 // unsupported is the reader where no clipboard tool is known.

@@ -106,7 +106,7 @@ func MergeBase(ctx context.Context, dir, branch string) (string, error) {
 	}
 	out, err := git(ctx, root, "merge-base", "HEAD", ref)
 	if err != nil {
-		return "", nil //nolint:nilerr // no merge base: the prompt tells the reviewer to find it
+		return "", nil // no merge base: the prompt tells the reviewer to find it
 	}
 
 	return strings.TrimSpace(out), nil

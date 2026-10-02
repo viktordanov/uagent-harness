@@ -73,7 +73,7 @@ func readCounters() counters {
 }
 
 func tv(t syscall.Timeval) time.Duration {
-	return time.Duration(t.Sec)*time.Second + time.Duration(t.Usec)*time.Microsecond //nolint:unconvert // int32 on some platforms
+	return time.Duration(t.Sec)*time.Second + time.Duration(t.Usec)*time.Microsecond // int32 on some platforms
 }
 
 // heapSampler records the most live heap while it runs.
@@ -252,7 +252,7 @@ func writeGoroutines(path string) error {
 		return fmt.Errorf("failed to write the goroutine dump: %w", err)
 	}
 
-	return f.Close() //nolint:wrapcheck // a close error says enough
+	return f.Close() // a close error says enough
 }
 
 // writeHeap writes the allocation profile; the block's allocations are
@@ -268,7 +268,7 @@ func writeHeap(path string) error {
 		return fmt.Errorf("failed to write the heap profile: %w", err)
 	}
 
-	return f.Close() //nolint:wrapcheck // a close error says enough
+	return f.Close() // a close error says enough
 }
 
 func safeName(name string) string {

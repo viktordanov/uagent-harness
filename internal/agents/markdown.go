@@ -45,7 +45,7 @@ func (l *nameList) UnmarshalYAML(n *yaml.Node) error {
 	if n.Kind == yaml.ScalarNode {
 		var s string
 		if err := n.Decode(&s); err != nil {
-			return err //nolint:wrapcheck // the YAML error names the line
+			return err // the YAML error names the line
 		}
 		*l = nameList{}
 		for part := range strings.SplitSeq(s, ",") {
@@ -58,7 +58,7 @@ func (l *nameList) UnmarshalYAML(n *yaml.Node) error {
 	}
 	var list []string
 	if err := n.Decode(&list); err != nil {
-		return err //nolint:wrapcheck // as above
+		return err
 	}
 	*l = append(nameList{}, list...)
 
