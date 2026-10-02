@@ -11,9 +11,10 @@ This record collects every measurement made with the agent benchmark ([`tools/ag
 5. [Experiment 2: async prompts](#experiment-2-async-prompts)
 6. [Experiment 3: wake policies](#experiment-3-wake-policies)
 7. [Experiment 4: cutting turns](#experiment-4-cutting-turns-quick-round)
-8. [Decisions](#decisions)
-9. [Still running and next](#still-running-and-next)
-10. [For release notes](#for-release-notes)
+8. [The full suite, 10 repeats](#the-full-suite-10-repeats)
+9. [Decisions](#decisions)
+10. [Still running and next](#still-running-and-next)
+11. [For release notes](#for-release-notes)
 
 ## How runs are measured
 
@@ -123,6 +124,25 @@ Three switches, 8 tasks × 1 run each against a control, all passed ([raw](../..
 | Automatic compile check after an edit | 1104 s (+15%) | 65 | 29.5k | $0.65 |
 
 Lower effort costs about 3 points of prompt-cache hits (the effort level appears to be part of what the cache matches), which gives back part of the saving.
+
+## The full suite, 10 repeats
+
+35 tasks × 10 repeats × 5 groups, 1,750 runs at 65 concurrency, all groups interleaved ([raw](../../tools/agentbench/history/2026-10-02-big-35x10.jsonl)). uah is the build with freeform `apply_patch` and the wake default (runner fork v0.5.1); totals are sums of per-task medians.
+
+| | Codex 0.159.3 | uah default | uah + lower effort | uah + lower effort + primed first turn | uah + corrected preamble |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Passed | 348/350 | 344/350 | 342/350 | 342/350 | 344/350 |
+| Wall | 4172 s | 4223 s (+1%) | 3431 s (−18%) | **3270 s (−22%)** | 4232 s |
+| Model time | 3949 s | 3994 s | 3192 s | 3054 s | 4014 s |
+| Requests | 222 | 256 | 237 | 231 | 246 |
+| Output tokens | 114k | 111k | 86k | 81k | 113k |
+| Estimated cost | $2.90 | $2.50 (−14%) | $2.10 | **$2.00 (−31%)** | $2.50 |
+| Cached input | 85.7% | 87.2% | 86.8% | 86.4% | 86.0% |
+| Faster than Codex on | | 13 of 35 tasks | | 33 of 35 tasks | |
+
+- uah's default (freeform patch and the wake policy) is level with Codex on time and 14% cheaper; with lower effort for follow-up turns and a primed first turn it is 22% faster and 31% cheaper, and faster on 33 of 35 tasks.
+- The corrected preamble changed nothing measurable.
+- Pass rates: the extra failures are concentrated in two tasks, each failing the same way in every harness. The branch review misses the swallowed `Record` error (Codex 8/10, uah 5–6/10), and the findings report keeps a red herring (Codex 10/10, uah 7–9/10). Both are review-quality misses, not regressions from the switches; the branch review is uah's weak spot against Codex.
 
 ## Decisions
 
