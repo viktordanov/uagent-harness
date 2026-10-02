@@ -91,10 +91,10 @@ A change reaches a live run from its next command and model request: the Bash to
 | Environment | The whole environment | The same |
 <!-- /memoria:section -->
 
-<!-- memoria:section id="approver" files="approval.go prefix.go typed.go" -->
+<!-- memoria:section id="approver" files="approval.go prefix.go typed.go withdraw.go" -->
 ## The approver
 
-`Approver.Decide(ctx, Request, Ask) Decision` is the whole contract. It is safe for concurrent use, because the runner runs tools in parallel.
+`Approver.Decide(ctx, Request, Ask) Decision` is the whole contract. It is safe for concurrent use: the engine decides the calls of one model response at once, each on its own goroutine ([approvals for parallel calls](../engine/README.md#approvals-for-parallel-calls)), so their auto-reviews overlap, and several prompts can be open together. The session keeps each open prompt, and the TUI shows them one at a time, in the order they arrived; an interrupt declines them all.
 
 | Type | Carries |
 | --- | --- |
@@ -105,6 +105,8 @@ A change reaches a live run from its next command and model request: the Bash to
 | `Ask` | `func(ctx, Prompt) Answer`. Nil means no one can answer |
 
 "Don't ask again" is offered only when no rule matched. The prefix is the model's suggestion when it covers every simple command, else the whole command when it is one simple command, and never a bare shell, interpreter, `git`, `rm`, `sudo`, or `env` (Codex's list, in `prefix.go`). Choosing it appends `prefix_rule(pattern=[...], decision="allow")` to `~/.uah/rules/default.rules` and applies it at once, also when the file cannot be written.
+
+Asked one at a time, a second command that the new rule covers would not have been asked. So `Decide` asks through `AskUnless` (`withdraw.go`): when "don't ask again" adds a rule while other prompts are open, each checks the rules again, and one that a rule now settles is withdrawn. Its ask's context ends with `ErrNowAllowed`, the session resolves the prompt as approved, and the command runs as the rule says. The MCP gate does the same for "don't ask again for this tool". A circuit breaker counts the reviews as they end, so the reviews of one response all run even when the breaker opens during them.
 
 `DecideTyped(command)` decides a command the user typed in the TUI's shell mode when `user_shell_sandbox = true`: a `forbidden` rule refuses it and an `allow` rule runs it outside the sandbox, as for the agent; anything else runs in the sandbox without asking, since typing it was the approval. By default the user's commands skip the rules and the sandbox, as in Codex ([shell mode](../../docs/design/shell-mode.md)).
 
@@ -121,8 +123,8 @@ A change reaches a live run from its next command and model request: the Bash to
 3. The policy from `--ask`, `UAH_ASK`, or `approval_policy`.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="tests" files="approval_test.go mode_test.go typed_test.go" -->
+<!-- memoria:section id="tests" files="approval_test.go mode_test.go typed_test.go withdraw_test.go" -->
 ## Tests
 
-`approval_test.go` pins the decision table: each rule decision, escalation with and without a sandbox, the policies, headless denial, and "don't ask again". `mode_test.go` pins the modes' sandboxes, who decides, and the cycle. `typed_test.go` pins `DecideTyped`. `internal/engine/embedded/approval_test.go` runs the pipeline end to end on the embedded engine with `testing/fakellm`, including PermissionRequest hooks and auto-review, and `internal/engine/embedded/mode_test.go` the modes: a live switch to read only, and Auto mode deciding without the user.
+`approval_test.go` pins the decision table: each rule decision, escalation with and without a sandbox, the policies, headless denial, and "don't ask again". `mode_test.go` pins the modes' sandboxes, who decides, and the cycle. `typed_test.go` pins `DecideTyped`. `withdraw_test.go` pins that "don't ask again" on one prompt settles a concurrent one with `ErrNowAllowed`, and `AskUnless` without a change. `internal/engine/embedded/approval_test.go` runs the pipeline end to end on the embedded engine with `testing/fakellm`, including PermissionRequest hooks and auto-review, and `internal/engine/embedded/mode_test.go` the modes: a live switch to read only, and Auto mode deciding without the user.
 <!-- /memoria:section -->

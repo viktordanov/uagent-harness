@@ -3,6 +3,7 @@ package session
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -51,7 +52,12 @@ type (
 		// anytime is a prompt that may stay open while no run is live.
 		anytime bool
 	}
-	cmdAskGone struct{ id string }
+	// cmdAskGone withdraws a prompt whose ask ended: declined, or approved
+	// when a rule added meanwhile allows it (approval.ErrNowAllowed).
+	cmdAskGone struct {
+		id     string
+		answer approval.Answer
+	}
 	cmdResolve struct {
 		id     string
 		answer approval.Answer
@@ -146,9 +152,13 @@ func (s *Session) ask(ctx context.Context, p approval.Prompt, anytime bool) appr
 	case a := <-reply:
 		return a
 	case <-ctx.Done():
-		s.post(cmdAskGone{id: id})
+		answer := approval.Decline
+		if errors.Is(context.Cause(ctx), approval.ErrNowAllowed) {
+			answer = approval.Approve
+		}
+		s.post(cmdAskGone{id: id, answer: answer})
 
-		return approval.Decline
+		return answer
 	case <-s.done:
 		return approval.Decline
 	}

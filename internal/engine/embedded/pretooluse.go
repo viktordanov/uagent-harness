@@ -15,8 +15,9 @@ import (
 
 // hookedRegistry runs PreToolUse hooks before each tool call is translated.
 // A block becomes the tool's error result, and updatedInput replaces the
-// arguments. Hooks run on the coordinator's goroutine, as Claude Code's do,
-// so a slow hook delays the agent up to its timeout.
+// arguments. The hooks of a response's calls run at once, each before its
+// call's approval (prefetch.go), so a slow hook delays its own call up to
+// its timeout.
 type hookedRegistry struct {
 	tool.Registry
 
@@ -60,6 +61,12 @@ type hookShaper interface {
 }
 
 func (t hookedTranslator) Translate(ctx tool.Context, call llm.ToolCall) tool.CallStatus {
+	return t.decide(t.r.ctx, call)(ctx)
+}
+
+// decide runs the hooks under ctx, then the tool's own decision, if it
+// has one, with the arguments the hooks left.
+func (t hookedTranslator) decide(ctx context.Context, call llm.ToolCall) submit {
 	in := t.r.base
 	in.ToolName, in.ToolUseID = t.name, call.CallID
 	shaper, shaped := t.Translator.(hookShaper)
@@ -69,21 +76,24 @@ func (t hookedTranslator) Translate(ctx tool.Context, call llm.ToolCall) tool.Ca
 	case json.Valid([]byte(call.Arguments)):
 		in.ToolInput = json.RawMessage(call.Arguments)
 	}
-	d := t.r.hooks.Run(t.r.ctx, in)
+	d := t.r.hooks.Run(ctx, in)
 	if d.Block {
-		return tool.CallStatus{Error: "blocked by a PreToolUse hook: " + d.Reason}
+		return refuse(tool.CallStatus{Error: "blocked by a PreToolUse hook: " + d.Reason})
 	}
 	switch {
 	case len(d.UpdatedInput) == 0:
 	case shaped:
 		args, err := shaper.fromHookInput(d.UpdatedInput)
 		if err != nil {
-			return tool.CallStatus{Error: "a PreToolUse hook's updatedInput is invalid: " + err.Error()}
+			return refuse(tool.CallStatus{Error: "a PreToolUse hook's updatedInput is invalid: " + err.Error()})
 		}
 		call.Arguments = args
 	default:
 		call.Arguments = string(d.UpdatedInput)
 	}
+	if g, ok := t.Translator.(gatedTranslator); ok {
+		return g.decide(ctx, call)
+	}
 
-	return t.Translator.Translate(ctx, call)
+	return func(tc tool.Context) tool.CallStatus { return t.Translator.Translate(tc, call) }
 }

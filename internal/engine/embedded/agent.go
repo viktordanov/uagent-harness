@@ -24,9 +24,12 @@ type agent struct {
 	cancel context.CancelFunc
 	inputs *inbox.Inbox
 	llm    *switcher
-	// compactor and mode are set once the agent is wired.
+	// compactor, mode, and stopApprovals are set once the agent is wired.
 	compactor *compactor
 	mode      *modeCell
+	// stopApprovals ends the hooks and approvals in progress, which the
+	// coordinator waits for before it reads an interrupt.
+	stopApprovals context.CancelFunc
 
 	interrupted atomic.Bool
 	stopOnce    sync.Once
@@ -49,6 +52,9 @@ func (a *agent) Interrupt() {
 		a.interrupted.Store(true)
 		if a.compactor != nil {
 			a.compactor.interrupt()
+		}
+		if a.stopApprovals != nil {
+			a.stopApprovals()
 		}
 		if err := a.control(inbox.ControlMessage{Mode: inbox.StopHard, Reason: "interrupted by the user"}); err != nil {
 			a.cancel()

@@ -304,5 +304,5 @@ func TestFixtureReadmes(t *testing.T) {
 			}
 		}
 	}
-	assert.Equal(t, 26, seen, "every fixture README, the vendored project's nested ones too")
+	assert.Equal(t, 27, seen, "every fixture README, the vendored project's nested ones too")
 }

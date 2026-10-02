@@ -152,6 +152,8 @@ type Approver struct {
 
 	mu    sync.Mutex
 	rules *rules.Policy
+	// changes wakes the prompts open while "don't ask again" adds a rule.
+	changes Changes
 }
 
 // New returns an approver.
@@ -186,8 +188,19 @@ func (a *Approver) Decide(ctx context.Context, req Request, ask Ask) Decision {
 	if p.Escalation {
 		run = Unsandboxed
 	}
+	var ruled Decision
+	answer, settled := AskUnless(ctx, ask, p, &a.changes, func() bool {
+		rule, matched := a.policy().Check(commands)
+		var done bool
+		ruled, done = byRule(req, rule, matched)
 
-	return a.answer(ask(ctx, p), p, run)
+		return done
+	})
+	if settled {
+		return ruled
+	}
+
+	return a.answer(answer, p, run)
 }
 
 // byRule decides without asking when a rule settles it, or when nothing
@@ -287,6 +300,7 @@ func (a *Approver) allow(prefix []string) error {
 	}
 	r := rules.Rule{Pattern: pattern, Decision: rules.Allow}
 	a.rules = a.rules.With(r) // it applies to this session even when the file cannot be written
+	a.changes.Notify()
 	if a.cfg.RulesFile == "" {
 		return nil
 	}

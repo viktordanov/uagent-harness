@@ -91,8 +91,13 @@ type patchTranslator struct {
 }
 
 func (t patchTranslator) Translate(ctx tool.Context, call llm.ToolCall) tool.CallStatus {
+	return t.decide(t.gate.ctx, call)(ctx)
+}
+
+// decide checks the patch, and its approval under ctx.
+func (t patchTranslator) decide(ctx context.Context, call llm.ToolCall) submit {
 	if !t.offered {
-		return tool.ErrorStatus(fmt.Sprintf("tool %q is not available in this session", patch.ToolName), 0)
+		return refuse(tool.ErrorStatus(fmt.Sprintf("tool %q is not available in this session", patch.ToolName), 0))
 	}
 	text, err := patch.ParseArgs(call.Arguments)
 	if err != nil && call.Custom {
@@ -100,7 +105,7 @@ func (t patchTranslator) Translate(ctx tool.Context, call llm.ToolCall) tool.Cal
 		text, err = call.Arguments, nil
 	}
 	if err != nil {
-		return tool.ErrorStatus(err.Error(), 0)
+		return refuse(tool.ErrorStatus(err.Error(), 0))
 	}
 	// Checked before asking, as Codex verifies a patch before its approval,
 	// so the user never approves a patch that cannot apply.
@@ -109,21 +114,23 @@ func (t patchTranslator) Translate(ctx tool.Context, call llm.ToolCall) tool.Cal
 		_, err = patch.Compute(t.gate.cwd, hunks)
 	}
 	if err != nil {
-		return tool.ErrorStatus("apply_patch verification failed: "+err.Error(), 0)
+		return refuse(tool.ErrorStatus("apply_patch verification failed: "+err.Error(), 0))
 	}
-	if reason := t.gate.check(hunks, call.Arguments); reason != "" {
-		return tool.ErrorStatus(reason, 0)
+	if reason := t.gate.check(ctx, hunks, call.Arguments); reason != "" {
+		return refuse(tool.ErrorStatus(reason, 0))
 	}
 	data, err := json.Marshal(patchPlan{Patch: text, Cwd: t.gate.cwd})
 	if err != nil {
-		return tool.ErrorStatus(fmt.Sprintf("failed to encode the patch: %v", err), 0)
+		return refuse(tool.ErrorStatus(fmt.Sprintf("failed to encode the patch: %v", err), 0))
 	}
 	spec, err := operation.NewRemoteJobSpec(operation.RemoteJobPlan{Type: engine.PatchPlanType, Version: patchPlanVersion, Data: jsontext.Value(data)})
 	if err != nil {
-		return tool.ErrorStatus(fmt.Sprintf("failed to build the patch job: %v", err), 0)
+		return refuse(tool.ErrorStatus(fmt.Sprintf("failed to build the patch job: %v", err), 0))
 	}
 
-	return tool.CallStatus{WaitingFor: []operation.ID{ctx.Submit(spec)}}
+	return func(tc tool.Context) tool.CallStatus {
+		return tool.CallStatus{WaitingFor: []operation.ID{tc.Submit(spec)}}
+	}
 }
 
 func (patchTranslator) TranslateResult(callID string, status tool.CallStatus, ops []operation.Operation) (llm.ToolResult, error) {
@@ -170,6 +177,7 @@ func (patchTranslator) fromHookInput(updated json.RawMessage) (string, error) {
 // writable paths (assess_patch_safety in codex-rs/core/src/safety.rs); any
 // other write goes through the approver like a Bash escalation.
 type patchGate struct {
+	// ctx bounds the approval of a patch decided in Translate.
 	ctx context.Context
 	cwd string
 	// policy is the sandbox policy of the current permission mode; nil
@@ -180,8 +188,8 @@ type patchGate struct {
 }
 
 // check returns why the patch may not apply, or "". It blocks while the
-// user decides.
-func (g patchGate) check(hunks []patch.Hunk, arguments string) string {
+// user decides, at most until ctx ends.
+func (g patchGate) check(ctx context.Context, hunks []patch.Hunk, arguments string) string {
 	if g.policy == nil {
 		return ""
 	}
@@ -209,7 +217,7 @@ func (g patchGate) check(hunks []patch.Hunk, arguments string) string {
 	if g.approver == nil {
 		return "apply_patch rejected: " + why + ", and no one can approve it."
 	}
-	d := g.approver.Decide(g.ctx, req, g.ask)
+	d := g.approver.Decide(ctx, req, g.ask)
 	if d.Run == approval.Deny {
 		return d.Reason
 	}

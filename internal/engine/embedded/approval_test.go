@@ -62,17 +62,17 @@ func newApprovalEnv(t *testing.T, o approvalOpts, replies func(outside string) [
 	parsed, err := rules.Parse("test.rules", []byte(o.rules))
 	require.NoError(t, err)
 
-	eng := embedded.New(embedded.Config{
-		StateDir: e.StateDir, Provider: "openai", Getenv: e.getenv,
-		Sandbox: &policy, SandboxDir: filepath.Join(e.StateDir, "sandbox"),
-		Approver:   approval.New(approval.Config{Policy: o.policy, Rules: parsed, RulesFile: e.rulesFile}),
-		AutoReview: o.autoReview, Review: review.Config{Model: "gpt-test"},
-	})
 	var runner *hooks.Runner
 	if len(o.hooks) > 0 {
 		runner, err = hooks.New(o.hooks, nil, ws)
 		require.NoError(t, err)
 	}
+	eng := embedded.New(embedded.Config{
+		StateDir: e.StateDir, Provider: "openai", Getenv: e.getenv,
+		Sandbox: &policy, SandboxDir: filepath.Join(e.StateDir, "sandbox"),
+		Approver:   approval.New(approval.Config{Policy: o.policy, Rules: parsed, RulesFile: e.rulesFile}),
+		AutoReview: o.autoReview, Review: review.Config{Model: "gpt-test"}, Hooks: runner,
+	})
 	settings := e.settings()
 	if o.mode != "" {
 		settings = settings.WithMode(o.mode)
