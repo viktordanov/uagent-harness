@@ -76,7 +76,7 @@ func (t Task) StartFixture(ctx context.Context, scratch string, base []string) (
 		return nil, fmt.Errorf("service: %w", err)
 	}
 	fx.svc = svc
-	if err := waitPort(ctx, port, time.Minute); err != nil {
+	if err := waitPort(ctx, port, serviceStart); err != nil {
 		fx.Stop()
 
 		return nil, fmt.Errorf("service did not listen on %d: %w (see %s)", port, err, log.Name())
@@ -84,6 +84,10 @@ func (t Task) StartFixture(ctx context.Context, scratch string, base []string) (
 
 	return fx, nil
 }
+
+// serviceStart bounds a service's start, which may compile it first
+// (`go run`) with a cold build cache.
+const serviceStart = 3 * time.Minute
 
 // Stop ends the service and its process group.
 func (fx *Fixture) Stop() {
@@ -133,11 +137,18 @@ func waitPort(ctx context.Context, port int, limit time.Duration) error {
 	}
 }
 
+// gitIdentity lets a task's scripts commit where git has no user configured,
+// as on a CI runner.
+var gitIdentity = []string{
+	"GIT_AUTHOR_NAME=agentbench", "GIT_AUTHOR_EMAIL=agentbench@localhost",
+	"GIT_COMMITTER_NAME=agentbench", "GIT_COMMITTER_EMAIL=agentbench@localhost",
+}
+
 // runScript runs a task's shell script (its setup or its solution script)
 // in ws.
 func runScript(ctx context.Context, script, ws string, env []string) error {
 	cmd := exec.CommandContext(ctx, "sh", "-c", script)
-	cmd.Dir, cmd.Env = ws, env
+	cmd.Dir, cmd.Env = ws, append(env, gitIdentity...)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("%w: %s", err, tail(string(out), 2000))
 	}
