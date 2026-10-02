@@ -46,7 +46,7 @@ type Config struct {
 	// Mode is the permission mode of both: ModeAuto or ModeWorkspace.
 	Mode string
 	// UAHEnv is KEY=VALUE pairs added to uah's environment, such as
-	// UAH_EXPERIMENTS, and UAHConfig lines added to its configuration
+	// UAH_ADAPTIVE_EFFORT, and UAHConfig lines added to its configuration
 	// file; Variant labels the uah runs they make, so they and the control
 	// runs (no variant) share a results file.
 	UAHEnv    []string

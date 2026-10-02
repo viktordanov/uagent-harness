@@ -17,8 +17,7 @@ The embedded engine runs uah-core's packages inside uah, so messages, model, eff
 6. [Remote jobs](#remote-jobs)
 7. [Extending the engine](#extending-the-engine)
 8. [Adaptive effort](#adaptive-effort)
-9. [Experiments](#experiments)
-10. [Tests](#tests)
+9. [Tests](#tests)
 <!-- /memoria:section -->
 
 <!-- memoria:section id="interface" files="engine.go events.go subagents.go patch.go tooloutput.go embedded/scope.go" -->
@@ -271,13 +270,7 @@ Each attempt's `model_attempt` line in the run's `stderr.log` carries `effort` a
 **Primed first turn.** With adaptive effort on when it starts, a new session of the main agent (not a subagent, a fork, or a resumed session) gets one more user message before the user's: a `<workspace_context>` block of at most about 4 KB that `primed.go` gathers before the first request. Turning adaptive effort on later primes nothing. The block holds the files that instruction files include with an `@` line (such as `@RTK.md`; the system prompt keeps each instruction file under a `## <path>` header, which resolves a relative include), the git branch and `git status --short` (at most 20 lines), and `git ls-files` by top directory with file counts (at most 40 entries). Each git command has 2 seconds. The system prompt does not change, so the prompt cache holds.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="experiments" files="embedded/experiments.go embedded/wake_internal_test.go" -->
-## Experiments
-
-An experiment is a switch for an A/B benchmark (`tools/agentbench -uah-env`), not a setting: it has no config key and may go away. The environment variable `UAH_EXPERIMENTS` names the experiments to turn on, separated by commas; the engine reads it once, through `Config.Getenv`, in `embedded/experiments.go`, and a subagent's run gets its parent's engine and so the same switches. An unknown name is ignored. No experiment runs now. `wake_internal_test.go` checks the wake policy.
-<!-- /memoria:section -->
-
-<!-- memoria:section id="tests" files="embedded/embedded_test.go embedded/patch_test.go embedded/patch_tool_test.go embedded/approval_test.go embedded/compact_test.go embedded/compact_settings_test.go embedded/context_test.go embedded/mcp_test.go embedded/mcpjobs_internal_test.go embedded/sandbox_test.go embedded/mode_test.go embedded/images_test.go embedded/clients_test.go embedded/reconnect_test.go embedded/transport_internal_test.go embedded/stream_test.go embedded/stream_internal_test.go embedded/rewind_test.go embedded/rewind_internal_test.go embedded/fork_internal_test.go embedded/store_internal_test.go embedded/sessionlog_test.go embedded/sessionlog_internal_test.go embedded/codexlogin_test.go codexauth/codexauth_test.go codexauth/login_test.go codexauth/file_internal_test.go embedded/websearch_test.go embedded/searchlog_internal_test.go embedded/compact_remote_test.go embedded/remotecompact_internal_test.go embedded/compact_probe_test.go embedded/remote_probe_test.go embedded/adaptive_test.go" -->
+<!-- memoria:section id="tests" files="embedded/embedded_test.go embedded/patch_test.go embedded/patch_tool_test.go embedded/approval_test.go embedded/compact_test.go embedded/compact_settings_test.go embedded/context_test.go embedded/mcp_test.go embedded/mcpjobs_internal_test.go embedded/sandbox_test.go embedded/mode_test.go embedded/images_test.go embedded/clients_test.go embedded/reconnect_test.go embedded/transport_internal_test.go embedded/stream_test.go embedded/stream_internal_test.go embedded/rewind_test.go embedded/rewind_internal_test.go embedded/fork_internal_test.go embedded/store_internal_test.go embedded/sessionlog_test.go embedded/sessionlog_internal_test.go embedded/codexlogin_test.go codexauth/codexauth_test.go codexauth/login_test.go codexauth/file_internal_test.go embedded/websearch_test.go embedded/searchlog_internal_test.go embedded/compact_remote_test.go embedded/remotecompact_internal_test.go embedded/compact_probe_test.go embedded/remote_probe_test.go embedded/adaptive_test.go embedded/wake_internal_test.go" -->
 ## Tests
 
 The tests run against `testing/fakellm`, a scripted Responses API, and need no tokens. The ones that compare with the real runner drive it through `harnesstest.RunnerEngine`, a test-only engine over uagent's harness that spawns a runner binary.
