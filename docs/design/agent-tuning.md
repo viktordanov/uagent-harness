@@ -170,6 +170,20 @@ Which follow-up requests should go lower? Four rules, each with the primed first
 - No rule won back the branch review's or the findings report's misses; the pass counts are within one run of each other.
 - 2 steps with r0 is being measured against 1 step.
 
+### One step or two
+
+R0 at 1 and 2 steps against Lean off: 12 tasks (half reading or judgment work: bug hunt, investigation, branch review, findings report, overview; half edits) × 3 repeats, 108 runs ([raw](../../tools/agentbench/history/2026-10-02-lean-steps.jsonl)).
+
+| | Lean off | 1 step | 2 steps |
+| --- | ---: | ---: | ---: |
+| Passed | 35/36 | 34/36 | 34/36 |
+| Wall | 2041 s | 1480 s (−27%) | 1330 s (−35%) |
+| Requests | 91 | 85 | 85 |
+| Output tokens | 48.5k | 32.9k (−32%) | 28.9k (−40%) |
+| Estimated cost | $0.99 | $0.83 (−16%) | $0.74 (−25%) |
+
+The reading tasks alone took 1197 s with Lean off, 861 s at 1 step and 735 s at 2 steps. The failures are spread: both of 2-steps' are the branch review, which also fails with Lean off; 1 step missed the spec and the findings report once each. Three repeats cannot separate a one- or two-run difference in pass rate, so the speed is the result and the quality reads as "no visible loss". Both levels stay: 1 step as the safe one, 2 steps as the aggressive one.
+
 ## Decisions
 
 | Date | Decision | Ledger |
