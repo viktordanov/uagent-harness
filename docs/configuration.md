@@ -83,6 +83,7 @@ Every key may be set in the user file, in a layer, and in a trusted project file
 | `max_disk` | size | `5G` | `--max-disk` | override | Stop a run when tool output exceeds this size (`500M`, `5G`, bytes without a suffix); `0` disables it |
 | `fast` | bool | false | `--fast` | OR | Priority processing (`service_tier = "priority"`); needs the openai or openai-codex provider, and any other provider refuses it before the session starts |
 | `web_search` | string | `live` | none | override | The provider's hosted web search tool, as Codex's key: `live` offers it on openai and openai-codex (other providers never get it), `disabled` does not. Codex's `cached` and `indexed` are errors: the runner sends the tool without Codex's access options, which the API treats as live search. The search runs on the provider's servers, so the sandbox's network rule does not apply; it is offered in every permission mode, as in Codex ([web search](design/web-search.md)) |
+| `model_verbosity` | string | the model's `default_verbosity` | `--model-verbosity`, `UAH_MODEL_VERBOSITY` | override | How much the model writes: `low`, `medium`, or `high`, sent as the Responses API's `text.verbosity`, as Codex's key. As in Codex, only a model whose catalog entry has `support_verbosity` gets it: unset, it gets the entry's `default_verbosity` (`low` for every model in Codex's catalog at rust-v0.159.1, gpt-6.1-sol included); set, it gets this value. Any other model, or one no catalog entry describes, gets no `text` field, and a session that opens with `model_verbosity` set on such a model shows Codex's warning. `uah config` shows the value the session's model gets ("" for none) |
 | `adaptive_effort` | string | `off` | `--adaptive-effort`, `UAH_ADAPTIVE_EFFORT` | override | Adaptive effort for new sessions: `off`, `1-step`, or `2-steps`. On, the model thinks less on follow-up turns: a request that only follows tool results goes one (`1-step`) or two (`2-steps`) effort levels below `effort`, never below low (at `high`, 2 steps is `low`). The first request and a request with a user message go at `effort`. A new session's first message also carries the files AGENTS.md includes with `@`, the git branch and status, and the tracked files by top directory, so the model need not look them up. A session keeps its own value, as it keeps its effort; `/adaptive`, alt+e, and `/config` change it for the current session from its next model request, and the footer marks the effort (`high↓`, `high⇊`; `high→low` while a lowered follow-up is out). Measured on the agent benchmark at high effort, at the same pass rate: 1 step cut wall time by about a quarter and cost by 16–21%; 2 steps cut wall time by about a third and cost by a quarter ([agent tuning](design/agent-tuning.md#lean-mode-rules)) |
 
 ### Sandbox and approvals
@@ -404,6 +405,7 @@ developer_instructions = "Review the diff you are given. List only real bugs, ea
 | `UAH_SANDBOX` | `--sandbox` | `sandbox_mode` | The sandbox mode, and the permission mode of that sandbox |
 | `UAH_ASK` | `--ask` | `approval_policy` | The approval policy |
 | `UAH_ADAPTIVE_EFFORT` | `--adaptive-effort` | `adaptive_effort` | Adaptive effort: off, 1-step, or 2-steps |
+| `UAH_MODEL_VERBOSITY` | `--model-verbosity` | `model_verbosity` | The model's verbosity: low, medium, or high |
 | `UAH_HOME` | none | none | uah's home, `~/.uah` by default |
 | `UAH_CONFIG` | `--config` | none | The user file, `<home>/config.toml` by default |
 | `UAH_STATE_DIR` | `--state-dir` | none | Sessions, logs, and run records; the home by default |
@@ -439,6 +441,7 @@ request_max_attempts = 10          # per model request; a lost connection is ret
 fast = false                       # priority processing
 web_search = "live"                # or disabled: the provider's hosted web search
 adaptive_effort = "off"            # or 1-step, 2-steps: lower effort on follow-up turns
+# model_verbosity = "low"          # or medium, high; default: the model's (low on gpt-6.1-sol)
 sandbox_mode = "workspace-write"   # read-only, workspace-write; no sandbox is --yolo
 # permission_mode = "workspace"    # read-only, workspace, auto; wins over sandbox_mode
 approval_policy = "on-request"     # or never

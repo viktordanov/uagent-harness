@@ -59,6 +59,10 @@ type Config struct {
 	// results), and a new session starts with the workspace's context. A
 	// session keeps its own, as it keeps its effort.
 	AdaptiveEffort string `toml:"adaptive_effort"`
+	// ModelVerbosity is low, medium, or high: the Responses API's
+	// text.verbosity in place of the model's default, for a model that
+	// supports verbosity, as Codex's key.
+	ModelVerbosity string `toml:"model_verbosity"`
 
 	// AutoCompactPercent compacts the context once a response used this
 	// share of the model's window (default 90; 0 turns it off).

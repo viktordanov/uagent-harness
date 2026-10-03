@@ -216,6 +216,13 @@ func (m *Manager) ApplyPatch(provider, model string) bool {
 	return provider == ProviderOpenAI || provider == ProviderCodex
 }
 
+// Verbosity is the text.verbosity for the provider's model and whether an
+// override is ignored (Catalog.Verbosity), from the provider's last list,
+// else the bundled one.
+func (m *Manager) Verbosity(provider, model, override string) (string, bool) {
+	return m.Cached(provider).Verbosity(model, override)
+}
+
 // ErrUnavailable matches an UnavailableError.
 var ErrUnavailable = errors.New("the model is not available")
 

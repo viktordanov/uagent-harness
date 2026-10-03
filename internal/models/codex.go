@@ -47,6 +47,8 @@ type codexModel struct {
 	AvailableInPlans   []string `json:"available_in_plans"`
 	MinClientVersion   string   `json:"minimal_client_version"`
 	ApplyPatchToolType string   `json:"apply_patch_tool_type"`
+	SupportVerbosity   bool     `json:"support_verbosity"`
+	DefaultVerbosity   string   `json:"default_verbosity"`
 }
 
 func (c codexModel) model() Model {
@@ -57,6 +59,7 @@ func (c codexModel) model() Model {
 		DefaultEffort: c.DefaultReasoning, DefaultServiceTier: c.DefaultServiceTier,
 		Priority: c.Priority, Hidden: c.Visibility != "" && c.Visibility != "list",
 		Plans: c.AvailableInPlans, MinClientVersion: c.MinClientVersion, ApplyPatchTool: c.ApplyPatchToolType,
+		SupportsVerbosity: c.SupportVerbosity, DefaultVerbosity: c.DefaultVerbosity,
 	}
 	if m.ContextWindow == 0 {
 		m.ContextWindow = m.MaxContextWindow

@@ -26,6 +26,8 @@ const (
 	EnvAsk      = "UAH_ASK"
 	// EnvAdaptiveEffort is --adaptive-effort's variable.
 	EnvAdaptiveEffort = "UAH_ADAPTIVE_EFFORT"
+	// EnvModelVerbosity is --model-verbosity's variable.
+	EnvModelVerbosity = "UAH_MODEL_VERBOSITY"
 	// EnvMaxAttempts is the runner's variable for the attempt limit.
 	EnvMaxAttempts = "UAH_LLM_MAX_ATTEMPTS"
 )
@@ -96,7 +98,7 @@ type Origins struct {
 // files, and explains the effective configuration. It builds no engine.
 func Inspect(ctx context.Context, in Inputs) (Report, error) {
 	o := Origins{Env: map[string]string{}}
-	for _, name := range []string{EnvProvider, EnvModel, EnvSandbox, EnvAsk, EnvMaxAttempts, EnvAdaptiveEffort} {
+	for _, name := range []string{EnvProvider, EnvModel, EnvSandbox, EnvAsk, EnvMaxAttempts, EnvAdaptiveEffort, EnvModelVerbosity} {
 		o.Env[name] = os.Getenv(name)
 	}
 	var err error
@@ -191,12 +193,27 @@ func sessionSettings(in Inputs, o Origins, r Resolved, cfg config.Config) []Sett
 		{Key: "fast", Value: s.ServiceTier != "", Sources: fastSources(in, o, cfg)},
 		one("adaptive_effort", s.AdaptiveEffort, pick(input(in.AdaptiveEffort, EnvAdaptiveEffort, env), sessionValue(resumed.AdaptiveEffort),
 			overrides(l, func(c config.Config) any { return c.AdaptiveEffort }), FromDefault)),
+		one("model_verbosity", modelVerbosity(o, r), pick(input(in.ModelVerbosity, EnvModelVerbosity, env),
+			overrides(l, func(c config.Config) any { return c.ModelVerbosity }), FromDefault)),
 		one("permission_mode", string(s.Mode), modeSource(in, o)),
 		one("sandbox_mode", string(r.Sandbox.Mode), modeSource(in, o)),
 		one("approval_policy", string(r.Approval), pick(input(in.Ask, EnvAsk, env), overrides(l, func(c config.Config) any { return c.ApprovalPolicy }), FromDefault)),
 		one("model_context_window", compaction.ContextWindow(s.Model, s.ContextWindow, models.BundledWindow), pick(overrides(l, func(c config.Config) any { return c.ModelContextWindow }), FromDefault)),
 		{Key: "instructions.enabled", Value: r.Instructions, Sources: orSources(given(in.NoInstructions), []Source{overrides(l, func(c config.Config) any { return c.Instructions.Enabled })})},
 	}
+}
+
+// modelVerbosity is the text.verbosity the session's model gets: the
+// configured one or the catalog's default, for a model that supports it
+// ("": none).
+func modelVerbosity(o Origins, r Resolved) string {
+	c := models.Bundled(r.Settings.Provider)
+	if o.Catalog != nil {
+		c = o.Catalog(r.Settings.Provider)
+	}
+	v, _ := c.Verbosity(r.Settings.Model, r.Verbosity)
+
+	return v
 }
 
 // attemptsInput is the source of --max-attempts: its environment variable

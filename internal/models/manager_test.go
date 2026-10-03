@@ -232,6 +232,32 @@ func TestWindow(t *testing.T) {
 	assert.Equal(t, int64(372000), w, "the shipped catalog alone, for uah config")
 }
 
+// TestVerbosity: as Codex's ModelClient picks text.verbosity, a model whose
+// entry supports verbosity gets the override, else its default; any other
+// model gets none, and an override is then ignored.
+func TestVerbosity(t *testing.T) {
+	m := models.New(models.Options{})
+	tests := []struct {
+		name, provider, model, override, want string
+		ignored                               bool
+	}{
+		{name: "the entry's default", provider: models.ProviderCodex, model: "gpt-6.1-sol", want: "low"},
+		{name: "the override", provider: models.ProviderCodex, model: "gpt-6.1-sol", override: "medium", want: "medium"},
+		{name: "an entry's own default", provider: models.ProviderOpenAI, model: "gpt-daybreak-red-latest", want: "high"},
+		{name: "a dated ID takes its base model's", provider: models.ProviderOpenAI, model: "gpt-5.5-2026-01-01", want: "low"},
+		{name: "no entry", provider: models.ProviderCodex, model: "gpt-unlisted"},
+		{name: "no entry, override ignored", provider: models.ProviderCodex, model: "gpt-unlisted", override: "high", ignored: true},
+		{name: "a provider without a catalog", provider: "ollama", model: "llama3", override: "low", ignored: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, ignored := m.Verbosity(tt.provider, tt.model, tt.override)
+			assert.Equal(t, tt.want, got)
+			assert.Equal(t, tt.ignored, ignored)
+		})
+	}
+}
+
 func TestApplyPatch(t *testing.T) {
 	m := models.New(models.Options{})
 	assert.True(t, m.ApplyPatch(models.ProviderCodex, "gpt-5.5"), "the bundled entry has apply_patch_tool_type")

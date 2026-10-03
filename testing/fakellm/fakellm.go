@@ -101,6 +101,8 @@ type Request struct {
 	Model       string
 	Effort      string
 	ServiceTier string
+	// Verbosity is text.verbosity ("": no text field).
+	Verbosity string
 	// UserTexts are the user messages in the request input, in order.
 	UserTexts []string
 	// System is the system prompt (the system messages in the input).

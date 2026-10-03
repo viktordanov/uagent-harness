@@ -41,6 +41,10 @@ type switcher struct {
 	// searches, when set, records the session's web searches and puts
 	// them back into later turn requests (searchlog.go).
 	searches *searchLog
+	// verbosity, when set, is the text.verbosity for a model
+	// (Manager.Verbosity); verbosities keeps each model's answer.
+	verbosity   func(model string) llm.Verbosity
+	verbosities map[string]llm.Verbosity
 	// adaptive picks each turn request's effort when adaptive effort is
 	// on (adaptive.go); setAdaptive changes it.
 	adaptive adaptiveRouter
@@ -89,6 +93,7 @@ func (s *switcher) Respond(ctx context.Context, req llm.Request, opts llm.Reques
 	if model != "" {
 		req.Model.ID = model
 	}
+	req.Model.Verbosity = s.verbosityFor(req.Model)
 	if v.ultra {
 		req.Model.ReasoningEffort = "" // the client's extension sends ultra
 	}
@@ -112,6 +117,25 @@ func (s *switcher) Respond(ctx context.Context, req llm.Request, opts llm.Reques
 	}
 
 	return resp, err // the coordinator wraps model errors
+}
+
+// verbosityFor is the request's verbosity, else the model's (verbosity).
+func (s *switcher) verbosityFor(m llm.Model) llm.Verbosity {
+	if m.Verbosity != "" || s.verbosity == nil {
+		return m.Verbosity
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	v, ok := s.verbosities[m.ID]
+	if !ok {
+		v = s.verbosity(m.ID)
+		if s.verbosities == nil {
+			s.verbosities = map[string]llm.Verbosity{}
+		}
+		s.verbosities[m.ID] = v
+	}
+
+	return v
 }
 
 func (s *switcher) setModel(model string) {
@@ -219,6 +243,7 @@ func (s *switcher) direct() llm.Adapter {
 		if req.Model.ID == "" {
 			req.Model.ID = model
 		}
+		req.Model.Verbosity = s.verbosityFor(req.Model)
 		if s.images != nil {
 			req = s.images(req) // a compaction summary sees the pasted images too
 		}
