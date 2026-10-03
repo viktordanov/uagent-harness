@@ -4,7 +4,7 @@
 Context preparation gives a new session the facts its first turns would otherwise spend tool calls on. At the start of the session, adapters each write a short block about one part of the session: the environment, the sandbox, the workspace, the agent files, and the harness. The blocks' text is data: Markdown modules whose front matter says when each applies, which a user can replace and add to ([Modules](#modules)). uah sends the joined blocks once, as a developer message before the first user message. The model reads a developer message as the harness's, not the user's, so the block is no user turn and no request of its own: it goes with the first user message.
 
 <!-- memoria:export id="summary" -->
-Every new session starts with one developer message of prepared context, before the first user message. This includes a subagent's session. The message has the git branch, the status, and the tracked files. It names the loaded instruction files, so the model does not search for more. It also gives the shell's and the OS's traps, the sandbox's limits and the session's private `$TMPDIR`, and how to size the Bash tool's output. The text comes from Markdown modules that `uah prompts init` writes to `~/.uah/prompts/context/` to edit; `~/.uah/prompts/context.d/` and a project's `.uah/context.d/` add modules, and `uah context` shows which apply and why. The system prompt does not change, and the message stays in the session's history, so the prompt cache holds. Resumed and forked sessions get no new message. Turn it off with `context_preparation = false`, `--no-context-preparation`, or `UAH_CONTEXT_PREPARATION=off`.
+Every new session starts with one developer message of prepared context, before the first user message. This includes a subagent's session. The message has the git branch, the status, and the tracked files. It names the loaded instruction files, so the model does not search for more. It also gives the shell's and the OS's traps, the sandbox's limits and the session's private `$TMPDIR`, and how to size the Bash tool's output. The text comes from Markdown modules: a file under `~/.uah/prompts/context/` replaces the built-in of its path, `~/.uah/prompts/context.d/` and a project's `.uah/context.d/` add modules, and `uah context` shows which apply and why. The system prompt does not change, and the message stays in the session's history, so the prompt cache holds. Resumed and forked sessions get no new message. Turn it off with `context_preparation = false`, `--no-context-preparation`, or `UAH_CONTEXT_PREPARATION=off`.
 <!-- /memoria:export -->
 
 1. [The contract](#the-contract)
@@ -13,7 +13,7 @@ Every new session starts with one developer message of prepared context, before 
 4. [Modules](#modules)
 5. [Tests](#tests)
 
-The engine calls `Prepare` in `internal/engine/embedded/prepare.go`; the [engine README](../engine/README.md#context-preparation) describes when.
+The engine calls `Prepare` in `internal/engine/embedded/prepare.go`; the [engine README](../engine/README.md#context-preparation) describes when. This README is the implementation reference; the [user guide](../../docs/context-preparation.md) explains the feature to users, with recipes and troubleshooting.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="contract" files="contract.go" -->
@@ -82,7 +82,7 @@ The engine sends it as a developer message (`core.RoleDeveloper`), so the TUI, `
 | `Harness` (`harness`) | How to use the Bash tool's `max_output_length` (its default, `MaxOutputLength`, which the engine passes from uah-core: 40,000 characters, which this does not change): leave it unset when the whole output is needed, set it only for noisy commands and to what will be read, and narrow a command whose output was cut instead of running it again with a bigger limit. Module `harness/output` |
 <!-- /memoria:section -->
 
-<!-- memoria:section id="modules" files="module.go catalog.go blocks.go check.go listing.go" -->
+<!-- memoria:section id="modules" files="module.go catalog.go blocks.go check.go listing.go overrides.go" -->
 ## Modules
 
 Every text of the built-in blocks is a Markdown file under `context/`, embedded with `go:embed`: the blocks' modules and the library (`library/`). A block's code only computes the facts and joins the modules that apply, so the wording and the conditions live in the files. With the built-ins alone the blocks are byte for byte what round 1 wrote, for every shell, OS, and sandbox mode (a sandboxed session always has its `$TMPDIR`); `TestDefaultsMatchRound1` holds them to it. Round 1 had no text for Linux or for a sandbox without network (the Bash tool's description covers that), so there are no `os/linux` or `sandbox/no-network` modules; a user can add them in `context.d`.
@@ -121,12 +121,16 @@ The text may use placeholders: `{{shell}}` (the path), `{{shell_name}}` (the fam
 | Source | Where | Used |
 | --- | --- | --- |
 | Built-in | Embedded, `context/<path>.md` | In its block. `uah prompts show context/<path>` prints one |
-| User replacement | `~/.uah/prompts/context/<path>.md` (the prompts folder next to the user file) | In place of the built-in of the same path, the library's included. One that does not parse, or names no built-in, is listed with its error and the built-in stays. `uah prompts init` writes every built-in there |
+| User replacement | `~/.uah/prompts/context/<path>.md` (the prompts folder next to the user file) | In place of the built-in of the same path, the library's included, for as long as the file exists. One that does not parse, or names no built-in, is listed with its error and the built-in stays |
 | Library | Embedded, `context/library/<id>.md`: `go`, `python-venv`, `node`, `rust`, `docker`, `git-lfs`, each `enabled: false` with `files` and a `check` | As a block of its own, once `[context] modules` names its id |
 | User extra | `~/.uah/prompts/context.d/*.md` | As a block of its own |
 | Project extra | `<workspace>/.uah/context.d/*.md` | As a block of its own, only once trusted |
 
-An extra module's id must be unused by the library and the extras read before it (library, then user, then project); a second one with the same id is listed with an error. At most 64 files are read from a folder. Extra blocks follow the built-in blocks, each under `## <id>`, cut to 4 KiB like any block, and the 16 KiB total still holds.
+An extra module's id must be unused by the library and the extras read before it (library, then user, then project); a second one with the same id is listed with an error. A user's module with `enabled: false` is a library module of the user's own: `[context] modules` turns it on, and it replaces nothing, so the library can grow in later versions and reach users whatever they added. At most 64 files are read from a folder. Extra blocks follow the built-in blocks, each under `## <id>`, cut to 4 KiB like any block, and the 16 KiB total still holds.
+
+### Overrides and the reference copies
+
+A replacement pins its module: while the file exists, a later version's text of that module does not reach the session. So `uah prompts init` writes no replacements: it writes every built-in to `~/.uah/prompts/context.defaults/` (`DefaultsDir`), which `Load` never reads, as a reference to copy into `context/`. `Overrides(userDir)` lists the files under `context/` with their errors and marks one `Pinned` when it is byte for byte the built-in; `Status.Pinned` carries the same to `uah context`. `uah prompts status` lists them, and `uah prompts prune` deletes the pinned ones.
 
 ### Checks
 
@@ -138,7 +142,7 @@ A project module is untrusted until `uah context trust` approves it, like a proj
 
 ### `uah context`
 
-`uah context` lists every module (built-in, library, user, project, and files that failed) with its block, source, state (`on`, `off`, `untrusted`, `error`), and whether it applies to a new main session in the workspace and why, such as `when.shell: zsh is not fish` or `files: none of go.mod in the workspace` (`Modules.Explain`). The session's facts come from the same settings a session would use (`app.PreviewContext`). `--show` prints the context a new main session and a read-only subagent would get, and `--json` prints the list (and with `--show` the two contexts) as JSON. `uah context trust` trusts the workspace's project modules as they are now.
+`uah context` lists every module (built-in, library, user, project, and files that failed) with its block, source, state (`on`, `off`, `untrusted`, `error`), and whether it applies to a new main session in the workspace and why, such as `when.shell: zsh is not fish` or `files: none of go.mod in the workspace` (`Modules.Explain`). A pinned replacement's source says it is identical to the built-in. The session's facts come from the same settings a session would use (`app.PreviewContext`). `--show` prints the context a new main session and a read-only subagent would get, and `--json` prints the list (and with `--show` the two contexts) as JSON. `uah context trust` trusts the workspace's project modules as they are now.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="tests" files="prepare_test.go agentfiles_test.go environment_test.go sandbox_test.go module_test.go round1_test.go" -->
@@ -158,9 +162,11 @@ A project module is untrusted until `uah context trust` approves it, like a proj
 | `TestOverrides` | A user file replaces a built-in (the library's too); a broken one, or one for no built-in, is listed with its error and the built-in stays |
 | `TestExtras` | `[context] modules` turns on a library module whose files and check match; user modules and `when.agent`; an untrusted project module is not used and its check never runs; a trusted one is; a taken id; a check runs once |
 | `TestTrustKey` | The key changes with the content |
+| `TestUserLibrary` | A user's module with `enabled: false` stays off until `[context] modules` names it, and replaces no built-in |
+| `TestPinnedOverrides` | `Overrides` lists the replacements, a copy of a built-in or a library module as pinned, an edited one and a broken one not; `Explain` marks the pinned one |
 | `TestExecChecker` | argv runs without a shell (`;` and `$(…)` reach the command as words, and nothing they name runs), `argv[0]` found on `PATH` before the sandbox wraps it, the timeout, no wrapper no check |
 | `TestExplain` | The listing's order, blocks, and reasons |
 | `TestDefaultsMatchRound1` | With the built-ins alone, each block and the whole message equal what round 1's code wrote (`testdata/round1.json`, recorded from that code): 124 cases over every shell family, macOS, Linux, FreeBSD, Windows, each sandbox mode with and without network, the agent files, and the harness |
 
-`internal/app/context_test.go` pins `uah context`'s preview (the user's and project's modules, `[context] modules`, trust and a changed file) and a check in the real read-only sandbox, which cannot write the workspace; `cmd/uah/context_test.go` the command's table, `--json`, `--show`, and `trust`; `cmd/uah/prompts_test.go` that `uah prompts init` writes the modules and `uah prompts show context/<path>` prints one.
+`internal/app/context_test.go` pins `uah context`'s preview (the user's and project's modules, `[context] modules`, trust and a changed file) and a check in the real read-only sandbox, which cannot write the workspace; `cmd/uah/context_test.go` the command's table, `--json`, `--show`, and `trust`; `cmd/uah/prompts_test.go` that `uah prompts init` writes the modules to `context.defaults` and no replacement, `uah prompts show context/<path>` prints one, and `uah prompts status` and `prune` list and delete the replacements identical to the built-in. `TestUserGuide` keeps [the user guide](../../docs/context-preparation.md) complete: a library table row for each library module, and every key and placeholder; `internal/systemskills` holds the `uah-customization` skill to the same schema.
 <!-- /memoria:section -->

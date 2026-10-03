@@ -7,7 +7,9 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"text/tabwriter"
 
 	"github.com/urfave/cli/v3"
 
@@ -60,21 +62,33 @@ var builtinPrompts = []builtinPrompt{
 }
 
 // promptsCommand is `uah prompts`: it writes the built-in prompts into the
-// configuration folder as a starting point, or prints one.
+// configuration folder as a starting point, prints one, and lists and
+// cleans the user's context overrides.
 func promptsCommand() *cli.Command {
+	configFlag := func() cli.Flag {
+		return &cli.StringFlag{Name: flagConfig, Usage: usageConfig + "; the prompts are in its folder", Value: config.UserFile(), Sources: cli.EnvVars(home.EnvConfig), TakesFile: true}
+	}
+
 	return &cli.Command{
 		Name:  promptsName,
-		Usage: "write the built-in prompts into the config folder to customize them, or print one",
+		Usage: "write the built-in prompts into the config folder to customize them, print one, or list and clean your overrides",
 		Commands: []*cli.Command{
 			{
-				Name: "init", Usage: "write compact.md, system.md, system-codex.md, system-runner.md, review.md, and the context modules (context/) into <config dir>/prompts and print the keys that use them",
-				Flags: []cli.Flag{
-					&cli.StringFlag{Name: flagConfig, Usage: usageConfig + "; the prompts go into its folder", Value: config.UserFile(), Sources: cli.EnvVars(home.EnvConfig), TakesFile: true},
-					&cli.BoolFlag{Name: "force", Usage: "overwrite prompt files that exist"},
-				},
+				Name: "init", Usage: "write compact.md, system.md, system-codex.md, system-runner.md, and review.md into <config dir>/prompts, " +
+					"and the context modules into <config dir>/prompts/context.defaults as a reference uah never reads",
+				Flags:        []cli.Flag{configFlag(), &cli.BoolFlag{Name: "force", Usage: "overwrite prompt files that exist"}},
 				OnUsageError: onUsageError, Action: promptsInit,
 			},
 			{Name: subShow, Usage: "print a built-in prompt, or a context module (context/<path>)", ArgsUsage: strings.Join(promptNames(), "|") + "|context/<path>", OnUsageError: onUsageError, Action: promptsShow},
+			{
+				Name: "status", Usage: "list the prompt files, the context overrides in use (and the ones identical to the built-in), and your extra modules",
+				Flags: []cli.Flag{configFlag()}, OnUsageError: onUsageError, Action: promptsStatus,
+			},
+			{
+				Name: "prune", Usage: "delete the context overrides that are identical to the built-in, so later versions' text reaches you",
+				Flags:        []cli.Flag{configFlag(), &cli.BoolFlag{Name: "dry-run", Usage: "print what would be deleted, and delete nothing"}},
+				OnUsageError: onUsageError, Action: promptsPrune,
+			},
 		},
 	}
 }
@@ -116,10 +130,10 @@ func promptsInit(_ context.Context, cmd *cli.Command) error {
 		return cli.Exit("prompts init takes no arguments (see --help)", exitUsage)
 	}
 	configFile := cmd.String(flagConfig)
-	dir := filepath.Join(filepath.Dir(configFile), "prompts")
-	force := cmd.Bool("force")
-	if !force {
-		for _, path := range promptFiles(dir) {
+	dir := promptsDir(configFile)
+	if !cmd.Bool("force") {
+		for _, p := range builtinPrompts {
+			path := filepath.Join(dir, p.name+".md")
 			if _, err := os.Stat(path); !errors.Is(err, fs.ErrNotExist) {
 				return cli.Exit(path+" exists; use --force to overwrite it", exitUsage)
 			}
@@ -128,13 +142,13 @@ func promptsInit(_ context.Context, cmd *cli.Command) error {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return fmt.Errorf("failed to create %s: %w", dir, err)
 	}
-	var lines []string
+	var lines, names []string
 	for _, p := range builtinPrompts {
 		path := filepath.Join(dir, p.name+".md")
 		if err := os.WriteFile(path, []byte(p.text()), 0o600); err != nil {
 			return fmt.Errorf("failed to write %s: %w", path, err)
 		}
-		fmt.Printf("Wrote %s\n", path)
+		names = append(names, p.name+".md")
 		line := fmt.Sprintf("%s = %q", p.key, homePath(path))
 		switch {
 		case p.alternative != "":
@@ -145,42 +159,71 @@ func promptsInit(_ context.Context, cmd *cli.Command) error {
 			lines = append(lines, line)
 		}
 	}
-	n, err := writeContextModules(dir)
+	n, err := writeContextDefaults(dir)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Wrote %d context modules under %s\n", n, filepath.Join(dir, contextprep.ContextDir))
-	fmt.Printf("\nTo use them, add to %s:\n\n%s\n", configFile, strings.Join(lines, "\n\n"))
-	fmt.Printf("\nA context module under %s replaces the built-in of the same path as long as it exists;\n"+
-		"delete the ones you do not change, so later versions' text reaches you. `uah context` lists them.\n",
-		homePath(filepath.Join(dir, contextprep.ContextDir)))
+	defaults, live, extras := filepath.Join(dir, contextprep.DefaultsDir), filepath.Join(dir, contextprep.ContextDir), filepath.Join(dir, contextprep.ExtrasDir)
+	fmt.Printf("Wrote the prompts to %s: %s.\n", homePath(dir), strings.Join(names, ", "))
+	fmt.Printf("A prompt file takes effect only when the configuration names it. To use them, add to %s:\n\n%s\n\n", homePath(configFile), strings.Join(lines, "\n\n"))
+	fmt.Printf("Wrote %d context modules to %s as a reference. uah never reads that folder:\n"+
+		"the built-in modules stay in use, and later versions' text reaches you. To change a module,\n"+
+		"copy its file to the same path under %s and edit the copy, for example:\n\n"+
+		"  mkdir -p %s\n  cp %s %s\n\n",
+		n, homePath(defaults), homePath(live),
+		homePath(filepath.Join(live, "environment")),
+		homePath(filepath.Join(defaults, "environment", "fish.md")), homePath(filepath.Join(live, "environment", "fish.md")))
+	fmt.Printf("Warning: a file under %s replaces the built-in module of the same path for as long as it\n"+
+		"exists, so later versions' changes to that module do not reach you. Copy only the modules you change.\n"+
+		"Modules of your own go in %s.\n\n", homePath(live), homePath(extras))
+	fmt.Printf("Context overrides in use: %s.\n\n", overridesSummary(contextprep.Overrides(dir)))
+	fmt.Printf("To undo: delete the prompt files and the configuration lines above, and %s.\n"+
+		"`uah prompts status` lists what is in use, `uah prompts prune` deletes overrides identical to the built-in,\n"+
+		"and `uah context` shows which modules apply in a workspace.\n", homePath(defaults))
 
 	return nil
 }
 
-// promptFiles are the files `uah prompts init` writes into dir.
-func promptFiles(dir string) []string {
-	var out []string
-	for _, p := range builtinPrompts {
-		out = append(out, filepath.Join(dir, p.name+".md"))
+// promptsDir is the prompts folder next to the configuration file.
+func promptsDir(configFile string) string { return filepath.Join(filepath.Dir(configFile), "prompts") }
+
+// overridesSummary counts the context overrides: the ones in use, and
+// among them the copies identical to the built-in, and the ones not used.
+func overridesSummary(overrides []contextprep.Override) string {
+	if len(overrides) == 0 {
+		return "none"
 	}
-	for _, m := range contextprep.Builtins() {
-		out = append(out, contextModuleFile(dir, m.Path))
+	var pinned, broken int
+	for _, o := range overrides {
+		switch {
+		case o.Err != nil:
+			broken++
+		case o.Pinned:
+			pinned++
+		}
+	}
+	out := strconv.Itoa(len(overrides) - broken)
+	if pinned > 0 {
+		out += fmt.Sprintf(", %d of them identical to the built-in (`uah prompts prune` deletes those)", pinned)
+	}
+	if broken > 0 {
+		out += fmt.Sprintf("; %d more not used because of an error (`uah prompts status` says which)", broken)
 	}
 
 	return out
 }
 
-// contextModuleFile is where a context module's replacement goes.
-func contextModuleFile(dir, path string) string {
-	return filepath.Join(dir, contextprep.ContextDir, filepath.FromSlash(path)+".md")
+// contextDefaultFile is where `uah prompts init` writes a built-in
+// module's reference copy.
+func contextDefaultFile(dir, path string) string {
+	return filepath.Join(dir, contextprep.DefaultsDir, filepath.FromSlash(path)+".md")
 }
 
-// writeContextModules writes the built-in context modules under
-// dir/context, as uah ships them.
-func writeContextModules(dir string) (int, error) {
+// writeContextDefaults writes the built-in context modules under
+// dir/context.defaults, as uah ships them, over the copies there.
+func writeContextDefaults(dir string) (int, error) {
 	for _, m := range contextprep.Builtins() {
-		path := contextModuleFile(dir, m.Path)
+		path := contextDefaultFile(dir, m.Path)
 		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 			return 0, fmt.Errorf("failed to create %s: %w", filepath.Dir(path), err)
 		}
@@ -190,6 +233,155 @@ func writeContextModules(dir string) (int, error) {
 	}
 
 	return len(contextprep.Builtins()), nil
+}
+
+// promptsStatus is `uah prompts status`: the prompt files, the context
+// overrides, and the user's extra modules.
+func promptsStatus(_ context.Context, cmd *cli.Command) error {
+	if cmd.Args().Len() > 0 {
+		return cli.Exit("prompts status takes no arguments (see --help)", exitUsage)
+	}
+	dir := promptsDir(cmd.String(flagConfig))
+	w := os.Stdout
+	fmt.Fprintf(w, "Prompt files in %s (each used only when the configuration names it; `uah config` shows the keys):\n", homePath(dir))
+	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+	for _, p := range builtinPrompts {
+		fmt.Fprintf(tw, "  %s.md\t%s\n", p.name, promptState(filepath.Join(dir, p.name+".md"), p.text()))
+	}
+	if err := tw.Flush(); err != nil {
+		return err
+	}
+
+	live := filepath.Join(dir, contextprep.ContextDir)
+	overrides := contextprep.Overrides(dir)
+	fmt.Fprintf(w, "\nContext overrides in %s (each replaces the built-in module of its path):", homePath(live))
+	if len(overrides) == 0 {
+		fmt.Fprintln(w, " none")
+	} else {
+		fmt.Fprintln(w)
+		tw = tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+		for _, o := range overrides {
+			fmt.Fprintf(tw, "  %s\t%s\n", o.Path, overrideState(o))
+		}
+		if err := tw.Flush(); err != nil {
+			return err
+		}
+	}
+
+	extras := filepath.Join(dir, contextprep.ExtrasDir)
+	fmt.Fprintf(w, "\nYour modules in %s:", homePath(extras))
+	var mine []*contextprep.Module
+	for _, m := range contextprep.Load(contextprep.Sources{UserDir: dir}).All() {
+		if m.Source == contextprep.SourceUser && !m.Overrides {
+			mine = append(mine, m)
+		}
+	}
+	if len(mine) == 0 {
+		fmt.Fprintln(w, " none")
+	} else {
+		fmt.Fprintln(w)
+		tw = tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+		for _, m := range mine {
+			fmt.Fprintf(tw, "  %s\t%s\n", strings.TrimPrefix(m.Path, contextprep.ExtrasDir+"/"), extraState(m))
+		}
+		if err := tw.Flush(); err != nil {
+			return err
+		}
+	}
+	fmt.Fprintf(w, "\nReference copies of the built-in modules: %s (never read; `uah prompts init` rewrites them).\n"+
+		"`uah context` shows which modules apply in a workspace and why.\n", homePath(filepath.Join(dir, contextprep.DefaultsDir)))
+
+	return nil
+}
+
+// promptState says whether a prompt file exists and differs from the
+// built-in.
+func promptState(path, builtin string) string {
+	data, err := os.ReadFile(path)
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		return "absent"
+	case err != nil:
+		return "unreadable: " + err.Error()
+	case string(data) == builtin:
+		return "identical to the built-in; a key that names it keeps this version's text"
+	}
+
+	return "edited"
+}
+
+// overrideState is a context override's state in `uah prompts status`.
+func overrideState(o contextprep.Override) string {
+	switch {
+	case o.Err != nil:
+		return "not used, the built-in stays: " + oneLine(o.Err.Error(), 120)
+	case o.Pinned:
+		return "pinned copy: identical to the built-in, so no effect today, but it stops later versions' text of this module; delete it (`uah prompts prune`)"
+	}
+
+	return "edited: in use"
+}
+
+// extraState is a user's extra module's state in `uah prompts status`.
+func extraState(m *contextprep.Module) string {
+	switch {
+	case m.Err != nil:
+		return "error: " + oneLine(m.Err.Error(), 120)
+	case m.Meta.Enabled != nil && !*m.Meta.Enabled:
+		return "enabled: false, used where [context] modules names " + m.Meta.ID
+	}
+
+	return "on"
+}
+
+// promptsPrune is `uah prompts prune`: it deletes the context overrides
+// identical to the built-in, and the folders that leaves empty.
+func promptsPrune(_ context.Context, cmd *cli.Command) error {
+	if cmd.Args().Len() > 0 {
+		return cli.Exit("prompts prune takes no arguments (see --help)", exitUsage)
+	}
+	dir := promptsDir(cmd.String(flagConfig))
+	dry := cmd.Bool("dry-run")
+	var deleted, kept int
+	for _, o := range contextprep.Overrides(dir) {
+		if !o.Pinned {
+			kept++
+
+			continue
+		}
+		deleted++
+		if dry {
+			fmt.Printf("would delete %s\n", homePath(o.File))
+
+			continue
+		}
+		if err := os.Remove(o.File); err != nil {
+			return fmt.Errorf("failed to delete %s: %w", o.File, err)
+		}
+		fmt.Printf("deleted %s\n", homePath(o.File))
+		removeEmptyDirs(filepath.Dir(o.File), filepath.Join(dir, contextprep.ContextDir))
+	}
+	switch {
+	case deleted == 0:
+		fmt.Printf("No context override is identical to the built-in; %d kept.\n", kept)
+	case dry:
+		fmt.Printf("%d override(s) identical to the built-in would be deleted; %d kept.\n", deleted, kept)
+	default:
+		fmt.Printf("Deleted %d override(s) identical to the built-in; %d kept. The built-ins of those paths are used again.\n", deleted, kept)
+	}
+
+	return nil
+}
+
+// removeEmptyDirs removes dir and its parents while they are empty,
+// stopping at root, which stays.
+func removeEmptyDirs(dir, root string) {
+	for dir != root && strings.HasPrefix(dir, root+string(filepath.Separator)) {
+		if os.Remove(dir) != nil { // not empty
+			return
+		}
+		dir = filepath.Dir(dir)
+	}
 }
 
 // homePath writes a path under the home directory as ~/..., which the

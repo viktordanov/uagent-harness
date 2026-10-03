@@ -10,12 +10,14 @@ import (
 
 	"github.com/viktordanov/uah/internal/config"
 	"github.com/viktordanov/uah/internal/instructions"
+	"github.com/viktordanov/uah/internal/systemskills"
 )
 
 // skillRoots are the directories holding <name>/SKILL.md skills, most
 // specific first: Codex's .agents/skills from the workspace up to the
 // project root, the runner's own .harness/skills, then the user's
-// ~/.uah/skills and Codex's $CODEX_HOME/skills.
+// ~/.uah/skills and Codex's $CODEX_HOME/skills, and last uah's system
+// skills, so a skill of the same name anywhere else wins.
 func skillRoots(workspace string, getenv func(string) string) []string {
 	var roots []string
 	if dirs, err := instructions.ProjectDirs(workspace, nil); err == nil {
@@ -34,14 +36,23 @@ func skillRoots(workspace string, getenv func(string) string) []string {
 		roots = append(roots, filepath.Join(codexHome, "skills"))
 	}
 
-	return roots
+	return append(roots, systemSkillsRoot())
 }
 
-// discoverSkills reads the skills under every root with the runner's own
-// SKILL.md parser; a name found in a more specific root wins.
+// systemSkillsRoot is where uah writes its system skills: ~/.uah/skills/.system.
+func systemSkillsRoot() string {
+	return filepath.Join(config.Dir(), "skills", systemskills.DirName)
+}
+
+// discoverSkills writes the system skills, then reads the skills under
+// every root with the runner's own SKILL.md parser; a name found in a more
+// specific root wins.
 func discoverSkills(workspace string, getenv func(string) string) ([]tool.Skill, []error) {
 	var skills []tool.Skill
 	var errs []error
+	if err := systemskills.Install(systemSkillsRoot()); err != nil {
+		errs = append(errs, err)
+	}
 	seen := map[string]bool{}
 	for _, root := range skillRoots(workspace, getenv) {
 		found, rootErrs := tool.DiscoverSkills(root)

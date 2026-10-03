@@ -10,6 +10,7 @@ Section IDs identify a concern within a README. Keep the ID stable when a headin
 | `engines` | The engine |
 | `compaction` | Compaction and the context meter |
 | `instructions` | AGENTS.md discovery and the host prompt |
+| `context`, `contextprep` | Context preparation: the root README's introduction to the feature, and its summary under How it works |
 | `hooks` | Hook events, contract, and trust |
 | `mcp` | MCP servers: configuration, tools, and results |
 | `patch`, `format`, `apply`, `diff`, `tool` | File edits: the patch package's README and its summary in the root README |

@@ -19,6 +19,7 @@ brew install viktordanov/tap/uah
 
 - [Sessions](#resume-a-session) you can resume, search, and [take back to an earlier message](#go-back-to-an-earlier-message), [prompt history](#reuse-an-earlier-prompt) with ↑ and ctrl+r, and a headless [`uah exec`](#headless-mode)
 - [Subagents](#subagents-and-agent-files) that run in parallel, defined in Markdown or TOML agent files
+- [Context preparation](#context-preparation): each session starts knowing its shell, sandbox, git state, and instruction files, from Markdown modules you can extend
 - [AGENTS.md and skills](#agentsmd-and-skills), and [MCP servers](#mcp-setup) with OAuth
 - A [sandbox](#permission-modes) (Seatbelt, bubblewrap) with [approvals](#command-rules), permission modes, and an auto-reviewer
 - [Compaction](#compaction-and-clear), `/context`, and `/clear`
@@ -30,6 +31,33 @@ brew install viktordanov/tap/uah
 
 > [!NOTE]
 > The docs are kept in sync with the code by [Memoria](https://github.com/viktordanov/rs-memoria): CI fails when code changes and its README hasn't been reviewed.
+<!-- /memoria:section -->
+
+---
+
+<!-- memoria:section id="context" files="cmd/uah/context.go cmd/uah/prompts.go" -->
+## Context preparation
+
+Every new session, a subagent's included, starts with one message of facts the model would otherwise learn by failing: which shell runs its commands and which constructs break there (fish, zsh, macOS's bash 3.2, BSD flags), what the sandbox lets it write and where its private `$TMPDIR` is, the git branch and status, which AGENTS.md and CLAUDE.md files are already loaded, and how to size command output. In the agent benchmark, v1.8.0 took 13% less wall time and ran 39% fewer failed commands than v1.7.5, which had no such message.
+
+The text comes from Markdown modules with front matter that says when each applies. Add your own in `~/.uah/prompts/context.d/`, share a project's in `.uah/context.d/`, or turn on a library module (`go`, `python-venv`, `node`, `rust`, `docker`, `git-lfs`) with `[context] modules = ["go"]`. `uah context` shows which modules apply in a workspace and why:
+
+```console
+$ uah context            # in a Go repository, in fish on macOS, with [context] modules = ["go"]
+BLOCK        MODULE                   SOURCE   STATE  APPLIES  WHY
+environment  environment/intro        builtin  on     yes      applies
+environment  environment/bash         builtin  on     no       when.shell: fish is not bash
+environment  environment/fish         builtin  on     yes      applies
+environment  os/darwin                builtin  on     yes      applies
+sandbox      sandbox/workspace-write  builtin  on     yes      applies
+sandbox      sandbox/tmpdir           builtin  on     yes      applies
+...
+docker       library/docker           library  off    no       disabled (enabled: false; [context] modules can turn it on)
+go           library/go               library  on     yes      applies
+$ uah context --show     # the message a new session gets
+```
+
+The [context preparation guide](docs/context-preparation.md) explains the module format, where modules come from, the library, security, recipes, and troubleshooting. Ask the agent too: the built-in `uah-customization` skill describes the system.
 <!-- /memoria:section -->
 
 ---
@@ -282,7 +310,9 @@ When the TUI asks about an MCP call, answer `a` ("Yes, and don't ask again for t
 
 ### AGENTS.md and skills
 
-Put them in `AGENTS.md` at the repository root or in any directory below it, as for Codex. To read `CLAUDE.md` too, set `project_doc_fallback_filenames = ["CLAUDE.md"]`. Skills go in `.agents/skills/<name>/SKILL.md`. `/context` shows how much of the context window they take.
+Put them in `AGENTS.md` at the repository root or in any directory below it, as for Codex. To read `CLAUDE.md` too, set `project_doc_fallback_filenames = ["CLAUDE.md"]`. Skills go in `.agents/skills/<name>/SKILL.md`, or `~/.uah/skills/<name>/SKILL.md` for every workspace. `/context` shows how much of the context window they take.
+
+uah ships one skill of its own, `uah-customization`: it explains context preparation and uah's other customization points (prompts, hooks, skills, and the configuration layers), so you can ask the agent how uah works or how to extend it. uah writes it to `~/.uah/skills/.system/` and rewrites it on update; a skill of the same name in any skill folder replaces it.
 
 ### Subagents and agent files
 
@@ -313,15 +343,16 @@ uah compacts automatically at 90% of the context window. It first replaces old t
 ### Custom prompts
 
 ```sh
-uah prompts init           # writes compact.md, system.md, system-codex.md, system-runner.md, review.md, and the context modules to ~/.uah/prompts
+uah prompts init           # writes compact.md, system.md, system-codex.md, system-runner.md, and review.md to ~/.uah/prompts
 uah prompts show system    # prints a built-in prompt: compact, system, system-codex, system-runner, or review
 uah prompts show context/environment/fish   # prints a context module
+uah prompts status         # lists your prompt files, context overrides, and context modules
 uah context --show         # lists the context modules for this workspace and prints the context a new session gets
 ```
 
-`uah prompts init` starts from the built-in compaction prompt, uah's default system prompt (`system.md`), and the auto-review policy. It prints the lines to add to your user file: `experimental_compact_prompt_file`, `model_instructions_file`, and `[review] policy_file`. The default system prompt is Codex's prompt for gpt-6.1-sol with uah's tool names ([the changes](docs/configuration.md#codexs-prompt)). The command also writes Codex's unmodified prompt as `system-codex.md` and the runner's short host prompt as `system-runner.md`, and prints their `model_instructions_file` lines commented out, so each is used only when you choose it. AGENTS.md files and the [environment context](docs/configuration.md#the-environment-context) still follow the system prompt. Edit the files; each new session reads them. It overwrites existing files only with `--force`.
+`uah prompts init` starts from the built-in compaction prompt, uah's default system prompt (`system.md`), and the auto-review policy. It prints the lines to add to your user file: `experimental_compact_prompt_file`, `model_instructions_file`, and `[review] policy_file`; a prompt file takes effect only when its key names it. The default system prompt is Codex's prompt for gpt-6.1-sol with uah's tool names ([the changes](docs/configuration.md#codexs-prompt)). The command also writes Codex's unmodified prompt as `system-codex.md` and the runner's short host prompt as `system-runner.md`, and prints their `model_instructions_file` lines commented out, so each is used only when you choose it. AGENTS.md files and the [environment context](docs/configuration.md#the-environment-context) still follow the system prompt. Edit the files; each new session reads them. It overwrites existing files only with `--force`. To undo, delete the files and the lines.
 
-The [prepared context](internal/contextprep/README.md#modules) a new session starts with is made of Markdown modules too. `uah prompts init` writes them under `~/.uah/prompts/context/`; a file there replaces the built-in of the same path, so delete the ones you do not change. Add your own in `~/.uah/prompts/context.d/`, or a project's in `.uah/context.d/` (used after `uah context trust`). Each starts with front matter that says when it applies, such as `when: {shell: [fish]}` or `files: [go.mod]`. A library of modules (`go`, `python-venv`, `node`, `rust`, `docker`, `git-lfs`) ships turned off; `[context] modules = ["go"]` turns one on. `uah context` shows which modules apply here and why.
+The [prepared context](#context-preparation) is made of Markdown modules too. `uah prompts init` writes the built-in modules to `~/.uah/prompts/context.defaults/`, a reference that uah never reads. To change one, copy it to the same path under `~/.uah/prompts/context/` and edit the copy. A file there replaces the built-in for as long as it exists, so uah updates to that module stop reaching you: copy only what you change. `uah prompts status` lists your overrides and flags copies identical to the built-in, and `uah prompts prune` deletes those. Modules of your own go in `~/.uah/prompts/context.d/`; see the [guide](docs/context-preparation.md).
 
 ### Hook setup
 
@@ -446,21 +477,21 @@ Models edit files with Codex's `apply_patch` tool: a patch of `*** Add File`, `*
 Read more: [patches](internal/patch/README.md), and how patches are approved in [approvals](internal/approval/README.md#patches).
 <!-- /memoria:section -->
 
-<!-- memoria:section id="instructions" files="internal/app/setup.go internal/config/config.go" -->
+<!-- memoria:section id="instructions" files="internal/app/setup.go internal/config/config.go internal/systemskills/systemskills.go internal/systemskills/skills/uah-customization/SKILL.md" -->
 ### Instructions and skills
 
 <!-- memoria:import src="internal/instructions/README.md#summary" -->
 uah finds instruction files the way Codex does: the user's AGENTS.md, then one file per directory from the project root down to the workspace (AGENTS.override.md, else AGENTS.md, else a configured fallback such as CLAUDE.md). A line that is only `@path` in a file is replaced by that file's text, as Claude Code's imports are. They are joined, capped at 32 KiB, and placed after the base instructions (uah's default prompt, adapted from Codex's, or the file that Codex's `model_instructions_file` key names), and Codex's environment context (the workspace, shell, date, and time zone) follows them. Skills come from Codex's skill folders.
 <!-- /memoria:import -->
 
-`--no-instructions` turns this off. Read more: [instructions](internal/instructions/README.md).
+`--no-instructions` turns this off. uah also ships skills of its own (`internal/systemskills`), embedded in the binary and listed after every other skill folder: `uah-customization` explains context preparation and the customization points, and a test holds its description of the module format to the code. Read more: [instructions](internal/instructions/README.md#skills).
 <!-- /memoria:section -->
 
 <!-- memoria:section id="contextprep" files="internal/app/resolve.go internal/config/config.go internal/app/context.go cmd/uah/context.go" -->
 ### Context preparation
 
 <!-- memoria:import src="internal/contextprep/README.md#summary" -->
-Every new session starts with one developer message of prepared context, before the first user message. This includes a subagent's session. The message has the git branch, the status, and the tracked files. It names the loaded instruction files, so the model does not search for more. It also gives the shell's and the OS's traps, the sandbox's limits and the session's private `$TMPDIR`, and how to size the Bash tool's output. The text comes from Markdown modules that `uah prompts init` writes to `~/.uah/prompts/context/` to edit; `~/.uah/prompts/context.d/` and a project's `.uah/context.d/` add modules, and `uah context` shows which apply and why. The system prompt does not change, and the message stays in the session's history, so the prompt cache holds. Resumed and forked sessions get no new message. Turn it off with `context_preparation = false`, `--no-context-preparation`, or `UAH_CONTEXT_PREPARATION=off`.
+Every new session starts with one developer message of prepared context, before the first user message. This includes a subagent's session. The message has the git branch, the status, and the tracked files. It names the loaded instruction files, so the model does not search for more. It also gives the shell's and the OS's traps, the sandbox's limits and the session's private `$TMPDIR`, and how to size the Bash tool's output. The text comes from Markdown modules: a file under `~/.uah/prompts/context/` replaces the built-in of its path, `~/.uah/prompts/context.d/` and a project's `.uah/context.d/` add modules, and `uah context` shows which apply and why. The system prompt does not change, and the message stays in the session's history, so the prompt cache holds. Resumed and forked sessions get no new message. Turn it off with `context_preparation = false`, `--no-context-preparation`, or `UAH_CONTEXT_PREPARATION=off`.
 <!-- /memoria:import -->
 
 Read more: [context preparation](internal/contextprep/README.md).
@@ -581,7 +612,7 @@ Pushing a `v1.2.3` tag builds the release archives for macOS and Linux (arm64 an
 CI runs the build, the race tests, the Markdown renderer's benchmarks once (so they keep running; its tests hold the bounds), and the linter on each push; the linter also fails on a function above 20 cyclomatic complexity, a backstop for the rule of about 15. Design records, the architecture rules, and the documentation procedure are in [docs](docs/README.md):
 
 <!-- memoria:import src="docs/README.md#summary" -->
-The configuration reference, design records for the harness, the TUI, state storage, sandboxing, compaction, MCP, subagents, pasted images, streaming, Markdown rendering, going back to an earlier message, selecting text with the mouse, editing the prompt in an editor, the system prompt, web search, `/diff` and `/review`, prompt history and the composer's height, how tool calls read in the transcript, keeping the ChatGPT login fresh, and running uah as a terminal host backend, plus the architecture rules and documentation procedure for uah.
+The configuration reference, the context preparation guide, design records for the harness, the TUI, state storage, sandboxing, compaction, MCP, subagents, pasted images, streaming, Markdown rendering, going back to an earlier message, selecting text with the mouse, editing the prompt in an editor, the system prompt, web search, `/diff` and `/review`, prompt history and the composer's height, how tool calls read in the transcript, keeping the ChatGPT login fresh, and running uah as a terminal host backend, plus the architecture rules and documentation procedure for uah.
 <!-- /memoria:import -->
 
 [`bench/tui`](bench/tui/README.md) is a separate Go module with the benchmark behind choosing Bubble Tea v2. `go test -run '^$' -bench Markdown -benchmem ./internal/tui/render` measures the Markdown renderer. `uah compaction eval [session file or directory]`, a hidden command, compares the compaction strategies on recorded sessions and prints tables of numbers only; its tests hold the strategies to their bounds on a synthetic session ([internal/compaction](internal/compaction/README.md#measuring-compaction)).

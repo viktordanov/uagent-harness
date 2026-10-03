@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strings"
 	"sync/atomic"
@@ -276,4 +277,85 @@ func write(t *testing.T, path, text string) {
 	t.Helper()
 	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
 	require.NoError(t, os.WriteFile(path, []byte(text), 0o644))
+}
+
+// TestUserLibrary: a user's module with enabled: false is a library module
+// of the user's own: off until [context] modules names its id, then a block
+// of its own, while the built-ins stay as uah ships them.
+func TestUserLibrary(t *testing.T) {
+	root := t.TempDir()
+	ws, user := filepath.Join(root, "ws"), filepath.Join(root, "prompts")
+	write(t, filepath.Join(ws, "go.mod"), "module x\n")
+	write(t, filepath.Join(user, "context.d", "my-go.md"), string(module("id: my-go\ndescription: x\nfiles: [go.mod]\nenabled: false\n", "Run mage test.")))
+	f := contextprep.Facts{Workspace: ws}
+
+	off := contextprep.Load(contextprep.Sources{UserDir: user})
+	assert.NotContains(t, contextprep.Prepare(t.Context(), f, off.Adapters()...), "mage")
+	assert.Contains(t, find(t, off.Explain(t.Context(), f), "context.d/my-go").Reason, "disabled")
+
+	on := contextprep.Load(contextprep.Sources{UserDir: user, Enable: []string{"my-go"}})
+	got := contextprep.Prepare(t.Context(), f, on.Adapters()...)
+	assert.Contains(t, got, "\n## my-go\nRun mage test.")
+	assert.NotContains(t, got, "## go\n", "the library's go stays off")
+	for _, s := range on.Explain(t.Context(), f) {
+		assert.False(t, s.Overrides, "%s: nothing replaces a built-in", s.Path)
+	}
+}
+
+// TestPinnedOverrides: Overrides lists the user's files under context/,
+// flags a copy identical to the built-in as pinned, and `uah context`'s
+// listing says so too.
+func TestPinnedOverrides(t *testing.T) {
+	user := filepath.Join(t.TempDir(), "prompts")
+	darwin, err := contextprep.BuiltinFile("os/darwin")
+	require.NoError(t, err)
+	goLib, err := contextprep.BuiltinFile("library/go")
+	require.NoError(t, err)
+	write(t, filepath.Join(user, "context", "os", "darwin.md"), darwin)
+	write(t, filepath.Join(user, "context", "library", "go.md"), goLib)
+	write(t, filepath.Join(user, "context", "environment", "fish.md"), string(module("id: fish\ndescription: mine\nwhen: {shell: [fish]}\n", "My fish notes.")))
+	write(t, filepath.Join(user, "context", "os", "plan9.md"), string(module("id: plan9\ndescription: x\n", "Plan 9.")))
+
+	got := contextprep.Overrides(user)
+	require.Len(t, got, 4)
+	byPath := map[string]contextprep.Override{}
+	for _, o := range got {
+		byPath[o.Path] = o
+	}
+	assert.True(t, byPath["os/darwin"].Pinned)
+	assert.True(t, byPath["library/go"].Pinned, "the library's too")
+	assert.False(t, byPath["environment/fish"].Pinned)
+	require.NoError(t, byPath["environment/fish"].Err)
+	assert.False(t, byPath["os/plan9"].Pinned)
+	require.Error(t, byPath["os/plan9"].Err)
+	assert.Equal(t, filepath.Join(user, "context", "os", "darwin.md"), byPath["os/darwin"].File)
+
+	statuses := contextprep.Load(contextprep.Sources{UserDir: user}).Explain(t.Context(), contextprep.Facts{GOOS: "darwin"})
+	assert.True(t, find(t, statuses, "os/darwin").Pinned)
+	assert.False(t, find(t, statuses, "environment/fish").Pinned)
+	assert.Empty(t, contextprep.Overrides(filepath.Join(t.TempDir(), "none")))
+}
+
+// TestUserGuide keeps docs/context-preparation.md complete: its library
+// table has a row for each library module, and it names every front
+// matter key, when key, and placeholder.
+func TestUserGuide(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", "..", "docs", "context-preparation.md"))
+	require.NoError(t, err)
+	guide := string(data)
+	for _, m := range contextprep.Builtins() {
+		if m.Source == contextprep.SourceLibrary {
+			assert.Contains(t, guide, "| `"+m.Meta.ID+"` |", "the library table has %s", m.Meta.ID)
+			assert.Contains(t, guide, "`[context] modules = [\""+m.Meta.ID+"\"]`")
+		}
+	}
+	for _, typ := range []reflect.Type{reflect.TypeFor[contextprep.FrontMatter](), reflect.TypeFor[contextprep.When]()} {
+		for f := range typ.Fields() {
+			key, _, _ := strings.Cut(f.Tag.Get("yaml"), ",")
+			assert.Contains(t, guide, "| `"+key+"` |", "the guide's tables have the key %s", key)
+		}
+	}
+	for _, p := range contextprep.Placeholders {
+		assert.Contains(t, guide, "| `{{"+p+"}}` |")
+	}
 }
