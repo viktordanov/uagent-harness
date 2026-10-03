@@ -54,3 +54,30 @@ func TestShellEnvPolicy(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "|plain value|it's set", string(out))
 }
+
+// TestShellTempDir checks that every mode's script sets the temporary
+// directory, over the environment policy, and creates it.
+func TestShellTempDir(t *testing.T) {
+	temp := filepath.Join(t.TempDir(), "session", "tmp")
+	scripts, ws := t.TempDir(), t.TempDir()
+	t.Setenv("TMPDIR", "/somewhere/else")
+	p := sandbox.Policy{Mode: sandbox.FullAccess, Workspace: ws, TempDir: temp}
+	print := `printf '%s|%s|%s|%s' "$TMPDIR" "$TMP" "$TEMP" "$TMPPREFIX"`
+	want := temp + "|" + temp + "|" + temp + "|" + filepath.Join(temp, "zsh")
+	for _, env := range []sandbox.EnvPolicy{
+		{},
+		{Inherit: sandbox.InheritNone, Set: map[string]string{"TMPDIR": "/set/by/policy"}},
+		{IncludeOnly: []string{"PATH"}},
+	} {
+		path, err := sandbox.Shell(scripts, p, env, "/bin/sh")
+		require.NoError(t, err)
+		assert.NotEqual(t, "/bin/sh", path, "full access with a temp dir still needs a script")
+		out, err := exec.Command(path, "-c", print).Output()
+		require.NoError(t, err)
+		assert.Equal(t, want, string(out), "%+v", env)
+	}
+	info, err := os.Stat(temp)
+	require.NoError(t, err)
+	assert.True(t, info.IsDir())
+	assert.Equal(t, os.FileMode(0o700), info.Mode().Perm())
+}

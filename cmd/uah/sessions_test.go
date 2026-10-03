@@ -70,3 +70,23 @@ func TestPrintTranscript_Rewind(t *testing.T) {
 
 	assert.Contains(t, out.String(), "✓ done\n↺ went back to before \"fix the build\"; it and what followed left the agent's context\n")
 }
+
+// TestPrintTranscript_Prepared prints the prepared context as one line,
+// as a developer message and as the user message of an earlier version.
+func TestPrintTranscript_Prepared(t *testing.T) {
+	at := time.Date(2026, 9, 24, 12, 0, 0, 0, time.UTC)
+	text := "<context_preparation>\nx\n</context_preparation>"
+	run := session.LoadedRun{
+		Record: uaharness.RunRecord{Result: core.Result{Request: core.Request{RunID: "r1"}, Status: core.StatusOK, StartedAt: at}},
+		Events: []core.Event{
+			core.DeveloperMessage{At: at, ID: "p1", Text: text},
+			core.UserMessage{At: at, ID: "p0", Text: text},
+			core.DeveloperMessage{At: at, ID: "d1", Text: "more"},
+			core.UserMessage{At: at, ID: "m1", Text: "fix the build"},
+		},
+	}
+	var out bytes.Buffer
+	printTranscript(&out, session.Info{ID: "s1", Provider: "openai", Model: "gpt-5.5", Workspace: "/w"}, []session.LoadedRun{run})
+
+	assert.Contains(t, out.String(), "  (prepared context, 46 bytes)\n  (prepared context, 46 bytes)\n  (developer message, 4 bytes)\n› fix the build\n")
+}

@@ -1,10 +1,7 @@
 package embedded_test
 
 import (
-	"os"
-	"os/exec"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -27,64 +24,6 @@ func (e *env) openAdaptive(t *testing.T, value string) (*session.Session, *event
 	t.Cleanup(func() { _ = s.Close() })
 
 	return s, &events{t: t, s: s}
-}
-
-// TestPrimedFirstTurn: with adaptive effort on, a new session's first request carries the workspace
-// context before the user's message, with git's state, the tracked files,
-// and the file AGENTS.md includes; the system prompt is the same as
-// without it, and a later run of the session adds no second context.
-func TestPrimedFirstTurn(t *testing.T) {
-	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("no git")
-	}
-	systems := map[bool]string{}
-	for _, on := range []bool{true, false} {
-		e := newEnv(t, fakellm.Reply{Text: "one"}, fakellm.Reply{Text: "two"})
-		agents := filepath.Join(e.Workspace, "AGENTS.md")
-		require.NoError(t, os.WriteFile(agents, []byte("@INC.md\n"), 0o644))
-		require.NoError(t, os.WriteFile(filepath.Join(e.Workspace, "INC.md"), []byte("Use rtk for every command."), 0o644))
-		require.NoError(t, os.MkdirAll(filepath.Join(e.Workspace, "pkg"), 0o755))
-		require.NoError(t, os.WriteFile(filepath.Join(e.Workspace, "pkg", "a.go"), []byte("package pkg\n"), 0o644))
-		for _, args := range [][]string{{"init", "-q", "-b", "trunk"}, {"add", "pkg", "AGENTS.md"}} {
-			out, err := exec.Command("git", append([]string{"-C", e.Workspace}, args...)...).CombinedOutput()
-			require.NoError(t, err, string(out))
-		}
-		settings := e.settings()
-		settings.SystemPrompt = "Base.\n\n# Project instructions\n\n## " + agents + "\n\n@INC.md\n"
-		settings.AdaptiveEffort = map[bool]string{true: session.AdaptiveOneStep, false: session.AdaptiveOff}[on]
-		s, err := session.Open(t.Context(), e.embedded(), session.Options{Settings: settings})
-		require.NoError(t, err)
-		t.Cleanup(func() { _ = s.Close() })
-		ev := &events{t: t, s: s}
-		_, err = s.Submit("hello")
-		require.NoError(t, err)
-		ev.finished()
-		ev.idle()
-		_, err = s.Submit("again")
-		require.NoError(t, err)
-		ev.finished()
-
-		reqs := e.llm.Requests()
-		require.Len(t, reqs, 2)
-		systems[on] = strings.ReplaceAll(reqs[0].System, e.Workspace, "<ws>")
-		if !on {
-			assert.Equal(t, []string{"hello"}, reqs[0].UserTexts)
-
-			continue
-		}
-		require.Len(t, reqs[0].UserTexts, 2)
-		primed := reqs[0].UserTexts[0]
-		assert.True(t, strings.HasPrefix(primed, "<workspace_context>"), primed)
-		assert.Contains(t, primed, "Use rtk for every command.")
-		assert.Contains(t, primed, "Git branch: trunk")
-		assert.Contains(t, primed, "A  AGENTS.md")
-		assert.Contains(t, primed, "?? INC.md")
-		assert.Contains(t, primed, "pkg/ (1 files)")
-		assert.LessOrEqual(t, len(primed), 4<<10+100)
-		assert.Equal(t, "hello", reqs[0].UserTexts[1])
-		assert.Equal(t, []string{primed, "hello", "again"}, reqs[1].UserTexts, "the second run adds no context")
-	}
-	assert.Equal(t, systems[false], systems[true], "the system prompt is unchanged")
 }
 
 // TestAdaptiveEffort: with adaptive effort on, the first request and one with a user

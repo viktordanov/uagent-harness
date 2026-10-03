@@ -26,6 +26,7 @@ func TestSeatbeltProfileGolden(t *testing.T) {
 		policy sandbox.Policy
 	}{
 		{"read-only", sandbox.Policy{Mode: sandbox.ReadOnly, Workspace: "/work/project"}},
+		{"read-only-tempdir", sandbox.Policy{Mode: sandbox.ReadOnly, Workspace: "/work/project", TempDir: "/state/sessions/operations/s1/tmp"}},
 		{"workspace-write", sandbox.Policy{
 			Mode: sandbox.WorkspaceWrite, Workspace: "/work/project", WritableRoots: []string{"/work/cache"},
 		}},

@@ -37,7 +37,7 @@ Field names are the runner's Go field names, such as `Sequence` and `RecordedAt`
 
 | Kind | `Data` | What a reader shows |
 | --- | --- | --- |
-| `input` | `ID`, `Kind`, and `Payload` | For `Kind` `external`, a message the user sent: `Payload` is a JSON string with the text. For `control`, a runner instruction, such as a settings change or "stop when idle", with `Payload` `{"Mode", "Reason", "Parameters"}`. A reader of the conversation skips control inputs and `crash` inputs. |
+| `input` | `ID`, `Kind`, and `Payload` | For `Kind` `external`, a message the user sent: `Payload` is a JSON string with the text. For `developer`, the harness's developer message, such as the [prepared context](../contextprep/README.md) a new session starts with (since ledger item 108; earlier sessions have it as an `external` input that starts with `<context_preparation>`), with the same `Payload`. For `control`, a runner instruction, such as a settings change or "stop when idle", with `Payload` `{"Mode", "Reason", "Parameters"}`. A reader of the conversation skips control inputs and `crash` inputs. |
 | `turn` | `ID`, `PreviousTurnID`, and `Type` (`regular` or `compaction`) | The start of one model request. The items that follow belong to it. |
 | `model_response` | `TurnID` and `Response`: `ID`, `Stop`, `Output`, `Usage`, and `Failure` | What the model returned. `Output` is a list of `{"ProviderID", "Type", "Data"}`. |
 | `tool_call_status` | `TurnID`, `CallID`, and `Status` (`Error`, and `WaitingFor`, the operations the call waits for) | The state of a tool call. The line also has `data.Operations`, next to `data.Item`: snapshots of the operations the call starts. |

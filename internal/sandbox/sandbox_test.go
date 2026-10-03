@@ -21,6 +21,13 @@ func TestWritable(t *testing.T) {
 	got := sandbox.Policy{Mode: sandbox.WorkspaceWrite, Workspace: ws, WritableRoots: []string{extra, ws}}.Writable()
 	tmp, _ := filepath.EvalSymlinks("/tmp")
 	assert.Equal(t, []string{ws, extra, tmp}, got)
+
+	temp := filepath.Join(ws, "session-tmp")
+	assert.Equal(t, []string{temp}, sandbox.Policy{Mode: sandbox.ReadOnly, Workspace: ws, TempDir: temp}.Writable(),
+		"read-only writes only the temp dir")
+	got = sandbox.Policy{Mode: sandbox.WorkspaceWrite, Workspace: ws, TempDir: temp}.Writable()
+	assert.Equal(t, []string{ws, tmp, temp}, got)
+	assert.Empty(t, sandbox.Policy{Mode: sandbox.FullAccess, Workspace: ws, TempDir: temp}.Writable(), "no sandbox, no roots")
 }
 
 func TestProtected(t *testing.T) {

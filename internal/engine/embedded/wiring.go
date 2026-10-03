@@ -124,7 +124,10 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 	if err != nil {
 		return nil, err
 	}
-	messages = w.primed(ctx, req, opts, messages)
+	if req.SessionID == "" {
+		req.SessionID = uuid.NewString() // as openStore would, so the prepared context knows it
+	}
+	messages = w.prepared(ctx, req, messages)
 	model, sw, err := w.client(req, opts)
 	if err != nil {
 		return nil, err

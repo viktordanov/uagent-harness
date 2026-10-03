@@ -174,3 +174,39 @@ func TestLinuxExitCode(t *testing.T) {
 	assert.Equal(t, "failing\n", out)
 	assert.False(t, sandbox.Denied(code, out))
 }
+
+// TestLinuxReadOnlyTempDir checks that a read-only command, run through the
+// sandboxing shell, can write the session's $TMPDIR and nothing else, so a
+// heredoc works.
+func TestLinuxReadOnlyTempDir(t *testing.T) {
+	r := newLinuxRun(t)
+	p := r.policy(sandbox.ReadOnly, false)
+	p.TempDir = filepath.Join(r.base, "session", "tmp")
+	shell, err := sandbox.Shell(t.TempDir(), p, sandbox.EnvPolicy{}, "/bin/sh")
+	require.NoError(t, err)
+	shRun := func(command string) (int, string) {
+		cmd := exec.Command(shell, "-c", command)
+		cmd.Dir = r.ws
+		out, err := cmd.CombinedOutput()
+		var exit *exec.ExitError
+		if errors.As(err, &exit) {
+			return exit.ExitCode(), string(out)
+		}
+		require.NoError(t, err)
+
+		return 0, string(out)
+	}
+
+	code, out := shRun(`test "$TMPDIR" = "` + p.TempDir + `" && echo hi > "$TMPDIR/a" && cat <<EOF
+heredoc
+EOF`)
+	require.Equal(t, 0, code, out)
+	assert.Equal(t, "heredoc\n", out)
+	assert.FileExists(t, filepath.Join(p.TempDir, "a"))
+
+	for _, target := range []string{filepath.Join(r.ws, "a"), filepath.Join(r.outside, "a"), filepath.Join(r.base, "tmpdir", "a")} {
+		code, out = shRun("echo hi > " + target)
+		assert.NotEqual(t, 0, code, target)
+		assert.True(t, sandbox.Denied(code, out), out)
+	}
+}

@@ -13,6 +13,7 @@ import (
 
 	"github.com/viktordanov/uah/internal/compaction"
 	"github.com/viktordanov/uah/internal/config"
+	"github.com/viktordanov/uah/internal/contextprep"
 	"github.com/viktordanov/uah/internal/home"
 	"github.com/viktordanov/uah/internal/instructions"
 	"github.com/viktordanov/uah/internal/review"
@@ -66,14 +67,14 @@ func promptsCommand() *cli.Command {
 		Usage: "write the built-in prompts into the config folder to customize them, or print one",
 		Commands: []*cli.Command{
 			{
-				Name: "init", Usage: "write compact.md, system.md, system-codex.md, system-runner.md, and review.md into <config dir>/prompts and print the keys that use them",
+				Name: "init", Usage: "write compact.md, system.md, system-codex.md, system-runner.md, review.md, and the context modules (context/) into <config dir>/prompts and print the keys that use them",
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: flagConfig, Usage: usageConfig + "; the prompts go into its folder", Value: config.UserFile(), Sources: cli.EnvVars(home.EnvConfig), TakesFile: true},
 					&cli.BoolFlag{Name: "force", Usage: "overwrite prompt files that exist"},
 				},
 				OnUsageError: onUsageError, Action: promptsInit,
 			},
-			{Name: subShow, Usage: "print a built-in prompt", ArgsUsage: strings.Join(promptNames(), "|"), OnUsageError: onUsageError, Action: promptsShow},
+			{Name: subShow, Usage: "print a built-in prompt, or a context module (context/<path>)", ArgsUsage: strings.Join(promptNames(), "|") + "|context/<path>", OnUsageError: onUsageError, Action: promptsShow},
 		},
 	}
 }
@@ -90,6 +91,15 @@ func promptNames() []string {
 
 func promptsShow(_ context.Context, cmd *cli.Command) error {
 	name := cmd.Args().First()
+	if rest, ok := strings.CutPrefix(name, contextprep.ContextDir+"/"); ok && cmd.Args().Len() == 1 {
+		text, err := contextprep.BuiltinFile(rest)
+		if err != nil {
+			return cli.Exit(fmt.Sprintf("no context module %s; `uah context` lists them", rest), exitUsage)
+		}
+		fmt.Print(text)
+
+		return nil
+	}
 	for _, p := range builtinPrompts {
 		if cmd.Args().Len() == 1 && p.name == name {
 			fmt.Print(p.text())
@@ -98,7 +108,7 @@ func promptsShow(_ context.Context, cmd *cli.Command) error {
 		}
 	}
 
-	return cli.Exit("expected one of: "+strings.Join(promptNames(), ", "), exitUsage)
+	return cli.Exit("expected one of: "+strings.Join(promptNames(), ", ")+", or context/<module path>", exitUsage)
 }
 
 func promptsInit(_ context.Context, cmd *cli.Command) error {
@@ -109,8 +119,7 @@ func promptsInit(_ context.Context, cmd *cli.Command) error {
 	dir := filepath.Join(filepath.Dir(configFile), "prompts")
 	force := cmd.Bool("force")
 	if !force {
-		for _, p := range builtinPrompts {
-			path := filepath.Join(dir, p.name+".md")
+		for _, path := range promptFiles(dir) {
 			if _, err := os.Stat(path); !errors.Is(err, fs.ErrNotExist) {
 				return cli.Exit(path+" exists; use --force to overwrite it", exitUsage)
 			}
@@ -136,9 +145,51 @@ func promptsInit(_ context.Context, cmd *cli.Command) error {
 			lines = append(lines, line)
 		}
 	}
+	n, err := writeContextModules(dir)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Wrote %d context modules under %s\n", n, filepath.Join(dir, contextprep.ContextDir))
 	fmt.Printf("\nTo use them, add to %s:\n\n%s\n", configFile, strings.Join(lines, "\n\n"))
+	fmt.Printf("\nA context module under %s replaces the built-in of the same path as long as it exists;\n"+
+		"delete the ones you do not change, so later versions' text reaches you. `uah context` lists them.\n",
+		homePath(filepath.Join(dir, contextprep.ContextDir)))
 
 	return nil
+}
+
+// promptFiles are the files `uah prompts init` writes into dir.
+func promptFiles(dir string) []string {
+	var out []string
+	for _, p := range builtinPrompts {
+		out = append(out, filepath.Join(dir, p.name+".md"))
+	}
+	for _, m := range contextprep.Builtins() {
+		out = append(out, contextModuleFile(dir, m.Path))
+	}
+
+	return out
+}
+
+// contextModuleFile is where a context module's replacement goes.
+func contextModuleFile(dir, path string) string {
+	return filepath.Join(dir, contextprep.ContextDir, filepath.FromSlash(path)+".md")
+}
+
+// writeContextModules writes the built-in context modules under
+// dir/context, as uah ships them.
+func writeContextModules(dir string) (int, error) {
+	for _, m := range contextprep.Builtins() {
+		path := contextModuleFile(dir, m.Path)
+		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+			return 0, fmt.Errorf("failed to create %s: %w", filepath.Dir(path), err)
+		}
+		if err := os.WriteFile(path, []byte(m.Raw), 0o600); err != nil {
+			return 0, fmt.Errorf("failed to write %s: %w", path, err)
+		}
+	}
+
+	return len(contextprep.Builtins()), nil
 }
 
 // homePath writes a path under the home directory as ~/..., which the

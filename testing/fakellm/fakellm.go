@@ -105,6 +105,8 @@ type Request struct {
 	UserTexts []string
 	// System is the system prompt (the system messages in the input).
 	System string
+	// DeveloperTexts are the developer messages in the input, in order.
+	DeveloperTexts []string
 	// ToolOutputs are the tool results in the input, in order.
 	ToolOutputs []string
 	// CallIDs are the tool calls in the input, in order.

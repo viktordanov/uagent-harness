@@ -370,6 +370,23 @@ func TestResolve(t *testing.T) {
 			want:    func(r *app.Resolved) {},
 		},
 		{
+			name: "context_preparation off in the config file",
+			cfg:  config.Config{ContextPreparation: new(false)},
+			want: func(r *app.Resolved) { r.ContextPreparation = false },
+		},
+		{
+			name: "--no-context-preparation or its variable beats the config file",
+			in:   func(in *app.Inputs) { in.ContextPreparation = "off" },
+			cfg:  config.Config{ContextPreparation: new(true)},
+			want: func(r *app.Resolved) { r.ContextPreparation = false },
+		},
+		{
+			name: "UAH_CONTEXT_PREPARATION=on beats the config file",
+			in:   func(in *app.Inputs) { in.ContextPreparation = "on" },
+			cfg:  config.Config{ContextPreparation: new(false)},
+			want: func(r *app.Resolved) {},
+		},
+		{
 			name: "the prompt file is read by Setup",
 			cfg:  config.Config{ExperimentalCompactPromptFile: "/prompts/compact.md"},
 			want: func(r *app.Resolved) { r.CompactPromptFile = "/prompts/compact.md" },
@@ -387,7 +404,7 @@ func TestResolve(t *testing.T) {
 					Workspace: "/ws", Mode: approval.ModeWorkspace, Sandbox: string(sandbox.WorkspaceWrite),
 					MaxAttempts: engine.DefaultMaxAttempts, AdaptiveEffort: session.AdaptiveOff,
 				},
-				MaxDisk: 5 << 30, Instructions: true,
+				MaxDisk: 5 << 30, Instructions: true, ContextPreparation: true,
 				Sandbox: sandbox.Policy{Mode: sandbox.WorkspaceWrite}, Compaction: compaction.Settings{Percent: 90, Elision: compaction.DefaultElision, KeepCalls: compaction.DefaultKeepCalls, Remote: true}, Approval: approval.OnRequest,
 				ApprovalsReviewer: review.ReviewerUser,
 				Review:            review.Config{Model: review.CodexModel, Effort: llm.ReasoningEffortLow, Timeout: review.DefaultTimeout},

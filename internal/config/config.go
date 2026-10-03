@@ -56,9 +56,15 @@ type Config struct {
 	// AdaptiveEffort is adaptive effort for new sessions: off (the
 	// default), 1-step, or 2-steps. On, the model thinks one or two effort
 	// levels less on follow-up turns (requests that only follow tool
-	// results), and a new session starts with the workspace's context. A
-	// session keeps its own, as it keeps its effort.
+	// results). A session keeps its own, as it keeps its effort.
 	AdaptiveEffort string `toml:"adaptive_effort"`
+	// ContextPreparation starts each new session, subagents' included,
+	// with one message of prepared context: the environment, the
+	// sandbox, the workspace, the agent files, and the harness (true by
+	// default).
+	ContextPreparation *bool `toml:"context_preparation"`
+	// Context configures context preparation's modules.
+	Context Context `toml:"context"`
 
 	// AutoCompactPercent compacts the context once a response used this
 	// share of the model's window (default 90; 0 turns it off).
@@ -119,6 +125,13 @@ type Config struct {
 
 	// Projects are keyed by absolute workspace path.
 	Projects map[string]Project `toml:"projects"`
+}
+
+// Context configures context preparation's modules ([context]).
+type Context struct {
+	// Modules are module ids to turn on that ship turned off, such as the
+	// library's "go" (internal/contextprep).
+	Modules []string `toml:"modules"`
 }
 
 // Agents configures subagents with Codex's [agents] keys. Unset values
@@ -282,6 +295,12 @@ func (c Config) InstructionOptions() (fallbacks []string, markers []string, maxB
 	}
 
 	return c.ProjectDocFallbackFilenames, markers, maxBytes
+}
+
+// ContextPreparationEnabled reports whether new sessions start with
+// prepared context.
+func (c Config) ContextPreparationEnabled() bool {
+	return c.ContextPreparation == nil || *c.ContextPreparation
 }
 
 // InstructionsEnabled reports whether instruction files should be loaded.

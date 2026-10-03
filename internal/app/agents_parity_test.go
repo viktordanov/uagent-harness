@@ -17,6 +17,7 @@ import (
 	"github.com/viktordanov/uagent/core"
 
 	"github.com/viktordanov/uah/internal/app"
+	"github.com/viktordanov/uah/internal/contextprep"
 	"github.com/viktordanov/uah/internal/instructions"
 	"github.com/viktordanov/uah/internal/session"
 	"github.com/viktordanov/uah/testing/fakellm"
@@ -91,6 +92,9 @@ command = "grep -o '\"session_id\":\"[^\"]*\"' >> `+stops+`"
 	assert.Contains(t, root.System, instructions.DefaultPrompt, "uah's default base instructions reach the model")
 	assert.Contains(t, root.System, "<cwd>"+e.Workspace+"</cwd>", "and so does the environment")
 	assert.Equal(t, root.System, child.System, "the parent's system prompt, byte for byte, for the cache")
+	require.Len(t, child.DeveloperTexts, 1)
+	assert.True(t, contextprep.IsPrepared(child.DeveloperTexts[0]), "a subagent's session starts with prepared context, a developer message")
+	require.Len(t, child.UserTexts, 1)
 	assert.True(t, strings.HasSuffix(child.UserTexts[0], "\n\n"+instructions.SubagentNote), "Codex's note that the final answer reaches the parent follows the task")
 	assert.Equal(t, [3]string{root.Model, root.Effort, root.ServiceTier}, [3]string{child.Model, child.Effort, child.ServiceTier})
 	assert.Equal(t, "priority", child.ServiceTier)

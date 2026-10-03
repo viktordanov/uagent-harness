@@ -51,8 +51,10 @@ func parseRequest(body []byte) Request {
 		switch in.Role {
 		case "user":
 			req.UserTexts = append(req.UserTexts, texts(in.Content)...)
-		case "system", "developer":
+		case "system":
 			req.System += strings.Join(texts(in.Content), "\n")
+		case "developer":
+			req.DeveloperTexts = append(req.DeveloperTexts, texts(in.Content)...)
 		}
 	}
 
