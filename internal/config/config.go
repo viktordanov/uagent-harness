@@ -65,6 +65,10 @@ type Config struct {
 	ContextPreparation *bool `toml:"context_preparation"`
 	// Context configures context preparation's modules.
 	Context Context `toml:"context"`
+	// ModelVerbosity is low, medium, or high: the Responses API's
+	// text.verbosity in place of the model's default, for a model that
+	// supports verbosity, as Codex's key.
+	ModelVerbosity string `toml:"model_verbosity"`
 
 	// AutoCompactPercent compacts the context once a response used this
 	// share of the model's window (default 90; 0 turns it off).

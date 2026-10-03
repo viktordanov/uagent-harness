@@ -111,9 +111,7 @@ func Setup(ctx context.Context, in Inputs, logOutput io.Writer) (Result, error) 
 		catalog.Catalog(ctx, catalog.Provider(), models.Offline) // the cache only, no network
 	}
 	opts.Settings, opts.Yolo = r.Settings, in.Yolo
-	if notice := effortNotice(catalog.Cached(r.Settings.Provider), r.Settings); notice != "" {
-		opts.Notices = append(opts.Notices, notice)
-	}
+	opts.Notices = append(opts.Notices, modelNotices(catalog.Cached(r.Settings.Provider), r)...)
 	// The session's own files go to runDir; the model cache stays shared.
 	runDir := cmp.Or(in.RunStateDir, stateDir)
 	opts.SessionsDir = filepath.Join(runDir, "sessions")
@@ -175,7 +173,7 @@ func newEngine(r Resolved, stateDir string, logger *slog.Logger, p parts, opts *
 		StateDir: stateDir, MaxDisk: r.MaxDisk, Logger: logger, Provider: r.Settings.Provider, Hooks: opts.Hooks,
 		Sandbox: &r.Sandbox, SandboxDir: filepath.Join(stateDir, "sandbox"), Env: r.Env, MCP: p.servers, Approver: p.approver, Models: p.models,
 		ContextPreparation: r.ContextPreparation, ContextModules: p.context,
-		AutoReview: r.ApprovalsReviewer == review.ReviewerAuto, Review: r.Review, WebSearch: r.WebSearch == WebSearchLive,
+		AutoReview: r.ApprovalsReviewer == review.ReviewerAuto, Review: r.Review, WebSearch: r.WebSearch == WebSearchLive, Verbosity: r.Verbosity,
 		InstructionFiles: instructionFiles(opts.Instructions),
 		Compaction:       r.Compaction, ContextWindow: r.Settings.ContextWindow,
 		BeforeCompact: preCompactHook(opts.Hooks, r.Settings), Subagents: p.subagents,

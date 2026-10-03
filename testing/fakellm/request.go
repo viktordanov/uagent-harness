@@ -13,6 +13,9 @@ func parseRequest(body []byte) Request {
 		Reasoning   struct {
 			Effort string `json:"effort"`
 		} `json:"reasoning"`
+		Text struct {
+			Verbosity string `json:"verbosity"`
+		} `json:"text"`
 		Tools []struct {
 			Name       string          `json:"name"`
 			Parameters json.RawMessage `json:"parameters"`
@@ -31,7 +34,7 @@ func parseRequest(body []byte) Request {
 	}
 	_ = json.Unmarshal(body, &raw)
 	_ = json.Unmarshal(body, &items)
-	req := Request{Model: raw.Model, ServiceTier: raw.ServiceTier, Effort: raw.Reasoning.Effort, Tools: map[string]string{}, Input: items.Input, ToolDefs: items.Tools, CacheKey: raw.CacheKey}
+	req := Request{Model: raw.Model, ServiceTier: raw.ServiceTier, Effort: raw.Reasoning.Effort, Verbosity: raw.Text.Verbosity, Tools: map[string]string{}, Input: items.Input, ToolDefs: items.Tools, CacheKey: raw.CacheKey}
 	for _, t := range raw.Tools {
 		req.Tools[t.Name] = string(t.Parameters)
 		req.ToolNames = append(req.ToolNames, t.Name)

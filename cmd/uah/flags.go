@@ -54,6 +54,11 @@ func sessionFlags() []cli.Flag {
 			Validator: oneOf("adaptive-effort", session.AdaptiveEfforts),
 		},
 		&cli.StringFlag{
+			Name: "model-verbosity", Usage: "how much the model writes (the API's text.verbosity): " + strings.Join(app.Verbosities, ", ") + "; only for a model that supports it",
+			DefaultText: "the model's, low on gpt-6.1-sol", Sources: cli.EnvVars(app.EnvModelVerbosity),
+			Validator: oneOf("model-verbosity", app.Verbosities),
+		},
+		&cli.StringFlag{
 			Name: "sandbox", Usage: "where commands may write: read-only or workspace-write (no sandbox is --yolo)",
 			DefaultText: "workspace-write", Sources: cli.EnvVars(app.EnvSandbox), Validator: oneOf("sandbox", sandboxModes()),
 		},
@@ -159,6 +164,7 @@ func inputs(cmd *cli.Command) app.Inputs {
 		Fast:           cmd.Bool("fast"),
 		FastSet:        cmd.IsSet("fast"),
 		AdaptiveEffort: cmd.String("adaptive-effort"),
+		ModelVerbosity: cmd.String("model-verbosity"),
 		Sandbox:        cmd.String("sandbox"),
 		Ask:            cmd.String("ask"),
 		Yolo:           cmd.Bool(flagYolo),

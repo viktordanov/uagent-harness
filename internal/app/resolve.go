@@ -60,6 +60,9 @@ type Inputs struct {
 	// ContextPreparation is on or off: off from --no-context-preparation,
 	// else its environment variable ("": unset).
 	ContextPreparation string
+	// ModelVerbosity is --model-verbosity or its environment variable
+	// ("": unset).
+	ModelVerbosity string
 	// Sandbox is the --sandbox mode.
 	Sandbox string
 	// Ask is the --ask approval policy.
@@ -109,6 +112,8 @@ type Resolved struct {
 	// WebSearch is live or disabled; the engine offers live search only
 	// on a provider that has it.
 	WebSearch string
+	// Verbosity is model_verbosity ("": each model's default).
+	Verbosity string
 	// DefaultModel reports that no flag, resumed session, or file named the
 	// model on openai-codex or openai: Settings.Model is then the provider's
 	// fallback until SettleModel sees the provider's list.
@@ -194,11 +199,15 @@ func Resolve(in Inputs, resumed session.Info, cfg config.Config) (Resolved, erro
 	if err != nil {
 		return Resolved{}, err
 	}
+	verbosity, err := pickVerbosity(in, cfg)
+	if err != nil {
+		return Resolved{}, err
+	}
 
 	return Resolved{
 		Settings: s, MaxDisk: maxDisk, Instructions: !in.NoInstructions && cfg.InstructionsEnabled(), ContextPreparation: prepare,
 		Sandbox: policy, Env: envPolicy, Compaction: compact, CompactPromptFile: promptFile, Approval: approvalPolicy, Rules: configured,
-		ApprovalsReviewer: reviewer, Review: reviewCfg, Agents: agentSettings, WebSearch: webSearch, DefaultModel: defaulted,
+		ApprovalsReviewer: reviewer, Review: reviewCfg, Agents: agentSettings, WebSearch: webSearch, Verbosity: verbosity, DefaultModel: defaulted,
 	}, nil
 }
 
