@@ -12,6 +12,7 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
+	"github.com/viktordanov/uah/internal/approval"
 	"github.com/viktordanov/uah/internal/engine/embedded"
 	"github.com/viktordanov/uah/internal/sandbox"
 	"github.com/viktordanov/uah/internal/session"
@@ -61,4 +62,40 @@ func TestEmbedded_Sandbox(t *testing.T) {
 	outputs := strings.Join(reqs[len(reqs)-1].ToolOutputs, "\n---\n")
 	assert.Equal(t, 2, strings.Count(outputs, "sandbox likely blocked this"), outputs)
 	assert.Contains(t, outputs, "no user can approve it in this headless run")
+}
+
+// TestEmbedded_SandboxReadOnlyTempDir runs a command in the read-only
+// sandbox: it can write the session's private $TMPDIR, under its operation
+// directory, and nothing else.
+func TestEmbedded_SandboxReadOnlyTempDir(t *testing.T) {
+	ws := t.TempDir()
+	policy := sandbox.Policy{Mode: sandbox.ReadOnly, Workspace: ws}
+	if _, err := policy.Wrap([]string{"/bin/sh"}); err != nil {
+		t.Skipf("no sandbox here: %v", err)
+	}
+	e := newEnv(t,
+		fakellm.Reply{Commands: []string{`printf '%s' "$TMPDIR" && echo ok > "$TMPDIR/t.txt"`, "echo no > inside.txt"}},
+		fakellm.Reply{Text: "done"},
+	)
+	e.Workspace = ws
+	eng := embedded.New(embedded.Config{
+		StateDir: e.StateDir, Provider: "openai", Getenv: e.getenv,
+		Sandbox: &policy, SandboxDir: filepath.Join(e.StateDir, "sandbox"),
+	})
+	s, err := session.Open(context.Background(), eng, session.Options{Settings: e.settings().WithMode(approval.ModeReadOnly)})
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = s.Close() })
+	ev := &events{t: t, s: s}
+
+	_, err = s.Submit("write a temporary file")
+	require.NoError(t, err)
+	assert.Equal(t, core.StatusOK, ev.finished().Status)
+
+	temp := session.TempDir(filepath.Join(e.StateDir, "sessions"), s.ID())
+	assert.FileExists(t, filepath.Join(temp, "t.txt"))
+	assert.NoFileExists(t, filepath.Join(ws, "inside.txt"))
+	reqs := e.llm.Requests()
+	outputs := strings.Join(reqs[len(reqs)-1].ToolOutputs, "\n---\n")
+	assert.Contains(t, outputs, temp)
+	assert.Equal(t, 1, strings.Count(outputs, "sandbox likely blocked this"), outputs)
 }

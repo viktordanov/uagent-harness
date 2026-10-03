@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -236,4 +237,107 @@ func TestWrapSeatbeltOverhead(t *testing.T) {
 	}
 	t.Logf("median of 20: sh -c true %v, sandbox-exec sh -c true %v",
 		median([]string{"/bin/sh", "-c", "true"}), median(argv))
+}
+
+// shellRun runs command with `<shell> -c` through the sandboxing shell of
+// the policy, as the engine's Bash does, and returns its exit code and
+// combined output.
+func shellRun(t *testing.T, p sandbox.Policy, realShell, command string, env []string) (int, string) {
+	t.Helper()
+	shell, err := sandbox.Shell(t.TempDir(), p, sandbox.EnvPolicy{}, realShell)
+	require.NoError(t, err)
+	cmd := exec.CommandContext(t.Context(), shell, "-c", command)
+	cmd.Dir = p.Workspace
+	cmd.Env = append(os.Environ(), env...)
+	out, err := cmd.CombinedOutput()
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		return exitErr.ExitCode(), string(out)
+	}
+	require.NoError(t, err)
+
+	return 0, string(out)
+}
+
+// TestShellSeatbeltTempDir checks that a read-only command can write its
+// session's $TMPDIR, and nothing else, so heredocs work.
+func TestShellSeatbeltTempDir(t *testing.T) {
+	ws := workspace(t, true)
+	outside := outsideDir(t)
+	temp := filepath.Join(outsideDir(t), "tmp")
+	p := sandbox.Policy{Mode: sandbox.ReadOnly, Workspace: ws, TempDir: temp}
+	env := []string{"WS=" + ws, "OUT=" + outside}
+
+	cases := []struct {
+		name, shell, command string
+		allowed              bool
+	}{
+		{"tmpdir write", "/bin/sh", `echo x > "$TMPDIR/a" && cat "$TMPDIR/a"`, true},
+		{"TMP and TEMP", "/bin/sh", `test "$TMP" = "$TMPDIR" && test "$TEMP" = "$TMPDIR" && echo x > "$TEMP/b"`, true},
+		{"mktemp", "/bin/sh", `f=$(mktemp) && echo x > "$f"`, true},
+		{"zsh heredoc", "/bin/zsh", "cat <<EOF\nhi\nEOF", true},
+		{"zsh here-string", "/bin/zsh", "cat <<< hi", true},
+		{"workspace write", "/bin/sh", `echo x > "$WS/src/a"`, false},
+		{"outside write", "/bin/sh", `echo x > "$OUT/a"`, false},
+		{"/tmp write", "/bin/sh", `echo x > "/tmp/uah-sandbox-$$"`, false},
+		{".git in tmpdir", "/bin/sh", `mkdir "$TMPDIR/.git"`, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			code, out := shellRun(t, p, tc.shell, tc.command, env)
+			if tc.allowed {
+				assert.Zero(t, code, out)
+			} else {
+				assert.NotZero(t, code, out)
+				assert.Contains(t, out, "not permitted")
+			}
+		})
+	}
+	info, err := os.Stat(temp)
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o700), info.Mode().Perm(), "Shell creates the directory private")
+
+	t.Run("fish psub", func(t *testing.T) {
+		fish, err := exec.LookPath("fish")
+		if err != nil {
+			t.Skip("fish is not on PATH")
+		}
+		code, out := shellRun(t, p, fish, "cat (echo hi | psub)", nil)
+		assert.Zero(t, code, out)
+	})
+	t.Run("bash 3.2 heredoc", func(t *testing.T) {
+		// macOS's bash 3.2 makes a heredoc's file in /tmp whatever TMPDIR
+		// says (bash 5.1 uses $TMPDIR, or a pipe), so it still fails in
+		// read-only mode.
+		code, out := shellRun(t, p, "/bin/bash", "cat <<EOF\nhi\nEOF", nil)
+		t.Logf("exit %d: %s", code, out)
+	})
+	t.Run("zsh heredoc without a temp dir", func(t *testing.T) {
+		code, out := shellRun(t, sandbox.Policy{Mode: sandbox.ReadOnly, Workspace: ws}, "/bin/zsh", "cat <<EOF\nhi\nEOF", nil)
+		assert.NotZero(t, code, "the failure the temp dir fixes: %s", out)
+	})
+}
+
+// TestShellSeatbeltTempDirGoBuild checks that go build runs in read-only
+// mode: Go makes its work directory under $TMPDIR, and a cache pointed at
+// it is kept.
+func TestShellSeatbeltTempDirGoBuild(t *testing.T) {
+	if testing.Short() {
+		t.Skip("builds a program")
+	}
+	goBin, err := exec.LookPath("go")
+	if err != nil {
+		t.Skip("go is not on PATH")
+	}
+	ws := workspace(t, false)
+	require.NoError(t, os.WriteFile(filepath.Join(ws, "go.mod"), []byte("module example.com/hello\n\ngo 1.22\n"), 0o600))
+	main := "package main\n\nimport \"fmt\"\n\nfunc main() { fmt.Println(\"hi " + t.Name() + time.Now().String() + "\") }\n"
+	require.NoError(t, os.WriteFile(filepath.Join(ws, "main.go"), []byte(main), 0o600))
+	p := sandbox.Policy{Mode: sandbox.ReadOnly, Workspace: ws, TempDir: filepath.Join(outsideDir(t), "tmp")}
+
+	code, out := shellRun(t, p, "/bin/sh", goBin+` build -o "$TMPDIR/hello" . && "$TMPDIR/hello"`, nil)
+	assert.Zero(t, code, "go build with the default GOCACHE: %s", out)
+	code, out = shellRun(t, p, "/bin/sh", `GOCACHE="$TMPDIR/go-build" `+goBin+` build -o "$TMPDIR/hello" . && ls "$TMPDIR/go-build"`, nil)
+	assert.Zero(t, code, out)
+	assert.NotEmpty(t, strings.TrimSpace(out), "the build fills the cache under $TMPDIR")
 }

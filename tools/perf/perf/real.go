@@ -12,6 +12,8 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+
+	"github.com/viktordanov/uah/internal/session"
 )
 
 // Real sessions are copied, never opened in place: the copy reads the
@@ -100,6 +102,9 @@ func copyReal(home, id string, e *Env) (Fixture, error) {
 	}
 	ops := filepath.Join(sessions, "operations", id)
 	err := filepath.WalkDir(ops, func(path string, d fs.DirEntry, err error) error {
+		if err == nil && path == session.TempDir(sessions, id) {
+			return filepath.SkipDir // the commands' $TMPDIR, not an operation
+		}
 		if err != nil || d.IsDir() {
 			return err
 		}

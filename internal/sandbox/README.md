@@ -16,18 +16,26 @@ The profile and the bubblewrap layout are adapted from Codex rust-v0.156.1 (Apac
 5. [Tests](#tests)
 <!-- /memoria:section -->
 
-<!-- memoria:section id="modes" files="sandbox.go gitdir.go" -->
+<!-- memoria:section id="modes" files="sandbox.go gitdir.go canwrite.go" -->
 ## Modes
 
 The mode comes from `--sandbox`, `UAH_SANDBOX`, or `sandbox_mode`. The names are Codex's.
 
 | Mode | Commands can |
 | --- | --- |
-| `workspace-write` (default) | Read any file. Write the workspace, `/tmp`, `$TMPDIR`, and `writable_roots`, except the protected paths. No network unless `network_access = true` |
-| `read-only` | Read any file; write nothing; no network |
+| `workspace-write` (default) | Read any file. Write the workspace, `/tmp`, `$TMPDIR`, the session's temporary directory, and `writable_roots`, except the protected paths. No network unless `network_access = true` |
+| `read-only` | Read any file; write only the session's temporary directory; no network |
 | `danger-full-access` | Anything the user can: no sandbox. Only yolo mode (`--yolo`) runs in it; `sandbox_mode` and `--sandbox` refuse the name |
 
 `Policy.Writable` returns the writable roots with symlinks resolved. `Protected` returns the paths that stay read-only inside each root: `.git`, `.uah`, `.agents`, and `.codex` (and `.uagent`, the old project directory, until it is moved), and the directory a worktree's `.git` file points to. They are protected because a sandboxed command could otherwise plant code that runs later outside the sandbox, such as a git hook. So `git commit` needs an escalation.
+
+### The session's temporary directory
+
+`Policy.TempDir` is the session's private temporary directory. The embedded engine sets it to `sessions/operations/<id>/tmp` (`session.TempDir`), so removing the session removes it, and each subagent has its own. It is writable in both sandboxed modes. Without it, a read-only command could write nothing at all: zsh heredocs (`can't create temp file for here document`), fish's `psub`, and `go test` (`go: creating work dir`) failed. `Shell` creates it with mode 0700 and sets `TMPDIR`, `TMP`, and `TEMP` to it, and zsh's `TMPPREFIX` (where zsh makes heredoc files) to `<dir>/zsh`, also over a `shell_environment_policy` that sets or drops them. macOS's `/bin/bash` 3.2 ignores `TMPDIR` for heredocs, so they still fail there in read-only mode.
+
+It applies in every mode, unsandboxed ones included: a command escalated out of the sandbox, and every command in yolo mode, gets the same `$TMPDIR`, so a file one command writes there is where the next one looks. Nothing is special-cased per tool: Go puts its work directory under `$TMPDIR` by itself, and a cache that cannot be written elsewhere, such as `GOCACHE` in read-only mode, can be pointed at it. The model is told so in the prepared context (`internal/contextprep/sandbox.go`).
+
+The user's own `!` commands (`internal/usershell`) have no session directory and keep the user's `$TMPDIR`.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="shell" files="shell.go denied.go sandbox.go" -->
@@ -55,7 +63,7 @@ On Linux, a protected name that does not exist yet, such as `.git` in a workspac
 <!-- memoria:section id="environment" files="env.go shell.go" -->
 ## Environment
 
-Commands get the whole environment, as in Codex. `EnvPolicy` is Codex's `[shell_environment_policy]`: `inherit` (`all`, `core`, `none`), `ignore_default_excludes = false` to drop `*KEY*`, `*SECRET*`, and `*TOKEN*`, then `exclude`, `set`, and `include_only`, in Codex's order. When the policy is not the default, the script starts with `env -i` and copies each kept variable as `NAME="$NAME"` when the command runs, so no inherited value is written to disk.
+Commands get the whole environment, as in Codex. `EnvPolicy` is Codex's `[shell_environment_policy]`: `inherit` (`all`, `core`, `none`), `ignore_default_excludes = false` to drop `*KEY*`, `*SECRET*`, and `*TOKEN*`, then `exclude`, `set`, and `include_only`, in Codex's order. When the policy is not the default, the script starts with `env -i` and copies each kept variable as `NAME="$NAME"` when the command runs, so no inherited value is written to disk. With a `TempDir`, the script then sets `TMPDIR`, `TMP`, `TEMP`, and `TMPPREFIX` into it, whatever the policy says about them.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="tests" files="seatbelt_test.go bwrap_test.go shell_test.go denied_test.go env_test.go wrap_darwin_test.go wrap_linux_test.go" -->
@@ -64,8 +72,8 @@ Commands get the whole environment, as in Codex. `EnvPolicy` is Codex's `[shell_
 | Test | Pins |
 | --- | --- |
 | `seatbelt_test.go`, `bwrap_test.go` | The profile and the bubblewrap arguments for each mode, against golden files in `testdata` |
-| `wrap_darwin_test.go`, `wrap_linux_test.go` | Real sandboxed commands: writes inside and outside the roots, protected paths, network, exit codes, and inherited file descriptors. Each runs only on its platform |
-| `shell_test.go`, `env_test.go`, `denied_test.go` | The script, the environment policy, and the denial heuristic |
+| `wrap_darwin_test.go`, `wrap_linux_test.go` | Real sandboxed commands: writes inside and outside the roots, protected paths, network, exit codes, and inherited file descriptors, and a read-only command that writes only its `$TMPDIR`: zsh heredocs, fish's `psub`, `mktemp`, and `go build` work. macOS's `/bin/bash` 3.2 still makes heredoc files outside `$TMPDIR`, so its heredocs fail in read-only mode. Each runs only on its platform |
+| `shell_test.go`, `env_test.go`, `denied_test.go` | The script, the environment policy, the temporary directory's variables over it, and the denial heuristic |
 
 The package has build-tagged halves, so lint runs for both linux and darwin.
 <!-- /memoria:section -->

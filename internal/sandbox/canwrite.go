@@ -8,16 +8,12 @@ import (
 
 // CanWrite reports whether the policy lets a sandboxed command write path,
 // as Codex's can_write_path does for apply_patch: anything in FullAccess,
-// nothing in ReadOnly, and in WorkspaceWrite a path under a writable root
+// and otherwise a path under a writable root (only the TempDir in ReadOnly)
 // that is not a protected path. Symlinks in the path's existing part are
 // resolved first, so a link cannot lead out of a root.
 func (p Policy) CanWrite(path string) bool {
-	switch p.Mode {
-	case FullAccess:
+	if p.Mode == FullAccess {
 		return true
-	case ReadOnly:
-		return false
-	case WorkspaceWrite:
 	}
 	path = resolvePath(path)
 	roots := p.Writable()

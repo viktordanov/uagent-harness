@@ -31,6 +31,11 @@ func TestPolicy_CanWrite(t *testing.T) {
 
 	p.Mode = sandbox.ReadOnly
 	assert.False(t, p.CanWrite(filepath.Join(ws, "a.txt")))
+	assert.False(t, p.CanWrite(filepath.Join(extra, "c.txt")))
+	p.TempDir = t.TempDir()
+	assert.True(t, p.CanWrite(filepath.Join(p.TempDir, "a.txt")), "read-only can write the temp dir")
+	assert.False(t, p.CanWrite(filepath.Join(p.TempDir, ".git", "config")), "except its protected paths")
+	assert.False(t, p.CanWrite(filepath.Join(ws, "a.txt")))
 	p.Mode = sandbox.FullAccess
 	assert.True(t, p.CanWrite(outside))
 }
