@@ -41,10 +41,20 @@ The text must be stable for the session: an adapter reads only the facts and the
 <context_preparation>
 uah prepared this when the session started, so you need not look it up again. It describes the session as it began; files and git's state may change as you work.
 
+## environment
+Commands run in zsh (/bin/zsh -c) on macOS.
+...
+
+## sandbox
+...
+
 ## workspace
 ...
 
 ## agent files
+...
+
+## harness
 ...
 </context_preparation>
 ```

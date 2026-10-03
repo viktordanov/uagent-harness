@@ -85,7 +85,7 @@ go run ./tools/agentbench -harness uah -repeat 3                                
 go run ./tools/agentbench -harness uah -repeat 3 -uah-env UAH_ADAPTIVE_EFFORT=2-steps -variant adaptive2
 ```
 
-The same variant through the configuration is `-uah-config 'adaptive_effort = "2-steps"' -variant adaptive2`. A prompt variant, for example, is `-uah-config 'model_instructions_file = "/tmp/uah-agentbench/prompts/runner.md"' -variant prompt-runner`. The report then has `uah+NAME` as a harness of its own in the per-harness tables, and a table of the variant against the control per task.
+The same variant through the configuration is `-uah-config 'adaptive_effort = "2-steps"' -variant adaptive2`. Without the [prepared context](../../internal/contextprep/README.md) a new session starts with, the variant is `-uah-env UAH_CONTEXT_PREPARATION=off -variant noprep`. A prompt variant, for example, is `-uah-config 'model_instructions_file = "/tmp/uah-agentbench/prompts/runner.md"' -variant prompt-runner`. The report then has `uah+NAME` as a harness of its own in the per-harness tables, and a table of the variant against the control per task.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="tasks" files="bench/task.go bench/fixture.go bench/dry.go bench/harness.go bench/run.go" -->
@@ -181,7 +181,7 @@ Both streams become one `Timeline` (`timeline.json`), with times in milliseconds
 | --- | --- |
 | `requests` | each model request: `turn` (the user turn of a main agent's request, from 1), `start_ms`, `first_byte_ms` (when known), `end_ms`, `tokens` (`input`, `cached`, `output`, `reasoning`), `tool_calls` it issued, `effort`, `stop` (`complete`, or how it was cut off), `text_bytes` (the assistant text it wrote), and `agent` (a subagent's session ID, or empty for the main agent) |
 | `calls` | each tool call: `name`, `kind` (`tool`, `wait`, or `agent`), `args` (a one-line summary), `args_bytes`, `escalated` (it asked to run outside the sandbox), `request` (the index of the request that issued it), `issued_ms`, `start_ms`, `end_ms`, `ok`, `detail` (an exit status), and `agent` |
-| `turns` | user turns: one per prompt, follow-ups included |
+| `turns` | user turns: one per prompt, follow-ups included; uah's prepared context (`<context_preparation>`, or an earlier version's `<workspace_context>`) is not one, and its requests go with the prompt after it |
 | `compactions` | uah's context compactions: `start_ms`, `end_ms` (the summary call), `trigger` (`auto` when the context reached the limit), `tokens` (the context then), and `error` if it failed. Codex's events show none |
 | `tokens` | the run's totals; input includes cached, output includes reasoning |
 | `inferred` | what was estimated rather than read |
