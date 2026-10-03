@@ -21,7 +21,7 @@
 
   ASK    12s     Migration, Rollout
 
-λ Waiting for your answer (12s • esc to…
+λ Waiting for your answer (12s)
 ╭─ ? Migration · 1 of 2 ───────────────╮
 │  Migration    Rollout                │
 │ The users table can change three     │

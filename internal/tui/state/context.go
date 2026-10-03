@@ -55,7 +55,7 @@ func (s *State) onEngineEvent(ev core.Event) bool {
 	case engine.ModelProgress:
 		s.onProgress(e)
 	case engine.AutoReviewing:
-		s.live().Aside = &Wait{What: "Auto-reviewing the command · " + oneLine(e.Command), Since: e.At}
+		s.live().Aside = &Wait{What: "Auto-reviewing the command · " + s.shownCommand(e.Command), Since: e.At}
 	case engine.AutoReviewed:
 		s.live().Aside = nil
 		s.onAutoReviewed(e)

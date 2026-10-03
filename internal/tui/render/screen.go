@@ -244,11 +244,11 @@ func (st *Styles) statusLine(s state.State, w int) string {
 	case s.Status != "":
 		return st.warn.Render(ansi.Truncate(s.Status, w, "…"))
 	case s.SessionID == "":
-		return ansi.Truncate(st.workingLine(s.Now, state.Wait{What: "Opening the session"}, time.Time{}), w, "…")
+		return st.workingLine(s.Now, state.Wait{What: "Opening the session"}, time.Time{}, w)
 	case live:
-		return ansi.Truncate(st.workingLine(s.Now, wait, s.Live.Started), w, "…")
+		return st.workingLine(s.Now, wait, s.Live.Started, w)
 	case s.Busy:
-		return ansi.Truncate(st.workingLine(s.Now, state.Wait{What: "Starting"}, time.Time{}), w, "…")
+		return st.workingLine(s.Now, state.Wait{What: "Starting"}, time.Time{}, w)
 	}
 
 	return ""
@@ -279,7 +279,7 @@ func (st *Styles) footerLine(s state.State, w int) string {
 		return st.warn.Render(ansi.Truncate(" "+s.Status, w, "…"))
 	}
 	if wait, _ := s.CurrentWait(); wait.Warn {
-		return st.warn.Render(ansi.Truncate(" "+wait.What, w, "…"))
+		return st.warn.Render(ansi.Truncate(" "+wait.Text(), w, "…"))
 	}
 	t := s.Totals
 	text := fmt.Sprintf(" %s in (%s cached) · %s out · %s · %s (∥%d)", tokens(t.Tokens.InputTokens), tokens(t.Tokens.CachedInputTokens),

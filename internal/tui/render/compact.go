@@ -227,10 +227,16 @@ func (st *Styles) banner(s state.State, version string, w int) []string {
 // workingLine is the breathing λ, what the run waits on, and how long it
 // has waited and run: "Writing a patch · foo.go · 4.2 kB (12s · 3m 04s •
 // esc to interrupt)". Without a run (run is zero) only the λ and the words.
-func (st *Styles) workingLine(now time.Time, w state.Wait, run time.Time) string {
-	line := st.breathing(now.UnixMilli()) + " " + st.bold.Render(w.What)
+//
+// The times always show. When the line is wider than width it gives way
+// in this order: the path to its last folders and then to its file name
+// ("…/run/notes.md", "…/notes.md"); the hint; the words, cut to what is
+// left. Only a width too narrow for the λ and the times cuts them.
+func (st *Styles) workingLine(now time.Time, w state.Wait, run time.Time, width int) string {
+	lead := st.breathing(now.UnixMilli()) + " "
+	words := func(path string) string { return st.bold.Render(joinDetail(w.What, path, w.Detail)) }
 	if run.IsZero() {
-		return line
+		return ansi.Truncate(lead+words(w.Path), width, "…")
 	}
 	times := elapsed(now.Sub(run))
 	// The wait's own time only when it reads differently: a wait that
@@ -238,8 +244,38 @@ func (st *Styles) workingLine(now time.Time, w state.Wait, run time.Time) string
 	if wait := elapsed(now.Sub(w.Since)); w.Since.After(run) && wait != times {
 		times = wait + " · " + times
 	}
+	full := st.dim.Render(" (" + times + " • " + cmp.Or(w.Hint, "esc to interrupt") + ")")
+	paths := shortPaths(w.Path)
+	for _, p := range paths {
+		if line := lead + words(p) + full; ansi.StringWidth(line) <= width {
+			return line
+		}
+	}
+	bare := st.dim.Render(" (" + times + ")")
+	room := width - ansi.StringWidth(lead+bare)
+	if room < 1 {
+		return ansi.Truncate(lead+bare, width, "")
+	}
 
-	return line + st.dim.Render(" ("+times+" • "+cmp.Or(w.Hint, "esc to interrupt")+")")
+	return lead + ansi.Truncate(words(paths[len(paths)-1]), room, "…") + bare
+}
+
+// shortPaths are path and its shorter forms, longest first: "…/" and its
+// last folders and file name, one folder fewer each, to "…/" and the file
+// name. A path without folders, or none, is its only form.
+func shortPaths(path string) []string {
+	out := []string{path}
+	parts := strings.Split(path, "/")
+	for i := 1; i < len(parts)-1; i++ {
+		out = append(out, "…/"+strings.Join(parts[i+1:], "/"))
+	}
+
+	return out
+}
+
+// joinDetail joins the parts that are not empty with " · ".
+func joinDetail(parts ...string) string {
+	return strings.Join(slices.DeleteFunc(parts, func(p string) bool { return p == "" }), " · ")
 }
 
 // elapsed is Codex's short duration: 12s, 1m 12s, 1h 02m.

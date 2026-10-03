@@ -218,7 +218,7 @@ func cmdStatus(s *State, _ string) []Effect {
 	s.notice(session.LevelInfo, fmt.Sprintf("%d runs · %d turns · %d tool calls (max %d parallel) · %d in / %d out tokens · tools overlapped the model %s", t.Runs, t.Turns, t.ToolCalls, t.MaxParallel, t.Tokens.InputTokens, t.Tokens.OutputTokens, t.Overlap.Round(100_000_000)))
 	s.notice(session.LevelInfo, "instructions: "+files)
 	if w, ok := s.CurrentWait(); ok {
-		s.notice(session.LevelInfo, joinDetail("now: "+w.What, s.Live.Progress.Phase))
+		s.notice(session.LevelInfo, joinDetail("now: "+w.Text(), s.Live.Progress.Phase))
 	}
 
 	return append([]Effect{EffLoadActivity{}, EffLoadUsage{Reason: UsageStatus}}, s.loadCache()...)

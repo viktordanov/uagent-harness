@@ -1,9 +1,12 @@
 package render_test
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/viktordanov/uagent/core"
@@ -46,4 +49,56 @@ func TestWaitLine(t *testing.T) {
 		state.Tick{Now: t0.Add(6 * time.Second)},
 	)
 	assert.Contains(t, screen(early, ""), "Waiting for your answer (6s • esc to interrupt)")
+}
+
+// TestWaitLine_Narrow: a long path, a long command or an approval gives
+// way before the times: the path to ~, its last folders and its file
+// name, then the hint, then the words. The times show at every width.
+func TestWaitLine_Narrow(t *testing.T) {
+	run := func(evs ...any) state.State {
+		s := base()
+		s.Home = "/home/ada"
+		evs = append([]any{core.RunStarted{At: t0, RunID: "r1"}, core.TurnStarted{At: t0.Add(80 * time.Second), Turn: 1}}, evs...)
+
+		return apply(s, append(evs, state.Tick{Now: t0.Add(109 * time.Second)})...)
+	}
+	long := "/home/ada/work/clients/northwind/artifacts/release-0.8.0-run/dispositions.md"
+	cmd := "go test -race -count=1 -run 'TestWaitLine|TestScreen' ./internal/tui/render/... ./internal/tui/state/..."
+	cases := []struct {
+		name string
+		s    state.State
+	}{
+		{"patch", run(engine.ModelProgress{At: t0.Add(81 * time.Second), Phase: engine.PhaseStreaming, Tool: "apply_patch", Target: long, ToolBytes: 9200})},
+		{"hook", run(core.ModelResponded{At: t0.Add(81 * time.Second), Turn: 1}, session.HookRan{At: t0.Add(82 * time.Second), Event: "PreToolUse", Command: cmd, Outcome: "running"})},
+		{"approval", run(session.ApprovalRequested{At: t0.Add(82 * time.Second), ID: "a1", Command: cmd})},
+		{"answer", run(session.QuestionsAsked{At: t0.Add(82 * time.Second), ID: "q1", CallID: "c1", Questions: []engine.Question{{ID: "a", Header: "A", Question: "Which?", Options: []engine.QuestionOption{{Label: "X"}}}}})},
+	}
+	var b strings.Builder
+	for _, c := range cases {
+		for _, w := range []int{60, 80, 120} {
+			line := waitLine(t, c.s, w)
+			assert.LessOrEqual(t, ansi.StringWidth(line), w, "%s at %d", c.name, w)
+			assert.Regexp(t, `\((\d+s · )?1m 49s( • esc to interrupt)?\)$`, line, "%s at %d: the times show", c.name, w)
+			fmt.Fprintf(&b, "%-8s %3d │%s\n", c.name, w, line)
+		}
+	}
+	golden(t, "waitline-narrow", b.String())
+
+	at80 := waitLine(t, cases[0].s, 80)
+	assert.Contains(t, at80, "…/dispositions.md", "the file name stays")
+	assert.Contains(t, waitLine(t, cases[0].s, 120), "…/northwind/artifacts/release-0.8.0-run/dispositions.md", "the folders that fit stay")
+	assert.Contains(t, waitLine(t, cases[0].s, 160), "· ~/work/clients/", "the home directory shows as ~")
+}
+
+// waitLine is the status line above the composer at width w.
+func waitLine(t *testing.T, s state.State, w int) string {
+	t.Helper()
+	for _, l := range strings.Split(screenAt(s, "", w), "\n") {
+		if strings.Contains(l, "1m 49s") {
+			return l
+		}
+	}
+	t.Fatalf("no status line at %d", w)
+
+	return ""
 }
