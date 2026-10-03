@@ -337,10 +337,13 @@ func e2eRequests(s *fakellm.Server) []fakellm.Request {
 		// finished in), and the cache key (the session's ID) differ by run.
 		r.System, r.Input, r.CacheKey = "", nil, ""
 		slices.Sort(r.ToolOutputs)
-		// apply_patch is the embedded engine's own tool.
-		r.ToolNames = slices.DeleteFunc(r.ToolNames, func(n string) bool { return n == "apply_patch" })
-		r.ToolDefs = slices.DeleteFunc(r.ToolDefs, func(d json.RawMessage) bool { return strings.Contains(string(d), `"name":"apply_patch"`) })
-		delete(r.Tools, "apply_patch")
+		// apply_patch is the embedded engine's own tool, and SkillUse
+		// comes with its system skills.
+		for _, own := range []string{"apply_patch", "SkillUse"} {
+			r.ToolNames = slices.DeleteFunc(r.ToolNames, func(n string) bool { return n == own })
+			r.ToolDefs = slices.DeleteFunc(r.ToolDefs, func(d json.RawMessage) bool { return strings.Contains(string(d), `"name":"`+own+`"`) })
+			delete(r.Tools, own)
+		}
 		out = append(out, r)
 	}
 

@@ -69,7 +69,7 @@ uah-core (`github.com/viktordanov/uah-core`) is uah's own runtime: the coordinat
 
 These rules hold for the code that is not test code. `go list -f '{{.ImportPath}}: {{.Imports}}' ./...` shows the graph.
 
-1. **Leaves import no uah package:** `cmdparse`, `config/tomledit`, `engine/codexauth`, `history`, `home`, `images`, `instructions`, `llmcall`, `patch`, `rules`, `sandbox`, `sessionfile`, and `tui/render/markdown`.
+1. **Leaves import no uah package:** `cmdparse`, `config/tomledit`, `engine/codexauth`, `history`, `home`, `images`, `instructions`, `llmcall`, `patch`, `rules`, `sandbox`, `sessionfile`, `systemskills`, and `tui/render/markdown`.
 2. **Domain packages import only leaves and each other:** `approval`, `hooks`, `mcp`, `compaction`, `contextprep`, `contextusage`, `gitdiff`, `codereview`, `review`, `models`, `usage`, `usershell`, `images/clipboard`, and `config`. None of them imports `engine`, `session`, `app`, or `tui`.
 3. **`internal/engine` is the seam:** it imports domain types, and never an engine implementation, `session`, or `app`.
 4. **`internal/session` imports the seam and domain packages,** never `engine/embedded`, `config`, `app`, or `tui`. It reaches the engine only through `engine.Engine`.

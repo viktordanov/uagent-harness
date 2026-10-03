@@ -5,19 +5,21 @@ import "context"
 // Status is one module as `uah context` lists it: where it comes from,
 // whether it is on, and whether it applies to the session and why.
 type Status struct {
-	Path        string   `json:"path"`
-	ID          string   `json:"id,omitempty"`
-	Description string   `json:"description,omitempty"`
-	Source      Source   `json:"source"`
-	File        string   `json:"file,omitempty"`
-	Block       string   `json:"block"`
-	Overrides   bool     `json:"overrides,omitempty"`
-	Enabled     bool     `json:"enabled"`
-	Trusted     bool     `json:"trusted"`
-	Files       []string `json:"files,omitempty"`
-	Check       []string `json:"check,omitempty"`
-	Applies     bool     `json:"applies"`
-	Reason      string   `json:"reason"`
+	Path        string `json:"path"`
+	ID          string `json:"id,omitempty"`
+	Description string `json:"description,omitempty"`
+	Source      Source `json:"source"`
+	File        string `json:"file,omitempty"`
+	Block       string `json:"block"`
+	Overrides   bool   `json:"overrides,omitempty"`
+	// Pinned is an override identical to the built-in: see Override.
+	Pinned  bool     `json:"pinned,omitempty"`
+	Enabled bool     `json:"enabled"`
+	Trusted bool     `json:"trusted"`
+	Files   []string `json:"files,omitempty"`
+	Check   []string `json:"check,omitempty"`
+	Applies bool     `json:"applies"`
+	Reason  string   `json:"reason"`
 }
 
 // Explain lists every module with whether it applies to the session
@@ -34,7 +36,7 @@ func (ms *Modules) Explain(ctx context.Context, f Facts) []Status {
 		}
 		out = append(out, Status{
 			Path: m.Path, ID: m.Meta.ID, Description: m.Meta.Description, Source: m.Source, File: m.File, Block: block,
-			Overrides: m.Overrides, Enabled: m.Err == nil && ms.Enabled(m), Trusted: ms.Trusted(m),
+			Overrides: m.Overrides, Pinned: pinned(m), Enabled: m.Err == nil && ms.Enabled(m), Trusted: ms.Trusted(m),
 			Files: m.Meta.Files, Check: m.Meta.Check, Applies: r.Applies, Reason: r.Reason,
 		})
 	}

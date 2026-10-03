@@ -83,7 +83,7 @@ This audit (items 33 and 51 of the ledger) lists each behavior and the code that
 | Behavior | Where |
 | --- | --- |
 | Instructions (AGENTS.md and the host prompt) | `internal/app` loads them into `Settings.SystemPrompt`; the session sends it with each request |
-| Skills | `embedded/skills.go`, through the runner's `SkillUse`, from Codex's folders and the runner's `.harness/skills` |
+| Skills | `embedded/skills.go`, through the runner's `SkillUse`, from Codex's folders, the runner's `.harness/skills`, and last uah's system skills (`internal/systemskills`), written to `~/.uah/skills/.system` when a session starts |
 | SessionStart, UserPromptSubmit, PostToolUse, Stop, SessionEnd hooks | `internal/session/hooks.go` |
 | PreToolUse hooks | `embedded/pretooluse.go`, around the tool registry |
 | PermissionRequest hooks | `internal/session/approvals.go`, in the ask the approver calls |
@@ -208,7 +208,7 @@ On openai and openai-codex (`Provider.RemoteCompaction`), with `remote_compactio
 
 1. The runner's Bash and ViewImage translators. With a sandbox configured, Bash is `sandboxedBash` (`sandboxtool.go`), which asks the approver how each command runs. See [the permission pipeline](../approval/README.md). Every shell, sandboxed or not, gets the session's private `$TMPDIR`, `session.TempDir` under its operation directory, which is writable in read-only mode too (`wiring.policy`; see [the sandbox](../sandbox/README.md#the-sessions-temporary-directory)).
 2. `sandboxRegistry` (`sandboxschema.go`) adds `sandbox_permissions` and `justification` to Bash's schema when the model can ask for escalation, and a note on the current mode's sandbox to its description: what commands may write, and whether they have network. Without network the note adds that a command needing it, localhost included, fails in the sandbox, so the model asks for `require_escalated` on the first try instead of after a failed run, and independent escalations in one response get their approvals [at once](#approvals-for-parallel-calls) ([agent tuning](../../docs/design/agent-tuning.md#network-commands-escalated-up-front)).
-3. Skills from the Codex skill folders (`skills.go`), through the runner's `SkillUse` tool.
+3. Skills from the Codex skill folders and uah's system skills (`skills.go`), through the runner's `SkillUse` tool, which every session now offers.
 4. MCP tools (`mcptool.go`), named `mcp__<server>__<tool>`.
 5. Codex's `apply_patch` (`patchtool.go`), when the model's catalog entry has `apply_patch_tool_type`, and always on openai and openai-codex (`models.ApplyPatch`). It is a custom tool, as Codex offers it: Codex's description and Lark grammar (`patch.Description`, `patch.Grammar`), and the raw patch as its input. A session recorded when it was a function tool keeps its calls as function calls with the patch in `input`: they go back as recorded, as Codex sends its history, and the Responses API takes them although no function tool is declared; every reader takes both (`patch.ParseArgs`). The translator parses the patch and checks it against the files first, as Codex verifies a patch before asking, then applies the sandbox policy of the run's current permission mode: a write inside the writable roots (not a protected path) goes ahead; any other write, and every write in read only, goes to the approver as a Bash escalation would; full access applies everything. See [patches](../patch/README.md) and [the permission pipeline](../approval/README.md#patches).
 6. The agent tools (`agenttool.go`), when `Subagents` lets the session spawn.
@@ -304,7 +304,8 @@ The tests run against `testing/fakellm`, a scripted Responses API, and need no t
 
 | Test | Pins |
 | --- | --- |
-| `TestEmbedded_MatchesTheRunner` | The real `uah-core-runner` (built from go.mod's version) and the embedded engine get the same script and must produce the same events and session items. `go test -short` skips it |
+| `TestEmbedded_MatchesTheRunner` | The real `uah-core-runner` (built from go.mod's version) and the embedded engine get the same script and must produce the same events, session items, and model requests but for the engine's own tools (`apply_patch`, and `SkillUse` for the system skills). `go test -short` skips it |
+| `TestEmbedded_CodexSkills`, `TestEmbedded_SystemSkills` | The skill folders' order; the system skills written under `~/.uah/skills/.system` and offered, and replaced by a skill of the same name in another folder |
 | `TestEmbedded_SteersALiveRun`, `TestEmbedded_ChangesSettingsLive`, `TestEmbedded_InterruptThenContinue` | Live input, live settings, and interrupts |
 | `TestEmbedded_ResumesAProcessSession` | A session the real runner started resumes on the embedded engine with its history. `go test -short` skips it |
 | `patch_test.go`, `patch_tool_test.go` | `apply_patch` end to end: the custom tool's definition, patches inside and outside the workspace, read only, protected paths, declines, verification, hooks and their `updatedInput`, the approver's input, the live mode; a session recorded with the function tool rewinds, resumes, and goes on with a custom call, its old call sent back as recorded |

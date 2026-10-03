@@ -89,7 +89,10 @@ func printModules(w io.Writer, modules []contextprep.Status) error {
 // built in.
 func sourceLabel(m contextprep.Status) string {
 	label := string(m.Source)
-	if m.Overrides {
+	switch {
+	case m.Pinned:
+		label += " (replaces the built-in with an identical copy; `uah prompts prune` deletes it)"
+	case m.Overrides:
 		label += " (replaces the built-in)"
 	}
 	if m.File != "" {
