@@ -8,20 +8,23 @@ import (
 // Input is an input item: a message or a control input, by Kind.
 type Input struct {
 	ID   string
-	Kind string // external, control, or crash
-	// Payload is a JSON string for an external input (the message text)
-	// and an object for a control input.
+	Kind string // external, developer, control, or crash
+	// Payload is a JSON string for an external or developer input (the
+	// message text) and an object for a control input.
 	Payload json.RawMessage
 }
 
 // The input kinds.
 const (
 	InputExternal = "external"
-	InputControl  = "control"
-	InputCrash    = "crash"
+	// InputDeveloper is the harness's developer message, such as the
+	// prepared context a new session starts with.
+	InputDeveloper = "developer"
+	InputControl   = "control"
+	InputCrash     = "crash"
 )
 
-// Text is an external input's message.
+// Text is an external or developer input's message.
 func (in Input) Text() (string, error) {
 	var text string
 	if err := json.Unmarshal(in.Payload, &text); err != nil {

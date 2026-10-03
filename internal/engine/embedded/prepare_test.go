@@ -19,7 +19,8 @@ import (
 )
 
 // TestContextPreparation: with context preparation on, a new session's
-// first request carries the prepared context before the user's message,
+// first request carries the prepared context, a developer message, before
+// the user's message,
 // with git's state, the tracked files, the instruction files, and the
 // harness's guidance; the system prompt is the same as
 // without it, and a later run of the session adds no second block. A
@@ -67,13 +68,14 @@ func TestContextPreparation(t *testing.T) {
 		reqs := e.llm.Requests()
 		require.Len(t, reqs, 2, tt.name)
 		systems[tt.name] = strings.ReplaceAll(reqs[0].System, e.Workspace, "<ws>")
+		assert.Equal(t, []string{"hello"}, reqs[0].UserTexts, "the prepared context is not a user message")
 		if !tt.on {
-			assert.Equal(t, []string{"hello"}, reqs[0].UserTexts)
+			assert.Empty(t, reqs[0].DeveloperTexts)
 
 			continue
 		}
-		require.Len(t, reqs[0].UserTexts, 2, tt.name)
-		prepared := reqs[0].UserTexts[0]
+		require.Len(t, reqs[0].DeveloperTexts, 1, tt.name)
+		prepared := reqs[0].DeveloperTexts[0]
 		assert.True(t, contextprep.IsPrepared(prepared), prepared)
 		assert.Contains(t, prepared, "## workspace\nGit branch: trunk")
 		assert.Contains(t, prepared, "A  AGENTS.md")
@@ -81,8 +83,8 @@ func TestContextPreparation(t *testing.T) {
 		assert.Contains(t, prepared, "## agent files\nInstruction files in the system prompt, in order (their @ lines are expanded in place):\n- "+agents+"\n")
 		assert.Contains(t, prepared, "## harness\n")
 		assert.Contains(t, prepared, "(default 40000)")
-		assert.Equal(t, "hello", reqs[0].UserTexts[1])
-		assert.Equal(t, []string{prepared, "hello", "again"}, reqs[1].UserTexts, "the second run adds no context")
+		assert.Equal(t, []string{prepared}, reqs[1].DeveloperTexts, "the second run adds no context")
+		assert.Equal(t, []string{"hello", "again"}, reqs[1].UserTexts)
 	}
 	assert.Equal(t, systems["off"], systems["on"], "the system prompt is unchanged")
 }
@@ -107,7 +109,7 @@ func TestContextPreparation_Sandbox(t *testing.T) {
 	require.NoError(t, err)
 	ev.finished()
 
-	prepared := e.llm.Requests()[0].UserTexts[0]
+	prepared := e.llm.Requests()[0].DeveloperTexts[0]
 	require.True(t, contextprep.IsPrepared(prepared), prepared)
 	assert.Contains(t, prepared, "## environment\nCommands run in ")
 	assert.Contains(t, prepared, "## sandbox\nSandbox: read-only. Commands can read any file and write only $TMPDIR.")

@@ -61,7 +61,7 @@ func TestCrashRecovery(t *testing.T) {
 	reqs := llm.Requests()
 	require.Len(t, reqs, 2)
 	last := reqs[1]
-	assert.Equal(t, []string{"start a long command", "carry on"}, said(last.UserTexts), "the resumed run sees the history")
+	assert.Equal(t, []string{"start a long command", "carry on"}, last.UserTexts, "the resumed run sees the history")
 	assert.Equal(t, []string{"call-1-0"}, last.CallIDs, "the interrupted call is in the history")
 	require.Len(t, last.ToolOutputs, 1, "and it has a result")
 	assert.Contains(t, last.ToolOutputs[0], "interrupted before an exit status was recorded")

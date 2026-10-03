@@ -15,6 +15,7 @@ import (
 func TestParseUAHTurns(t *testing.T) {
 	stream := `{"v":1,"type":"user_message","at":"2026-10-02T10:00:00Z","text":"<workspace_context>\nprimed\n</workspace_context>"}
 {"v":1,"type":"user_message","at":"2026-10-02T10:00:00Z","text":"<context_preparation>\nprepared\n</context_preparation>"}
+{"v":1,"type":"developer_message","at":"2026-10-02T10:00:00Z","text":"<context_preparation>\nprepared\n</context_preparation>"}
 {"v":1,"type":"user_message","at":"2026-10-02T10:00:00Z","text":"one"}
 {"v":1,"type":"model_responded","at":"2026-10-02T10:00:05Z","duration_ms":5000,"stop":"complete","usage":{"input":1000,"output":10}}
 {"v":1,"type":"model_responded","at":"2026-10-02T10:00:09Z","duration_ms":3000,"stop":"complete","usage":{"input":1200,"output":10}}
@@ -25,7 +26,7 @@ func TestParseUAHTurns(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, tl.Requests, 3)
 	assert.Equal(t, []int{1, 1, 2}, []int{tl.Requests[0].Turn, tl.Requests[1].Turn, tl.Requests[2].Turn})
-	assert.Equal(t, 2, tl.Turns, "the prepared context, and the primed workspace context of earlier versions, are not user turns")
+	assert.Equal(t, 2, tl.Turns, "the prepared developer message, and the prepared and primed user messages of earlier versions, are not user turns")
 }
 
 // session is two user turns of a main agent at high with adaptive effort

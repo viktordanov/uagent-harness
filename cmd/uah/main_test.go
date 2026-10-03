@@ -8,14 +8,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"slices"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/viktordanov/uah/internal/contextprep"
 	"github.com/viktordanov/uah/testing/fakellm"
 	"github.com/viktordanov/uah/testing/harnesstest"
 )
@@ -185,11 +183,6 @@ func TestInstructionsAndConfig(t *testing.T) {
 }
 
 // lastRequest is the fake model's latest request.
-// said is a request's user messages without the prepared context.
-func said(texts []string) []string {
-	return slices.DeleteFunc(slices.Clone(texts), contextprep.IsPrepared)
-}
-
 func lastRequest(t *testing.T, llm *fakellm.Server) fakellm.Request {
 	t.Helper()
 	reqs := llm.Requests()
@@ -317,7 +310,7 @@ func TestRunEmbedded(t *testing.T) {
 	reqs := llm.Requests()
 	require.Len(t, reqs, 3)
 	assert.Equal(t, "priority", reqs[0].ServiceTier)
-	assert.Equal(t, []string{"first question", "and a follow-up"}, said(reqs[2].UserTexts))
+	assert.Equal(t, []string{"first question", "and a follow-up"}, reqs[2].UserTexts)
 }
 
 func TestHooksCommand(t *testing.T) {

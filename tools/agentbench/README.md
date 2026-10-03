@@ -181,7 +181,7 @@ Both streams become one `Timeline` (`timeline.json`), with times in milliseconds
 | --- | --- |
 | `requests` | each model request: `turn` (the user turn of a main agent's request, from 1), `start_ms`, `first_byte_ms` (when known), `end_ms`, `tokens` (`input`, `cached`, `output`, `reasoning`), `tool_calls` it issued, `effort`, `stop` (`complete`, or how it was cut off), `text_bytes` (the assistant text it wrote), and `agent` (a subagent's session ID, or empty for the main agent) |
 | `calls` | each tool call: `name`, `kind` (`tool`, `wait`, or `agent`), `args` (a one-line summary), `args_bytes`, `escalated` (it asked to run outside the sandbox), `request` (the index of the request that issued it), `issued_ms`, `start_ms`, `end_ms`, `ok`, `detail` (an exit status), and `agent` |
-| `turns` | user turns: one per prompt, follow-ups included; uah's prepared context (`<context_preparation>`, or an earlier version's `<workspace_context>`) is not one, and its requests go with the prompt after it |
+| `turns` | user turns: one per prompt, follow-ups included; uah's prepared context is not one: a `developer_message` event, or in earlier versions a user message that starts with `<context_preparation>` or `<workspace_context>`, and its requests go with the prompt after it |
 | `compactions` | uah's context compactions: `start_ms`, `end_ms` (the summary call), `trigger` (`auto` when the context reached the limit), `tokens` (the context then), and `error` if it failed. Codex's events show none |
 | `tokens` | the run's totals; input includes cached, output includes reasoning |
 | `inferred` | what was estimated rather than read |

@@ -20,14 +20,15 @@ import (
 )
 
 // Context preparation: a new session, a subagent's included, starts with
-// one more user message before its first, the prepared context
+// a developer message before its first user message, the prepared context
 // (internal/contextprep) that the adapters gather from the session's
 // facts. The system prompt stays the same, byte for byte, and the message
 // is recorded with the session, so the prompt cache holds. Resumed and
 // forked sessions get none: theirs is in their history.
 
-// prepared adds the prepared context before the messages of a new session,
-// when context preparation is on. req has the session's ID.
+// prepared adds the prepared context, as a developer message, before the
+// messages of a new session, when context preparation is on. req has the
+// session's ID.
 func (w *wiring) prepared(ctx context.Context, req core.Request, messages []core.UserInput) []core.UserInput {
 	if !w.e.cfg.ContextPreparation {
 		return messages
@@ -41,7 +42,7 @@ func (w *wiring) prepared(ctx context.Context, req core.Request, messages []core
 		return messages
 	}
 
-	return append([]core.UserInput{{ID: uuid.NewString(), Text: text}}, messages...)
+	return append([]core.UserInput{{ID: uuid.NewString(), Text: text, Role: core.RoleDeveloper}}, messages...)
 }
 
 // facts are what the adapters know about the session: its workspace and

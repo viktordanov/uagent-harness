@@ -1,10 +1,10 @@
 <!-- memoria:section id="overview" files="contract.go prepare.go" -->
 # Context preparation
 
-Context preparation gives a new session the facts its first turns would otherwise spend tool calls on. At the start of the session, adapters each write a short block about one part of the session: the environment, the sandbox, the workspace, the agent files, and the harness. uah sends the joined blocks once, as a user message before the first user message.
+Context preparation gives a new session the facts its first turns would otherwise spend tool calls on. At the start of the session, adapters each write a short block about one part of the session: the environment, the sandbox, the workspace, the agent files, and the harness. uah sends the joined blocks once, as a developer message before the first user message. The model reads a developer message as the harness's, not the user's, so the block is no user turn and no request of its own: it goes with the first user message.
 
 <!-- memoria:export id="summary" -->
-Every new session starts with one message of prepared context, before the first user message. This includes a subagent's session. The message has the git branch, the status, and the tracked files. It names the loaded instruction files, so the model does not search for more. It also gives the shell's and the OS's traps, the sandbox's limits and the session's private `$TMPDIR`, and how to size the Bash tool's output. The system prompt does not change, and the message stays in the session's history, so the prompt cache holds. Resumed and forked sessions get no new message. Turn it off with `context_preparation = false`, `--no-context-preparation`, or `UAH_CONTEXT_PREPARATION=off`.
+Every new session starts with one developer message of prepared context, before the first user message. This includes a subagent's session. The message has the git branch, the status, and the tracked files. It names the loaded instruction files, so the model does not search for more. It also gives the shell's and the OS's traps, the sandbox's limits and the session's private `$TMPDIR`, and how to size the Bash tool's output. The system prompt does not change, and the message stays in the session's history, so the prompt cache holds. Resumed and forked sessions get no new message. Turn it off with `context_preparation = false`, `--no-context-preparation`, or `UAH_CONTEXT_PREPARATION=off`.
 <!-- /memoria:export -->
 
 1. [The contract](#the-contract)
@@ -63,7 +63,7 @@ Commands run in zsh (/bin/zsh -c) on macOS.
 
 An adapter with nothing to say gets no section. Each block is cut to 4 KiB (`MaxAdapterBytes`), or to the adapter's own cap when it implements `Limited`. The whole message is cut to 16 KiB (`MaxBytes`). A cut ends at a line break with `(cut: the rest is over N bytes)`. When no adapter has anything to say, there is no message.
 
-`IsPrepared` recognizes the message. The TUI shows it as a one-line notice, `uah sessions show` as one line, and the auto-reviewer leaves it out of the user's messages.
+The engine sends it as a developer message (`core.RoleDeveloper`), so the TUI, `uah sessions show`, the auto-reviewer, and the agent benchmark tell it from the user's messages by its role: a `core.DeveloperMessage` event, a `developer` input in the session file. The TUI shows it as a one-line notice and `uah sessions show` as one line; the auto-reviewer and the benchmark's turn count leave it out. A session from before the developer role has it as a user message; `IsPrepared` recognizes it by its tag there, and the same places treat it the same way.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="adapters" files="environment.go sandbox.go workspace.go agentfiles.go harness.go" -->

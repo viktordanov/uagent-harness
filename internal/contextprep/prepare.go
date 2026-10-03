@@ -8,9 +8,9 @@ import (
 	"unicode/utf8"
 )
 
-// The prepared block's tags. The block is one user message before the
-// session's first, so the system prompt, and with it the prompt cache,
-// stays the same.
+// The prepared block's tags. The block is one developer message before
+// the session's first user message, so the system prompt, and with it the
+// prompt cache, stays the same.
 const (
 	Open  = "<context_preparation>"
 	Close = "</context_preparation>"
@@ -102,8 +102,9 @@ func cut(text string, limit int) string {
 	return head + note
 }
 
-// IsPrepared reports whether a user message is a prepared block, which is
-// uah's, not the user's.
+// IsPrepared reports whether a message is a prepared block, which is
+// uah's, not the user's. A session from before the developer role has it
+// as a user message.
 func IsPrepared(text string) bool {
 	return strings.HasPrefix(text, Open+"\n")
 }

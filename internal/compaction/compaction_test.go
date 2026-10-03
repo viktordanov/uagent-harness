@@ -58,6 +58,22 @@ func TestApply_KeepsUserMessagesAndReplacesTheRest(t *testing.T) {
 	}, texts(got))
 }
 
+func TestApply_KeepsDeveloperMessages(t *testing.T) {
+	history := []llm.Item{
+		msg(llm.RoleSystem, "sys"), msg(llm.RoleDeveloper, "prepared"), msg(llm.RoleUser, "first"),
+		call("a"), result("a", "out a"), msg(llm.RoleAssistant, "done"),
+	}
+	rec, err := compaction.NewRecord(history, "the summary", compaction.TriggerManual, "m", time.Now())
+	require.NoError(t, err)
+	rec.Floor = 2 // past the developer message: it is kept anyway
+
+	got, err := compaction.Apply(history, rec)
+	require.NoError(t, err)
+	assert.Equal(t, []string{
+		"system: sys", "developer: prepared", "user: " + compaction.SummaryPrefix + "\nthe summary",
+	}, texts(got))
+}
+
 func TestNewRecord_LeavesNewUserMessagesAfterTheSummary(t *testing.T) {
 	history := []llm.Item{msg(llm.RoleSystem, "sys"), msg(llm.RoleUser, "first"), call("a"), result("a", "x"), msg(llm.RoleUser, "new")}
 	rec, err := compaction.NewRecord(history, "s", compaction.TriggerManual, "m", time.Now())

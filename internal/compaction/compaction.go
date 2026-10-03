@@ -154,9 +154,10 @@ func NewRecordCovering(input []llm.Item, covered int, summary string, trigger Tr
 }
 
 // Apply rewrites input, whose first item is the system message, with the
-// record: the system message, the covered user messages that Kept keeps (up
-// to the record's cap), the summary, and the items after the covered ones,
-// with the elided outputs as stubs. A tool result whose call was covered
+// record: the system message, the covered developer messages (Developer),
+// the covered user messages that Kept keeps (up to the record's cap), the
+// summary, and the items after the covered ones, with the elided outputs as
+// stubs. A tool result whose call was covered
 // becomes a user-role note, so no output lacks its call. A record that
 // covers nothing only elides.
 func Apply(input []llm.Item, rec Record) ([]llm.Item, error) {
@@ -174,9 +175,11 @@ func Apply(input []llm.Item, rec Record) ([]llm.Item, error) {
 	if hash != rec.Hash {
 		return nil, ErrMismatch
 	}
+	developer := Developer(covered)
 	kept := Kept(covered[min(rec.Floor, len(covered)):], rec.keepTokens())
-	out := make([]llm.Item, 0, 2+len(kept)+len(tail))
+	out := make([]llm.Item, 0, 2+len(developer)+len(kept)+len(tail))
 	out = append(out, input[0])
+	out = append(out, developer...)
 	out = append(out, kept...)
 	if rec.Floor < rec.Covered {
 		out = append(out, rec.summaryItems()...)

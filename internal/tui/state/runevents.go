@@ -31,8 +31,8 @@ func (s *State) onRunEvent(ev core.Event) { //nolint:gocyclo // a dispatch switc
 		if !ok {
 			note, ok = reviewNote(e.Text)
 		}
-		if !ok {
-			note, ok = preparedNote(e.Text)
+		if !ok && contextprep.IsPrepared(e.Text) {
+			note, ok = preparedNote(e.Text), true // a session from before the developer role
 		}
 		if ok {
 			s.put(Item{Kind: KindNotice, Key: "msg:" + e.ID, Text: note, Level: session.LevelInfo})
@@ -42,6 +42,8 @@ func (s *State) onRunEvent(ev core.Event) { //nolint:gocyclo // a dispatch switc
 		if !s.update("msg:"+e.ID, func(it *Item) { it.Input = InputDelivered }) {
 			s.put(Item{Kind: KindUser, Key: "msg:" + e.ID, Text: images.Display(e.Text), Raw: e.Text, Input: InputDelivered})
 		}
+	case core.DeveloperMessage:
+		s.put(Item{Kind: KindNotice, Key: "msg:" + e.ID, Text: preparedNote(e.Text), Level: session.LevelInfo})
 	case core.TurnStarted:
 		l := s.live()
 		l.Turn, l.Aside = cmp.Or(l.Turn, e.At), nil
@@ -89,12 +91,12 @@ func (s *State) onRunEvent(ev core.Event) { //nolint:gocyclo // a dispatch switc
 
 func (s *State) turnKey(turn int) string { return fmt.Sprintf("turn:%s:%d", s.live().RunID, turn) }
 
-// preparedNote stands for the prepared context a new session starts with,
-// uah's message rather than the user's.
-func preparedNote(text string) (string, bool) {
+// preparedNote stands for a developer message, uah's rather than the
+// user's: the prepared context a new session starts with, or another.
+func preparedNote(text string) string {
 	if !contextprep.IsPrepared(text) {
-		return "", false
+		return fmt.Sprintf("uah sent the model context (%.1f KB)", float64(len(text))/1024)
 	}
 
-	return fmt.Sprintf("uah prepared the session's context (%.1f KB)", float64(len(text))/1024), true
+	return fmt.Sprintf("uah prepared the session's context (%.1f KB)", float64(len(text))/1024)
 }

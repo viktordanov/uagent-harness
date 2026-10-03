@@ -47,7 +47,7 @@ func (t *transcript) observe(e core.Event) {
 	switch v := e.(type) {
 	case core.UserMessage:
 		if contextprep.IsPrepared(v.Text) {
-			return // uah's, not the user's
+			return // uah's, not the user's, in a session from before the developer role
 		}
 		t.users = keepLast(append(t.users, v.Text), keepUserMessages)
 		if t.onUser != nil {

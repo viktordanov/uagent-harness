@@ -22,7 +22,7 @@ func TestExecReadsThePromptFromStdin(t *testing.T) {
 
 	require.Equal(t, 0, res.code, res.stderr)
 	assert.Equal(t, "read it\n", res.stdout)
-	assert.Equal(t, []string{"first line\nsecond line"}, said(lastRequest(t, llm).UserTexts), "one message, not one per line")
+	assert.Equal(t, []string{"first line\nsecond line"}, lastRequest(t, llm).UserTexts, "one message, not one per line")
 }
 
 func TestExecPromptErrors(t *testing.T) {

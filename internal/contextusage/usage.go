@@ -132,6 +132,8 @@ func addItem(add func(cat, item, text string), it llm.Item, files []string) {
 		switch d.Role {
 		case llm.RoleSystem:
 			splitSystem(add, d.Text, files)
+		case llm.RoleDeveloper:
+			add(SystemPrompt, "", d.Text) // uah's context, such as the prepared context
 		case llm.RoleUser:
 			add(UserMessages, "", d.Text)
 		case llm.RoleAssistant:

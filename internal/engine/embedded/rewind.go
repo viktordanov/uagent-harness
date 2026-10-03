@@ -69,6 +69,8 @@ func (e *Engine) Rewind(ctx context.Context, sessionID, messageID string) (engin
 
 // rewindPoint finds where a rewind to the message cuts: at its input, or at
 // the first of the inputs just before it, which reached the agent with it.
+// A developer message before them stays, such as the prepared context a
+// rewind to the first message would otherwise drop.
 // held are the texts of those earlier inputs.
 func rewindPoint(items []sessionstore.Item, messageID string) (from int, held []string, err error) {
 	at := slices.IndexFunc(items, func(it sessionstore.Item) bool {
@@ -80,7 +82,7 @@ func rewindPoint(items []sessionstore.Item, messageID string) (from int, held []
 		return 0, nil, errNotInContext
 	}
 	from = at
-	for from > 0 && items[from-1].Kind == sessionstore.ItemInput {
+	for from > 0 && items[from-1].Kind == sessionstore.ItemInput && !developer(items[from-1]) {
 		from--
 	}
 	if callsWithoutStatus(items[:from]) {
@@ -89,6 +91,14 @@ func rewindPoint(items []sessionstore.Item, messageID string) (from int, held []
 	held = externalInputs(items[from:at])
 
 	return from, held, nil
+}
+
+// developer reports whether the item is a developer message, the
+// harness's context, which a rewind keeps.
+func developer(item sessionstore.Item) bool {
+	in, ok := item.Data.(inbox.Input)
+
+	return ok && in.Kind == inbox.InputDeveloper
 }
 
 // callsWithoutStatus reports whether a tool call among the items has no

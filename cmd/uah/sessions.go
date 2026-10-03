@@ -202,8 +202,10 @@ func printTranscript(w io.Writer, info session.Info, runs []session.LoadedRun) {
 		fmt.Fprintf(w, "\n── run %s · %s · %s\n", res.Request.RunID, res.Status, res.StartedAt.Local().Format("2006-01-02 15:04"))
 		for _, e := range r.Events {
 			switch m := e.(type) {
+			case core.DeveloperMessage:
+				fmt.Fprintf(w, "  (%s, %d bytes)\n", developerLabel(m.Text), len(m.Text))
 			case core.UserMessage:
-				if contextprep.IsPrepared(m.Text) {
+				if contextprep.IsPrepared(m.Text) { // a session from before the developer role
 					fmt.Fprintf(w, "  (prepared context, %d bytes)\n", len(m.Text))
 
 					continue
@@ -269,4 +271,13 @@ func ago(t time.Time) string {
 	}
 
 	return fmt.Sprintf("%dd ago", int(d.Hours()/24))
+}
+
+// developerLabel names a developer message, uah's context for the model.
+func developerLabel(text string) string {
+	if contextprep.IsPrepared(text) {
+		return "prepared context"
+	}
+
+	return "developer message"
 }

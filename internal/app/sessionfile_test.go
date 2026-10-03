@@ -43,7 +43,7 @@ func TestSessionFileFollowsTheDocumentedFormat(t *testing.T) {
 
 	assert.Equal(t, s.ID(), h.ID)
 	var kinds []sessionfile.Kind
-	var said, answers, calls []string
+	var said, developer, answers, calls []string
 	for i, it := range page.Items {
 		require.Equal(t, uint64(i+1), it.Sequence)
 		kinds = append(kinds, it.Kind)
@@ -51,10 +51,15 @@ func TestSessionFileFollowsTheDocumentedFormat(t *testing.T) {
 		case sessionfile.KindInput:
 			var input sessionfile.Input
 			require.NoError(t, it.Decode(&input))
-			if input.Kind == sessionfile.InputExternal {
+			switch input.Kind {
+			case sessionfile.InputExternal:
 				text, err := input.Text()
 				require.NoError(t, err)
 				said = append(said, text)
+			case sessionfile.InputDeveloper:
+				text, err := input.Text()
+				require.NoError(t, err)
+				developer = append(developer, text)
 			}
 		case sessionfile.KindModelResponse:
 			var r sessionfile.ModelResponse
@@ -73,9 +78,9 @@ func TestSessionFileFollowsTheDocumentedFormat(t *testing.T) {
 			calls = append(calls, st.CallID)
 		}
 	}
-	require.Len(t, said, 2)
-	assert.True(t, contextprep.IsPrepared(said[0]), "the prepared context comes first: %s", said[0])
-	assert.Equal(t, "hello", said[1])
+	require.Len(t, developer, 1)
+	assert.True(t, contextprep.IsPrepared(developer[0]), "the prepared context is a developer input: %s", developer[0])
+	assert.Equal(t, []string{"hello"}, said)
 	assert.Contains(t, answers, "done")
 	assert.NotEmpty(t, calls, "the Bash call's status")
 	for _, k := range []sessionfile.Kind{sessionfile.KindInput, sessionfile.KindTurn, sessionfile.KindModelResponse, sessionfile.KindToolCallStatus} {
