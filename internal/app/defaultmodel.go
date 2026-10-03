@@ -49,6 +49,19 @@ func (r *Resolved) SettleModel(c models.Catalog) {
 	}
 }
 
+// modelNotices are the warnings about the model's settings that its
+// catalog entry does not take: the effort and model_verbosity.
+func modelNotices(c models.Catalog, r Resolved) []string {
+	var notices []string
+	for _, notice := range []string{effortNotice(c, r.Settings), verbosityNotice(c, r.Settings.Model, r.Verbosity)} {
+		if notice != "" {
+			notices = append(notices, notice)
+		}
+	}
+
+	return notices
+}
+
 // effortNotice warns when the model's catalog entry does not list the
 // effort, such as ultra on gpt-6-luna; the provider decides, so the session
 // still opens.

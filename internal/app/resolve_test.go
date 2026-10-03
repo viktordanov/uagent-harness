@@ -448,6 +448,8 @@ func TestResolveUsageErrors(t *testing.T) {
 		{name: "relative experimental_compact_prompt_file", cfg: config.Config{ExperimentalCompactPromptFile: "prompt.md"}, want: `invalid experimental_compact_prompt_file "prompt.md"`},
 		{name: "invalid web_search", cfg: config.Config{WebSearch: "sometimes"}, want: `invalid web_search "sometimes"`},
 		{name: "cached web_search", cfg: config.Config{WebSearch: "cached"}, want: `web_search = "cached" is not available`},
+		{name: "invalid model_verbosity", cfg: config.Config{ModelVerbosity: "terse"}, want: `invalid model_verbosity "terse" (want low, medium, high)`},
+		{name: "invalid --model-verbosity", in: func(in *app.Inputs) { in.ModelVerbosity = "max" }, want: `invalid model_verbosity "max"`},
 		{name: "invalid adaptive_effort", cfg: config.Config{AdaptiveEffort: "on"}, want: `invalid adaptive effort "on" (want off, 1-step, or 2-steps)`},
 		{name: "invalid approvals_reviewer", cfg: config.Config{ApprovalsReviewer: "robot"}, want: `invalid approvals_reviewer "robot"`},
 		{name: "invalid review effort", cfg: config.Config{Review: config.Review{Effort: "huge"}}, want: `invalid review.effort "huge"`},

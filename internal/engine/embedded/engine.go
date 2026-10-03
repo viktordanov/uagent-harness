@@ -92,6 +92,10 @@ type Config struct {
 	// WebSearch offers the provider's hosted web search tool to a run on a
 	// provider that has it (Provider.WebSearch), subagents' runs included.
 	WebSearch bool
+	// Verbosity is model_verbosity: low, medium, or high in place of the
+	// model's default_verbosity, for a model whose catalog entry supports
+	// verbosity ("": the default), as Codex's key.
+	Verbosity string
 	// Subagents, when set, offers its tools to the runs it attaches and
 	// hears when the user interrupts a run; the engine closes it when it is
 	// an io.Closer.
