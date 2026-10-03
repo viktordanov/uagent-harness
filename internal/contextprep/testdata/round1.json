@@ -1,0 +1,1247 @@
+[
+ {
+  "name": "environment",
+  "shell": "",
+  "goos": "darwin",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in sh (/bin/sh -c) on macOS.\nThis is plain POSIX sh: [[ ]], arrays, source, {a,b}, <(…) and echo -e may not work; use [ ], ., printf, or run bash -c '…'.\nmacOS has BSD tools, not GNU: sed -i '' (not sed -i), stat -f (not -c), date -v-1d (not -d), no grep -P (use -E or perl), no nproc (sysctl -n hw.ncpu)."
+ },
+ {
+  "name": "sandbox",
+  "shell": "",
+  "goos": "darwin",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": ""
+ },
+ {
+  "name": "sandbox",
+  "shell": "",
+  "goos": "darwin",
+  "mode": "",
+  "network": false,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": ""
+ },
+ {
+  "name": "sandbox",
+  "shell": "",
+  "goos": "darwin",
+  "mode": "",
+  "network": true,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": ""
+ },
+ {
+  "name": "sandbox",
+  "shell": "",
+  "goos": "darwin",
+  "mode": "",
+  "network": true,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": ""
+ },
+ {
+  "name": "sandbox",
+  "shell": "",
+  "goos": "darwin",
+  "mode": "read-only",
+  "network": false,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": "Sandbox: read-only. Commands can read any file and write only $TMPDIR.\n$TMPDIR (/tmp/s/x) is this session's private scratch directory, writable in every mode: put temporary files there, and point a tool cache that cannot be written elsewhere at it, such as GOCACHE=$TMPDIR/go-build.\nps and pgrep fail in the sandbox (lsof works); request escalation to list processes.\nLocal sockets count as network: docker and other clients of a daemon's socket fail in the sandbox, so request escalation for them from the first try."
+ },
+ {
+  "name": "sandbox",
+  "shell": "",
+  "goos": "darwin",
+  "mode": "read-only",
+  "network": true,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": "Sandbox: read-only. Commands can read any file and write only $TMPDIR.\n$TMPDIR (/tmp/s/x) is this session's private scratch directory, writable in every mode: put temporary files there, and point a tool cache that cannot be written elsewhere at it, such as GOCACHE=$TMPDIR/go-build.\nps and pgrep fail in the sandbox (lsof works); request escalation to list processes."
+ },
+ {
+  "name": "sandbox",
+  "shell": "",
+  "goos": "darwin",
+  "mode": "workspace-write",
+  "network": false,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": "Sandbox: workspace-write. Commands can read any file and write the workspace, /tmp, and $TMPDIR; .git, .uah, .agents, and .codex stay read-only.\n$TMPDIR (/tmp/s/x) is this session's private scratch directory, writable in every mode: put temporary files there, and point a tool cache that cannot be written elsewhere at it, such as GOCACHE=$TMPDIR/go-build.\nps and pgrep fail in the sandbox (lsof works); request escalation to list processes.\nLocal sockets count as network: docker and other clients of a daemon's socket fail in the sandbox, so request escalation for them from the first try."
+ },
+ {
+  "name": "sandbox",
+  "shell": "",
+  "goos": "darwin",
+  "mode": "workspace-write",
+  "network": true,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": "Sandbox: workspace-write. Commands can read any file and write the workspace, /tmp, and $TMPDIR; .git, .uah, .agents, and .codex stay read-only.\n$TMPDIR (/tmp/s/x) is this session's private scratch directory, writable in every mode: put temporary files there, and point a tool cache that cannot be written elsewhere at it, such as GOCACHE=$TMPDIR/go-build.\nps and pgrep fail in the sandbox (lsof works); request escalation to list processes."
+ },
+ {
+  "name": "environment",
+  "shell": "",
+  "goos": "linux",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in sh (/bin/sh -c) on Linux.\nThis is plain POSIX sh: [[ ]], arrays, source, {a,b}, <(…) and echo -e may not work; use [ ], ., printf, or run bash -c '…'."
+ },
+ {
+  "name": "sandbox",
+  "shell": "",
+  "goos": "linux",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": ""
+ },
+ {
+  "name": "sandbox",
+  "shell": "",
+  "goos": "linux",
+  "mode": "",
+  "network": false,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": ""
+ },
+ {
+  "name": "sandbox",
+  "shell": "",
+  "goos": "linux",
+  "mode": "",
+  "network": true,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": ""
+ },
+ {
+  "name": "sandbox",
+  "shell": "",
+  "goos": "linux",
+  "mode": "",
+  "network": true,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": ""
+ },
+ {
+  "name": "sandbox",
+  "shell": "",
+  "goos": "linux",
+  "mode": "read-only",
+  "network": false,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": "Sandbox: read-only. Commands can read any file and write only $TMPDIR.\n$TMPDIR (/tmp/s/x) is this session's private scratch directory, writable in every mode: put temporary files there, and point a tool cache that cannot be written elsewhere at it, such as GOCACHE=$TMPDIR/go-build."
+ },
+ {
+  "name": "sandbox",
+  "shell": "",
+  "goos": "linux",
+  "mode": "read-only",
+  "network": true,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": "Sandbox: read-only. Commands can read any file and write only $TMPDIR.\n$TMPDIR (/tmp/s/x) is this session's private scratch directory, writable in every mode: put temporary files there, and point a tool cache that cannot be written elsewhere at it, such as GOCACHE=$TMPDIR/go-build."
+ },
+ {
+  "name": "sandbox",
+  "shell": "",
+  "goos": "linux",
+  "mode": "workspace-write",
+  "network": false,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": "Sandbox: workspace-write. Commands can read any file and write the workspace, /tmp, and $TMPDIR; .git, .uah, .agents, and .codex stay read-only.\n$TMPDIR (/tmp/s/x) is this session's private scratch directory, writable in every mode: put temporary files there, and point a tool cache that cannot be written elsewhere at it, such as GOCACHE=$TMPDIR/go-build."
+ },
+ {
+  "name": "sandbox",
+  "shell": "",
+  "goos": "linux",
+  "mode": "workspace-write",
+  "network": true,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": "Sandbox: workspace-write. Commands can read any file and write the workspace, /tmp, and $TMPDIR; .git, .uah, .agents, and .codex stay read-only.\n$TMPDIR (/tmp/s/x) is this session's private scratch directory, writable in every mode: put temporary files there, and point a tool cache that cannot be written elsewhere at it, such as GOCACHE=$TMPDIR/go-build."
+ },
+ {
+  "name": "environment",
+  "shell": "",
+  "goos": "windows",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in sh (/bin/sh -c) on Windows.\nThis is plain POSIX sh: [[ ]], arrays, source, {a,b}, <(…) and echo -e may not work; use [ ], ., printf, or run bash -c '…'.\nWindows paths use \\ and drive letters; Unix tools such as grep, sed and find may be missing."
+ },
+ {
+  "name": "environment",
+  "shell": "",
+  "goos": "freebsd",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in sh (/bin/sh -c) on FreeBSD.\nThis is plain POSIX sh: [[ ]], arrays, source, {a,b}, <(…) and echo -e may not work; use [ ], ., printf, or run bash -c '…'.\nBSD tools, not GNU: flags of sed -i, stat, date and grep differ from GNU's."
+ },
+ {
+  "name": "environment",
+  "shell": "/bin/bash",
+  "goos": "darwin",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in bash (/bin/bash -c) on macOS.\nmacOS /bin/bash is 3.2: no declare -A, mapfile/readarray, ${x,,} or |&.\nmacOS has BSD tools, not GNU: sed -i '' (not sed -i), stat -f (not -c), date -v-1d (not -d), no grep -P (use -E or perl), no nproc (sysctl -n hw.ncpu)."
+ },
+ {
+  "name": "sandbox",
+  "shell": "/bin/bash",
+  "goos": "darwin",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": ""
+ },
+ {
+  "name": "sandbox",
+  "shell": "/bin/bash",
+  "goos": "darwin",
+  "mode": "",
+  "network": false,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": ""
+ },
+ {
+  "name": "sandbox",
+  "shell": "/bin/bash",
+  "goos": "darwin",
+  "mode": "",
+  "network": true,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": ""
+ },
+ {
+  "name": "sandbox",
+  "shell": "/bin/bash",
+  "goos": "darwin",
+  "mode": "",
+  "network": true,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": ""
+ },
+ {
+  "name": "sandbox",
+  "shell": "/bin/bash",
+  "goos": "darwin",
+  "mode": "read-only",
+  "network": false,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": "Sandbox: read-only. Commands can read any file and write only $TMPDIR.\n$TMPDIR (/tmp/s/x) is this session's private scratch directory, writable in every mode: put temporary files there, and point a tool cache that cannot be written elsewhere at it, such as GOCACHE=$TMPDIR/go-build.\nmacOS's /bin/bash ignores $TMPDIR for heredoc files, so heredocs fail here; write the text with printf to a file in $TMPDIR instead.\nps and pgrep fail in the sandbox (lsof works); request escalation to list processes.\nLocal sockets count as network: docker and other clients of a daemon's socket fail in the sandbox, so request escalation for them from the first try."
+ },
+ {
+  "name": "sandbox",
+  "shell": "/bin/bash",
+  "goos": "darwin",
+  "mode": "read-only",
+  "network": true,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": "Sandbox: read-only. Commands can read any file and write only $TMPDIR.\n$TMPDIR (/tmp/s/x) is this session's private scratch directory, writable in every mode: put temporary files there, and point a tool cache that cannot be written elsewhere at it, such as GOCACHE=$TMPDIR/go-build.\nmacOS's /bin/bash ignores $TMPDIR for heredoc files, so heredocs fail here; write the text with printf to a file in $TMPDIR instead.\nps and pgrep fail in the sandbox (lsof works); request escalation to list processes."
+ },
+ {
+  "name": "sandbox",
+  "shell": "/bin/bash",
+  "goos": "darwin",
+  "mode": "workspace-write",
+  "network": false,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": "Sandbox: workspace-write. Commands can read any file and write the workspace, /tmp, and $TMPDIR; .git, .uah, .agents, and .codex stay read-only.\n$TMPDIR (/tmp/s/x) is this session's private scratch directory, writable in every mode: put temporary files there, and point a tool cache that cannot be written elsewhere at it, such as GOCACHE=$TMPDIR/go-build.\nps and pgrep fail in the sandbox (lsof works); request escalation to list processes.\nLocal sockets count as network: docker and other clients of a daemon's socket fail in the sandbox, so request escalation for them from the first try."
+ },
+ {
+  "name": "sandbox",
+  "shell": "/bin/bash",
+  "goos": "darwin",
+  "mode": "workspace-write",
+  "network": true,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": "Sandbox: workspace-write. Commands can read any file and write the workspace, /tmp, and $TMPDIR; .git, .uah, .agents, and .codex stay read-only.\n$TMPDIR (/tmp/s/x) is this session's private scratch directory, writable in every mode: put temporary files there, and point a tool cache that cannot be written elsewhere at it, such as GOCACHE=$TMPDIR/go-build.\nps and pgrep fail in the sandbox (lsof works); request escalation to list processes."
+ },
+ {
+  "name": "environment",
+  "shell": "/bin/bash",
+  "goos": "linux",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in bash (/bin/bash -c) on Linux."
+ },
+ {
+  "name": "sandbox",
+  "shell": "/bin/bash",
+  "goos": "linux",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": ""
+ },
+ {
+  "name": "sandbox",
+  "shell": "/bin/bash",
+  "goos": "linux",
+  "mode": "",
+  "network": false,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": ""
+ },
+ {
+  "name": "sandbox",
+  "shell": "/bin/bash",
+  "goos": "linux",
+  "mode": "",
+  "network": true,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": ""
+ },
+ {
+  "name": "sandbox",
+  "shell": "/bin/bash",
+  "goos": "linux",
+  "mode": "",
+  "network": true,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": ""
+ },
+ {
+  "name": "sandbox",
+  "shell": "/bin/bash",
+  "goos": "linux",
+  "mode": "read-only",
+  "network": false,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": "Sandbox: read-only. Commands can read any file and write only $TMPDIR.\n$TMPDIR (/tmp/s/x) is this session's private scratch directory, writable in every mode: put temporary files there, and point a tool cache that cannot be written elsewhere at it, such as GOCACHE=$TMPDIR/go-build."
+ },
+ {
+  "name": "sandbox",
+  "shell": "/bin/bash",
+  "goos": "linux",
+  "mode": "read-only",
+  "network": true,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": "Sandbox: read-only. Commands can read any file and write only $TMPDIR.\n$TMPDIR (/tmp/s/x) is this session's private scratch directory, writable in every mode: put temporary files there, and point a tool cache that cannot be written elsewhere at it, such as GOCACHE=$TMPDIR/go-build."
+ },
+ {
+  "name": "sandbox",
+  "shell": "/bin/bash",
+  "goos": "linux",
+  "mode": "workspace-write",
+  "network": false,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": "Sandbox: workspace-write. Commands can read any file and write the workspace, /tmp, and $TMPDIR; .git, .uah, .agents, and .codex stay read-only.\n$TMPDIR (/tmp/s/x) is this session's private scratch directory, writable in every mode: put temporary files there, and point a tool cache that cannot be written elsewhere at it, such as GOCACHE=$TMPDIR/go-build."
+ },
+ {
+  "name": "sandbox",
+  "shell": "/bin/bash",
+  "goos": "linux",
+  "mode": "workspace-write",
+  "network": true,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": "Sandbox: workspace-write. Commands can read any file and write the workspace, /tmp, and $TMPDIR; .git, .uah, .agents, and .codex stay read-only.\n$TMPDIR (/tmp/s/x) is this session's private scratch directory, writable in every mode: put temporary files there, and point a tool cache that cannot be written elsewhere at it, such as GOCACHE=$TMPDIR/go-build."
+ },
+ {
+  "name": "environment",
+  "shell": "/bin/bash",
+  "goos": "windows",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in bash (/bin/bash -c) on Windows.\nWindows paths use \\ and drive letters; Unix tools such as grep, sed and find may be missing."
+ },
+ {
+  "name": "environment",
+  "shell": "/bin/bash",
+  "goos": "freebsd",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in bash (/bin/bash -c) on FreeBSD.\nBSD tools, not GNU: flags of sed -i, stat, date and grep differ from GNU's."
+ },
+ {
+  "name": "environment",
+  "shell": "/opt/homebrew/bin/bash",
+  "goos": "darwin",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in bash (/opt/homebrew/bin/bash -c) on macOS.\nmacOS has BSD tools, not GNU: sed -i '' (not sed -i), stat -f (not -c), date -v-1d (not -d), no grep -P (use -E or perl), no nproc (sysctl -n hw.ncpu)."
+ },
+ {
+  "name": "environment",
+  "shell": "/opt/homebrew/bin/bash",
+  "goos": "linux",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in bash (/opt/homebrew/bin/bash -c) on Linux."
+ },
+ {
+  "name": "environment",
+  "shell": "/opt/homebrew/bin/bash",
+  "goos": "windows",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in bash (/opt/homebrew/bin/bash -c) on Windows.\nWindows paths use \\ and drive letters; Unix tools such as grep, sed and find may be missing."
+ },
+ {
+  "name": "environment",
+  "shell": "/opt/homebrew/bin/bash",
+  "goos": "freebsd",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in bash (/opt/homebrew/bin/bash -c) on FreeBSD.\nBSD tools, not GNU: flags of sed -i, stat, date and grep differ from GNU's."
+ },
+ {
+  "name": "environment",
+  "shell": "/bin/zsh",
+  "goos": "darwin",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in zsh (/bin/zsh -c) on macOS.\nzsh differs from bash:\n- An unmatched glob is an error (\"no matches found\") and the command does not run: quote patterns and URLs with *, ?, [ (find -name '*.go', curl 'https://x?a=1').\n- Unquoted $var is not word-split: use ${=var} or an array.\n- Arrays index from 1; read -a is read -A.\nmacOS has BSD tools, not GNU: sed -i '' (not sed -i), stat -f (not -c), date -v-1d (not -d), no grep -P (use -E or perl), no nproc (sysctl -n hw.ncpu)."
+ },
+ {
+  "name": "sandbox",
+  "shell": "/bin/zsh",
+  "goos": "darwin",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": ""
+ },
+ {
+  "name": "sandbox",
+  "shell": "/bin/zsh",
+  "goos": "darwin",
+  "mode": "",
+  "network": false,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": ""
+ },
+ {
+  "name": "sandbox",
+  "shell": "/bin/zsh",
+  "goos": "darwin",
+  "mode": "",
+  "network": true,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": ""
+ },
+ {
+  "name": "sandbox",
+  "shell": "/bin/zsh",
+  "goos": "darwin",
+  "mode": "",
+  "network": true,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": ""
+ },
+ {
+  "name": "sandbox",
+  "shell": "/bin/zsh",
+  "goos": "darwin",
+  "mode": "read-only",
+  "network": false,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": "Sandbox: read-only. Commands can read any file and write only $TMPDIR.\n$TMPDIR (/tmp/s/x) is this session's private scratch directory, writable in every mode: put temporary files there, and point a tool cache that cannot be written elsewhere at it, such as GOCACHE=$TMPDIR/go-build.\nps and pgrep fail in the sandbox (lsof works); request escalation to list processes.\nLocal sockets count as network: docker and other clients of a daemon's socket fail in the sandbox, so request escalation for them from the first try."
+ },
+ {
+  "name": "sandbox",
+  "shell": "/bin/zsh",
+  "goos": "darwin",
+  "mode": "read-only",
+  "network": true,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": "Sandbox: read-only. Commands can read any file and write only $TMPDIR.\n$TMPDIR (/tmp/s/x) is this session's private scratch directory, writable in every mode: put temporary files there, and point a tool cache that cannot be written elsewhere at it, such as GOCACHE=$TMPDIR/go-build.\nps and pgrep fail in the sandbox (lsof works); request escalation to list processes."
+ },
+ {
+  "name": "sandbox",
+  "shell": "/bin/zsh",
+  "goos": "darwin",
+  "mode": "workspace-write",
+  "network": false,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": "Sandbox: workspace-write. Commands can read any file and write the workspace, /tmp, and $TMPDIR; .git, .uah, .agents, and .codex stay read-only.\n$TMPDIR (/tmp/s/x) is this session's private scratch directory, writable in every mode: put temporary files there, and point a tool cache that cannot be written elsewhere at it, such as GOCACHE=$TMPDIR/go-build.\nps and pgrep fail in the sandbox (lsof works); request escalation to list processes.\nLocal sockets count as network: docker and other clients of a daemon's socket fail in the sandbox, so request escalation for them from the first try."
+ },
+ {
+  "name": "sandbox",
+  "shell": "/bin/zsh",
+  "goos": "darwin",
+  "mode": "workspace-write",
+  "network": true,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": "Sandbox: workspace-write. Commands can read any file and write the workspace, /tmp, and $TMPDIR; .git, .uah, .agents, and .codex stay read-only.\n$TMPDIR (/tmp/s/x) is this session's private scratch directory, writable in every mode: put temporary files there, and point a tool cache that cannot be written elsewhere at it, such as GOCACHE=$TMPDIR/go-build.\nps and pgrep fail in the sandbox (lsof works); request escalation to list processes."
+ },
+ {
+  "name": "environment",
+  "shell": "/bin/zsh",
+  "goos": "linux",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in zsh (/bin/zsh -c) on Linux.\nzsh differs from bash:\n- An unmatched glob is an error (\"no matches found\") and the command does not run: quote patterns and URLs with *, ?, [ (find -name '*.go', curl 'https://x?a=1').\n- Unquoted $var is not word-split: use ${=var} or an array.\n- Arrays index from 1; read -a is read -A."
+ },
+ {
+  "name": "sandbox",
+  "shell": "/bin/zsh",
+  "goos": "linux",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": ""
+ },
+ {
+  "name": "sandbox",
+  "shell": "/bin/zsh",
+  "goos": "linux",
+  "mode": "",
+  "network": false,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": ""
+ },
+ {
+  "name": "sandbox",
+  "shell": "/bin/zsh",
+  "goos": "linux",
+  "mode": "",
+  "network": true,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": ""
+ },
+ {
+  "name": "sandbox",
+  "shell": "/bin/zsh",
+  "goos": "linux",
+  "mode": "",
+  "network": true,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": ""
+ },
+ {
+  "name": "sandbox",
+  "shell": "/bin/zsh",
+  "goos": "linux",
+  "mode": "read-only",
+  "network": false,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": "Sandbox: read-only. Commands can read any file and write only $TMPDIR.\n$TMPDIR (/tmp/s/x) is this session's private scratch directory, writable in every mode: put temporary files there, and point a tool cache that cannot be written elsewhere at it, such as GOCACHE=$TMPDIR/go-build."
+ },
+ {
+  "name": "sandbox",
+  "shell": "/bin/zsh",
+  "goos": "linux",
+  "mode": "read-only",
+  "network": true,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": "Sandbox: read-only. Commands can read any file and write only $TMPDIR.\n$TMPDIR (/tmp/s/x) is this session's private scratch directory, writable in every mode: put temporary files there, and point a tool cache that cannot be written elsewhere at it, such as GOCACHE=$TMPDIR/go-build."
+ },
+ {
+  "name": "sandbox",
+  "shell": "/bin/zsh",
+  "goos": "linux",
+  "mode": "workspace-write",
+  "network": false,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": "Sandbox: workspace-write. Commands can read any file and write the workspace, /tmp, and $TMPDIR; .git, .uah, .agents, and .codex stay read-only.\n$TMPDIR (/tmp/s/x) is this session's private scratch directory, writable in every mode: put temporary files there, and point a tool cache that cannot be written elsewhere at it, such as GOCACHE=$TMPDIR/go-build."
+ },
+ {
+  "name": "sandbox",
+  "shell": "/bin/zsh",
+  "goos": "linux",
+  "mode": "workspace-write",
+  "network": true,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": "Sandbox: workspace-write. Commands can read any file and write the workspace, /tmp, and $TMPDIR; .git, .uah, .agents, and .codex stay read-only.\n$TMPDIR (/tmp/s/x) is this session's private scratch directory, writable in every mode: put temporary files there, and point a tool cache that cannot be written elsewhere at it, such as GOCACHE=$TMPDIR/go-build."
+ },
+ {
+  "name": "environment",
+  "shell": "/bin/zsh",
+  "goos": "windows",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in zsh (/bin/zsh -c) on Windows.\nzsh differs from bash:\n- An unmatched glob is an error (\"no matches found\") and the command does not run: quote patterns and URLs with *, ?, [ (find -name '*.go', curl 'https://x?a=1').\n- Unquoted $var is not word-split: use ${=var} or an array.\n- Arrays index from 1; read -a is read -A.\nWindows paths use \\ and drive letters; Unix tools such as grep, sed and find may be missing."
+ },
+ {
+  "name": "environment",
+  "shell": "/bin/zsh",
+  "goos": "freebsd",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in zsh (/bin/zsh -c) on FreeBSD.\nzsh differs from bash:\n- An unmatched glob is an error (\"no matches found\") and the command does not run: quote patterns and URLs with *, ?, [ (find -name '*.go', curl 'https://x?a=1').\n- Unquoted $var is not word-split: use ${=var} or an array.\n- Arrays index from 1; read -a is read -A.\nBSD tools, not GNU: flags of sed -i, stat, date and grep differ from GNU's."
+ },
+ {
+  "name": "environment",
+  "shell": "/bin/sh",
+  "goos": "darwin",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in sh (/bin/sh -c) on macOS.\nThis is plain POSIX sh: [[ ]], arrays, source, {a,b}, <(…) and echo -e may not work; use [ ], ., printf, or run bash -c '…'.\nmacOS has BSD tools, not GNU: sed -i '' (not sed -i), stat -f (not -c), date -v-1d (not -d), no grep -P (use -E or perl), no nproc (sysctl -n hw.ncpu)."
+ },
+ {
+  "name": "environment",
+  "shell": "/bin/sh",
+  "goos": "linux",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in sh (/bin/sh -c) on Linux.\nThis is plain POSIX sh: [[ ]], arrays, source, {a,b}, <(…) and echo -e may not work; use [ ], ., printf, or run bash -c '…'."
+ },
+ {
+  "name": "environment",
+  "shell": "/bin/sh",
+  "goos": "windows",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in sh (/bin/sh -c) on Windows.\nThis is plain POSIX sh: [[ ]], arrays, source, {a,b}, <(…) and echo -e may not work; use [ ], ., printf, or run bash -c '…'.\nWindows paths use \\ and drive letters; Unix tools such as grep, sed and find may be missing."
+ },
+ {
+  "name": "environment",
+  "shell": "/bin/sh",
+  "goos": "freebsd",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in sh (/bin/sh -c) on FreeBSD.\nThis is plain POSIX sh: [[ ]], arrays, source, {a,b}, <(…) and echo -e may not work; use [ ], ., printf, or run bash -c '…'.\nBSD tools, not GNU: flags of sed -i, stat, date and grep differ from GNU's."
+ },
+ {
+  "name": "environment",
+  "shell": "/bin/dash",
+  "goos": "darwin",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in sh (/bin/dash -c) on macOS.\nThis is plain POSIX sh: [[ ]], arrays, source, {a,b}, <(…) and echo -e may not work; use [ ], ., printf, or run bash -c '…'.\nmacOS has BSD tools, not GNU: sed -i '' (not sed -i), stat -f (not -c), date -v-1d (not -d), no grep -P (use -E or perl), no nproc (sysctl -n hw.ncpu)."
+ },
+ {
+  "name": "environment",
+  "shell": "/bin/dash",
+  "goos": "linux",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in sh (/bin/dash -c) on Linux.\nThis is plain POSIX sh: [[ ]], arrays, source, {a,b}, <(…) and echo -e may not work; use [ ], ., printf, or run bash -c '…'."
+ },
+ {
+  "name": "environment",
+  "shell": "/bin/dash",
+  "goos": "windows",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in sh (/bin/dash -c) on Windows.\nThis is plain POSIX sh: [[ ]], arrays, source, {a,b}, <(…) and echo -e may not work; use [ ], ., printf, or run bash -c '…'.\nWindows paths use \\ and drive letters; Unix tools such as grep, sed and find may be missing."
+ },
+ {
+  "name": "environment",
+  "shell": "/bin/dash",
+  "goos": "freebsd",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in sh (/bin/dash -c) on FreeBSD.\nThis is plain POSIX sh: [[ ]], arrays, source, {a,b}, <(…) and echo -e may not work; use [ ], ., printf, or run bash -c '…'.\nBSD tools, not GNU: flags of sed -i, stat, date and grep differ from GNU's."
+ },
+ {
+  "name": "environment",
+  "shell": "/usr/bin/fish",
+  "goos": "darwin",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in fish (/usr/bin/fish -c) on macOS.\nfish is not a POSIX shell. These fail in fish:\n- Heredocs (<<EOF, <<<): pipe printf '%s\\n' … into the command, or write the file with your file tool.\n- for …; do …; done, while …; do …; done, if …; then …; fi, case: fish uses for x in …; …; end, while …; …; end, if …; …; end, switch.\n- x=1 on its own: use set x 1 (set -x to export). VAR=1 cmd works.\n- $?, ${x}, $((1+2)), backticks, <(cmd): use $status, {$x}, math 1+2, (cmd), (cmd | psub).\n- An unmatched glob is an error: quote patterns (find -name '*.go').\nFor a POSIX script, run it as one sh -c '…' (inside fish single quotes, \\' and \\\\ are escapes).\nmacOS has BSD tools, not GNU: sed -i '' (not sed -i), stat -f (not -c), date -v-1d (not -d), no grep -P (use -E or perl), no nproc (sysctl -n hw.ncpu)."
+ },
+ {
+  "name": "sandbox",
+  "shell": "/usr/bin/fish",
+  "goos": "darwin",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": ""
+ },
+ {
+  "name": "sandbox",
+  "shell": "/usr/bin/fish",
+  "goos": "darwin",
+  "mode": "",
+  "network": false,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": ""
+ },
+ {
+  "name": "sandbox",
+  "shell": "/usr/bin/fish",
+  "goos": "darwin",
+  "mode": "",
+  "network": true,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": ""
+ },
+ {
+  "name": "sandbox",
+  "shell": "/usr/bin/fish",
+  "goos": "darwin",
+  "mode": "",
+  "network": true,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": ""
+ },
+ {
+  "name": "sandbox",
+  "shell": "/usr/bin/fish",
+  "goos": "darwin",
+  "mode": "read-only",
+  "network": false,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": "Sandbox: read-only. Commands can read any file and write only $TMPDIR.\n$TMPDIR (/tmp/s/x) is this session's private scratch directory, writable in every mode: put temporary files there, and point a tool cache that cannot be written elsewhere at it, such as GOCACHE=$TMPDIR/go-build.\nps and pgrep fail in the sandbox (lsof works); request escalation to list processes.\nLocal sockets count as network: docker and other clients of a daemon's socket fail in the sandbox, so request escalation for them from the first try."
+ },
+ {
+  "name": "sandbox",
+  "shell": "/usr/bin/fish",
+  "goos": "darwin",
+  "mode": "read-only",
+  "network": true,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": "Sandbox: read-only. Commands can read any file and write only $TMPDIR.\n$TMPDIR (/tmp/s/x) is this session's private scratch directory, writable in every mode: put temporary files there, and point a tool cache that cannot be written elsewhere at it, such as GOCACHE=$TMPDIR/go-build.\nps and pgrep fail in the sandbox (lsof works); request escalation to list processes."
+ },
+ {
+  "name": "sandbox",
+  "shell": "/usr/bin/fish",
+  "goos": "darwin",
+  "mode": "workspace-write",
+  "network": false,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": "Sandbox: workspace-write. Commands can read any file and write the workspace, /tmp, and $TMPDIR; .git, .uah, .agents, and .codex stay read-only.\n$TMPDIR (/tmp/s/x) is this session's private scratch directory, writable in every mode: put temporary files there, and point a tool cache that cannot be written elsewhere at it, such as GOCACHE=$TMPDIR/go-build.\nps and pgrep fail in the sandbox (lsof works); request escalation to list processes.\nLocal sockets count as network: docker and other clients of a daemon's socket fail in the sandbox, so request escalation for them from the first try."
+ },
+ {
+  "name": "sandbox",
+  "shell": "/usr/bin/fish",
+  "goos": "darwin",
+  "mode": "workspace-write",
+  "network": true,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": "Sandbox: workspace-write. Commands can read any file and write the workspace, /tmp, and $TMPDIR; .git, .uah, .agents, and .codex stay read-only.\n$TMPDIR (/tmp/s/x) is this session's private scratch directory, writable in every mode: put temporary files there, and point a tool cache that cannot be written elsewhere at it, such as GOCACHE=$TMPDIR/go-build.\nps and pgrep fail in the sandbox (lsof works); request escalation to list processes."
+ },
+ {
+  "name": "environment",
+  "shell": "/usr/bin/fish",
+  "goos": "linux",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in fish (/usr/bin/fish -c) on Linux.\nfish is not a POSIX shell. These fail in fish:\n- Heredocs (<<EOF, <<<): pipe printf '%s\\n' … into the command, or write the file with your file tool.\n- for …; do …; done, while …; do …; done, if …; then …; fi, case: fish uses for x in …; …; end, while …; …; end, if …; …; end, switch.\n- x=1 on its own: use set x 1 (set -x to export). VAR=1 cmd works.\n- $?, ${x}, $((1+2)), backticks, <(cmd): use $status, {$x}, math 1+2, (cmd), (cmd | psub).\n- An unmatched glob is an error: quote patterns (find -name '*.go').\nFor a POSIX script, run it as one sh -c '…' (inside fish single quotes, \\' and \\\\ are escapes)."
+ },
+ {
+  "name": "sandbox",
+  "shell": "/usr/bin/fish",
+  "goos": "linux",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": ""
+ },
+ {
+  "name": "sandbox",
+  "shell": "/usr/bin/fish",
+  "goos": "linux",
+  "mode": "",
+  "network": false,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": ""
+ },
+ {
+  "name": "sandbox",
+  "shell": "/usr/bin/fish",
+  "goos": "linux",
+  "mode": "",
+  "network": true,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": ""
+ },
+ {
+  "name": "sandbox",
+  "shell": "/usr/bin/fish",
+  "goos": "linux",
+  "mode": "",
+  "network": true,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": ""
+ },
+ {
+  "name": "sandbox",
+  "shell": "/usr/bin/fish",
+  "goos": "linux",
+  "mode": "read-only",
+  "network": false,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": "Sandbox: read-only. Commands can read any file and write only $TMPDIR.\n$TMPDIR (/tmp/s/x) is this session's private scratch directory, writable in every mode: put temporary files there, and point a tool cache that cannot be written elsewhere at it, such as GOCACHE=$TMPDIR/go-build."
+ },
+ {
+  "name": "sandbox",
+  "shell": "/usr/bin/fish",
+  "goos": "linux",
+  "mode": "read-only",
+  "network": true,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": "Sandbox: read-only. Commands can read any file and write only $TMPDIR.\n$TMPDIR (/tmp/s/x) is this session's private scratch directory, writable in every mode: put temporary files there, and point a tool cache that cannot be written elsewhere at it, such as GOCACHE=$TMPDIR/go-build."
+ },
+ {
+  "name": "sandbox",
+  "shell": "/usr/bin/fish",
+  "goos": "linux",
+  "mode": "workspace-write",
+  "network": false,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": "Sandbox: workspace-write. Commands can read any file and write the workspace, /tmp, and $TMPDIR; .git, .uah, .agents, and .codex stay read-only.\n$TMPDIR (/tmp/s/x) is this session's private scratch directory, writable in every mode: put temporary files there, and point a tool cache that cannot be written elsewhere at it, such as GOCACHE=$TMPDIR/go-build."
+ },
+ {
+  "name": "sandbox",
+  "shell": "/usr/bin/fish",
+  "goos": "linux",
+  "mode": "workspace-write",
+  "network": true,
+  "tmpdir": "/tmp/s/x",
+  "instruction_files": null,
+  "text": "Sandbox: workspace-write. Commands can read any file and write the workspace, /tmp, and $TMPDIR; .git, .uah, .agents, and .codex stay read-only.\n$TMPDIR (/tmp/s/x) is this session's private scratch directory, writable in every mode: put temporary files there, and point a tool cache that cannot be written elsewhere at it, such as GOCACHE=$TMPDIR/go-build."
+ },
+ {
+  "name": "environment",
+  "shell": "/usr/bin/fish",
+  "goos": "windows",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in fish (/usr/bin/fish -c) on Windows.\nfish is not a POSIX shell. These fail in fish:\n- Heredocs (<<EOF, <<<): pipe printf '%s\\n' … into the command, or write the file with your file tool.\n- for …; do …; done, while …; do …; done, if …; then …; fi, case: fish uses for x in …; …; end, while …; …; end, if …; …; end, switch.\n- x=1 on its own: use set x 1 (set -x to export). VAR=1 cmd works.\n- $?, ${x}, $((1+2)), backticks, <(cmd): use $status, {$x}, math 1+2, (cmd), (cmd | psub).\n- An unmatched glob is an error: quote patterns (find -name '*.go').\nFor a POSIX script, run it as one sh -c '…' (inside fish single quotes, \\' and \\\\ are escapes).\nWindows paths use \\ and drive letters; Unix tools such as grep, sed and find may be missing."
+ },
+ {
+  "name": "environment",
+  "shell": "/usr/bin/fish",
+  "goos": "freebsd",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in fish (/usr/bin/fish -c) on FreeBSD.\nfish is not a POSIX shell. These fail in fish:\n- Heredocs (<<EOF, <<<): pipe printf '%s\\n' … into the command, or write the file with your file tool.\n- for …; do …; done, while …; do …; done, if …; then …; fi, case: fish uses for x in …; …; end, while …; …; end, if …; …; end, switch.\n- x=1 on its own: use set x 1 (set -x to export). VAR=1 cmd works.\n- $?, ${x}, $((1+2)), backticks, <(cmd): use $status, {$x}, math 1+2, (cmd), (cmd | psub).\n- An unmatched glob is an error: quote patterns (find -name '*.go').\nFor a POSIX script, run it as one sh -c '…' (inside fish single quotes, \\' and \\\\ are escapes).\nBSD tools, not GNU: flags of sed -i, stat, date and grep differ from GNU's."
+ },
+ {
+  "name": "environment",
+  "shell": "/usr/bin/nu",
+  "goos": "darwin",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in nushell (/usr/bin/nu -c) on macOS.\nnushell is not a POSIX shell; its commands return structured data. These fail in nushell:\n- && and ||: separate commands with ;.\n- x=1, export X=1, $X: use $env.X = '1' and $env.X.\n- $(cmd), backticks: use (cmd).\n- 2>&1, 2>/dev/null: use o+e>| and e> /dev/null.\n- Heredocs, for …; do …; done, if …; then …; fi.\nls, rm, cp and others are nushell builtins with other flags: prefix ^ (^ls) for the external command. For a POSIX script, run it as one sh -c '…'.\nmacOS has BSD tools, not GNU: sed -i '' (not sed -i), stat -f (not -c), date -v-1d (not -d), no grep -P (use -E or perl), no nproc (sysctl -n hw.ncpu)."
+ },
+ {
+  "name": "environment",
+  "shell": "/usr/bin/nu",
+  "goos": "linux",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in nushell (/usr/bin/nu -c) on Linux.\nnushell is not a POSIX shell; its commands return structured data. These fail in nushell:\n- && and ||: separate commands with ;.\n- x=1, export X=1, $X: use $env.X = '1' and $env.X.\n- $(cmd), backticks: use (cmd).\n- 2>&1, 2>/dev/null: use o+e>| and e> /dev/null.\n- Heredocs, for …; do …; done, if …; then …; fi.\nls, rm, cp and others are nushell builtins with other flags: prefix ^ (^ls) for the external command. For a POSIX script, run it as one sh -c '…'."
+ },
+ {
+  "name": "environment",
+  "shell": "/usr/bin/nu",
+  "goos": "windows",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in nushell (/usr/bin/nu -c) on Windows.\nnushell is not a POSIX shell; its commands return structured data. These fail in nushell:\n- && and ||: separate commands with ;.\n- x=1, export X=1, $X: use $env.X = '1' and $env.X.\n- $(cmd), backticks: use (cmd).\n- 2>&1, 2>/dev/null: use o+e>| and e> /dev/null.\n- Heredocs, for …; do …; done, if …; then …; fi.\nls, rm, cp and others are nushell builtins with other flags: prefix ^ (^ls) for the external command. For a POSIX script, run it as one sh -c '…'.\nWindows paths use \\ and drive letters; Unix tools such as grep, sed and find may be missing."
+ },
+ {
+  "name": "environment",
+  "shell": "/usr/bin/nu",
+  "goos": "freebsd",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in nushell (/usr/bin/nu -c) on FreeBSD.\nnushell is not a POSIX shell; its commands return structured data. These fail in nushell:\n- && and ||: separate commands with ;.\n- x=1, export X=1, $X: use $env.X = '1' and $env.X.\n- $(cmd), backticks: use (cmd).\n- 2>&1, 2>/dev/null: use o+e>| and e> /dev/null.\n- Heredocs, for …; do …; done, if …; then …; fi.\nls, rm, cp and others are nushell builtins with other flags: prefix ^ (^ls) for the external command. For a POSIX script, run it as one sh -c '…'.\nBSD tools, not GNU: flags of sed -i, stat, date and grep differ from GNU's."
+ },
+ {
+  "name": "environment",
+  "shell": "/usr/bin/xonsh",
+  "goos": "darwin",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in xonsh (/usr/bin/xonsh -c) on macOS.\nxonsh is Python-based, not a POSIX shell. Simple commands, pipes, && and || work; these fail:\n- Heredocs, for …; do …; done, if …; then …; fi: use Python syntax.\n- x=1, export X=1: use $X = '1'.\n- Backticks are regex globs, not command substitution: use $(cmd).\nFor a POSIX script, run it as one sh -c '…'.\nmacOS has BSD tools, not GNU: sed -i '' (not sed -i), stat -f (not -c), date -v-1d (not -d), no grep -P (use -E or perl), no nproc (sysctl -n hw.ncpu)."
+ },
+ {
+  "name": "environment",
+  "shell": "/usr/bin/xonsh",
+  "goos": "linux",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in xonsh (/usr/bin/xonsh -c) on Linux.\nxonsh is Python-based, not a POSIX shell. Simple commands, pipes, && and || work; these fail:\n- Heredocs, for …; do …; done, if …; then …; fi: use Python syntax.\n- x=1, export X=1: use $X = '1'.\n- Backticks are regex globs, not command substitution: use $(cmd).\nFor a POSIX script, run it as one sh -c '…'."
+ },
+ {
+  "name": "environment",
+  "shell": "/usr/bin/xonsh",
+  "goos": "windows",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in xonsh (/usr/bin/xonsh -c) on Windows.\nxonsh is Python-based, not a POSIX shell. Simple commands, pipes, && and || work; these fail:\n- Heredocs, for …; do …; done, if …; then …; fi: use Python syntax.\n- x=1, export X=1: use $X = '1'.\n- Backticks are regex globs, not command substitution: use $(cmd).\nFor a POSIX script, run it as one sh -c '…'.\nWindows paths use \\ and drive letters; Unix tools such as grep, sed and find may be missing."
+ },
+ {
+  "name": "environment",
+  "shell": "/usr/bin/xonsh",
+  "goos": "freebsd",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in xonsh (/usr/bin/xonsh -c) on FreeBSD.\nxonsh is Python-based, not a POSIX shell. Simple commands, pipes, && and || work; these fail:\n- Heredocs, for …; do …; done, if …; then …; fi: use Python syntax.\n- x=1, export X=1: use $X = '1'.\n- Backticks are regex globs, not command substitution: use $(cmd).\nFor a POSIX script, run it as one sh -c '…'.\nBSD tools, not GNU: flags of sed -i, stat, date and grep differ from GNU's."
+ },
+ {
+  "name": "environment",
+  "shell": "/usr/bin/elvish",
+  "goos": "darwin",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in elvish (/usr/bin/elvish -c) on macOS.\nelvish is not a POSIX shell. These fail in elvish:\n- && and ||: separate commands with ; (a failing command throws and stops the rest).\n- x=1, export X=1, $X: use var x = 1, set E:X = 1, $E:X.\n- $(cmd), backticks: use (cmd).\n- Heredocs, for …; do …; done, if …; then …; fi.\nFor a POSIX script, run it as one sh -c '…'.\nmacOS has BSD tools, not GNU: sed -i '' (not sed -i), stat -f (not -c), date -v-1d (not -d), no grep -P (use -E or perl), no nproc (sysctl -n hw.ncpu)."
+ },
+ {
+  "name": "environment",
+  "shell": "/usr/bin/elvish",
+  "goos": "linux",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in elvish (/usr/bin/elvish -c) on Linux.\nelvish is not a POSIX shell. These fail in elvish:\n- && and ||: separate commands with ; (a failing command throws and stops the rest).\n- x=1, export X=1, $X: use var x = 1, set E:X = 1, $E:X.\n- $(cmd), backticks: use (cmd).\n- Heredocs, for …; do …; done, if …; then …; fi.\nFor a POSIX script, run it as one sh -c '…'."
+ },
+ {
+  "name": "environment",
+  "shell": "/usr/bin/elvish",
+  "goos": "windows",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in elvish (/usr/bin/elvish -c) on Windows.\nelvish is not a POSIX shell. These fail in elvish:\n- && and ||: separate commands with ; (a failing command throws and stops the rest).\n- x=1, export X=1, $X: use var x = 1, set E:X = 1, $E:X.\n- $(cmd), backticks: use (cmd).\n- Heredocs, for …; do …; done, if …; then …; fi.\nFor a POSIX script, run it as one sh -c '…'.\nWindows paths use \\ and drive letters; Unix tools such as grep, sed and find may be missing."
+ },
+ {
+  "name": "environment",
+  "shell": "/usr/bin/elvish",
+  "goos": "freebsd",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in elvish (/usr/bin/elvish -c) on FreeBSD.\nelvish is not a POSIX shell. These fail in elvish:\n- && and ||: separate commands with ; (a failing command throws and stops the rest).\n- x=1, export X=1, $X: use var x = 1, set E:X = 1, $E:X.\n- $(cmd), backticks: use (cmd).\n- Heredocs, for …; do …; done, if …; then …; fi.\nFor a POSIX script, run it as one sh -c '…'.\nBSD tools, not GNU: flags of sed -i, stat, date and grep differ from GNU's."
+ },
+ {
+  "name": "environment",
+  "shell": "pwsh.exe",
+  "goos": "darwin",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in powershell (pwsh.exe -c) on macOS.\nThis is PowerShell, not a POSIX shell. These fail or differ:\n- export X=1, X=1 cmd, $X: use $env:X = '1' and $env:X.\n- Heredocs: use a here-string, @' and '@ on their own lines.\n- The backtick is the escape character; $(…) is a subexpression.\n- 2>/dev/null: use 2>$null. && and || need PowerShell 7.\n- ls, rm, cp, cat (and curl in Windows PowerShell) are aliases of cmdlets with other flags: rm -rf is Remove-Item -Recurse -Force.\nmacOS has BSD tools, not GNU: sed -i '' (not sed -i), stat -f (not -c), date -v-1d (not -d), no grep -P (use -E or perl), no nproc (sysctl -n hw.ncpu)."
+ },
+ {
+  "name": "environment",
+  "shell": "pwsh.exe",
+  "goos": "linux",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in powershell (pwsh.exe -c) on Linux.\nThis is PowerShell, not a POSIX shell. These fail or differ:\n- export X=1, X=1 cmd, $X: use $env:X = '1' and $env:X.\n- Heredocs: use a here-string, @' and '@ on their own lines.\n- The backtick is the escape character; $(…) is a subexpression.\n- 2>/dev/null: use 2>$null. && and || need PowerShell 7.\n- ls, rm, cp, cat (and curl in Windows PowerShell) are aliases of cmdlets with other flags: rm -rf is Remove-Item -Recurse -Force."
+ },
+ {
+  "name": "environment",
+  "shell": "pwsh.exe",
+  "goos": "windows",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in powershell (pwsh.exe -c) on Windows.\nThis is PowerShell, not a POSIX shell. These fail or differ:\n- export X=1, X=1 cmd, $X: use $env:X = '1' and $env:X.\n- Heredocs: use a here-string, @' and '@ on their own lines.\n- The backtick is the escape character; $(…) is a subexpression.\n- 2>/dev/null: use 2>$null. && and || need PowerShell 7.\n- ls, rm, cp, cat (and curl in Windows PowerShell) are aliases of cmdlets with other flags: rm -rf is Remove-Item -Recurse -Force.\nWindows paths use \\ and drive letters; Unix tools such as grep, sed and find may be missing."
+ },
+ {
+  "name": "environment",
+  "shell": "pwsh.exe",
+  "goos": "freebsd",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in powershell (pwsh.exe -c) on FreeBSD.\nThis is PowerShell, not a POSIX shell. These fail or differ:\n- export X=1, X=1 cmd, $X: use $env:X = '1' and $env:X.\n- Heredocs: use a here-string, @' and '@ on their own lines.\n- The backtick is the escape character; $(…) is a subexpression.\n- 2>/dev/null: use 2>$null. && and || need PowerShell 7.\n- ls, rm, cp, cat (and curl in Windows PowerShell) are aliases of cmdlets with other flags: rm -rf is Remove-Item -Recurse -Force.\nBSD tools, not GNU: flags of sed -i, stat, date and grep differ from GNU's."
+ },
+ {
+  "name": "environment",
+  "shell": "C:\\Windows\\cmd.exe",
+  "goos": "darwin",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in cmd (C:\\Windows\\cmd.exe -c) on macOS.\nThis is cmd.exe, not a POSIX shell: use set X=1 and %X%, double quotes only (single quotes are literal), 2>nul, and no heredocs or POSIX loops. For anything more, run powershell -Command \"…\".\nmacOS has BSD tools, not GNU: sed -i '' (not sed -i), stat -f (not -c), date -v-1d (not -d), no grep -P (use -E or perl), no nproc (sysctl -n hw.ncpu)."
+ },
+ {
+  "name": "environment",
+  "shell": "C:\\Windows\\cmd.exe",
+  "goos": "linux",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in cmd (C:\\Windows\\cmd.exe -c) on Linux.\nThis is cmd.exe, not a POSIX shell: use set X=1 and %X%, double quotes only (single quotes are literal), 2>nul, and no heredocs or POSIX loops. For anything more, run powershell -Command \"…\"."
+ },
+ {
+  "name": "environment",
+  "shell": "C:\\Windows\\cmd.exe",
+  "goos": "windows",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in cmd (C:\\Windows\\cmd.exe -c) on Windows.\nThis is cmd.exe, not a POSIX shell: use set X=1 and %X%, double quotes only (single quotes are literal), 2>nul, and no heredocs or POSIX loops. For anything more, run powershell -Command \"…\".\nWindows paths use \\ and drive letters; Unix tools such as grep, sed and find may be missing."
+ },
+ {
+  "name": "environment",
+  "shell": "C:\\Windows\\cmd.exe",
+  "goos": "freebsd",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in cmd (C:\\Windows\\cmd.exe -c) on FreeBSD.\nThis is cmd.exe, not a POSIX shell: use set X=1 and %X%, double quotes only (single quotes are literal), 2>nul, and no heredocs or POSIX loops. For anything more, run powershell -Command \"…\".\nBSD tools, not GNU: flags of sed -i, stat, date and grep differ from GNU's."
+ },
+ {
+  "name": "environment",
+  "shell": "/bin/tcsh",
+  "goos": "darwin",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in csh (/bin/tcsh -c) on macOS.\ncsh is not a POSIX shell. These fail in csh:\n- x=1, export X=1, X=1 cmd: use set x = 1, setenv X 1, env X=1 cmd.\n- $(cmd): use backticks.\n- 2>&1: use >& or |&.\n- for …; do …; done, if …; then …; fi: use foreach … end, if (…) then … endif.\nFor a POSIX script, run it as one sh -c '…'.\nmacOS has BSD tools, not GNU: sed -i '' (not sed -i), stat -f (not -c), date -v-1d (not -d), no grep -P (use -E or perl), no nproc (sysctl -n hw.ncpu)."
+ },
+ {
+  "name": "environment",
+  "shell": "/bin/tcsh",
+  "goos": "linux",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in csh (/bin/tcsh -c) on Linux.\ncsh is not a POSIX shell. These fail in csh:\n- x=1, export X=1, X=1 cmd: use set x = 1, setenv X 1, env X=1 cmd.\n- $(cmd): use backticks.\n- 2>&1: use >& or |&.\n- for …; do …; done, if …; then …; fi: use foreach … end, if (…) then … endif.\nFor a POSIX script, run it as one sh -c '…'."
+ },
+ {
+  "name": "environment",
+  "shell": "/bin/tcsh",
+  "goos": "windows",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in csh (/bin/tcsh -c) on Windows.\ncsh is not a POSIX shell. These fail in csh:\n- x=1, export X=1, X=1 cmd: use set x = 1, setenv X 1, env X=1 cmd.\n- $(cmd): use backticks.\n- 2>&1: use >& or |&.\n- for …; do …; done, if …; then …; fi: use foreach … end, if (…) then … endif.\nFor a POSIX script, run it as one sh -c '…'.\nWindows paths use \\ and drive letters; Unix tools such as grep, sed and find may be missing."
+ },
+ {
+  "name": "environment",
+  "shell": "/bin/tcsh",
+  "goos": "freebsd",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in csh (/bin/tcsh -c) on FreeBSD.\ncsh is not a POSIX shell. These fail in csh:\n- x=1, export X=1, X=1 cmd: use set x = 1, setenv X 1, env X=1 cmd.\n- $(cmd): use backticks.\n- 2>&1: use >& or |&.\n- for …; do …; done, if …; then …; fi: use foreach … end, if (…) then … endif.\nFor a POSIX script, run it as one sh -c '…'.\nBSD tools, not GNU: flags of sed -i, stat, date and grep differ from GNU's."
+ },
+ {
+  "name": "environment",
+  "shell": "/usr/bin/weird",
+  "goos": "darwin",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in weird (/usr/bin/weird -c) on macOS.\nweird may not be a POSIX shell: if POSIX syntax fails, run it as one sh -c '…'.\nmacOS has BSD tools, not GNU: sed -i '' (not sed -i), stat -f (not -c), date -v-1d (not -d), no grep -P (use -E or perl), no nproc (sysctl -n hw.ncpu)."
+ },
+ {
+  "name": "environment",
+  "shell": "/usr/bin/weird",
+  "goos": "linux",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in weird (/usr/bin/weird -c) on Linux.\nweird may not be a POSIX shell: if POSIX syntax fails, run it as one sh -c '…'."
+ },
+ {
+  "name": "environment",
+  "shell": "/usr/bin/weird",
+  "goos": "windows",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in weird (/usr/bin/weird -c) on Windows.\nweird may not be a POSIX shell: if POSIX syntax fails, run it as one sh -c '…'.\nWindows paths use \\ and drive letters; Unix tools such as grep, sed and find may be missing."
+ },
+ {
+  "name": "environment",
+  "shell": "/usr/bin/weird",
+  "goos": "freebsd",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Commands run in weird (/usr/bin/weird -c) on FreeBSD.\nweird may not be a POSIX shell: if POSIX syntax fails, run it as one sh -c '…'.\nBSD tools, not GNU: flags of sed -i, stat, date and grep differ from GNU's."
+ },
+ {
+  "name": "agent files",
+  "shell": "",
+  "goos": "",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "No instruction files (AGENTS.md) were loaded for this session, so there are none to search for."
+ },
+ {
+  "name": "agent files",
+  "shell": "",
+  "goos": "",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": [
+   "/a/AGENTS.md"
+  ],
+  "text": "Instruction files in the system prompt, in order (their @ lines are expanded in place):\n- /a/AGENTS.md\nThese are all of the session's instruction files: there is no need to search for more AGENTS.md or CLAUDE.md files."
+ },
+ {
+  "name": "agent files",
+  "shell": "",
+  "goos": "",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": [
+   "/a/AGENTS.md",
+   "/b/AGENTS.md"
+  ],
+  "text": "Instruction files in the system prompt, in order (their @ lines are expanded in place):\n- /a/AGENTS.md\n- /b/AGENTS.md\nThese are all of the session's instruction files: there is no need to search for more AGENTS.md or CLAUDE.md files."
+ },
+ {
+  "name": "harness",
+  "shell": "",
+  "goos": "",
+  "mode": "",
+  "network": false,
+  "tmpdir": "",
+  "instruction_files": null,
+  "text": "Bash output: max_output_length caps each output field at that many characters (default 40000); cut output keeps its head and tail around a marker, with the path of the file that holds all of it.\n- Leave it unset when you need the whole output: a file you will edit, a failing test's full report.\n- Set it only for noisy commands (builds, logs, broad searches), sized to what you will actually read.\n- When output was cut, narrow the command (a pattern, a line range, one test) or read the saved file in parts; do not run it again with a bigger limit."
+ }
+]

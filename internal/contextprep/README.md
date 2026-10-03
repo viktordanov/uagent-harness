@@ -85,7 +85,7 @@ The engine sends it as a developer message (`core.RoleDeveloper`), so the TUI, `
 <!-- memoria:section id="modules" files="module.go catalog.go blocks.go check.go listing.go" -->
 ## Modules
 
-Every text of the built-in blocks is a Markdown file under `context/`, embedded with `go:embed`: the blocks' modules and the library (`library/`). A block's code only computes the facts and joins the modules that apply, so the wording and the conditions live in the files. With the built-ins alone the blocks are byte for byte what round 1 wrote, for every shell, OS, and sandbox mode (a sandboxed session always has its `$TMPDIR`).
+Every text of the built-in blocks is a Markdown file under `context/`, embedded with `go:embed`: the blocks' modules and the library (`library/`). A block's code only computes the facts and joins the modules that apply, so the wording and the conditions live in the files. With the built-ins alone the blocks are byte for byte what round 1 wrote, for every shell, OS, and sandbox mode (a sandboxed session always has its `$TMPDIR`); `TestDefaultsMatchRound1` holds them to it. Round 1 had no text for Linux or for a sandbox without network (the Bash tool's description covers that), so there are no `os/linux` or `sandbox/no-network` modules; a user can add them in `context.d`.
 
 ### The format
 
@@ -141,7 +141,7 @@ A project module is untrusted until `uah context trust` approves it, like a proj
 `uah context` lists every module (built-in, library, user, project, and files that failed) with its block, source, state (`on`, `off`, `untrusted`, `error`), and whether it applies to a new main session in the workspace and why, such as `when.shell: zsh is not fish` or `files: none of go.mod in the workspace` (`Modules.Explain`). The session's facts come from the same settings a session would use (`app.PreviewContext`). `--show` prints the context a new main session and a read-only subagent would get, and `--json` prints the list (and with `--show` the two contexts) as JSON. `uah context trust` trusts the workspace's project modules as they are now.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="tests" files="prepare_test.go agentfiles_test.go environment_test.go sandbox_test.go module_test.go" -->
+<!-- memoria:section id="tests" files="prepare_test.go agentfiles_test.go environment_test.go sandbox_test.go module_test.go round1_test.go" -->
 ## Tests
 
 | Test | Pins |
@@ -160,6 +160,7 @@ A project module is untrusted until `uah context trust` approves it, like a proj
 | `TestTrustKey` | The key changes with the content |
 | `TestExecChecker` | argv runs without a shell (`;` and `$(…)` reach the command as words, and nothing they name runs), `argv[0]` found on `PATH` before the sandbox wraps it, the timeout, no wrapper no check |
 | `TestExplain` | The listing's order, blocks, and reasons |
+| `TestDefaultsMatchRound1` | With the built-ins alone, each block and the whole message equal what round 1's code wrote (`testdata/round1.json`, recorded from that code): 124 cases over every shell family, macOS, Linux, FreeBSD, Windows, each sandbox mode with and without network, the agent files, and the harness |
 
 `internal/app/context_test.go` pins `uah context`'s preview (the user's and project's modules, `[context] modules`, trust and a changed file) and a check in the real read-only sandbox, which cannot write the workspace; `cmd/uah/context_test.go` the command's table, `--json`, `--show`, and `trust`; `cmd/uah/prompts_test.go` that `uah prompts init` writes the modules and `uah prompts show context/<path>` prints one.
 <!-- /memoria:section -->
