@@ -29,6 +29,7 @@ func mcpEnv(t *testing.T) (user string, env []string) {
 // TestMCPCommands adds, lists, gets, and removes servers in the user file,
 // keeping the rest of it.
 func TestMCPCommands(t *testing.T) {
+	t.Parallel()
 	user, env := mcpEnv(t)
 	server := harnesstest.MCPServer(t)
 	ws := t.TempDir()
@@ -86,6 +87,7 @@ func TestMCPCommands(t *testing.T) {
 // TestMCPLogin logs in through the CLI with the browser step done by the
 // test, then logs out.
 func TestMCPLogin(t *testing.T) {
+	t.Parallel()
 	_, env := mcpEnv(t)
 	srv := oauthserver.New(t)
 	ws := t.TempDir()
@@ -127,6 +129,7 @@ func TestMCPLogin(t *testing.T) {
 // TestMCPApprove sets approval modes with add --approve and mcp approve,
 // keeping the file's comments, and prints them.
 func TestMCPApprove(t *testing.T) {
+	t.Parallel()
 	user, env := mcpEnv(t)
 	ws := t.TempDir()
 

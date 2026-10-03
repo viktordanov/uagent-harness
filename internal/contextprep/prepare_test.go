@@ -29,6 +29,7 @@ type limited struct{ fixed }
 func (a limited) MaxBytes() int { return a.limit }
 
 func TestPrepare(t *testing.T) {
+	t.Parallel()
 	ctx := t.Context()
 	assert.Empty(t, contextprep.Prepare(ctx, contextprep.Facts{}, fixed{name: "a"}, fixed{name: "b", text: "  \n"}), "nothing to say")
 
@@ -59,6 +60,7 @@ func TestPrepare(t *testing.T) {
 }
 
 func TestWorkspace(t *testing.T) {
+	t.Parallel()
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("no git")
 	}
@@ -81,6 +83,7 @@ func TestWorkspace(t *testing.T) {
 }
 
 func TestHarness(t *testing.T) {
+	t.Parallel()
 	got := contextprep.Harness{}.Prepare(t.Context(), contextprep.Facts{MaxOutputLength: 40000})
 	assert.Contains(t, got, "max_output_length")
 	assert.Contains(t, got, "(default 40000)")

@@ -164,7 +164,7 @@ A project module is untrusted until `uah context trust` approves it, like a proj
 | `TestTrustKey` | The key changes with the content |
 | `TestUserLibrary` | A user's module with `enabled: false` stays off until `[context] modules` names it, and replaces no built-in |
 | `TestPinnedOverrides` | `Overrides` lists the replacements, a copy of a built-in or a library module as pinned, an edited one and a broken one not; `Explain` marks the pinned one |
-| `TestExecChecker` | argv runs without a shell (`;` and `$(…)` reach the command as words, and nothing they name runs), `argv[0]` found on `PATH` before the sandbox wraps it, the timeout, no wrapper no check |
+| `TestExecChecker` | argv runs without a shell (`;` and `$(…)` reach the command as words, and nothing they name runs), `argv[0]` found on `PATH` before the sandbox wraps it, a deadline stopping the check as `CheckTimeout` does, no wrapper no check |
 | `TestExplain` | The listing's order, blocks, and reasons |
 | `TestDefaultsMatchRound1` | With the built-ins alone, each block and the whole message equal what round 1's code wrote (`testdata/round1.json`, recorded from that code): 124 cases over every shell family, macOS, Linux, FreeBSD, Windows, each sandbox mode with and without network, the agent files, and the harness |
 

@@ -616,6 +616,7 @@ Tests need no model or tokens: the engine runs against `testing/fakellm`, a scri
 ```sh
 go run ./cmd/uah --version   # build and run
 go test -race ./...          # unit and end-to-end tests
+go test -race -short ./...   # the same without the slow ones (backoff waits, built runners, the bench dry run)
 golangci-lint run ./...      # lint (golangci-lint v2.13.2)
 ```
 
@@ -623,7 +624,7 @@ The title image is [docs/assets/title.html](docs/assets/title.html), drawn in th
 
 Pushing a `v1.2.3` tag builds the release archives for macOS and Linux (arm64 and x86_64) with [scripts/package-release.sh](scripts/package-release.sh) and attaches them to the GitHub release, each with a `.sha256` file. Two builds of the same commit with the same Go version give the same bytes. To rebuild an existing tag, run the Release assets workflow with the tag.
 
-CI runs the build, the race tests, the Markdown renderer's benchmarks once (so they keep running; its tests hold the bounds), and the linter on each push; the linter also fails on a function above 20 cyclomatic complexity, a backstop for the rule of about 15. Design records, the architecture rules, and the documentation procedure are in [docs](docs/README.md):
+CI runs the race tests with `-short` and the Markdown renderer's benchmarks once (so they keep running; its tests hold the bounds) in one job, every package with a test that `-short` skips, in full, in a second job beside it, with the tests that skip under the race detector (the performance ceilings, the Markdown renderer's every-prefix tests) run without it, and the linter on each push; `go test` compiles every package, so there is no build step. The agentbench tasks' dry run runs when `tools/agentbench` changes, and nightly; the linter also fails on a function above 20 cyclomatic complexity, a backstop for the rule of about 15. Design records, the architecture rules, and the documentation procedure are in [docs](docs/README.md):
 
 <!-- memoria:import src="docs/README.md#summary" -->
 The configuration reference, the context preparation guide, design records for the harness, the TUI, state storage, sandboxing, compaction, MCP, subagents, pasted images, streaming, Markdown rendering, going back to an earlier message, selecting text with the mouse, editing the prompt in an editor, the system prompt, web search, `/diff` and `/review`, prompt history and the composer's height, how tool calls read in the transcript, keeping the ChatGPT login fresh, and running uah as a terminal host backend, plus the architecture rules and documentation procedure for uah.

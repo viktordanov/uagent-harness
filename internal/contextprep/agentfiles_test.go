@@ -9,6 +9,7 @@ import (
 )
 
 func TestAgentFiles(t *testing.T) {
+	t.Parallel()
 	got := contextprep.AgentFiles{}.Prepare(t.Context(), contextprep.Facts{InstructionFiles: []string{"/home/u/.codex/AGENTS.md", "/repo/AGENTS.md"}})
 	assert.Equal(t, "Instruction files in the system prompt, in order (their @ lines are expanded in place):\n"+
 		"- /home/u/.codex/AGENTS.md\n- /repo/AGENTS.md\n"+

@@ -16,6 +16,7 @@ import (
 // TestSessionIDFlag starts `uah exec` with --session-id, finds the session
 // by that ID, and refuses the ID a second time and on `uah resume`.
 func TestSessionIDFlag(t *testing.T) {
+	t.Parallel()
 	e, env := fakeEnv(t, fakellm.Reply{Text: "hello"})
 	const id = "5f0c9a2e-8d4b-4c7a-9e1f-2a3b4c5d6e7f"
 
@@ -40,6 +41,7 @@ func TestSessionIDFlag(t *testing.T) {
 // file, as a launch stopped before its first message leaves it, and resumes
 // it under its ID with `uah exec --session`, which then records its history.
 func TestNeverUsedSession(t *testing.T) {
+	t.Parallel()
 	e, env := fakeEnv(t, fakellm.Reply{Text: "hello"})
 	const id = "6a0c9a2e-8d4b-4c7a-9e1f-2a3b4c5d6e7f"
 	sidecar := `{"source":"tui","created":"2026-09-30T00:00:00Z","workspace":` + strconv.Quote(e.Workspace) + "}\n"

@@ -13,12 +13,14 @@ import (
 )
 
 func TestEnvironmentName(t *testing.T) {
+	t.Parallel()
 	var a contextprep.Adapter = contextprep.Environment{}
 	assert.Equal(t, "environment", a.Name())
 }
 
 // TestEnvironmentPrepare pins each case's first line and the traps it names.
 func TestEnvironmentPrepare(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		shell, goos string
 		first       string
@@ -104,6 +106,7 @@ func TestEnvironmentPrepare(t *testing.T) {
 // TestShellClaims runs what the fish and zsh guidance says fails and what
 // it says to write instead, in the shells installed here.
 func TestShellClaims(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		shell      string
 		fail, pass []string

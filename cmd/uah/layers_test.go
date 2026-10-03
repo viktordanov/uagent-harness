@@ -16,6 +16,7 @@ import (
 // TestConfigCommandLayers checks that `uah config` names the layer that set
 // each value, in merge order.
 func TestConfigCommandLayers(t *testing.T) {
+	t.Parallel()
 	root, ws, _, env := configEnv(t)
 	layer := filepath.Join(root, "home", "config.d", "10-host.toml")
 	writeFile(t, layer, "model = \"gpt-6-sol\"\n[approvals]\nallow = [\"host\"]\n[tui]\ntitle = false\n")
@@ -66,6 +67,7 @@ func TestConfigCommandLayers(t *testing.T) {
 // UAH_EXTRA_CONFIG: they run as written, with no trust step, and `uah
 // hooks` and `uah doctor` list them.
 func TestLayerHooksRun(t *testing.T) {
+	t.Parallel()
 	e, env := fakeEnv(t, fakellm.Reply{Text: "done"})
 	homeDir := filepath.Join(e.StateDir, "..", "home")
 	out := filepath.Join(t.TempDir(), "events.jsonl")

@@ -37,7 +37,19 @@ func answer(t testing.TB) string {
 	return string(b)
 }
 
+// skipUnderRace skips a test that renders many prefixes on one goroutine:
+// the race detector finds nothing there and makes it about five times
+// slower, so the run without it covers it.
+func skipUnderRace(t *testing.T) {
+	t.Helper()
+	if raceEnabled {
+		t.Skip("one goroutine; the run without the race detector covers it")
+	}
+}
+
 func TestIncrementalEqualsFullForEveryPrefix(t *testing.T) {
+	skipUnderRace(t)
+	t.Parallel()
 	st := testStyles()
 	st.CodeStyle = codeStyle(t)
 	for _, name := range fixtures {
@@ -53,6 +65,8 @@ func TestIncrementalEqualsFullForEveryPrefix(t *testing.T) {
 }
 
 func TestIncrementalEqualsFullWhileStreaming(t *testing.T) {
+	skipUnderRace(t)
+	t.Parallel()
 	st := testStyles()
 	st.CodeStyle = codeStyle(t)
 	src := answer(t)
@@ -65,6 +79,7 @@ func TestIncrementalEqualsFullWhileStreaming(t *testing.T) {
 }
 
 func TestWidthChangesRenderAgain(t *testing.T) {
+	t.Parallel()
 	src := answer(t)
 	r, full := New(testStyles()), New(testStyles())
 	for i := 0; i < len(src)/2; i += 50 {
@@ -76,6 +91,7 @@ func TestWidthChangesRenderAgain(t *testing.T) {
 }
 
 func TestTwoTextsWithTheSameStartKeepTheirOwnBlocks(t *testing.T) {
+	t.Parallel()
 	r, full := New(testStyles()), New(testStyles())
 	a, b := "Sure.\n\nFirst answer, with more.\n\nDone.", "Sure.\n\nSecond answer.\n\n- a list"
 	for i := range max(len(a), len(b)) + 1 {
@@ -85,6 +101,7 @@ func TestTwoTextsWithTheSameStartKeepTheirOwnBlocks(t *testing.T) {
 }
 
 func TestStylesAreTheRenderersOwn(t *testing.T) {
+	t.Parallel()
 	src := "```go\nfunc main() {}\n```\n\n**bold**"
 	light := testStyles()
 	light.Bold = tagged[7]
@@ -110,6 +127,7 @@ func textReader(src []byte) text.Reader { return text.NewReader(src) }
 // The gate: while a text grows, each update parses only what follows the
 // start of the previous text's last block, never the whole text.
 func TestAnUpdateParsesOnlyTheLastBlock(t *testing.T) {
+	t.Parallel()
 	docs := map[string]string{"answer": answer(t)}
 	for _, name := range fixtures {
 		if name != "refs" { // a link definition draws the whole text, as in Codex

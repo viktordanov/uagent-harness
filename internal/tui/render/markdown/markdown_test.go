@@ -76,6 +76,7 @@ func fixture(t testing.TB, name string) string {
 }
 
 func TestGoldens(t *testing.T) {
+	t.Parallel()
 	widths := map[string][]int{"table": {80, 50, 34, 20}}
 	for _, name := range fixtures {
 		t.Run(name, func(t *testing.T) {
@@ -111,6 +112,7 @@ func golden(t *testing.T, name, got string) {
 }
 
 func TestLinesFitTheWidth(t *testing.T) {
+	t.Parallel()
 	for _, name := range fixtures {
 		for _, w := range []int{80, 40, 24} {
 			for _, l := range New(testStyles()).Render(fixture(t, name), w, "", "") {
@@ -121,11 +123,13 @@ func TestLinesFitTheWidth(t *testing.T) {
 }
 
 func TestEmptyTextIsTheFirstPrefix(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, []string{"● "}, New(testStyles()).Render("", 40, "● ", "  "))
 	assert.Equal(t, []string{"● "}, New(testStyles()).Render("\n\n", 40, "● ", "  "))
 }
 
 func TestHighlightsKnownLanguagesOnly(t *testing.T) {
+	t.Parallel()
 	st := testStyles()
 	st.CodeStyle = codeStyle(t)
 	r := New(st)
@@ -138,6 +142,7 @@ func TestHighlightsKnownLanguagesOnly(t *testing.T) {
 }
 
 func TestHighlightingIsCached(t *testing.T) {
+	t.Parallel()
 	st := testStyles()
 	st.CodeStyle = codeStyle(t)
 	r := New(st)
@@ -150,6 +155,7 @@ func TestHighlightingIsCached(t *testing.T) {
 }
 
 func TestAnOpenFenceHighlightsItsCompleteLinesOnce(t *testing.T) {
+	t.Parallel()
 	st := testStyles()
 	st.CodeStyle = codeStyle(t)
 	r := New(st)

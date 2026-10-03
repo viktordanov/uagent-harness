@@ -26,6 +26,7 @@ import (
 // the embedded engine killed orphans on resume, the runner's store marked the
 // call failed but left its process running.)
 func TestCrashRecovery(t *testing.T) {
+	t.Parallel()
 	e := harnesstest.NewEnv(t)
 	llm := fakellm.New(t,
 		fakellm.Reply{Text: "Waiting.", Commands: []string{"echo $$ > sleep.pid; exec sleep 30"}},

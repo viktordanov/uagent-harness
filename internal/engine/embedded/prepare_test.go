@@ -26,6 +26,7 @@ import (
 // without it, and a later run of the session adds no second block. A
 // subagent's session gets one too; off, nothing is added.
 func TestContextPreparation(t *testing.T) {
+	t.Parallel()
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("no git")
 	}

@@ -41,6 +41,7 @@ func names(tools []mcp.Tool) []string {
 }
 
 func TestToolsAndCalls(t *testing.T) {
+	t.Parallel()
 	cfg := stdio(t)
 	cfg.EnabledTools = []string{"echo", "fail", "image", "sleep", "structured", "crash"}
 	cfg.DisabledTools = []string{"crash"}
@@ -75,6 +76,7 @@ func TestToolsAndCalls(t *testing.T) {
 }
 
 func TestEnabledTools(t *testing.T) {
+	t.Parallel()
 	cfg := stdio(t)
 	cfg.EnabledTools = []string{"echo", "sleep"}
 	cfg.DisabledTools = []string{"sleep"}
@@ -85,6 +87,7 @@ func TestEnabledTools(t *testing.T) {
 }
 
 func TestToolTimeout(t *testing.T) {
+	t.Parallel()
 	cfg := stdio(t)
 	cfg.ToolTimeoutSec = ptr(0.2)
 	m := newManager(t, map[string]mcp.ServerConfig{"s": cfg})
@@ -93,7 +96,7 @@ func TestToolTimeout(t *testing.T) {
 	_, err = m.Tools(context.Background())
 	require.NoError(t, err)
 	start := time.Now()
-	_, err = m.Call(context.Background(), "s", "sleep", json.RawMessage(`{"ms":5000}`))
+	_, err = m.Call(context.Background(), "s", "sleep", json.RawMessage(`{"ms":1000}`))
 	require.ErrorContains(t, err, "did not finish within 200ms")
 	assert.Less(t, time.Since(start), 3*time.Second)
 	r, err := m.Call(context.Background(), "s", "echo", json.RawMessage(`{"text":"after"}`))
@@ -102,6 +105,7 @@ func TestToolTimeout(t *testing.T) {
 }
 
 func TestCrashingServer(t *testing.T) {
+	t.Parallel()
 	m := newManager(t, map[string]mcp.ServerConfig{"s": stdio(t)})
 	_, err := m.Tools(context.Background())
 	require.NoError(t, err)
@@ -115,8 +119,9 @@ func TestCrashingServer(t *testing.T) {
 }
 
 func TestStartupFailures(t *testing.T) {
+	t.Parallel()
 	slow := stdio(t)
-	slow.Env["MCPSERVER_START_DELAY"] = "3s"
+	slow.Env["MCPSERVER_START_DELAY"] = "1s"
 	slow.StartupTimeoutSec = ptr(0.3)
 	m := newManager(t, map[string]mcp.ServerConfig{
 		"slow":     slow,
@@ -144,6 +149,7 @@ func TestStartupFailures(t *testing.T) {
 }
 
 func TestValidate(t *testing.T) {
+	t.Parallel()
 	for name, tc := range map[string]struct {
 		cfg  mcp.ServerConfig
 		want string

@@ -32,6 +32,7 @@ func (e *env) openAdaptive(t *testing.T, value string) (*session.Session, *event
 // read as much as a command that confirms, goes one or two levels lower.
 // Off, every request keeps it.
 func TestAdaptiveEffort(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		value   string

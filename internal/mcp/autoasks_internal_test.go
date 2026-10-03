@@ -9,6 +9,7 @@ import (
 )
 
 func TestAutoAsks(t *testing.T) {
+	t.Parallel()
 	yes, no := true, false
 	cases := map[string]struct {
 		a    *sdk.ToolAnnotations

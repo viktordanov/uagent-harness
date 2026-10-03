@@ -43,6 +43,7 @@ func readFile(t *testing.T, path string) string {
 // TestRemoveServer cuts the server and its sub-tables and keeps every
 // other byte, comments included.
 func TestRemoveServer(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "config.toml")
 	require.NoError(t, os.WriteFile(path, []byte(userFile), 0o640))
 
@@ -74,6 +75,7 @@ details = true
 }
 
 func TestAddServer(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	path := filepath.Join(dir, "uagent", "config.toml")
 	require.NoError(t, mcp.AddServer(path, "docs", mcp.ServerConfig{Command: "npx", Args: []string{"-y", "docs-mcp"}, Env: map[string]string{"LANG_CODE": "en"}}))
@@ -111,6 +113,7 @@ func TestAddServer(t *testing.T) {
 
 // A server written as an inline table cannot be cut; the file stays as it was.
 func TestEditRefusesInlineServers(t *testing.T) {
+	t.Parallel()
 	path := filepath.Join(t.TempDir(), "config.toml")
 	inline := "mcp_servers = { docs = { command = \"docs-mcp\" } }\n"
 	require.NoError(t, os.WriteFile(path, []byte(inline), 0o600))

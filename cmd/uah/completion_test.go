@@ -9,6 +9,7 @@ import (
 )
 
 func TestCompletionScripts(t *testing.T) {
+	t.Parallel()
 	for shell, want := range map[string]string{"bash": "complete", "zsh": "#compdef uah", "fish": "complete -c uah"} {
 		res := uah(t, "completion", shell)
 		require.Equal(t, 0, res.code, res.stderr)
@@ -17,6 +18,7 @@ func TestCompletionScripts(t *testing.T) {
 }
 
 func TestCompletionValues(t *testing.T) {
+	t.Parallel()
 	for args, want := range map[string][]string{
 		"--effort":           {"low", "medium", "high", "xhigh", "max", "ultra"},
 		"run --sandbox":      {"read-only", "workspace-write"},
@@ -33,6 +35,7 @@ func TestCompletionValues(t *testing.T) {
 }
 
 func TestCompletionSessionIDs(t *testing.T) {
+	t.Parallel()
 	e, env := fakeEnv(t)
 	res := uahWith(t, env, "", "run", "-C", e.Workspace, "hello")
 	require.Equal(t, 0, res.code, res.stderr)

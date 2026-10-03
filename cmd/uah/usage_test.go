@@ -29,6 +29,7 @@ func serveUsage(w http.ResponseWriter, r *http.Request) {
 }
 
 func TestUsage(t *testing.T) {
+	t.Parallel()
 	e, env := fakeEnv(t)
 	srv := httptest.NewServer(http.HandlerFunc(serveUsage))
 	t.Cleanup(srv.Close)
@@ -66,6 +67,7 @@ func TestUsage(t *testing.T) {
 }
 
 func TestUsage_OtherProviders(t *testing.T) {
+	t.Parallel()
 	e, env := fakeEnv(t)
 	res := uahWith(t, env, "", "usage", "--provider", "ollama", "-m", "llama3", "-C", e.Workspace)
 	assert.Equal(t, 1, res.code)

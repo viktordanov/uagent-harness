@@ -45,6 +45,7 @@ func login(t *testing.T, cfg mcp.ServerConfig, store mcp.CredentialStore, scopes
 // and saved, a revoked login asks for reauthentication, and logout
 // forgets it.
 func TestOAuth(t *testing.T) {
+	t.Parallel()
 	srv := oauthserver.New(t)
 	path := filepath.Join(t.TempDir(), "mcp-credentials.json")
 	store := &mcp.FileStore{Path: path}
@@ -104,6 +105,7 @@ func TestOAuth(t *testing.T) {
 
 // TestOAuthLoginOptions sends the configured scopes and oauth_resource.
 func TestOAuthLoginOptions(t *testing.T) {
+	t.Parallel()
 	srv := oauthserver.New(t)
 	store := &mcp.FileStore{Path: filepath.Join(t.TempDir(), "creds.json")}
 	cfg := mcp.ServerConfig{URL: srv.MCPURL(), Scopes: []string{"mcp:write"}, OAuthResource: "https://resource.example.com"}
@@ -121,6 +123,7 @@ func TestOAuthLoginOptions(t *testing.T) {
 
 // A login that the browser never finishes times out.
 func TestOAuthLoginTimesOut(t *testing.T) {
+	t.Parallel()
 	srv := oauthserver.New(t)
 	store := &mcp.FileStore{Path: filepath.Join(t.TempDir(), "creds.json")}
 	var out bytes.Buffer

@@ -107,6 +107,7 @@ func (e *approvalEnv) requests(t *testing.T, n int) []session.ApprovalRequested 
 // one at a time they would never finish, and together they take about one
 // review's time. Each call still gets its own verdict.
 func TestEmbedded_ParallelAutoReviews(t *testing.T) {
+	t.Parallel()
 	e := newApprovalEnv(t, approvalOpts{interactive: true, mode: approval.ModeAuto}, touches("a.txt", "b.txt", "c.txt"))
 	reviewer(e, 3, map[string]string{"a.txt": allowVerdict, "b.txt": denyVerdict, "c.txt": allowVerdict})
 	e.run(t)

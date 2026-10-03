@@ -31,6 +31,7 @@ func oldFolders(t *testing.T) (string, []string) {
 }
 
 func TestFirstStartMigrates(t *testing.T) {
+	t.Parallel()
 	userHome, env := oldFolders(t)
 
 	first := uahWith(t, env, "", "sessions", "--all")
@@ -48,6 +49,7 @@ func TestFirstStartMigrates(t *testing.T) {
 }
 
 func TestCompletionMigratesQuietly(t *testing.T) {
+	t.Parallel()
 	userHome, env := oldFolders(t)
 
 	res := uahWith(t, env, "", "sessions", "show", "--generate-shell-completion")
@@ -58,6 +60,7 @@ func TestCompletionMigratesQuietly(t *testing.T) {
 }
 
 func TestOldVariablesWarn(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	res := uahWith(t, []string{"UAGENT_CONFIG=" + filepath.Join(root, "config.toml"), "UAGENT_STATE_DIR=" + root}, "", "sessions", "--all")
 
@@ -67,6 +70,7 @@ func TestOldVariablesWarn(t *testing.T) {
 }
 
 func TestOldProjectDirectoryNotice(t *testing.T) {
+	t.Parallel()
 	e, env := fakeEnv(t)
 	require.NoError(t, os.Mkdir(filepath.Join(e.Workspace, ".uagent"), 0o700))
 

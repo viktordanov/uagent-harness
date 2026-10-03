@@ -79,10 +79,10 @@ func TestStore_PutAndDataURL(t *testing.T) {
 }
 
 func TestPrepare_Downscales(t *testing.T) {
-	data, ext, w, h, err := images.Prepare(pngOf(t, 4000, 1000))
+	data, ext, w, h, err := images.Prepare(pngOf(t, 4000, 8))
 	require.NoError(t, err)
 	assert.Equal(t, ".png", ext)
-	assert.Equal(t, [2]int{images.MaxSide, 500}, [2]int{w, h})
+	assert.Equal(t, [2]int{images.MaxSide, 4}, [2]int{w, h})
 	cfg, err := png.DecodeConfig(bytes.NewReader(data))
 	require.NoError(t, err)
 	assert.Equal(t, images.MaxSide, cfg.Width)

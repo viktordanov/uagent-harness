@@ -111,6 +111,7 @@ func TestVerbosity(t *testing.T) {
 }
 
 func TestDefaultModelFromCatalog(t *testing.T) {
+	t.Parallel()
 	live := models.Catalog{Origin: models.OriginLive, Models: []models.Model{{ID: "gpt-6.1-sol"}}}
 	assert.Equal(t, app.DefaultCodexModel, app.DefaultModel(app.CodexProvider, live))
 	assert.Equal(t, app.DefaultCodexModel, app.DefaultModel(models.ProviderOpenAI, live))

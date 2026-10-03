@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -269,40 +270,52 @@ func TestBehavior(t *testing.T) {
 func TestFixtureReadmes(t *testing.T) {
 	tasks, err := bench.LoadTasks(tasksDir, nil)
 	require.NoError(t, err)
-	seen := 0
-	for _, task := range tasks {
-		task.Setup, task.SolutionScript = "", "" // the copies only
-		ws := t.TempDir()
-		require.NoError(t, task.Prepare(context.Background(), ws, os.Environ()), task.Name)
-		for _, dir := range []string{"repo", "solution"} {
-			if dir == "solution" {
-				require.NoError(t, task.ApplySolution(context.Background(), ws, os.Environ()), task.Name)
-			}
-			root := filepath.Join(task.Dir, dir)
-			err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
-				if err != nil || d.IsDir() {
-					return err
-				}
-				assert.NotEqual(t, "README.md", d.Name(), "%s is stored as README.fixture.md", p)
-				if d.Name() != "README.fixture.md" {
-					return nil
-				}
-				seen++
-				rel, err := filepath.Rel(root, filepath.Dir(p))
-				require.NoError(t, err)
-				want, err := os.ReadFile(p)
-				require.NoError(t, err)
-				got, err := os.ReadFile(filepath.Join(ws, rel, "README.md"))
-				require.NoError(t, err, p)
-				assert.Equal(t, string(want), string(got), p)
-				assert.NoFileExists(t, filepath.Join(ws, rel, "README.fixture.md"))
-
-				return nil
+	var seen atomic.Int64
+	t.Run("tasks", func(t *testing.T) {
+		for _, task := range tasks {
+			t.Run(task.Name, func(t *testing.T) {
+				t.Parallel()
+				checkFixtureReadmes(t, task, &seen)
 			})
-			if !errors.Is(err, fs.ErrNotExist) {
-				require.NoError(t, err)
+		}
+	})
+	assert.EqualValues(t, 37, seen.Load(), "every fixture README, the vendored project's nested ones too")
+}
+
+// checkFixtureReadmes prepares task's workspace and checks its READMEs,
+// counting them in seen.
+func checkFixtureReadmes(t *testing.T, task bench.Task, seen *atomic.Int64) {
+	t.Helper()
+	task.Setup, task.SolutionScript = "", "" // the copies only
+	ws := t.TempDir()
+	require.NoError(t, task.Prepare(context.Background(), ws, os.Environ()), task.Name)
+	for _, dir := range []string{"repo", "solution"} {
+		if dir == "solution" {
+			require.NoError(t, task.ApplySolution(context.Background(), ws, os.Environ()), task.Name)
+		}
+		root := filepath.Join(task.Dir, dir)
+		err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
+			if err != nil || d.IsDir() {
+				return err
 			}
+			assert.NotEqual(t, "README.md", d.Name(), "%s is stored as README.fixture.md", p)
+			if d.Name() != "README.fixture.md" {
+				return nil
+			}
+			seen.Add(1)
+			rel, err := filepath.Rel(root, filepath.Dir(p))
+			require.NoError(t, err)
+			want, err := os.ReadFile(p)
+			require.NoError(t, err)
+			got, err := os.ReadFile(filepath.Join(ws, rel, "README.md"))
+			require.NoError(t, err, p)
+			assert.Equal(t, string(want), string(got), p)
+			assert.NoFileExists(t, filepath.Join(ws, rel, "README.fixture.md"))
+
+			return nil
+		})
+		if !errors.Is(err, fs.ErrNotExist) {
+			require.NoError(t, err)
 		}
 	}
-	assert.Equal(t, 37, seen, "every fixture README, the vendored project's nested ones too")
 }

@@ -31,6 +31,7 @@ func call(t *testing.T, m *mcp.Manager, server, tool, args string) (mcp.Result, 
 // A server that takes one call at a time runs them in turn, within a tool
 // timeout that covers the wait for its turn.
 func TestSerialCallsWaitTheirTurn(t *testing.T) {
+	t.Parallel()
 	serial := stdio(t)
 	serial.ToolTimeoutSec = ptr(2.0)
 	parallel := stdio(t)
@@ -69,6 +70,7 @@ func TestSerialCallsWaitTheirTurn(t *testing.T) {
 // embedded engine's test checks that), and a large result does not break
 // the connection.
 func TestLargeResult(t *testing.T) {
+	t.Parallel()
 	m := newManager(t, map[string]mcp.ServerConfig{"s": stdio(t)})
 	_, err := m.Tools(context.Background())
 	require.NoError(t, err)
@@ -82,6 +84,7 @@ func TestLargeResult(t *testing.T) {
 
 // Standard error goes to the log, a line per record, with the server's name.
 func TestStderrIsLogged(t *testing.T) {
+	t.Parallel()
 	var buf safeBuffer
 	m, err := mcp.NewManager(map[string]mcp.ServerConfig{"loud": stdio(t)}, mcp.Options{
 		Workspace: t.TempDir(), Getenv: func(string) string { return "" }, Logger: slog.New(slog.NewTextHandler(&buf, nil)),
@@ -99,6 +102,7 @@ func TestStderrIsLogged(t *testing.T) {
 // A stdio server gets Codex's basic variables, then env_vars, then env,
 // and nothing else from uah's environment.
 func TestServerEnvironment(t *testing.T) {
+	t.Parallel()
 	parent := map[string]string{"HOME": "/home/u", "SECRET": "s3", "PASSED": "yes", "PATH": "/usr/bin:/bin"}
 	cfg := stdio(t)
 	cfg.EnvVars = []string{"PASSED"}
@@ -117,6 +121,7 @@ func TestServerEnvironment(t *testing.T) {
 // Every page of a long tool list is read; a changed list is logged and the
 // tools listed at startup stay, as in Codex.
 func TestManyToolsAndListChanges(t *testing.T) {
+	t.Parallel()
 	var buf safeBuffer
 	cfg := stdio(t)
 	cfg.Env["MCPSERVER_EXTRA_TOOLS"] = "1500"
@@ -140,6 +145,7 @@ func TestManyToolsAndListChanges(t *testing.T) {
 
 // Servers whose names sanitize alike get distinct tool names.
 func TestNameCollisions(t *testing.T) {
+	t.Parallel()
 	a, b := stdio(t), stdio(t)
 	a.EnabledTools, b.EnabledTools = []string{"echo"}, []string{"echo"}
 	m := newManager(t, map[string]mcp.ServerConfig{"my-srv": a, "my.srv": b})
@@ -175,6 +181,7 @@ func (s *swapHandler) fresh() {
 // runs, as Codex re-initializes; a server that is gone fails the call
 // within the timeout; one that answers 500 at startup fails to start.
 func TestHTTPFailures(t *testing.T) {
+	t.Parallel()
 	sw := &swapHandler{}
 	sw.fresh()
 	srv := httptest.NewServer(sw)

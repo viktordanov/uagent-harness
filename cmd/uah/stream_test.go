@@ -17,6 +17,7 @@ import (
 // TestRunStreamsTheAnswer: `uah run --stream` writes the answer's deltas
 // before the final message; plain `uah run` prints the answer once.
 func TestRunStreamsTheAnswer(t *testing.T) {
+	t.Parallel()
 	e := harnesstest.NewEnv(t)
 	reply := fakellm.Reply{Deltas: []string{"Hel", "lo"}}
 	llm := fakellm.New(t, reply, reply)

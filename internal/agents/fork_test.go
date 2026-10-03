@@ -196,7 +196,7 @@ func TestFork_KeepsTheQuestionTool(t *testing.T) {
 		fakellm.Reply{Calls: []fakellm.Call{call("spawn_agent", `{"message":"CHILD-ASKS go on","fork_context":true}`)}},
 		callWith("wait_agent", `{"targets":["ID"]}`),
 		fakellm.Reply{Calls: []fakellm.Call{call("spawn_agent", `{"message":"CHILD-PLAIN look"}`)}},
-		callWith("wait_agent", `{"targets":["ID"]}`),
+		callWithLast("wait_agent", `{"targets":["ID"]}`),
 		fakellm.Reply{Text: "done"},
 	)
 	e.llm.Route("CHILD-ASKS",

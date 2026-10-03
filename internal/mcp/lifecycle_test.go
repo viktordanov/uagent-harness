@@ -48,6 +48,7 @@ func countingServer(t *testing.T) (string, *atomic.Int64) {
 // report, a run's Tools, /mcp's Status, and a call all find the manager
 // closed.
 func TestCloseIsTerminal(t *testing.T) {
+	t.Parallel()
 	url, opened := countingServer(t)
 	m := newManager(t, map[string]mcp.ServerConfig{"remote": {URL: url}})
 	_, err := m.Tools(context.Background())
@@ -74,6 +75,7 @@ func TestCloseIsTerminal(t *testing.T) {
 // A startup report racing with Close either reports the servers or nothing,
 // and once both return no connection stays open.
 func TestStartedRacesClose(t *testing.T) {
+	t.Parallel()
 	url, _ := countingServer(t)
 	for range 20 {
 		m := newManager(t, map[string]mcp.ServerConfig{"remote": {URL: url}})
@@ -95,6 +97,7 @@ func TestStartedRacesClose(t *testing.T) {
 // A login revoked while the server runs makes it needs_login, as a 401 at
 // startup does, and later calls say to log in again.
 func TestRuntimeLoginExpiry(t *testing.T) {
+	t.Parallel()
 	srv := oauthserver.New(t)
 	store := &mcp.FileStore{Path: filepath.Join(t.TempDir(), "mcp-credentials.json")}
 	cfg := mcp.ServerConfig{URL: srv.MCPURL()}
@@ -118,6 +121,7 @@ func TestRuntimeLoginExpiry(t *testing.T) {
 // An auth mode uah does not support fails only that server, with the
 // reason; the others start.
 func TestUnsupportedAuthFailsOneServer(t *testing.T) {
+	t.Parallel()
 	url, opened := countingServer(t)
 	m := newManager(t, map[string]mcp.ServerConfig{
 		"ok":      {URL: url},

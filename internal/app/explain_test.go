@@ -34,6 +34,7 @@ func explain(t *testing.T, in app.Inputs, o app.Origins) (app.Report, explained)
 func (e explained) source(key string) string { return e[key].SourceText() }
 
 func TestExplainSources(t *testing.T) {
+	t.Parallel()
 	defaults := app.Inputs{ConfigPath: "/cfg/config.toml", MaxDisk: "5G"}
 	trusted := func(user, project config.Config) config.Layers {
 		user.Projects = map[string]config.Project{"/ws": {Trusted: true}}
@@ -217,6 +218,7 @@ func TestExplainSources(t *testing.T) {
 }
 
 func TestExplainFiles(t *testing.T) {
+	t.Parallel()
 	in := app.Inputs{ConfigPath: "/cfg/config.toml", Workspace: "/ws", MaxDisk: "5G"}
 
 	rep, _ := explain(t, in, app.Origins{})
@@ -232,6 +234,7 @@ func TestExplainFiles(t *testing.T) {
 }
 
 func TestExplainInvalid(t *testing.T) {
+	t.Parallel()
 	_, err := app.Explain(app.Inputs{MaxDisk: "5G"}, app.Origins{Dir: "/cwd", Layers: config.Layers{User: config.Config{SandboxMode: "wide-open"}}})
 
 	var usageErr *app.UsageError

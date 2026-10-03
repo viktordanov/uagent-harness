@@ -23,6 +23,7 @@ import (
 // output, as without the stop. After a whole run, no operation is left
 // that the harness would take as running and kill the group of.
 func TestEmbedded_ResumesAtEachSkippedPhase(t *testing.T) {
+	t.Parallel()
 	// Both outputs are over the read limit, so the shell reads their tails.
 	const cmd = `echo ran >> ran.txt; seq 1 40000; seq 1 40000 | sed s/^/e/ >&2`
 	e := newEnv(t, fakellm.Reply{Commands: []string{cmd}}, fakellm.Reply{Text: "done"})

@@ -63,6 +63,7 @@ func replayEach(t *testing.T, store sessionstore.Store, id session.ID, items []s
 // state, with no operation to resume: the child's run starts none of the
 // parent's work again.
 func TestReplay_AsAppendedOneByOne(t *testing.T) {
+	t.Parallel()
 	const parent = "a5ad5bba-0726-41cd-bf5d-1d5d4f7b12c6"
 	dir := t.TempDir()
 	b, err := os.ReadFile(filepath.Join("..", "..", "compaction", "evalrun", "testdata", "sessions", parent+".session.jsonl"))
