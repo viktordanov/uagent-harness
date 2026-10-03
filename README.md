@@ -141,7 +141,7 @@ When the agent needs a decision with a few plausible answers, it stops and asks 
 - Enter answers the question and shows the next one; on the last, it sends the answers, and the agent goes on with them. Tab and shift+tab go between the questions.
 - Esc interrupts the agent instead, and keeps what you typed, so you can send a message of your own.
 
-The transcript shows the call as `ASK`, and your answers under it. Only the TUI offers the tool: `uah exec` has no one to answer, so the agent asks in its final answer there, and a script replies with `uah exec --last`. Subagents ask their parent instead. See the [questions design](docs/design/questions.md).
+The transcript shows the call as `ASK`, and your answers under it. Only the TUI offers the tool: `uah exec` has no one to answer, so the agent asks in its final answer there, and a script replies with `uah exec --last`. To turn it off, as for a terminal that cannot show the picker, set `enabled = false` under `[tools.experimental_request_user_input]` (Codex's key), in the user file or a layer such as `UAH_EXTRA_CONFIG`, or `UAH_REQUEST_USER_INPUT=off`; the agent then asks in its final message, as before. Approvals use the same framed panel. Subagents ask their parent instead. See the [questions design](docs/design/questions.md).
 
 ### Reuse an earlier prompt
 

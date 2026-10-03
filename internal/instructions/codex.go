@@ -1,6 +1,9 @@
 package instructions
 
-import _ "embed" // CodexPrompt and DefaultPrompt
+import (
+	_ "embed" // CodexPrompt and DefaultPrompt
+	"strings"
+)
 
 // CodexPrompt is Codex's base instructions for gpt-6.1-sol, verbatim: the
 // model's model_messages.instructions_template in
@@ -32,3 +35,23 @@ var DefaultPrompt string
 // offer.
 const SubagentNote = "When you provide a response in the final channel, that content is immediately delivered back to your parent agent.\n" +
 	"In addition, your final answer may be read by a human, so ensure it is legible."
+
+// questionToolText is what the default prompt says about request_user_input
+// (hunk 4 of default_prompt.diff), and withoutQuestionTool what it says
+// without the tool (ledger item 63's text).
+const (
+	questionToolText = "When the `request_user_input` tool is available and the answer is a choice between a few plausible options, ask with the tool instead: " +
+		"it shows your questions and their options to the user, waits for the answers, and returns them to you, and you then continue. " +
+		"Ask with it at the end of the work that does not depend on the answer, or when you cannot proceed without a decision. " +
+		"Never use it for permission requests, and do not ask for files or screenshots with it. " +
+		"You can ask multiple questions in a single final message or tool call."
+	withoutQuestionTool = "You can ask multiple questions in a single final message."
+)
+
+// WithoutQuestionTool is prompt with the default prompt's text on
+// request_user_input replaced by item 63's, for a session whose agent is
+// never offered the tool ([tools.experimental_request_user_input] enabled
+// = false). A prompt without that text is returned as it is.
+func WithoutQuestionTool(prompt string) string {
+	return strings.Replace(prompt, questionToolText, withoutQuestionTool, 1)
+}

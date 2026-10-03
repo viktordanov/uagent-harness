@@ -101,7 +101,7 @@ func Setup(ctx context.Context, in Inputs, logOutput io.Writer) (Result, error) 
 	// The date is fixed when the session opens, so every request of the
 	// session sends the same system message and hits the prompt cache.
 	env := instructions.LocalEnvironment(in.Workspace, RealShell(), time.Now(), os.Getenv)
-	r.Settings.SystemPrompt = instructions.HostPrompt(base, text, env.String())
+	r.Settings.SystemPrompt = instructions.HostPrompt(questionText(base, r), text, env.String())
 	catalog := NewModels(stateDir, r.Settings, os.Getenv)
 	if r.DefaultModel {
 		// As Codex picks its default: the provider's list, cached for five
@@ -129,7 +129,7 @@ func Setup(ctx context.Context, in Inputs, logOutput io.Writer) (Result, error) 
 		return Result{}, err
 	}
 	subagents := newAgents(r, cfg, in.Workspace, &opts, catalog)
-	eng := newEngine(r, runDir, logger, parts{servers: servers, approver: approver, subagents: subagents, models: catalog, context: ContextSettings(in.ConfigPath, cfg), askUser: in.Interactive}, &opts)
+	eng := newEngine(r, runDir, logger, parts{servers: servers, approver: approver, subagents: subagents, models: catalog, context: ContextSettings(in.ConfigPath, cfg), askUser: in.Interactive && r.RequestUserInput}, &opts)
 	subagents.Bind(eng, opts) // children open exactly as this session does
 	opts.Shell = userShell(r, cfg, runDir, approver)
 
@@ -275,6 +275,18 @@ func FindSession(ctx context.Context, stateDir, ref string) (session.Info, error
 
 // readModelInstructions reads model_instructions_file, the base
 // instructions in place of uah's default prompt, or returns "" when it
+// questionText is the base instructions as the question tool's setting
+// wants them: with the tool off, the default prompt (or a copy of it in
+// model_instructions_file) says to ask in the final message, as before the
+// tool ("": the default prompt as it is).
+func questionText(base string, r Resolved) string {
+	if r.RequestUserInput {
+		return base
+	}
+
+	return instructions.WithoutQuestionTool(cmp.Or(base, instructions.DefaultPrompt))
+}
+
 // is not set. As in Codex, a missing or empty file is an error.
 func readModelInstructions(cfg config.Config) (string, error) {
 	if cfg.ModelInstructionsFile == "" {

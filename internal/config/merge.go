@@ -34,6 +34,9 @@ func merge(base, over Config) Config {
 	if over.ContextPreparation != nil {
 		base.ContextPreparation = over.ContextPreparation
 	}
+	if over.Tools.ExperimentalRequestUserInput.Enabled != nil {
+		base.Tools.ExperimentalRequestUserInput.Enabled = over.Tools.ExperimentalRequestUserInput.Enabled
+	}
 	if over.Context.Modules != nil {
 		base.Context.Modules = over.Context.Modules
 	}

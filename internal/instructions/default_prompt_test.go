@@ -57,3 +57,14 @@ func applyDiff(t *testing.T, text, diff string) string {
 
 	return strings.Join(append(out, lines[next:]...), "")
 }
+
+// TestWithoutQuestionTool: with the question tool off, hunk 4 is item 63's
+// text again, word for word, and nothing names the tool.
+func TestWithoutQuestionTool(t *testing.T) {
+	without := instructions.WithoutQuestionTool(instructions.DefaultPrompt)
+	assert.NotContains(t, without, "request_user_input")
+	assert.Contains(t, without, "You ask the user for missing information, a preference, constraint, or clarification in the `final` channel, which ends your turn. "+
+		"You can ask multiple questions in a single final message. Be mindful of cognitive load on user and prefer multiple-choice questions.")
+	assert.Equal(t, len(instructions.DefaultPrompt)-479, len(without), "only the tool's sentences go")
+	assert.Equal(t, "custom", instructions.WithoutQuestionTool("custom"))
+}

@@ -12,6 +12,7 @@ max_disk                                          1G                            
 fast                                              true                          user file
 adaptive_effort                                   off                           default
 context_preparation                               true                          default
+tools.experimental_request_user_input.enabled     true                          default
 model_verbosity                                   low                           default
 permission_mode                                   read-only                     env
 sandbox_mode                                      read-only                     env

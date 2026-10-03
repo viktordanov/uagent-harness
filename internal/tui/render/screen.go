@@ -256,10 +256,10 @@ func (st *Styles) statusLine(s state.State, w int) string {
 
 // compactHint is the compact footer's key hint: while the agent works, the
 // send keys that work in this terminal, in place of the commands' hint;
-// none while the agent's questions show their own.
+// none while an approval or the agent's questions show their own.
 func compactHint(s state.State) string {
-	if _, ok := s.PendingQuestions(); ok {
-		return "" // the questions name their keys
+	if panelShown(s) {
+		return "" // the panel names its keys
 	}
 	if s.Working() {
 		return s.Keys.SendHint(true) + " "
@@ -298,8 +298,8 @@ func (st *Styles) footerLine(s state.State, w int) string {
 	if s.Shell {
 		hint = shellHint
 	}
-	if _, ok := s.PendingQuestions(); ok {
-		hint = "" // the questions name their keys
+	if panelShown(s) {
+		hint = "" // the panel names its keys
 	}
 	if gap := w - ansi.StringWidth(text) - ansi.StringWidth(hint); gap > 0 {
 		text += strings.Repeat(" ", gap) + hint
@@ -468,4 +468,13 @@ func age(now, t time.Time) string {
 	}
 
 	return fmt.Sprintf("%dd ago", int(d.Hours()/24))
+}
+
+// panelShown reports whether an approval or the agent's questions wait, in
+// the panel that names its own keys.
+func panelShown(s state.State) bool {
+	_, approval := s.PendingApproval()
+	_, questions := s.PendingQuestions()
+
+	return approval || questions
 }

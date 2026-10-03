@@ -2,8 +2,6 @@
 
 
 
-
-
 ╭────────────────────────────────────────────────╮
 │ λ uah                                          │
 │                                                │
@@ -11,14 +9,16 @@
 │ directory: /workspace/proj                     │
 ╰────────────────────────────────────────────────╯
 
- Call this MCP tool?
- Reason: Search the docs.
- $ mcp__docs__search {"q":"x"}
-   y  Yes, proceed
-   a  Yes, and don't ask again for this tool
-   n  No, and tell the agent what to do differently (esc)
+╭─ Call this MCP tool? ────────────────────────────────────────────────────────────────────────────╮
+│ Reason: Search the docs.                                                                         │
+│ $ mcp__docs__search {"q":"x"}                                                                    │
+│                                                                                                  │
+│   y Yes, proceed                                                                                 │
+│   a Yes, and don't ask again for this tool                                                       │
+│   n No, and tell the agent what to do differently                                                │
+╰─ y yes · a always for the tool · n or esc no ────────────────────────────────────────────────────╯
 
 
 λ
 
- gpt-6-sol high · workspace mode · /workspace/proj                      ctrl+t details · / commands
+ gpt-6-sol high · workspace mode · /workspace/proj

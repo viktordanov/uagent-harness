@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/x/ansi"
-
 	"github.com/viktordanov/uah/internal/tui/state"
 )
 
@@ -16,52 +14,47 @@ const questionTextRows = 4
 const otherHelp = "Type your answer below."
 
 // questionLines draw the agent's questions above the composer, after
-// Codex's request_user_input overlay and Claude Code's AskUserQuestion: the
-// questions' headers as tabs, the shown question, its options numbered with
-// their descriptions dim and the chosen one in the accent band, then "None
-// of the above", and the keys.
+// Codex's request_user_input overlay and Claude Code's AskUserQuestion, in
+// the panel an approval shares: the shown question's header in the frame
+// (and which of how many), the headers as tabs when there are several, the
+// question, its options numbered with their descriptions and the chosen
+// one in the accent band, then "None of the above", and the keys.
 func (st *Styles) questionLines(q *state.Questions, w int) []string {
 	question := q.Questions[q.Current]
-	out := []string{ansi.Truncate(st.accent.Render(" ? ")+st.questionTabs(q), w, "…")}
-	text := wrapPrefixed(oneLine(question.Question), w, " ", " ")
-	if len(text) > questionTextRows {
-		text = append(text[:questionTextRows-1], ansi.Truncate(text[questionTextRows-1], w-1, "")+"…")
+	title := "? " + question.Header
+	if n := len(q.Questions); n > 1 {
+		title += fmt.Sprintf(" · %d of %d", q.Current+1, n)
 	}
-	out = append(out, styleLines(text, st.bold)...)
+	inner := max(w-4, panelMin)
+	var body []string
+	if len(q.Questions) > 1 {
+		body = append(body, st.questionTabs(q))
+	}
+	text := wrapPrefixed(oneLine(question.Question), inner, "", "")
+	if len(text) > questionTextRows {
+		text = append(text[:questionTextRows-1], text[questionTextRows-1]+"…")
+	}
+	body = append(body, styleLines(text, st.bold)...)
 	if q.Sent {
-		return append(out, st.dim.Render(" sending the answers…"))
+		return st.panel(title, st.accent, body, "sending the answers…", w)
 	}
 	rows := state.Rows(question)
-	labels, helps := make([]string, rows), make([]string, rows)
-	width := 0
+	keys, labels, helps := make([]string, rows), make([]string, rows), make([]string, rows)
 	for i := range rows {
-		labels[i] = fmt.Sprintf("%d. %s", i+1, state.ChoiceLabel(question, i))
-		helps[i] = otherHelp
+		keys[i], labels[i], helps[i] = fmt.Sprintf("%d.", i+1), state.ChoiceLabel(question, i), otherHelp
 		if i < len(question.Options) {
 			helps[i] = oneLine(question.Options[i].Description)
 		}
-		width = max(width, ansi.StringWidth(labels[i]))
 	}
-	width = min(width, max(w/2, 12)) // a long label leaves its description some room
-	for i := range rows {
-		label := ansi.Truncate(labels[i], width, "…")
-		label += strings.Repeat(" ", width-ansi.StringWidth(label))
-		line := "   " + label + "  " + st.dim.Render(helps[i])
-		if i == q.Choice[q.Current] {
-			line = st.selected.Render(" › "+label) + "  " + st.dim.Render(helps[i])
-		}
-		out = append(out, ansi.Truncate(line, w, "…"))
-	}
+	body = append(body, "")
+	body = append(body, st.choiceRows(keys, labels, helps, q.Choice[q.Current], inner)...)
 
-	return append(out, st.dim.Render(ansi.Truncate(questionHint(q), w, "…")))
+	return st.panel(title, st.accent, body, questionHint(q), w)
 }
 
 // questionTabs are the headers: the shown one in the accent band, an
 // answered one with ✓, the others dim.
 func (st *Styles) questionTabs(q *state.Questions) string {
-	if len(q.Questions) == 1 {
-		return st.bold.Render(q.Questions[0].Header)
-	}
 	tabs := make([]string, 0, len(q.Questions))
 	for i, question := range q.Questions {
 		switch {
@@ -88,9 +81,9 @@ func questionHint(q *state.Questions) string {
 			break
 		}
 	}
-	hint := fmt.Sprintf("   ↑↓ choose · 1-%d pick · type your own · %s", state.Rows(q.Questions[q.Current]), enter)
+	hint := fmt.Sprintf("↑↓ choose · 1-%d pick · type your own · %s", min(state.Rows(q.Questions[q.Current]), 9), enter)
 	if len(q.Questions) > 1 {
-		hint += " · tab next question"
+		hint += " · tab next"
 	}
 
 	return hint + " · esc interrupt"

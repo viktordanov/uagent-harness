@@ -32,6 +32,9 @@ const (
 	// EnvEffortUpdates is on or off: off turns effort updates off, for
 	// tests and A/B runs; it has no configuration key.
 	EnvEffortUpdates = "UAH_EFFORT_UPDATES"
+	// EnvRequestUserInput is on or off: off stops offering the agent's
+	// question tool, as [tools.experimental_request_user_input] enabled.
+	EnvRequestUserInput = "UAH_REQUEST_USER_INPUT"
 	// EnvModelVerbosity is --model-verbosity's variable.
 	EnvModelVerbosity = "UAH_MODEL_VERBOSITY"
 	// EnvMaxAttempts is the runner's variable for the attempt limit.
@@ -104,7 +107,7 @@ type Origins struct {
 // files, and explains the effective configuration. It builds no engine.
 func Inspect(ctx context.Context, in Inputs) (Report, error) {
 	o := Origins{Env: map[string]string{}}
-	for _, name := range []string{EnvProvider, EnvModel, EnvSandbox, EnvAsk, EnvMaxAttempts, EnvAdaptiveEffort, EnvContextPreparation, EnvModelVerbosity} {
+	for _, name := range []string{EnvProvider, EnvModel, EnvSandbox, EnvAsk, EnvMaxAttempts, EnvAdaptiveEffort, EnvContextPreparation, EnvRequestUserInput, EnvModelVerbosity} {
 		o.Env[name] = os.Getenv(name)
 	}
 	var err error
@@ -201,6 +204,8 @@ func sessionSettings(in Inputs, o Origins, r Resolved, cfg config.Config) []Sett
 			overrides(l, func(c config.Config) any { return c.AdaptiveEffort }), FromDefault)),
 		one("context_preparation", r.ContextPreparation, pick(input(in.ContextPreparation, EnvContextPreparation, env),
 			overrides(l, func(c config.Config) any { return c.ContextPreparation }), FromDefault)),
+		one("tools.experimental_request_user_input.enabled", r.RequestUserInput, pick(input(in.RequestUserInput, EnvRequestUserInput, env),
+			overrides(l, func(c config.Config) any { return c.Tools.ExperimentalRequestUserInput.Enabled }), FromDefault)),
 		one("model_verbosity", modelVerbosity(o, r), pick(input(in.ModelVerbosity, EnvModelVerbosity, env),
 			overrides(l, func(c config.Config) any { return c.ModelVerbosity }), FromDefault)),
 		one("permission_mode", string(s.Mode), modeSource(in, o)),
