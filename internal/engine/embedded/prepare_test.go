@@ -13,6 +13,7 @@ import (
 	"github.com/viktordanov/uah/internal/approval"
 	"github.com/viktordanov/uah/internal/contextprep"
 	"github.com/viktordanov/uah/internal/engine/embedded"
+	"github.com/viktordanov/uah/internal/instructions"
 	"github.com/viktordanov/uah/internal/sandbox"
 	"github.com/viktordanov/uah/internal/session"
 	"github.com/viktordanov/uah/testing/fakellm"
@@ -46,7 +47,7 @@ func TestContextPreparation(t *testing.T) {
 			require.NoError(t, err, string(out))
 		}
 		settings := e.settings()
-		settings.SystemPrompt = "Base.\n\n# Project instructions\n\n## " + agents + "\n\nRules.\n"
+		settings.SystemPrompt = instructions.HostPrompt("Base.", "## "+agents+"\n\nRules.", "")
 		eng := embedded.New(embedded.Config{
 			StateDir: e.StateDir, Provider: "openai", Getenv: e.getenv, ContextPreparation: tt.on, InstructionFiles: []string{agents},
 		})

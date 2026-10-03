@@ -94,6 +94,9 @@ type When struct {
 	Agent []string `yaml:"agent"`
 	// Instructions is whether instruction files were loaded.
 	Instructions *bool `yaml:"instructions"`
+	// InstructionsOmitted is whether the system prompt leaves the
+	// instruction files out on purpose.
+	InstructionsOmitted *bool `yaml:"instructions_omitted"`
 }
 
 // Keys of When and placeholders that share a name.
@@ -111,7 +114,7 @@ var Shells = []string{famBash, "zsh", "sh", "fish", "nu", "xonsh", "elvish", key
 // replaced with the session's value as plain text.
 var Placeholders = []string{
 	keyShell, "shell_name", "os", "goos", "mode", "tmpdir", keyWorkspace, keyAgent,
-	"instruction_files", "max_output_length",
+	"instruction_files", "omitted_instruction_files", "max_output_length",
 }
 
 var (

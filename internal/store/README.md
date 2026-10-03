@@ -15,7 +15,7 @@ The [state storage record](../../docs/design/state.md) explains why the files st
 
 1. `Open` creates `uah.db` in WAL mode, so several uah processes can share it, and drops and recreates the tables when the schema version changed.
 2. `Reconcile` lists `runs/` and compares each `summary.json`'s modification time and size with the indexed values. It reads only runs that are new or changed and deletes rows for runs that are gone. A summary that does not parse yet is read again next time.
-3. Each run is one `runs` row (settings, status, timing, tokens, and the prompt). The prompt and the answer also go into the `messages` FTS5 table.
+3. Each run is one `runs` row (settings, status, timing, tokens, and the prompt). The tokens come from the summary's stats (`session.SummaryTokens`), which uagent's `stream.SummaryFromDTO` leaves out; schema version 1 recorded them as 0, so version 2 rebuilds such an index. The prompt and the answer also go into the `messages` FTS5 table.
 4. Queries fold the rows into one `session.Info` per session, the same way `session.Sessions` folds the files, and add what the sidecar records (`ApplySidecar`): the source, the parent, the saved settings, and the last item's `last_sequence` and `last_activity`.
 
 | Function | Used by |

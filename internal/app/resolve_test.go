@@ -469,6 +469,7 @@ func TestResolveUsageErrors(t *testing.T) {
 		{name: "relative review policy_file", cfg: config.Config{Review: config.Review{PolicyFile: "review.md"}}, want: `invalid review.policy_file "review.md"`},
 		{name: "invalid agents.max_concurrent_threads_per_session", cfg: config.Config{Agents: config.Agents{MaxConcurrentThreadsPerSession: new(0)}}, want: "invalid agents.max_concurrent_threads_per_session 0"},
 		{name: "invalid agents.max_depth", cfg: config.Config{Agents: config.Agents{MaxDepth: new(-1)}}, want: "invalid agents.max_depth -1"},
+		{name: "invalid review_effort", cfg: config.Config{ReviewEffort: "huge"}, want: `invalid review_effort "huge"`},
 		{name: "invalid agents effort", cfg: config.Config{Agents: config.Agents{DefaultSubagentReasoningEffort: "huge"}}, want: `invalid agents.default_subagent_reasoning_effort "huge"`},
 		{name: "invalid sandbox mode", cfg: config.Config{SandboxMode: "yolo"}, want: `invalid sandbox mode "yolo"`},
 		{name: "invalid permission mode", cfg: config.Config{PermissionMode: "full-access"}, want: `invalid permission mode "full-access" (want read-only, workspace, or auto)`},

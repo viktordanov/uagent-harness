@@ -3,5 +3,6 @@
   "setup": "sh \"$TASK_DIR/setup.sh\"",
   "check": "sh check_review.sh",
   "exercises": "a branch review against a base: read the git diff of two commits, find three planted bugs (an off-by-one at the limit, a missing lock, a swallowed error) across three files; splits across subagents",
-  "tags": ["go", "review", "subagents", "archetype"]
+  "tags": ["go", "review", "subagents", "archetype"],
+  "review_base": "main"
 }

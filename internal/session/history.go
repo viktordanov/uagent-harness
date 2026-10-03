@@ -2,7 +2,9 @@ package session
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -10,6 +12,7 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 	"github.com/viktordanov/uagent/harness"
+	"github.com/viktordanov/uagent/stream"
 
 	"github.com/viktordanov/uah/internal/approval"
 	"github.com/viktordanov/uah/internal/images"
@@ -89,7 +92,7 @@ func summarize(id string, runs []harness.RunRecord) Info {
 		Workspace: newest.Request.Workspace, Status: newest.Status,
 	}
 	for _, r := range runs {
-		info.Tokens = info.Tokens.Add(r.Result.Stats.Tokens)
+		info.Tokens = info.Tokens.Add(runTokens(r.Dir))
 		end := r.Result.StartedAt.Add(r.Result.Wall)
 		if end.After(info.LastActivity) {
 			info.LastActivity = end
@@ -100,6 +103,32 @@ func summarize(id string, runs []harness.RunRecord) Info {
 	}
 
 	return info
+}
+
+// runTokens are the tokens a run used, from its summary.json.
+func runTokens(dir string) core.Tokens {
+	b, err := os.ReadFile(filepath.Join(dir, harness.SummaryFile))
+	if err != nil {
+		return core.Tokens{}
+	}
+	var d stream.SummaryDTO
+	if json.Unmarshal(b, &d) != nil {
+		return core.Tokens{}
+	}
+
+	return SummaryTokens(d)
+}
+
+// SummaryTokens are the tokens of a run summary. The harness's run records
+// carry none: uagent v0.7.0's stream.SummaryFromDTO reads only the
+// summary's metadata, not its stats.
+func SummaryTokens(d stream.SummaryDTO) core.Tokens {
+	t := d.Stats.Tokens
+
+	return core.Tokens{
+		InputTokens: t.Input, CachedInputTokens: t.CachedInput, CacheWriteInputTokens: t.CacheWriteInput,
+		OutputTokens: t.Output, ReasoningTokens: t.Reasoning,
+	}
 }
 
 func firstPrompt(req core.Request) string {
@@ -120,6 +149,7 @@ func firstPrompt(req core.Request) string {
 // among, as engine.Compacted, applied patches their calls, as
 // engine.PatchApplied, failed commands and MCP calls their output, as
 // engine.ToolOutput, and rewinds the run before them, as engine.Rewound.
+// Each run's result carries its tokens, from its summary.
 func Load(stateDir, id string) ([]LoadedRun, error) {
 	records, err := harness.New(harness.Config{StateDir: stateDir}).Runs()
 	if err != nil {
@@ -135,6 +165,7 @@ func Load(stateDir, id string) ([]LoadedRun, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to load run %s: %w", r.Result.Request.RunID, err)
 		}
+		r.Result.Stats.Tokens = runTokens(r.Dir)
 		runs = append(runs, LoadedRun{Record: r, Events: events})
 	}
 

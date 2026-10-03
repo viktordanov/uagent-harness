@@ -7,7 +7,7 @@
 │ directory: /workspace/proj                     │
 ╰────────────────────────────────────────────────╯
 
-  REVIEW changes against 'main'  2 findings · patch is incorrect · 1m 12s
+  REVIEW changes against 'main'  2 findings · patch is incorrect · 1m 12s · gpt-6-astra high · 52.2…
     The loader hides a failure.
 
     P1     Return the parse error

@@ -101,6 +101,9 @@ type Config struct {
 	// ReviewModel is /review's model, as Codex's key (the session's by
 	// default).
 	ReviewModel string `toml:"review_model"`
+	// ReviewEffort is /review's effort (the session's by default); a
+	// review's effort stays fixed, never adaptive.
+	ReviewEffort string `toml:"review_effort"`
 
 	// ModelInstructionsFile is a file whose text replaces the base
 	// instructions, uah's default prompt, as Codex's key does. A

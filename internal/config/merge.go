@@ -159,6 +159,7 @@ func mergeCompaction(base *Config, over Config) {
 	set(&base.ExperimentalCompactPromptFile, over.ExperimentalCompactPromptFile)
 	set(&base.CompactModel, over.CompactModel)
 	set(&base.ReviewModel, over.ReviewModel)
+	set(&base.ReviewEffort, over.ReviewEffort)
 	set(&base.CompactEffort, over.CompactEffort)
 	if over.CompactUserMessageMaxTokens != 0 {
 		base.CompactUserMessageMaxTokens = over.CompactUserMessageMaxTokens

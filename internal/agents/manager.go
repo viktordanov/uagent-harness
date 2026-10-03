@@ -39,7 +39,10 @@ type Config struct {
 	// ReviewModel is /review's model, Codex's review_model ("": the
 	// session's).
 	ReviewModel string
-	Roles       []Role
+	// ReviewEffort is /review's effort, review_effort ("": the
+	// session's).
+	ReviewEffort string
+	Roles        []Role
 	// Validate refuses a model spawn_agent may not use, as Codex checks
 	// the model against its catalog (internal/models.Validate); nil
 	// accepts any.

@@ -17,4 +17,8 @@ func TestAgentFiles(t *testing.T) {
 
 	none := contextprep.AgentFiles{}.Prepare(t.Context(), contextprep.Facts{})
 	assert.Contains(t, none, "No instruction files (AGENTS.md) were loaded")
+
+	omitted := contextprep.AgentFiles{}.Prepare(t.Context(), contextprep.Facts{OmittedInstructionFiles: []string{"/repo/AGENTS.md"}})
+	assert.Equal(t, "This session's system prompt replaces uah's and leaves out the workspace's instruction files on purpose, so none of them is in it:\n"+
+		"- /repo/AGENTS.md\nRead the ones the task needs.", omitted, "not said to be in the system prompt, nor to be none")
 }

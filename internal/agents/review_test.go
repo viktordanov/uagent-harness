@@ -14,6 +14,7 @@ import (
 	"github.com/viktordanov/uagent/core"
 
 	"github.com/viktordanov/uah/internal/agents"
+	"github.com/viktordanov/uah/internal/approval"
 	"github.com/viktordanov/uah/internal/codereview"
 	"github.com/viktordanov/uah/internal/engine"
 	"github.com/viktordanov/uah/internal/engine/embedded"
@@ -229,4 +230,101 @@ func TestReview_ReadOnlyUnderYolo(t *testing.T) {
 	assert.Contains(t, outputs, "this session never asks for approval", "the escalation was declined")
 	assert.NoFileExists(t, filepath.Join(e.Workspace, "written.txt"), "the sandbox is read-only")
 	assert.NoFileExists(t, filepath.Join(e.Workspace, "escalated.txt"), "an escalation is declined")
+}
+
+// TestReview_FixedEffort runs the reviewer at the parent's effort with
+// adaptive effort off, as Codex keeps a review's effort fixed: a parent at
+// 2-steps would send the requests after tool results two levels lower.
+// The review reports the model, the effort, and the tokens it used.
+func TestReview_FixedEffort(t *testing.T) {
+	e := newEnv(t, agents.Config{})
+	e.llm.Route(uncommitted,
+		fakellm.Reply{Commands: []string{"echo one"}},
+		fakellm.Reply{Commands: []string{"echo two"}},
+		fakellm.Reply{Text: reviewAnswer},
+	)
+	s, ev := e.open(t, false)
+	adaptive := e.settings()
+	adaptive.AdaptiveEffort = session.AdaptiveTwoSteps
+	_, err := s.SetSettings(adaptive)
+	require.NoError(t, err)
+
+	require.NoError(t, s.Review(context.Background(), codereview.Target{Kind: codereview.Uncommitted}))
+	fin := ev.reviewFinished()
+
+	require.Empty(t, fin.Err)
+	reqs := reviewerRequests(e)
+	require.Len(t, reqs, 3)
+	for _, r := range reqs {
+		assert.Equal(t, "high", r.Effort, "no request after tool results goes lower")
+	}
+	i := slices.IndexFunc(ev.all, func(x core.Event) bool { _, ok := x.(session.ReviewStarted); return ok })
+	require.GreaterOrEqual(t, i, 0)
+	started := ev.all[i].(session.ReviewStarted)
+	assert.Equal(t, "gpt-test", started.Model)
+	assert.Equal(t, "high", started.Effort)
+	assert.Positive(t, fin.Tokens.InputTokens, "the reviewer's tokens")
+	assert.Positive(t, fin.Tokens.OutputTokens)
+
+	infos, err := session.Sessions(e.StateDir)
+	require.NoError(t, err)
+	j := slices.IndexFunc(infos, func(in session.Info) bool { return in.ID != s.ID() })
+	require.GreaterOrEqual(t, j, 0)
+	assert.Equal(t, fin.Tokens, infos[j].Tokens, "uah sessions shows the reviewer's tokens")
+	runs, err := session.Load(e.StateDir, infos[j].ID)
+	require.NoError(t, err)
+	require.Len(t, runs, 1)
+	assert.Equal(t, fin.Tokens, runs[0].Record.Result.Stats.Tokens, "and so does its loaded run")
+}
+
+// TestReviewSettings: review_model and review_effort replace the parent's
+// model and effort, and the reviewer is read-only with adaptive effort
+// off whatever the parent uses.
+func TestReviewSettings(t *testing.T) {
+	t.Parallel()
+	parent := session.Settings{Provider: "openai", Model: "gpt-main", Effort: "medium", AdaptiveEffort: session.AdaptiveOneStep}
+	parent = parent.WithMode(approval.ModeYolo)
+
+	got := agents.New(agents.Config{ReviewModel: "gpt-review", ReviewEffort: "xhigh"}).ReviewSettings(parent)
+	assert.Equal(t, "gpt-review", got.Model)
+	assert.Equal(t, "xhigh", got.Effort)
+	assert.Equal(t, session.AdaptiveOff, got.AdaptiveEffort)
+	assert.Equal(t, approval.ModeReadOnly, got.Mode)
+
+	def := agents.New(agents.Config{}).ReviewSettings(parent)
+	assert.Equal(t, "gpt-main", def.Model, "the parent's model by default")
+	assert.Equal(t, "medium", def.Effort, "the parent's effort by default")
+	assert.Equal(t, session.AdaptiveOff, def.AdaptiveEffort)
+}
+
+// TestReview_InstructionFilesLeftOut: the reviewer's system prompt
+// replaces uah's without the instruction files, so its prepared context
+// names them as left out instead of saying they are in the system prompt,
+// while the parent's says they are.
+func TestReview_InstructionFilesLeftOut(t *testing.T) {
+	e := newEnv(t, agents.Config{}, fakellm.Reply{Text: "ok"})
+	e.llm.Route(uncommitted, fakellm.Reply{Text: reviewAnswer})
+	agentsFile := filepath.Join(e.Workspace, "AGENTS.md")
+	s, ev := e.open(t, false, func(c *embedded.Config) { c.ContextPreparation, c.InstructionFiles = true, []string{agentsFile} })
+	withPrompt := e.settings()
+	withPrompt.SystemPrompt = instructions.HostPrompt("", "Always use tabs.", "")
+	_, err := s.SetSettings(withPrompt)
+	require.NoError(t, err)
+
+	_, err = s.Submit("hello")
+	require.NoError(t, err)
+	ev.finished()
+	require.NoError(t, s.Review(context.Background(), codereview.Target{Kind: codereview.Uncommitted}))
+	require.Empty(t, ev.reviewFinished().Err)
+
+	parent := strings.Join(e.llm.Requests()[0].DeveloperTexts, "\n")
+	assert.Contains(t, parent, "Instruction files in the system prompt, in order")
+	assert.Contains(t, parent, "- "+agentsFile)
+	reqs := reviewerRequests(e)
+	require.NotEmpty(t, reqs)
+	reviewer := strings.Join(reqs[0].DeveloperTexts, "\n")
+	assert.Contains(t, reviewer, "leaves out the workspace's instruction files on purpose")
+	assert.Contains(t, reviewer, "- "+agentsFile)
+	assert.NotContains(t, reviewer, "Instruction files in the system prompt", "the reviewer's system prompt has none")
+	assert.NotContains(t, reviewer, "there are none to search for")
 }

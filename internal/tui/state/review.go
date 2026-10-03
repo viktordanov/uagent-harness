@@ -30,6 +30,9 @@ type Review struct {
 	Output      codereview.Output
 	Interrupted bool
 	Err         string
+	// Model and Effort are the reviewer's, and Tokens what it used.
+	Model, Effort string
+	Tokens        core.Tokens
 	// Workspace is the session's, so paths can show relative to it.
 	Workspace string
 }
@@ -108,7 +111,9 @@ func (s *State) onReview(ev any) bool {
 		s.Menu.Review, s.Menu.reviewLoading = &e, false
 	case session.ReviewStarted:
 		s.Reviewing = e.ID
-		s.put(Item{Kind: KindReview, Key: "review:" + e.ID, Review: &Review{Hint: e.Hint, Running: true, Started: e.At, Workspace: s.Settings.Workspace}})
+		s.put(Item{Kind: KindReview, Key: "review:" + e.ID, Review: &Review{
+			Hint: e.Hint, Running: true, Started: e.At, Model: e.Model, Effort: e.Effort, Workspace: s.Settings.Workspace,
+		}})
 	case session.ReviewActivity:
 		if c, ok := e.Event.(core.ToolCalled); ok {
 			s.updateReview(e.ID, func(r *Review) { r.Doing = s.callLabel(c.Name, c.Label) })
@@ -119,7 +124,7 @@ func (s *State) onReview(ev any) bool {
 		}
 		s.updateReview(e.ID, func(r *Review) {
 			r.Running, r.Ended, r.Doing = false, e.At, ""
-			r.Output, r.Interrupted, r.Err = e.Output, e.Interrupted, e.Err
+			r.Output, r.Interrupted, r.Err, r.Tokens = e.Output, e.Interrupted, e.Err, e.Tokens
 		})
 	default:
 		return false

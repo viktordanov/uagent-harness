@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/viktordanov/uah/internal/agents"
 	"github.com/viktordanov/uah/internal/config"
@@ -49,6 +50,16 @@ func pickAgents(c config.Agents) (Agents, error) {
 	return a, nil
 }
 
+// checkReviewEffort checks review_effort, /review's effort ("": the
+// session's).
+func checkReviewEffort(effort string) error {
+	if effort != "" && !slices.Contains(session.Efforts, effort) {
+		return usage(fmt.Errorf("invalid review_effort %q (want %s)", effort, strings.Join(session.Efforts, ", ")))
+	}
+
+	return nil
+}
+
 // newAgents builds the subagent manager with the user's and, in a trusted
 // workspace, the project's role files. With agents off it offers no tools
 // but still answers a resumed session's past calls. Role file warnings
@@ -80,6 +91,6 @@ func newAgents(r Resolved, cfg config.Config, workspace string, opts *session.Op
 
 	return agents.New(agents.Config{
 		MaxThreads: r.Agents.MaxThreads, MaxDepth: depth, Model: r.Agents.Model, Effort: r.Agents.Effort,
-		ReviewModel: cfg.ReviewModel, Roles: roles, Validate: validate,
+		ReviewModel: cfg.ReviewModel, ReviewEffort: cfg.ReviewEffort, Roles: roles, Validate: validate,
 	})
 }

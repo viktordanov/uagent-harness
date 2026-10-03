@@ -54,6 +54,7 @@ func run() error {
 	keep := fs.Bool("keep", false, "keep each run's workspace")
 	ownerEnv := fs.Bool("owner-env", false, "give the harness the owner's environment, as an interactive session has it: the login shell as SHELL, and the user's TMPDIR, GOCACHE, GOFLAGS, and GOPROXY instead of the bench's (fixtures and checks keep the bench's)")
 	shell := fs.String("shell", "", "SHELL of the harness with -owner-env (default: the login shell)")
+	review := fs.Bool("review", false, "run each task's review command instead of its prompt: `uah review` and `codex review` against the task's review_base, their review written to REVIEW.md for the check; only tasks with a review_base (default results file: <model>-<effort>-<mode>-review.jsonl)")
 	failures := fs.Bool("failures", false, "count the failures of the results file's uah runs again from their artifacts and write the failures report (<results>-failures.md)")
 	var uahEnv envList
 	fs.Var(&uahEnv, "uah-env", "KEY=VALUE added to uah's environment, such as UAH_ADAPTIVE_EFFORT=2-steps (repeatable; needs -variant)")
@@ -85,7 +86,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	if *out, err = resultsFile(*out, root, *model, *effort, *mode); err != nil {
+	if *out, err = resultsFile(*out, root, *model, *effort, *mode, *review); err != nil {
 		return err
 	}
 	price := bench.Price{Input: *priceIn, Cached: *priceCached, Output: *priceOut}
@@ -105,6 +106,9 @@ func run() error {
 	if len(tasks) == 0 {
 		return errors.New("no task matches -tasks")
 	}
+	if tasks, err = reviewTasks(tasks, *review); err != nil {
+		return err
+	}
 	if *list {
 		for _, t := range tasks {
 			fmt.Printf("%-28s %-22s %s\n", t.Name, strings.Join(t.Tags, ","), t.Exercises)
@@ -120,7 +124,7 @@ func run() error {
 	cfg := bench.Config{
 		Tasks: tasks, Repeat: *repeat, Model: *model, Effort: *effort, Parallel: *parallel, Timeout: *timeout,
 		MaxRuns: *maxRuns, Work: *work, Out: *out, UAH: *uahBin, Codex: *codexBin, Price: price, Mode: *mode, Keep: *keep, Log: os.Stderr,
-		UAHEnv: uahEnv, UAHConfig: uahConfig, Variant: *variant, OwnerEnv: *ownerEnv, Shell: *shell,
+		UAHEnv: uahEnv, UAHConfig: uahConfig, Variant: *variant, OwnerEnv: *ownerEnv, Shell: *shell, Review: *review,
 	}
 	if err := harnesses(ctx, &cfg, *harness, root); err != nil {
 		return err
@@ -133,13 +137,31 @@ func run() error {
 	return errors.Join(runErr, writeFailures(*out, false))
 }
 
+// reviewTasks are the tasks a -review run runs: those with a
+// review_base. Without -review, every task.
+func reviewTasks(tasks []bench.Task, review bool) ([]bench.Task, error) {
+	if !review {
+		return tasks, nil
+	}
+	tasks = slices.DeleteFunc(tasks, func(t bench.Task) bool { return t.ReviewBase == "" })
+	if len(tasks) == 0 {
+		return nil, errors.New("-review: no task that -tasks matches has a review_base")
+	}
+
+	return tasks, nil
+}
+
 // resultsFile is the results file: out, or the default for the model,
-// effort, and mode, made absolute. The run directories beside it hold
-// uah's state directories, which uah resolves in the workspace, where a
-// relative one would be inside it.
-func resultsFile(out, root, model, effort, mode string) (string, error) {
+// effort, and mode (and -review), made absolute. The run directories
+// beside it hold uah's state directories, which uah resolves in the
+// workspace, where a relative one would be inside it.
+func resultsFile(out, root, model, effort, mode string, review bool) (string, error) {
 	if out == "" {
-		out = filepath.Join(root, "tools", "agentbench", "results", model+"-"+effort+"-"+mode+".jsonl")
+		name := model + "-" + effort + "-" + mode
+		if review {
+			name += "-review"
+		}
+		out = filepath.Join(root, "tools", "agentbench", "results", name+".jsonl")
 	}
 
 	return filepath.Abs(out)

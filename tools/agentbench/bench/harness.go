@@ -43,6 +43,9 @@ func invocation(cfg Config, env *runEnv, fx *Fixture, t Task, k Key, ws, art str
 		// A fake home keeps the login where it is.
 		runEnv = append(runEnv, "CODEX_HOME="+env.codexHome)
 	}
+	// A review run reviews the branch against the task's base and writes
+	// the review, as each harness's -o does, where the check reads it.
+	review := []string{"review", "--base", t.ReviewBase, "-o", filepath.Join(ws, ReviewFile)}
 	switch k.Harness {
 	case HarnessCodex:
 		args := []string{
@@ -55,18 +58,30 @@ func invocation(cfg Config, env *runEnv, fx *Fixture, t Task, k Key, ws, art str
 		} else {
 			args = append(args, "-s", "workspace-write", "-c", `approval_policy="never"`)
 		}
+		args = append(args, "-C", ws)
+		if k.Command == CommandReview {
+			return harnessRun{name: cfg.Codex, args: append(args, review...), env: runEnv, dir: ws}
+		}
 
-		return harnessRun{name: cfg.Codex, args: append(args, "-C", ws, prompt), env: runEnv, dir: ws}
+		return harnessRun{name: cfg.Codex, args: append(args, prompt), env: runEnv, dir: ws}
 	default:
+		command := "exec"
+		if k.Command == CommandReview {
+			command = review[0]
+		}
 		args := []string{
-			"exec", "--json", "--model", k.Model, "--effort", k.Effort,
+			command, "--json", "--model", k.Model, "--effort", k.Effort,
 			"--config", env.uahConfig, "--state-dir", filepath.Join(art, "uah-state"), "--workspace", ws,
 		}
 		if cfg.Mode != ModeAuto {
 			args = append(args, "--sandbox", "workspace-write", "--ask", "never")
 		}
-
 		runEnv = append(runEnv, "UAH_HOME="+env.uahHome)
+		if k.Command == CommandReview {
+			// uah review prints one JSON line; the reviewer's session
+			// file under the state directory gives the timeline.
+			return harnessRun{name: cfg.UAH, args: append(args, review[1:]...), env: append(runEnv, cfg.UAHEnv...), dir: ws}
+		}
 		var followUps []string
 		for _, f := range t.FollowUps {
 			followUps = append(followUps, fx.Expand(f))
