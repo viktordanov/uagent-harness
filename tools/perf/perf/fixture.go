@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/viktordanov/uah/internal/session"
 	"github.com/viktordanov/uah/testing/fakellm"
 )
 
@@ -99,7 +100,7 @@ func Record(ctx context.Context, root string) (*Template, error) {
 
 // readTemplate reads the recorded session id from home.
 func readTemplate(root, home, id string) (*Template, error) {
-	t := &Template{root: root, sid: id, ops: map[string]map[string][]byte{}}
+	t := &Template{root: root, sid: id}
 	runs, err := os.ReadDir(filepath.Join(home, "runs"))
 	if err != nil || len(runs) != 2 {
 		return nil, fmt.Errorf("want 2 recorded runs: %d, %w", len(runs), err)
@@ -137,19 +138,8 @@ func readTemplate(root, home, id string) (*Template, error) {
 	if t.seedLastTurn == "" || t.unitTurn == "" || len(t.unit) == 0 {
 		return nil, errors.New("the recorded session has no turns")
 	}
-	opsDir := filepath.Join(home, "sessions", "operations", id)
-	entries, err := os.ReadDir(opsDir)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read the recorded operations: %w", err)
-	}
-	for _, op := range entries {
-		files := map[string][]byte{}
-		for _, name := range []string{"out", "err"} {
-			if b, err := os.ReadFile(filepath.Join(opsDir, op.Name(), name)); err == nil {
-				files[name] = b
-			}
-		}
-		t.ops[op.Name()] = files
+	if t.ops, err = readOps(home, id); err != nil {
+		return nil, err
 	}
 	sc, err := os.ReadFile(filepath.Join(home, "sessions", id+".uah.json"))
 	if err != nil {
@@ -160,6 +150,32 @@ func readTemplate(root, home, id string) (*Template, error) {
 	}
 
 	return t, nil
+}
+
+// readOps reads the recorded output files of the session id's operations,
+// by operation ID.
+func readOps(home, id string) (map[string]map[string][]byte, error) {
+	opsDir := filepath.Join(home, "sessions", "operations", id)
+	entries, err := os.ReadDir(opsDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read the recorded operations: %w", err)
+	}
+	temp := session.TempDir(filepath.Join(home, "sessions"), id)
+	ops := map[string]map[string][]byte{}
+	for _, op := range entries {
+		if filepath.Join(opsDir, op.Name()) == temp {
+			continue // the commands' $TMPDIR, not an operation
+		}
+		files := map[string][]byte{}
+		for _, name := range []string{"out", "err"} {
+			if b, err := os.ReadFile(filepath.Join(opsDir, op.Name(), name)); err == nil {
+				files[name] = b
+			}
+		}
+		ops[op.Name()] = files
+	}
+
+	return ops, nil
 }
 
 func readRun(dir, root string) (runFiles, error) {

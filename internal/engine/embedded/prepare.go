@@ -45,7 +45,7 @@ func (w *wiring) prepared(ctx context.Context, req core.Request, messages []core
 
 // facts are what the adapters know about the session: its workspace and
 // system prompt, the shell its commands run in, and the sandbox of its
-// permission mode when it starts.
+// permission mode when it starts, with the session's private $TMPDIR.
 func (w *wiring) facts(req core.Request) contextprep.Facts {
 	f := contextprep.Facts{
 		Workspace: req.Workspace, SystemPrompt: req.SystemPrompt, Shell: w.shell(), GOOS: runtime.GOOS,
@@ -62,7 +62,7 @@ func (w *wiring) facts(req core.Request) contextprep.Facts {
 	if _, err := p.Wrap([]string{f.Shell}); err != nil {
 		return f // no sandbox on this system: commands ask instead
 	}
-	f.Sandbox = contextprep.Sandbox{Mode: string(mode), Network: p.Network}
+	f.Sandbox = contextprep.Sandbox{Mode: string(mode), Network: p.Network, TempDir: p.TempDir}
 
 	return f
 }
@@ -75,7 +75,7 @@ func (w *wiring) adapters(req core.Request) []contextprep.Adapter {
 		files.Skills = append(files.Skills, contextprep.Skill{Name: s.Name, Description: s.Description, Path: s.Path})
 	}
 
-	return []contextprep.Adapter{contextprep.Environment{}, contextprep.Workspace{}, files, contextprep.Harness{}}
+	return []contextprep.Adapter{contextprep.Environment{}, contextprep.SandboxNotes{}, contextprep.Workspace{}, files, contextprep.Harness{}}
 }
 
 // shell is the user's shell, which commands run in: $SHELL, or /bin/sh.

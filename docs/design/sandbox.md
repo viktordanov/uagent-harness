@@ -27,6 +27,7 @@ The rule for every choice below: do what Codex does, unless uah's runner forces 
 | S10 | Approval prompt | Codex's: "Yes, proceed", "Yes, and don't ask again for commands that start with `<prefix>`" (when a prefix rule is proposed), and "No, and tell the agent what to do differently" | The same three |
 | S11 | Secrets | Commands inherit the full environment. `[shell_environment_policy]` offers Codex's `inherit`, `exclude`, `include_only`, `set`, and `ignore_default_excludes = false` for the `*KEY*`, `*SECRET*`, `*TOKEN*` filter. The sandbox can read the whole disk | Inherits everything by default (`ignore_default_excludes` defaults to true) |
 | S12 | Linux | The system `bwrap`. Without it, uah warns and asks for every command that no rule allows | Bundled or system bwrap |
+| S13 | Temporary directory | Each session has a private directory, `sessions/operations/<id>/tmp` (mode 0700), writable in read-only and workspace-write, and `TMPDIR`, `TMP`, and `TEMP` point at it for every command, escalated and yolo ones included, so `$TMPDIR` names one directory in and out of the sandbox. Heredocs, `go test`, and tool caches pointed at it work in read-only mode. Removing the session removes it. Nothing is special-cased per tool | Not in the legacy modes: read-only writes nothing |
 
 ## How a command runs
 

@@ -39,7 +39,7 @@ uah is a pure core with well-organized infrastructure around it, not layered DDD
 | `internal/compaction` | Compaction the Codex way: the request rewrite, the summary call over any `llm.Adapter`, token estimates, the window table, and the compaction log. The engine decides when to compact. |
 | `internal/compaction/eval` | Measures what a compaction strategy does to one model request. Pure. |
 | `internal/compaction/evalrun` | Runs that evaluation on recorded sessions, for the hidden `uah compaction eval`. |
-| `internal/contextprep` | Context preparation: the adapters that each write a short block about a new session (the workspace, the agent files, the harness, the environment, the sandbox) and the one message that joins them. |
+| `internal/contextprep` | Context preparation: the adapters that each write a short block about a new session (the environment, the sandbox, the workspace, the agent files, the harness) and the one message that joins them. |
 | `internal/contextusage` | What fills the context window, for `/context`: the system prompt, instructions, skills, tools, and the conversation. Pure. |
 | `internal/llmcall` | One model call outside the agent loop over any `llm.Adapter`, for summaries and reviews. |
 | `internal/review` | The auto-reviewer: one model call over `internal/llmcall` judges an action that needs approval, with Codex's prompt, a fail-closed verdict, and a circuit breaker. No engine wiring. |

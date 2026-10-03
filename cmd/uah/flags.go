@@ -97,7 +97,7 @@ func sessionFlags() []cli.Flag {
 		&cli.BoolFlag{Name: "no-instructions", Usage: "do not load AGENTS.md or CLAUDE.md files"},
 		&cli.BoolFlag{
 			Name:  flagNoContextPreparation,
-			Usage: "start new sessions without prepared context (the workspace, agent files, harness, environment, and sandbox); " + app.EnvContextPreparation + "=off does the same",
+			Usage: "start new sessions without prepared context (the environment, sandbox, workspace, agent files, and harness); " + app.EnvContextPreparation + "=off does the same",
 		},
 		&cli.StringFlag{Name: "log-level", Usage: "diagnostic log level: debug, info, warn, error", Value: "warn", Validator: oneOfMap("log-level", app.LogLevels)},
 	}

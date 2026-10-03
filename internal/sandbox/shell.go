@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -15,21 +16,42 @@ import (
 // policy and with the environment policy: a small script in dir that execs
 // the sandbox around realShell, so `<script> -c <command>` is
 // `<sandbox> <realShell> -c <command>`. Scripts are named by their content,
-// so a session reuses one and a changed policy gets a new one. With
-// FullAccess and the default environment policy it returns realShell.
+// so a session reuses one and a changed policy gets a new one. Shell creates
+// the policy's TempDir (mode 0700) and sets TMPDIR, TMP, TEMP, and zsh's
+// TMPPREFIX into it. With FullAccess, the default environment policy, and
+// no TempDir it returns realShell.
 func Shell(dir string, p Policy, env EnvPolicy, realShell string) (string, error) {
+	if p.TempDir != "" {
+		// The sandbox can only grant a directory that exists: Seatbelt
+		// matches resolved paths and bwrap binds existing ones.
+		if err := os.MkdirAll(p.TempDir, 0o700); err != nil {
+			return "", fmt.Errorf("failed to create the temporary directory: %w", err)
+		}
+	}
 	argv := []string{realShell}
 	if p.Mode != FullAccess {
 		var err error
 		if argv, err = p.Wrap(argv); err != nil {
 			return "", err
 		}
-	} else if env.isDefault() {
+	} else if env.isDefault() && p.TempDir == "" {
 		return realShell, nil
 	}
 	words := make([]string, 0, len(argv)+8)
-	if !env.isDefault() {
-		words = append(words, envWords(env)...)
+	switch {
+	case !env.isDefault():
+		words = append(words, envWords(env, p.TempDir != "")...)
+	case p.TempDir != "":
+		words = append(words, "/usr/bin/env")
+	}
+	if p.TempDir != "" {
+		for _, name := range tempVars {
+			value := p.TempDir
+			if name == "TMPPREFIX" {
+				value = filepath.Join(p.TempDir, "zsh")
+			}
+			words = append(words, quote(name+"="+value))
+		}
 	}
 	for _, a := range argv {
 		words = append(words, quote(a))
@@ -38,6 +60,11 @@ func Shell(dir string, p Policy, env EnvPolicy, realShell string) (string, error
 
 	return writeScript(dir, script)
 }
+
+// tempVars name the temporary directory; Shell sets each to the policy's
+// TempDir. zsh ignores TMPDIR and makes its temporary files, such as a
+// heredoc's, at $TMPPREFIX (default /tmp/zsh), so that is <TempDir>/zsh.
+var tempVars = []string{"TMPDIR", "TMP", "TEMP", "TMPPREFIX"}
 
 // writeScript writes an executable script into dir, named by its content
 // (sh-<hash>), unless it is there already, and returns its path.
@@ -75,12 +102,13 @@ func Quote(s string) string { return quote(s) }
 // envWords starts the command with `env -i` and the variables the policy
 // keeps. Inherited variables are copied from the environment when the
 // command runs ("NAME=$NAME"), so no inherited value is written to disk;
-// only the policy's own Set values are.
-func envWords(env EnvPolicy) []string {
+// only the policy's own Set values are. With temp, tempVars are left out,
+// for Shell to set.
+func envWords(env EnvPolicy, temp bool) []string {
 	words := []string{"/usr/bin/env", "-i"}
 	for _, kv := range env.Apply(os.Environ()) {
 		name, value, _ := strings.Cut(kv, "=")
-		if !shellName(name) {
+		if !shellName(name) || temp && slices.Contains(tempVars, name) {
 			continue
 		}
 		if v, ok := env.Set[name]; ok && v == value {

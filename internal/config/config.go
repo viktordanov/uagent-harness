@@ -59,8 +59,8 @@ type Config struct {
 	// results). A session keeps its own, as it keeps its effort.
 	AdaptiveEffort string `toml:"adaptive_effort"`
 	// ContextPreparation starts each new session, subagents' included,
-	// with one message of prepared context: the workspace, the agent
-	// files, the harness, the environment, and the sandbox (true by
+	// with one message of prepared context: the environment, the
+	// sandbox, the workspace, the agent files, and the harness (true by
 	// default).
 	ContextPreparation *bool `toml:"context_preparation"`
 

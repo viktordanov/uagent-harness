@@ -212,7 +212,7 @@ Press shift+tab in the TUI. It cycles three modes, and the footer shows the curr
 
 | Mode | Commands can | What needs approval |
 | --- | --- | --- |
-| read only | Read files, write nothing | You |
+| read only | Read files; write only the session's private `$TMPDIR` | You |
 | workspace (default) | Write the workspace | You |
 | auto | Write the workspace | The auto-reviewer decides; you are not asked |
 | yolo (only with `--yolo`) | Anything your user can: no sandbox | Nothing: every command, patch, and MCP tool runs unasked; only `forbid` rules refuse |

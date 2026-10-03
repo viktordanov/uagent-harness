@@ -10,8 +10,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/viktordanov/uah/internal/approval"
 	"github.com/viktordanov/uah/internal/contextprep"
 	"github.com/viktordanov/uah/internal/engine/embedded"
+	"github.com/viktordanov/uah/internal/sandbox"
 	"github.com/viktordanov/uah/internal/session"
 	"github.com/viktordanov/uah/testing/fakellm"
 )
@@ -83,4 +85,31 @@ func TestContextPreparation(t *testing.T) {
 		assert.Equal(t, []string{prepared, "hello", "again"}, reqs[1].UserTexts, "the second run adds no context")
 	}
 	assert.Equal(t, systems["off"], systems["on"], "the system prompt is unchanged")
+}
+
+// TestContextPreparation_Sandbox: a session in a read-only sandbox is told
+// so, with its private $TMPDIR, and the shell and OS it runs in.
+func TestContextPreparation_Sandbox(t *testing.T) {
+	e := newEnv(t, fakellm.Reply{Text: "one"})
+	policy := sandbox.Policy{Mode: sandbox.WorkspaceWrite, Workspace: e.Workspace}
+	if _, err := policy.Wrap([]string{"/bin/sh"}); err != nil {
+		t.Skipf("no sandbox here: %v", err)
+	}
+	eng := embedded.New(embedded.Config{
+		StateDir: e.StateDir, Provider: "openai", Getenv: e.getenv, ContextPreparation: true,
+		Sandbox: &policy, SandboxDir: filepath.Join(e.StateDir, "sandbox"),
+	})
+	s, err := session.Open(t.Context(), eng, session.Options{Settings: e.settings().WithMode(approval.ModeReadOnly)})
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = s.Close() })
+	ev := &events{t: t, s: s}
+	_, err = s.Submit("hello")
+	require.NoError(t, err)
+	ev.finished()
+
+	prepared := e.llm.Requests()[0].UserTexts[0]
+	require.True(t, contextprep.IsPrepared(prepared), prepared)
+	assert.Contains(t, prepared, "## environment\nCommands run in ")
+	assert.Contains(t, prepared, "## sandbox\nSandbox: read-only. Commands can read any file and write only $TMPDIR.")
+	assert.Contains(t, prepared, "$TMPDIR ("+session.TempDir(filepath.Join(e.StateDir, "sessions"), s.ID())+")")
 }

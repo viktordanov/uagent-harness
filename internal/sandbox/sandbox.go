@@ -19,7 +19,8 @@ import (
 type Mode string
 
 const (
-	// ReadOnly commands can read the whole disk and write nothing.
+	// ReadOnly commands can read the whole disk and write only the
+	// policy's TempDir.
 	ReadOnly Mode = "read-only"
 	// WorkspaceWrite commands can also write the workspace, the extra
 	// writable roots, /tmp, and $TMPDIR, except the protected paths.
@@ -59,19 +60,31 @@ type Policy struct {
 	WritableRoots []string
 	// Network allows network access; Codex's network_access.
 	Network bool
+	// TempDir is the session's private temporary directory, or "": writable
+	// in ReadOnly and WorkspaceWrite, and TMPDIR, TMP, and TEMP for every
+	// command Shell runs, in every mode, so $TMPDIR names the same directory
+	// inside and outside the sandbox.
+	TempDir string
 }
 
 // Writable returns the directories a command may write under the policy,
-// absolute and with symlinks resolved where they exist: none in ReadOnly;
-// the workspace, the writable roots, /tmp, and $TMPDIR in WorkspaceWrite.
+// absolute and with symlinks resolved where they exist: the TempDir in
+// ReadOnly; the workspace, the writable roots, /tmp, uah's own $TMPDIR, and
+// the TempDir in WorkspaceWrite; none in FullAccess, which has no sandbox.
 func (p Policy) Writable() []string {
-	if p.Mode != WorkspaceWrite {
+	var roots []string
+	switch p.Mode {
+	case ReadOnly:
+		roots = []string{p.TempDir}
+	case WorkspaceWrite:
+		roots = append([]string{p.Workspace}, p.WritableRoots...)
+		roots = append(roots, "/tmp")
+		if tmp := os.Getenv("TMPDIR"); tmp != "" {
+			roots = append(roots, tmp)
+		}
+		roots = append(roots, p.TempDir)
+	case FullAccess:
 		return nil
-	}
-	roots := append([]string{p.Workspace}, p.WritableRoots...)
-	roots = append(roots, "/tmp")
-	if tmp := os.Getenv("TMPDIR"); tmp != "" {
-		roots = append(roots, tmp)
 	}
 	var out []string
 	for _, r := range roots {
