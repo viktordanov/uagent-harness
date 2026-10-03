@@ -13,6 +13,7 @@ import (
 // TestWakeWaitsForEveryCallOfTheTurn: a quick command's result does not
 // wake the model while the turn's slow one runs; both arrive together.
 func TestWakeWaitsForEveryCallOfTheTurn(t *testing.T) {
+	t.Parallel()
 	e := newEnv(t,
 		fakellm.Reply{Commands: []string{"echo fast", "sleep 2; echo slow"}},
 		fakellm.Reply{Text: "done"},

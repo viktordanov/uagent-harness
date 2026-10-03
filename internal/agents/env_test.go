@@ -188,6 +188,16 @@ func callWith(name, args string) fakellm.Reply {
 	}}
 }
 
+// callWithLast is callWith with the latest agent ID: the second child's
+// after a second spawn_agent.
+func callWithLast(name, args string) fakellm.Reply {
+	return fakellm.Reply{From: func(req fakellm.Request) fakellm.Reply {
+		all := ids(req)
+
+		return fakellm.Reply{Calls: []fakellm.Call{call(name, strings.ReplaceAll(args, "ID", all[len(all)-1]))}}
+	}}
+}
+
 // isChild reports whether a request is a child's: children's messages
 // start with CHILD.
 func isChild(r fakellm.Request) bool {

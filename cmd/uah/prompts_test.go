@@ -20,6 +20,7 @@ import (
 // (the alternatives commented out), and prints one prompt; the written
 // keys load.
 func TestPrompts(t *testing.T) {
+	t.Parallel()
 	user, env := mcpEnv(t)
 	dir := filepath.Join(filepath.Dir(user), "prompts")
 
@@ -114,6 +115,7 @@ func TestPrompts(t *testing.T) {
 // one in use, a broken one not used), and the user's own modules; prune
 // deletes only the identical copies, and the folders that leaves empty.
 func TestPromptsStatusAndPrune(t *testing.T) {
+	t.Parallel()
 	user, env := mcpEnv(t)
 	dir := filepath.Join(filepath.Dir(user), "prompts")
 	darwin, err := contextprep.BuiltinFile("os/darwin")

@@ -15,6 +15,7 @@ import (
 )
 
 func TestExecReadsThePromptFromStdin(t *testing.T) {
+	t.Parallel()
 	llm := fakellm.New(t, fakellm.Reply{Text: "read it"})
 	e, env := modelEnv(t, llm)
 
@@ -26,6 +27,7 @@ func TestExecReadsThePromptFromStdin(t *testing.T) {
 }
 
 func TestExecPromptErrors(t *testing.T) {
+	t.Parallel()
 	_, env := fakeEnv(t)
 	for name, args := range map[string][]string{
 		"empty stdin":             {"exec", "-"},
@@ -40,6 +42,7 @@ func TestExecPromptErrors(t *testing.T) {
 }
 
 func TestExecEphemeralKeepsNothing(t *testing.T) {
+	t.Parallel()
 	e, env := fakeEnv(t, fakellm.Reply{Text: "gone", Commands: []string{"echo hi"}}, fakellm.Reply{Text: "gone"})
 	tmp := t.TempDir()
 	env = append(env, "TMPDIR="+tmp)
@@ -61,6 +64,7 @@ func TestExecEphemeralKeepsNothing(t *testing.T) {
 }
 
 func TestExecOutputLastMessage(t *testing.T) {
+	t.Parallel()
 	e, env := fakeEnv(t, fakellm.Reply{Text: "first"}, fakellm.Reply{Text: "the last one"})
 	out := filepath.Join(t.TempDir(), "last.txt")
 
@@ -84,6 +88,7 @@ func TestExecOutputLastMessage(t *testing.T) {
 
 // TestExecJSONIsStream checks --json against --stream, under both names.
 func TestExecJSONIsStream(t *testing.T) {
+	t.Parallel()
 	for _, args := range [][]string{{"exec", "--json"}, {"run", "--json"}, {"exec", "--stream"}} {
 		e, env := fakeEnv(t)
 		res := uahWith(t, env, "", append(args, "-C", e.Workspace, "hi")...)
@@ -101,6 +106,7 @@ func TestExecJSONIsStream(t *testing.T) {
 // escalate, and a headless run then refuses, runs under --yolo without
 // anyone approving it; --yolo takes no --sandbox or --ask.
 func TestExecYolo(t *testing.T) {
+	t.Parallel()
 	outside := harnesstest.OutsideDir(t, "uah-yolo-test-")
 	target := filepath.Join(outside, "x.txt")
 	touch := []fakellm.Reply{{Escalated: []string{"touch " + target}}, {Text: "done"}}

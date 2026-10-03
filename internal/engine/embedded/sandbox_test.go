@@ -24,6 +24,7 @@ import (
 // writes inside the workspace work, writes elsewhere and to .git fail with a
 // hint, and escalations are denied with a reason in a headless session.
 func TestEmbedded_Sandbox(t *testing.T) {
+	t.Parallel()
 	ws := t.TempDir()
 	policy := sandbox.Policy{Mode: sandbox.WorkspaceWrite, Workspace: ws}
 	if _, err := policy.Wrap([]string{"/bin/sh"}); err != nil {

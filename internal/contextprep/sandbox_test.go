@@ -10,6 +10,7 @@ import (
 )
 
 func TestSandboxNotesName(t *testing.T) {
+	t.Parallel()
 	var a contextprep.Adapter = contextprep.SandboxNotes{}
 	assert.Equal(t, "sandbox", a.Name())
 }
@@ -17,6 +18,7 @@ func TestSandboxNotesName(t *testing.T) {
 const sandboxTemp = "/state/sessions/operations/s1/tmp"
 
 func TestSandboxNotesPrepare(t *testing.T) {
+	t.Parallel()
 	scratch := "$TMPDIR (" + sandboxTemp + ") is this session's private scratch directory, writable in every mode: " +
 		"put temporary files there, and point a tool cache that cannot be written elsewhere at it, such as GOCACHE=$TMPDIR/go-build."
 	ps := "ps and pgrep fail in the sandbox (lsof works); request escalation to list processes."

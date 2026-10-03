@@ -14,6 +14,7 @@ import (
 // TestSessionsFilters lists sessions by workspace and by activity, as a
 // program that scans for new sessions would.
 func TestSessionsFilters(t *testing.T) {
+	t.Parallel()
 	e, env := fakeEnv(t, fakellm.Reply{Text: "hello"})
 	before := time.Now().Add(-time.Minute).UTC().Format(time.RFC3339)
 	res := uahWith(t, env, "", "run", "-q", "-C", e.Workspace, "first question")

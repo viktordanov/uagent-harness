@@ -8,6 +8,7 @@ import (
 )
 
 func TestNames(t *testing.T) {
+	t.Parallel()
 	n := newNamer()
 	assert.Equal(t, "mcp__github__create_issue", n.name("github", "create_issue"))
 	assert.Equal(t, "mcp__my_server__get_page", n.name("my-server", "get.page"), "sanitized as Codex does")

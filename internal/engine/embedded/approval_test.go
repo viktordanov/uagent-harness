@@ -155,6 +155,7 @@ func TestEmbedded_EscalationDeclined(t *testing.T) {
 }
 
 func TestEmbedded_DontAskAgain(t *testing.T) {
+	t.Parallel()
 	e := newApprovalEnv(t, approvalOpts{interactive: true}, func(outside string) []fakellm.Reply {
 		target := filepath.Join(outside, "x.txt")
 		cmd := "touch " + target
@@ -232,6 +233,7 @@ func TestEmbedded_InterruptDeclinesApproval(t *testing.T) {
 // TestEmbedded_PermissionRequestHook answers for the user, even headless:
 // allow runs the escalation, deny refuses it.
 func TestEmbedded_PermissionRequestHook(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		decision string
 		ran      bool
@@ -258,6 +260,7 @@ func TestEmbedded_PermissionRequestHook(t *testing.T) {
 // never, as Claude Code's does; "deny" and "ask" refuse the call; a forbid
 // rule still refuses an allowed call.
 func TestEmbedded_PreToolUseDecision(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name     string
 		decision string

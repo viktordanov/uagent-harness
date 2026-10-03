@@ -75,6 +75,7 @@ func uahWith(t *testing.T, env []string, stdin string, args ...string) cliResult
 }
 
 func TestVersion(t *testing.T) {
+	t.Parallel()
 	for _, flag := range []string{"--version", "-v"} {
 		res := uah(t, flag)
 		assert.Equal(t, 0, res.code, flag)
@@ -83,6 +84,7 @@ func TestVersion(t *testing.T) {
 }
 
 func TestHelpListsCommands(t *testing.T) {
+	t.Parallel()
 	res := uah(t, "--help")
 	require.Equal(t, 0, res.code)
 	for _, command := range []string{"exec, run", "resume", "sessions", "hooks", "config", "doctor"} {
@@ -93,6 +95,7 @@ func TestHelpListsCommands(t *testing.T) {
 }
 
 func TestUnknownFlag(t *testing.T) {
+	t.Parallel()
 	res := uah(t, "--no-such-flag")
 	assert.Equal(t, 2, res.code)
 	assert.Empty(t, res.stdout)
@@ -101,6 +104,7 @@ func TestUnknownFlag(t *testing.T) {
 }
 
 func TestTUINeedsATerminal(t *testing.T) {
+	t.Parallel()
 	res := uah(t)
 	assert.Equal(t, 2, res.code)
 	assert.Contains(t, res.stderr, "use uah exec")
@@ -132,6 +136,7 @@ func modelEnv(t *testing.T, llm *fakellm.Server) (*harnesstest.Env, []string) {
 }
 
 func TestInstructionsAndConfig(t *testing.T) {
+	t.Parallel()
 	llm := fakellm.New(t)
 	e, env := modelEnv(t, llm)
 	configDir := filepath.Join(e.StateDir, "..", "home")
@@ -192,6 +197,7 @@ func lastRequest(t *testing.T, llm *fakellm.Server) fakellm.Request {
 }
 
 func TestRunAndSessions(t *testing.T) {
+	t.Parallel()
 	e, env := fakeEnv(t, fakellm.Reply{Text: "hello"}, fakellm.Reply{Text: "A; B"})
 
 	first := uahWith(t, env, "", "run", "-C", e.Workspace, "first question")
@@ -265,6 +271,7 @@ func TestRunAndSessions(t *testing.T) {
 }
 
 func TestRunStream(t *testing.T) {
+	t.Parallel()
 	e, env := fakeEnv(t)
 
 	res := uahWith(t, env, "", "run", "--stream", "-C", e.Workspace, "hi")
@@ -287,6 +294,7 @@ func TestRunStream(t *testing.T) {
 }
 
 func TestRunFailures(t *testing.T) {
+	t.Parallel()
 	t.Run("no prompt", func(t *testing.T) {
 		_, env := fakeEnv(t)
 		res := uahWith(t, env, "", "run")
@@ -313,6 +321,7 @@ func TestRunFailures(t *testing.T) {
 // TestRunEmbedded runs `uah run` on the embedded engine against the fake
 // model, with --stdin messages and --fast.
 func TestRunEmbedded(t *testing.T) {
+	t.Parallel()
 	e := harnesstest.NewEnv(t)
 	llm := fakellm.New(t, fakellm.Reply{Text: "Looking.", Commands: []string{"echo hi"}}, fakellm.Reply{Text: "first answer"}, fakellm.Reply{Text: "second answer"})
 	env := []string{
@@ -335,6 +344,7 @@ func TestRunEmbedded(t *testing.T) {
 }
 
 func TestHooksCommand(t *testing.T) {
+	t.Parallel()
 	e := harnesstest.NewEnv(t)
 	configDir := filepath.Join(e.StateDir, "..", "config")
 	ws, err := filepath.EvalSymlinks(e.Workspace)
@@ -362,6 +372,7 @@ func TestHooksCommand(t *testing.T) {
 // TestRunEmbeddedCompaction checks that compaction reaches `uah run --stream`
 // and a reloaded transcript (`uah sessions show`).
 func TestRunEmbeddedCompaction(t *testing.T) {
+	t.Parallel()
 	e := harnesstest.NewEnv(t)
 	llm := fakellm.New(t, fakellm.Reply{Commands: []string{"echo hi"}, InputTokens: 250_000}, fakellm.Reply{Text: "THE SUMMARY"}, fakellm.Reply{Text: "answer"})
 	configHome := filepath.Join(e.StateDir, "..", "config")

@@ -25,7 +25,7 @@ import (
 	"github.com/viktordanov/uah/testing/fakellm"
 )
 
-// These tests change the package's limits, so none runs in parallel.
+// The tests that change the package's limits do not run in parallel.
 
 // setLimit sets a package limit for the test.
 func setLimit(t *testing.T, limit *time.Duration, d time.Duration) {
@@ -40,6 +40,14 @@ func setLimit(t *testing.T, limit *time.Duration, d time.Duration) {
 // and error.
 func ask(t *testing.T, url string, headerTimeout time.Duration, diag io.Writer) ([]core.Event, error) {
 	t.Helper()
+
+	return askUntil(t, url, headerTimeout, diag, nil)
+}
+
+// askUntil is ask that cancels the request at the first event for which
+// stop, when set, reports true.
+func askUntil(t *testing.T, url string, headerTimeout time.Duration, diag io.Writer, stop func(core.Event) bool) ([]core.Event, error) {
+	t.Helper()
 	const attempts = 3
 	ra, err := newClient(remoteHTTPClient(nil, headerTimeout), ClientConfig{MaxAttempts: attempts}, responsesapi.Config{
 		Endpoint: url + "/responses", Headers: map[string][]string{headerContentType: {contentJSON}},
@@ -50,8 +58,17 @@ func ask(t *testing.T, url string, headerTimeout time.Duration, diag io.Writer) 
 	require.NoError(t, err)
 	var mu sync.Mutex
 	var events []core.Event
-	sw.diag, sw.stream = diag, func(e core.Event) { mu.Lock(); events = append(events, e); mu.Unlock() }
-	_, err = sw.Respond(t.Context(), llm.Request{
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	sw.diag, sw.stream = diag, func(e core.Event) {
+		mu.Lock()
+		events = append(events, e)
+		mu.Unlock()
+		if stop != nil && stop(e) {
+			cancel()
+		}
+	}
+	_, err = sw.Respond(ctx, llm.Request{
 		Model: llm.Model{ID: "m"},
 		Input: []llm.Item{{Type: llm.ItemMessage, Data: llm.Message{Role: llm.RoleUser, Text: "hi"}}},
 	}, llm.RequestOptions{})
@@ -94,11 +111,16 @@ func TestModelCall_RetriesVisibly(t *testing.T) {
 		{"overloaded", fakellm.Reply{Fail: http.StatusOK, FailCode: "server_is_overloaded"}, "server_is_overloaded", 10 * time.Second},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel() // each waits out its own backoff
 			srv := fakellm.New(t, tc.reply, fakellm.Reply{Text: "back"})
 			if tc.delay > 5*time.Second { // only the reported delay is checked
 				srv = fakellm.New(t, tc.reply, fakellm.Reply{Fail: http.StatusBadRequest, FailCode: "invalid_prompt"})
 			}
-			events, err := ask(t, srv.URL, 0, nil)
+			var stop func(core.Event) bool
+			if tc.delay > 5*time.Second { // no need to wait it out
+				stop = func(e core.Event) bool { _, ok := e.(engine.Reconnecting); return ok }
+			}
+			events, err := askUntil(t, srv.URL, 0, nil, stop)
 			retries := only[engine.Reconnecting](events)
 			require.NotEmpty(t, retries)
 			assert.Equal(t, 2, retries[0].Attempt)
@@ -121,6 +143,7 @@ func TestModelCall_HeaderTimeout(t *testing.T) {
 	if testing.Short() {
 		t.Skip("waits for the runner's backoff, about 2 s")
 	}
+	t.Parallel()
 	srv := fakellm.New(t, fakellm.Reply{Freeze: true}, fakellm.Reply{Text: "back"})
 	events, err := ask(t, srv.URL, 300*time.Millisecond, nil)
 	require.NoError(t, err)

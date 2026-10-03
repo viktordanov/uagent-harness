@@ -15,6 +15,7 @@ import (
 )
 
 func TestPrintExit(t *testing.T) {
+	t.Parallel()
 	var out bytes.Buffer
 	printExit(&out, bubble.Exit{SessionID: "3f2a", Resumable: true, Tokens: core.Tokens{InputTokens: 12_500, CachedInputTokens: 10_000, OutputTokens: 1_200, ReasoningTokens: 800}})
 	assert.Equal(t, "Token usage: total=3,700 input=2,500 (+ 10,000 cached) output=1,200 (reasoning 800)\nTo continue this session, run:\nuah resume 3f2a\n", out.String())
@@ -45,6 +46,7 @@ func TestPrintExitColors(t *testing.T) {
 }
 
 func TestThousands(t *testing.T) {
+	t.Parallel()
 	for n, want := range map[int64]string{0: "0", 999: "999", 1000: "1,000", 1234567: "1,234,567", -1234: "-1,234"} {
 		assert.Equal(t, want, thousands(n))
 	}

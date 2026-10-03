@@ -18,6 +18,7 @@ import (
 // --json` reports each search, plain exec prints it as progress, and
 // web_search = "disabled" takes the tool away.
 func TestExecWebSearch(t *testing.T) {
+	t.Parallel()
 	e := harnesstest.NewEnv(t)
 	reply := fakellm.Reply{Text: "Go 1.27", Searches: []fakellm.Search{{Query: "latest Go release"}}}
 	llm := fakellm.New(t, reply, reply, fakellm.Reply{Text: "ok"})

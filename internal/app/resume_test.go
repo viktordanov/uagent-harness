@@ -101,6 +101,7 @@ func TestSetup_ResumeRestoresSessionSettings(t *testing.T) {
 // reference's precedence list names every setting a session keeps in its
 // sidecar, by its key.
 func TestPrecedenceDocNamesTheSavedSettings(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile(filepath.Join("..", "..", "docs", "configuration.md"))
 	require.NoError(t, err)
 	var line string

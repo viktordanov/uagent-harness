@@ -185,6 +185,7 @@ func TestWrapSeatbeltGoBuild(t *testing.T) {
 	if testing.Short() {
 		t.Skip("builds a program")
 	}
+	t.Parallel()
 	goBin, err := exec.LookPath("go")
 	if err != nil {
 		t.Skip("go is not on PATH")
@@ -325,6 +326,7 @@ func TestShellSeatbeltTempDirGoBuild(t *testing.T) {
 	if testing.Short() {
 		t.Skip("builds a program")
 	}
+	t.Parallel()
 	goBin, err := exec.LookPath("go")
 	if err != nil {
 		t.Skip("go is not on PATH")

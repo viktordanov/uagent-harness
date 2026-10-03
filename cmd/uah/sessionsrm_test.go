@@ -18,6 +18,7 @@ import (
 // and removes nothing, a held lock refuses without --force, and --json
 // prints what went.
 func TestSessionsRm(t *testing.T) {
+	t.Parallel()
 	e, env := fakeEnv(t, fakellm.Reply{Text: "hello"})
 	const id = "7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d"
 	res := uahWith(t, env, "", "run", "-q", "--session-id", id, "-C", e.Workspace, "first question")

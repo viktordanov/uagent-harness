@@ -37,6 +37,7 @@ func (e *env) withMCP(m *mcp.Manager, runner *hooks.Runner) *embedded.Engine {
 func call(name, args string) fakellm.Call { return fakellm.Call{Name: name, Args: args} }
 
 func TestEmbedded_MCPTools(t *testing.T) {
+	t.Parallel()
 	e := newEnv(t,
 		fakellm.Reply{Text: "Using tools.", Calls: []fakellm.Call{
 			call("mcp__test__echo", `{"text":"hi"}`),
@@ -136,6 +137,7 @@ func TestEmbedded_MCPResumesWithoutTheServer(t *testing.T) {
 }
 
 func TestEmbedded_MCPInterruptThenContinue(t *testing.T) {
+	t.Parallel()
 	e := newEnv(t, fakellm.Reply{Calls: []fakellm.Call{call("mcp__test__sleep", `{"ms":3000}`)}})
 	s, ev := e.open(t, e.withMCP(mcpManager(t, e, mcp.ServerConfig{SupportsParallelToolCalls: true}), nil), "")
 

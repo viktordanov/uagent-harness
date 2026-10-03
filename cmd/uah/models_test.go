@@ -39,6 +39,7 @@ func modelsServer(t *testing.T) *httptest.Server {
 }
 
 func TestModels(t *testing.T) {
+	t.Parallel()
 	e, env := fakeEnv(t)
 	env = append(env, "UAH_LLM_BASE_URL="+modelsServer(t).URL)
 
@@ -69,6 +70,7 @@ func TestModels(t *testing.T) {
 }
 
 func TestModelsCompletionBundled(t *testing.T) {
+	t.Parallel()
 	_, env := fakeEnv(t)
 	res := uahWith(t, env, "", "-m", "--generate-shell-completion")
 	require.Equal(t, 0, res.code, res.stderr)
@@ -80,6 +82,7 @@ func TestModelsCompletionBundled(t *testing.T) {
 // TestModelsMarksNewDefault: with gpt-6.1-sol in the login's list, it is
 // the default a session would use (TestModels has the list without it).
 func TestModelsMarksNewDefault(t *testing.T) {
+	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{"models":[{"slug":"gpt-6.1-sol","visibility":"list","priority":1},{"slug":"gpt-6-sol","visibility":"list","priority":3}]}`))
 	}))

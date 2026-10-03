@@ -23,6 +23,7 @@ func module(front, body string) []byte { return []byte("---\n" + front + "---\n"
 // TestParseModule pins the front matter's strict schema, the size caps, and
 // the placeholders.
 func TestParseModule(t *testing.T) {
+	t.Parallel()
 	fm, body, err := contextprep.ParseModule("go", module(
 		"id: go\ndescription: Go notes\nwhen: {shell: [fish], os: [darwin], sandbox: [read-only], agent: [main, subagent], network: false}\n"+
 			"check: [go, version]\nfiles: [go.mod, cmd/*/main.go]\nenabled: false\n",
@@ -76,6 +77,7 @@ func TestParseModule(t *testing.T) {
 // TestBuiltins: every built-in module parses, each block's module exists,
 // and each module but the library's belongs to one block.
 func TestBuiltins(t *testing.T) {
+	t.Parallel()
 	ms := contextprep.Load(contextprep.Sources{})
 	var paths []string
 	for _, m := range contextprep.Builtins() {
@@ -96,6 +98,7 @@ func TestBuiltins(t *testing.T) {
 // TestRender inserts values as text: a value that looks like a placeholder
 // stays as it is.
 func TestRender(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	user := filepath.Join(dir, "prompts")
 	write(t, filepath.Join(user, "context.d", "note.md"), string(module("id: note\ndescription: x\n", "Workspace {{workspace}}, temp {{tmpdir}}.")))
@@ -112,6 +115,7 @@ func TestRender(t *testing.T) {
 // does not parse, or names no built-in, is listed with its error and the
 // built-in stays.
 func TestOverrides(t *testing.T) {
+	t.Parallel()
 	user := filepath.Join(t.TempDir(), "prompts")
 	write(t, filepath.Join(user, "context", "environment", "fish.md"), string(module("id: fish\ndescription: mine\nwhen: {shell: [fish]}\n", "My fish notes.")))
 	write(t, filepath.Join(user, "context", "os", "darwin.md"), string(module("id: darwin\ndescription: x\nbogus: 1\n", "Broken.")))
@@ -144,6 +148,7 @@ func TestOverrides(t *testing.T) {
 // a block; a project module is listed but unused, and its check never
 // runs, until it is trusted; an id is used once.
 func TestExtras(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	ws, user := filepath.Join(root, "ws"), filepath.Join(root, "prompts")
 	write(t, filepath.Join(ws, "go.mod"), "module x\n")
@@ -195,6 +200,7 @@ func TestExtras(t *testing.T) {
 
 // TestTrustKey changes with the module's content.
 func TestTrustKey(t *testing.T) {
+	t.Parallel()
 	ws := t.TempDir()
 	path := filepath.Join(ws, ".uah", "context.d", "repo.md")
 	write(t, path, string(module("id: repo\ndescription: x\n", "One.")))
@@ -207,6 +213,7 @@ func TestTrustKey(t *testing.T) {
 // as they are. It needs a sandbox wrapper, and stops a check at its
 // timeout.
 func TestExecChecker(t *testing.T) {
+	t.Parallel()
 	for _, bin := range []string{"test", "ls", "sleep"} {
 		if _, err := exec.LookPath(bin); err != nil {
 			t.Skip("no " + bin)
@@ -242,6 +249,7 @@ func TestExecChecker(t *testing.T) {
 
 // TestExplain lists the built-ins in block order with why each applies.
 func TestExplain(t *testing.T) {
+	t.Parallel()
 	statuses := contextprep.Load(contextprep.Sources{}).Explain(t.Context(), contextprep.Facts{Shell: "/bin/zsh", GOOS: "linux"})
 	zsh, fish := find(t, statuses, "environment/zsh"), find(t, statuses, "environment/fish")
 	assert.True(t, zsh.Applies)
@@ -283,6 +291,7 @@ func write(t *testing.T, path, text string) {
 // of the user's own: off until [context] modules names its id, then a block
 // of its own, while the built-ins stay as uah ships them.
 func TestUserLibrary(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	ws, user := filepath.Join(root, "ws"), filepath.Join(root, "prompts")
 	write(t, filepath.Join(ws, "go.mod"), "module x\n")
@@ -306,6 +315,7 @@ func TestUserLibrary(t *testing.T) {
 // flags a copy identical to the built-in as pinned, and `uah context`'s
 // listing says so too.
 func TestPinnedOverrides(t *testing.T) {
+	t.Parallel()
 	user := filepath.Join(t.TempDir(), "prompts")
 	darwin, err := contextprep.BuiltinFile("os/darwin")
 	require.NoError(t, err)
@@ -340,6 +350,7 @@ func TestPinnedOverrides(t *testing.T) {
 // table has a row for each library module, and it names every front
 // matter key, when key, and placeholder.
 func TestUserGuide(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile(filepath.Join("..", "..", "docs", "context-preparation.md"))
 	require.NoError(t, err)
 	guide := string(data)

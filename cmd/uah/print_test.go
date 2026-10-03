@@ -15,6 +15,7 @@ import (
 // TestPrinter_Agents prints a subagent's state, and its tool calls with
 // --verbose.
 func TestPrinter_Agents(t *testing.T) {
+	t.Parallel()
 	var out bytes.Buffer
 	p := newPrinter(&out, true)
 	p.print(engine.AgentUpdated{ID: "a1", Nickname: "Ada", State: engine.AgentRunning})
@@ -34,6 +35,7 @@ func TestPrinter_Agents(t *testing.T) {
 // TestPrinter_EffortUpdatesOff warns on stderr when the backend rejects
 // effort updates.
 func TestPrinter_EffortUpdatesOff(t *testing.T) {
+	t.Parallel()
 	var out bytes.Buffer
 	newPrinter(&out, false).print(engine.EffortUpdatesOff{Err: "rejected"})
 

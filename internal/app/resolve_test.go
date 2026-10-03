@@ -26,6 +26,7 @@ func flagDefaults() app.Inputs {
 }
 
 func TestResolve(t *testing.T) {
+	t.Parallel()
 	resumed := session.Info{Provider: "openai", Model: "gpt-resumed", Effort: "low", Workspace: "/resumed"}
 	configured := config.Config{Provider: "openrouter", Model: "cfg-model", Effort: "medium"}
 
@@ -438,6 +439,7 @@ func TestResolve(t *testing.T) {
 }
 
 func TestResolveUsageErrors(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		in   func(*app.Inputs)
@@ -500,6 +502,7 @@ func TestResolveUsageErrors(t *testing.T) {
 }
 
 func TestParseSize(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		in      string
 		want    int64

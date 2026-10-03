@@ -15,6 +15,7 @@ import (
 )
 
 func TestStreamableHTTP(t *testing.T) {
+	t.Parallel()
 	server := sdk.NewServer(&sdk.Implementation{Name: "http", Version: "1"}, nil)
 	server.AddTool(&sdk.Tool{Name: "whoami", InputSchema: map[string]any{"type": "object"}},
 		func(_ context.Context, req *sdk.CallToolRequest) (*sdk.CallToolResult, error) {

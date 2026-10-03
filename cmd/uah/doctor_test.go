@@ -11,6 +11,7 @@ import (
 )
 
 func TestDoctor(t *testing.T) {
+	t.Parallel()
 	e, env := fakeEnv(t)
 	env = append(env, "UAH_LLM_BASE_URL="+modelsServer(t).URL)
 

@@ -61,6 +61,7 @@ func writeFile(t *testing.T, path, content string) {
 }
 
 func TestConfigCommand(t *testing.T) {
+	t.Parallel()
 	root, ws, _, env := configEnv(t)
 
 	res := uahWith(t, env, "", "config", "-C", ws, "--max-disk", "1G")
@@ -77,6 +78,7 @@ func TestConfigCommand(t *testing.T) {
 }
 
 func TestConfigCommandJSON(t *testing.T) {
+	t.Parallel()
 	_, ws, _, env := configEnv(t)
 
 	res := uahWith(t, env, "", "config", "--json", "-C", ws, "--provider", "openai")
@@ -105,6 +107,7 @@ func TestConfigCommandJSON(t *testing.T) {
 }
 
 func TestConfigCommandBadConfig(t *testing.T) {
+	t.Parallel()
 	root, ws, user, env := configEnv(t)
 	other := filepath.Join(root, "other.toml")
 	writeFile(t, other, "no_such_key = 1\n")

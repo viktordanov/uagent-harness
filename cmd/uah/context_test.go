@@ -15,6 +15,7 @@ import (
 // main session and a read-only subagent get; trust allows a project
 // module.
 func TestContextCommand(t *testing.T) {
+	t.Parallel()
 	_, env := mcpEnv(t)
 	ws := t.TempDir()
 	writeFile(t, filepath.Join(ws, ".uah", "context.d", "repo.md"), "---\nid: repo\ndescription: The repo's notes\n---\nRepo note.\n")

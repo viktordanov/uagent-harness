@@ -19,6 +19,7 @@ import (
 // from a call's raw patch or the {"input": patch} of a call recorded when
 // apply_patch was a function tool.
 func TestPrintTranscript_Diff(t *testing.T) {
+	t.Parallel()
 	for _, args := range []string{
 		`{"input":"*** Begin Patch\n*** Update File: a.go\n@@\n-x\n+y\n*** End Patch"}`,
 		"*** Begin Patch\n*** Update File: a.go\n@@\n-x\n+y\n*** End Patch\n",
@@ -56,6 +57,7 @@ func printDiff(t *testing.T, args string) {
 
 // TestPrintTranscript_Rewind names the message the session went back to.
 func TestPrintTranscript_Rewind(t *testing.T) {
+	t.Parallel()
 	at := time.Date(2026, 9, 24, 12, 0, 0, 0, time.UTC)
 	run := session.LoadedRun{
 		Record: uaharness.RunRecord{Result: core.Result{Request: core.Request{RunID: "r1"}, Status: core.StatusOK, StartedAt: at}},
@@ -74,6 +76,7 @@ func TestPrintTranscript_Rewind(t *testing.T) {
 // TestPrintTranscript_Prepared prints the prepared context as one line,
 // as a developer message and as the user message of an earlier version.
 func TestPrintTranscript_Prepared(t *testing.T) {
+	t.Parallel()
 	at := time.Date(2026, 9, 24, 12, 0, 0, 0, time.UTC)
 	text := "<context_preparation>\nx\n</context_preparation>"
 	run := session.LoadedRun{

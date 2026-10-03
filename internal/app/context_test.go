@@ -64,6 +64,7 @@ func TestPreviewContext(t *testing.T) {
 // TestContextCheck runs a module's check in the read-only sandbox: it can
 // run a command, and cannot write the workspace.
 func TestContextCheck(t *testing.T) {
+	t.Parallel()
 	ws := t.TempDir()
 	check := app.ContextCheck(ws, os.Getenv)
 	if check == nil {

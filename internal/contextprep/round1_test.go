@@ -42,6 +42,7 @@ func (b fixedBlock) Prepare(context.Context, contextprep.Facts) string { return 
 // the whole prepared message, is byte for byte what round 1's code wrote,
 // for each shell, OS, and sandbox mode recorded.
 func TestDefaultsMatchRound1(t *testing.T) {
+	t.Parallel()
 	data, err := os.ReadFile("testdata/round1.json")
 	require.NoError(t, err)
 	var cases []round1Case

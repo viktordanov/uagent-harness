@@ -32,6 +32,7 @@ func toolDefs(r fakellm.Request) string {
 // fails in the read-only sandbox, and the next model request describes the
 // read-only sandbox.
 func TestEmbedded_ReadOnlyModeLive(t *testing.T) {
+	t.Parallel()
 	var applied session.Applied
 	var e *approvalEnv
 	e = newApprovalEnv(t, approvalOpts{interactive: true}, func(string) []fakellm.Reply {
@@ -65,6 +66,7 @@ func TestEmbedded_ReadOnlyModeLive(t *testing.T) {
 // asking the user, also with approvals_reviewer = user: allow runs it, and
 // a decline reaches the model with the reviewer's reason.
 func TestEmbedded_AutoMode(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name, verdict, output string
 		ran                   bool
