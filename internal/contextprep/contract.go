@@ -1,6 +1,7 @@
 // Package contextprep prepares the context a session starts with: short
 // blocks about the environment, the sandbox, the agent files, and the
-// harness, which uah sends once, before the first user message.
+// harness, which uah sends once, as a developer message before the first
+// user message.
 package contextprep
 
 import "context"
@@ -9,9 +10,9 @@ import "context"
 type Facts struct {
 	// Workspace is the session's working directory.
 	Workspace string
-	// SystemPrompt is the session's system prompt, which holds the loaded
-	// AGENTS.md files.
-	SystemPrompt string
+	// InstructionFiles are the instruction files (AGENTS.md) the system
+	// prompt holds, in order.
+	InstructionFiles []string
 	// Shell is the shell commands run in, a path such as /bin/zsh.
 	Shell string
 	// GOOS is the operating system, as runtime.GOOS names it.

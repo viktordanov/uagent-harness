@@ -81,7 +81,8 @@ func TestWorkspace(t *testing.T) {
 }
 
 func TestHarness(t *testing.T) {
-	got := contextprep.Harness{}.Prepare(t.Context(), contextprep.Facts{})
+	got := contextprep.Harness{MaxOutputLength: 40000}.Prepare(t.Context(), contextprep.Facts{})
 	assert.Contains(t, got, "max_output_length")
-	assert.Contains(t, got, "default 40000")
+	assert.Contains(t, got, "(default 40000)")
+	assert.NotContains(t, contextprep.Harness{}.Prepare(t.Context(), contextprep.Facts{}), "default", "an unknown default is not named")
 }

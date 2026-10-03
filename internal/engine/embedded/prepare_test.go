@@ -20,8 +20,8 @@ import (
 
 // TestContextPreparation: with context preparation on, a new session's
 // first request carries the prepared context before the user's message,
-// with git's state, the tracked files, the instruction files and what they
-// include, and the harness's guidance; the system prompt is the same as
+// with git's state, the tracked files, the instruction files, and the
+// harness's guidance; the system prompt is the same as
 // without it, and a later run of the session adds no second block. A
 // subagent's session gets one too; off, nothing is added.
 func TestContextPreparation(t *testing.T) {
@@ -36,8 +36,7 @@ func TestContextPreparation(t *testing.T) {
 	}{{"off", false, false}, {"on", true, false}, {"subagent", true, true}} {
 		e := newEnv(t, fakellm.Reply{Text: "one"}, fakellm.Reply{Text: "two"})
 		agents := filepath.Join(e.Workspace, "AGENTS.md")
-		require.NoError(t, os.WriteFile(agents, []byte("@INC.md\n"), 0o644))
-		require.NoError(t, os.WriteFile(filepath.Join(e.Workspace, "INC.md"), []byte("Use rtk for every command."), 0o644))
+		require.NoError(t, os.WriteFile(agents, []byte("Rules.\n"), 0o644))
 		require.NoError(t, os.MkdirAll(filepath.Join(e.Workspace, "pkg"), 0o755))
 		require.NoError(t, os.WriteFile(filepath.Join(e.Workspace, "pkg", "a.go"), []byte("package pkg\n"), 0o644))
 		for _, args := range [][]string{{"init", "-q", "-b", "trunk"}, {"add", "pkg", "AGENTS.md"}} {
@@ -45,8 +44,10 @@ func TestContextPreparation(t *testing.T) {
 			require.NoError(t, err, string(out))
 		}
 		settings := e.settings()
-		settings.SystemPrompt = "Base.\n\n# Project instructions\n\n## " + agents + "\n\n@INC.md\n"
-		eng := embedded.New(embedded.Config{StateDir: e.StateDir, Provider: "openai", Getenv: e.getenv, ContextPreparation: tt.on})
+		settings.SystemPrompt = "Base.\n\n# Project instructions\n\n## " + agents + "\n\nRules.\n"
+		eng := embedded.New(embedded.Config{
+			StateDir: e.StateDir, Provider: "openai", Getenv: e.getenv, ContextPreparation: tt.on, InstructionFiles: []string{agents},
+		})
 		opts := session.Options{Settings: settings}
 		if tt.subagent {
 			opts.ID = session.NewSubagentID()
@@ -76,11 +77,10 @@ func TestContextPreparation(t *testing.T) {
 		assert.True(t, contextprep.IsPrepared(prepared), prepared)
 		assert.Contains(t, prepared, "## workspace\nGit branch: trunk")
 		assert.Contains(t, prepared, "A  AGENTS.md")
-		assert.Contains(t, prepared, "?? INC.md")
 		assert.Contains(t, prepared, "pkg/ (1 files)")
-		assert.Contains(t, prepared, "## agent files\nInstruction files in the system prompt, in order:\n- "+agents)
-		assert.Contains(t, prepared, "Use rtk for every command.")
+		assert.Contains(t, prepared, "## agent files\nInstruction files in the system prompt, in order (their @ lines are expanded in place):\n- "+agents+"\n")
 		assert.Contains(t, prepared, "## harness\n")
+		assert.Contains(t, prepared, "(default 40000)")
 		assert.Equal(t, "hello", reqs[0].UserTexts[1])
 		assert.Equal(t, []string{prepared, "hello", "again"}, reqs[1].UserTexts, "the second run adds no context")
 	}
