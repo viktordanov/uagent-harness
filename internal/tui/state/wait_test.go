@@ -36,7 +36,7 @@ func TestCurrentWait(t *testing.T) {
 		},
 		"writing a patch": {
 			events: append(turn, engine.ModelProgress{At: at(2 * time.Second), Phase: engine.PhaseStreaming, Tool: "apply_patch", Target: "internal/foo.go", ToolBytes: 4200}),
-			want:   state.Wait{What: "Writing a patch · internal/foo.go · 4.2 kB", Since: at(time.Second)},
+			want:   state.Wait{What: "Writing a patch", Path: "internal/foo.go", Detail: "4.2 kB", Since: at(time.Second)},
 		},
 		"preparing another tool": {
 			events: append(turn, engine.ModelProgress{At: at(2 * time.Second), Phase: engine.PhaseStreaming, Tool: "Bash", ToolBytes: 1100}),
@@ -44,7 +44,7 @@ func TestCurrentWait(t *testing.T) {
 		},
 		"a stall": {
 			events: append(turn, engine.ModelProgress{At: at(2 * time.Second), Phase: engine.PhaseStreaming}, state.Tick{Now: at(47 * time.Second)}),
-			want:   state.Wait{What: "Thinking · no data for 45s", Since: at(time.Second), Warn: true},
+			want:   state.Wait{What: "Thinking", Detail: "no data for 45s", Since: at(time.Second), Warn: true},
 		},
 		"a retry": {
 			events: append(turn, engine.Reconnecting{At: at(2 * time.Second), Attempt: 3, MaxAttempts: 10, Delay: 8 * time.Second, Reason: "server_is_overloaded: slow down"}, state.Tick{Now: at(2 * time.Second)}),
@@ -145,7 +145,7 @@ func TestCurrentWait_Phases(t *testing.T) {
 	for _, step := range steps {
 		s, _ = apply(s, step.ev)
 		got, _ := s.CurrentWait()
-		assert.Equal(t, step.want, got.What, "after %T %+v", step.ev, step.ev)
+		assert.Equal(t, step.want, got.Text(), "after %T %+v", step.ev, step.ev)
 	}
 }
 
@@ -204,4 +204,28 @@ func TestStatus_ShowsTheWait(t *testing.T) {
 		texts = append(texts, it.Text)
 	}
 	assert.Contains(t, texts, "now: Waiting for the model · waiting")
+}
+
+// TestCurrentWait_ShortPaths: the file a patch names and the command an
+// approval, a hook or an auto-review shows are relative to the workspace,
+// and under the home directory after ~, as the tool lines show them.
+func TestCurrentWait_ShortPaths(t *testing.T) {
+	turn := []any{core.RunStarted{At: t0, RunID: "r1"}, core.TurnStarted{At: t0, Turn: 1}}
+	for name, c := range map[string]struct {
+		ev   any
+		want string
+	}{
+		"a patch in the workspace":  {engine.ModelProgress{At: t0, Phase: engine.PhaseStreaming, Tool: "apply_patch", Target: "/workspace/internal/foo.go", ToolBytes: 900}, "Writing a patch · internal/foo.go · 900 B"},
+		"a patch under home":        {engine.ModelProgress{At: t0, Phase: engine.PhaseStreaming, Tool: "apply_patch", Target: "/home/ada/notes/a.md", ToolBytes: 900}, "Writing a patch · ~/notes/a.md · 900 B"},
+		"another user's home":       {engine.ModelProgress{At: t0, Phase: engine.PhaseStreaming, Tool: "apply_patch", Target: "/home/adam/a.md", ToolBytes: 900}, "Writing a patch · /home/adam/a.md · 900 B"},
+		"an approval":               {session.ApprovalRequested{At: t0, ID: "a1", Command: "cat /home/ada/notes/a.md\n  /workspace/b.go"}, "Waiting for approval · cat ~/notes/a.md b.go"},
+		"a hook":                    {session.HookRan{At: t0, Event: "PreToolUse", Command: "/home/ada/bin/check.sh", Outcome: "running"}, "Running PreToolUse hook · ~/bin/check.sh"},
+		"an auto-review of a write": {engine.AutoReviewing{At: t0, Command: "rm -rf /workspace/build"}, "Auto-reviewing the command · rm -rf build"},
+	} {
+		s := opened()
+		s.Home = "/home/ada"
+		got, _ := apply(s, append(turn, c.ev)...)
+		w, _ := got.CurrentWait()
+		assert.Equal(t, c.want, w.Text(), name)
+	}
 }

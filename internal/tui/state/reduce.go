@@ -146,7 +146,7 @@ func (s *State) onEvent(ev core.Event) { //nolint:gocyclo // a dispatch switch o
 		case "blocked":
 			s.notice(session.LevelWarning, fmt.Sprintf("%s hook blocked: %s", e.Event, e.Reason))
 		case "running":
-			s.live().Aside = &Wait{What: "Running " + e.Event + " hook · " + e.Command, Since: e.At}
+			s.live().Aside = &Wait{What: "Running " + e.Event + " hook · " + s.shownCommand(e.Command), Since: e.At}
 		default:
 			s.notice(session.LevelWarning, fmt.Sprintf("%s hook %s: %s", e.Event, e.Outcome, e.Reason))
 		}

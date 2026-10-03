@@ -9,17 +9,23 @@ import (
 
 	"github.com/dustin/go-humanize"
 
+	"github.com/viktordanov/uah/internal/cmdparse"
 	"github.com/viktordanov/uah/internal/engine"
 	"github.com/viktordanov/uah/internal/patch"
 )
 
-// Wait is what the live run waits on, since when. Hint replaces "esc to
-// interrupt"; Warn marks a retry or a stall.
+// Wait is what the live run waits on, since when: What, then the file it
+// names (Path, shortened to the workspace or ~) and a Detail after it, so
+// a narrow status line can shorten the path on its own. Hint replaces "esc
+// to interrupt"; Warn marks a retry or a stall.
 type Wait struct {
-	What, Hint string
-	Since      time.Time
-	Warn       bool
+	What, Path, Detail, Hint string
+	Since                    time.Time
+	Warn                     bool
 }
+
+// Text is the wait in full: "Writing a patch · foo.go · 4.2 kB".
+func (w Wait) Text() string { return joinDetail(w.What, w.Path, w.Detail) }
 
 // CurrentWait is what the live run waits on, the most pressing first.
 func (s State) CurrentWait() (Wait, bool) {
@@ -32,7 +38,7 @@ func (s State) CurrentWait() (Wait, bool) {
 	case !l.Stopping.IsZero():
 		return Wait{What: "Stopping", Hint: "esc again to force", Since: l.Stopping}, true
 	case asked && !a.Answered:
-		return Wait{What: "Waiting for approval · " + oneLine(a.Command), Since: a.Since}, true
+		return Wait{What: "Waiting for approval · " + s.shownCommand(a.Command), Since: a.Since}, true
 	case questioned && !q.Sent:
 		return Wait{What: "Waiting for your answer", Since: q.Since}, true
 	case l.Aside != nil:
@@ -61,14 +67,14 @@ func (s State) modelWait(p engine.ModelProgress) Wait {
 	case p.Phase == engine.PhaseWaiting || p.Phase == engine.PhaseConnecting:
 		w.What = "Waiting for the model"
 	case p.Tool == patch.ToolName:
-		w.What = joinDetail("Writing a patch", p.Target, humanize.Bytes(uint64(p.ToolBytes)))
+		w.What, w.Path, w.Detail = "Writing a patch", cmdparse.Relative(p.Target, s.pathEnv()), humanize.Bytes(uint64(p.ToolBytes))
 	case p.Tool != "":
 		w.What = "Preparing " + p.Tool + " · " + humanize.Bytes(uint64(p.ToolBytes))
 	case s.Writing():
 		w.What = "Writing"
 	}
 	if gap := s.Now.Sub(p.At); !p.At.IsZero() && gap >= 30*time.Second { // a stall
-		w.What, w.Warn = w.What+" · no data for "+gap.Truncate(time.Second).String(), true
+		w.Detail, w.Warn = joinDetail(w.Detail, "no data for "+gap.Truncate(time.Second).String()), true
 	}
 
 	return w
@@ -134,6 +140,12 @@ func (s *State) interrupt() []Effect {
 	}
 
 	return []Effect{EffInterrupt{}}
+}
+
+// shownCommand is a command on one line, with its paths under the
+// workspace or the home directory shortened as tool lines show them.
+func (s State) shownCommand(command string) string {
+	return oneLine(cmdparse.Relative(command, s.pathEnv()))
 }
 
 // joinDetail joins the parts that are not empty with " · ".
