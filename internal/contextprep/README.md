@@ -54,13 +54,14 @@ An adapter with nothing to say gets no section. Each block is cut to 4 KiB (`Max
 `IsPrepared` recognizes the message. The TUI shows it as a one-line notice, `uah sessions show` as one line, and the auto-reviewer leaves it out of the user's messages.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="adapters" files="workspace.go agentfiles.go harness.go" -->
+<!-- memoria:section id="adapters" files="environment.go workspace.go agentfiles.go harness.go" -->
 ## The adapters
 
 The engine registers them in this order:
 
 | Adapter | Block |
 | --- | --- |
+| `Environment` (`environment`) | The shell that runs commands and the operating system, always, at least one line ("Commands run in bash (/bin/bash -c) on Linux."). Models write POSIX sh and GNU flags whatever the shell, so for a shell that is not POSIX (fish, nushell, xonsh, elvish, PowerShell, cmd, csh) it lists the constructs that break and what to write instead, or says to run one `sh -c '…'`. It also lists zsh's glob and word-splitting gotchas, the limits of macOS `/bin/bash` 3.2, and the flags that differ in the BSD tools on macOS and the BSDs. The shell's family comes from its base name |
 | `Workspace` (`workspace`) | The git branch, `git status --short` (at most 20 lines), and `git ls-files` by top directory with file counts (at most 40 entries). Each git command has 2 seconds. Outside a git repository the block is empty |
 | `AgentFiles` (`agent files`, cap 10 KiB) | The instruction files in the system prompt, in order, with the statement that these are all of them, so there is no need to search for more AGENTS.md or CLAUDE.md files. Then the files that an instruction file includes with an `@` line (such as `@RTK.md`), at most 3 KiB; an include that does not fit is named so the model can read it. Then the bodies of the skills whose description says they apply to every message, at most 4 KiB each and 6 KiB in all, with their names, so the model need not load them; a skill that does not fit is named |
 | `Harness` (`harness`) | How to use the Bash tool's `max_output_length` (default 40,000 characters, which this does not change): leave it unset when the whole output is needed, set it only for noisy commands and to what will be read, and narrow a command whose output was cut instead of running it again with a bigger limit |
@@ -68,7 +69,7 @@ The engine registers them in this order:
 `AppliesAlways` decides from a skill's description alone, so no skill needs a special field. It matches phrases such as "any user message", "every response", "each turn", "always apply", and "always active". A description like "Use when the user mentions a PDF" does not match. The engine passes the skills it discovers for the session (`discoverSkills`), most specific first.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="tests" files="prepare_test.go agentfiles_test.go" -->
+<!-- memoria:section id="tests" files="prepare_test.go agentfiles_test.go environment_test.go" -->
 ## Tests
 
 | Test | Pins |
@@ -77,5 +78,6 @@ The engine registers them in this order:
 | `TestWorkspace` | No block outside a repository, and the branch, the status, and the listing inside one |
 | `TestHarness` | The guidance names `max_output_length` and its default |
 | `TestAgentFiles` | The instruction files listed in order and said to be all, a header that names no file ignored, an include inlined once, an include over the cap named, a skill that always applies inlined without its front matter, another skill left out, and a skill over the cap named |
+| `TestEnvironmentName`, `TestEnvironmentPrepare`, `TestShellClaims` | Each shell family's and OS's lines; the last runs each fish and zsh "fails / use instead" claim in the installed shell and skips a shell that is missing |
 | `TestAppliesAlways` | Which skill descriptions apply to every message |
 <!-- /memoria:section -->

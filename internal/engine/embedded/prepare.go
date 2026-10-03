@@ -75,7 +75,7 @@ func (w *wiring) adapters(req core.Request) []contextprep.Adapter {
 		files.Skills = append(files.Skills, contextprep.Skill{Name: s.Name, Description: s.Description, Path: s.Path})
 	}
 
-	return []contextprep.Adapter{contextprep.Workspace{}, files, contextprep.Harness{}}
+	return []contextprep.Adapter{contextprep.Environment{}, contextprep.Workspace{}, files, contextprep.Harness{}}
 }
 
 // shell is the user's shell, which commands run in: $SHELL, or /bin/sh.
