@@ -51,6 +51,9 @@ func run() error {
 	uahBin := fs.String("uah", "", "uah binary (default: built from this tree into the scratch directory)")
 	codexBin := fs.String("codex", "codex", "codex binary")
 	keep := fs.Bool("keep", false, "keep each run's workspace")
+	ownerEnv := fs.Bool("owner-env", false, "give the harness the owner's environment, as an interactive session has it: the login shell as SHELL, and the user's TMPDIR, GOCACHE, GOFLAGS, and GOPROXY instead of the bench's (fixtures and checks keep the bench's)")
+	shell := fs.String("shell", "", "SHELL of the harness with -owner-env (default: the login shell)")
+	failures := fs.Bool("failures", false, "count the failures of the results file's uah runs again from their artifacts and write the failures report (<results>-failures.md)")
 	var uahEnv envList
 	fs.Var(&uahEnv, "uah-env", "KEY=VALUE added to uah's environment, such as UAH_ADAPTIVE_EFFORT=2-steps (repeatable; needs -variant)")
 	var uahConfig envList
@@ -70,12 +73,12 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	if *out == "" {
-		*out = filepath.Join(root, "tools", "agentbench", "results", *model+"-"+*effort+"-"+*mode+".jsonl")
+	if *out, err = resultsFile(*out, root, *model, *effort, *mode); err != nil {
+		return err
 	}
 	price := bench.Price{Input: *priceIn, Cached: *priceCached, Output: *priceOut}
-	if *remeasure || *reportOnly || *turns {
-		return analyze(*out, price, *remeasure, *turns)
+	if *remeasure || *reportOnly || *turns || *failures {
+		return analyze(*out, price, *remeasure, *turns, *failures)
 	}
 	var re *regexp.Regexp
 	if *tasksRe != "" {
@@ -116,7 +119,7 @@ func run() error {
 	cfg := bench.Config{
 		Tasks: tasks, Repeat: *repeat, Model: *model, Effort: *effort, Parallel: *parallel, Timeout: *timeout,
 		MaxRuns: *maxRuns, Work: *work, Out: *out, UAH: *uahBin, Codex: *codexBin, Price: price, Mode: *mode, Keep: *keep, Log: os.Stderr,
-		UAHEnv: uahEnv, UAHConfig: uahConfig, Variant: *variant,
+		UAHEnv: uahEnv, UAHConfig: uahConfig, Variant: *variant, OwnerEnv: *ownerEnv, Shell: *shell,
 	}
 	if err := harnesses(ctx, &cfg, *harness, root); err != nil {
 		return err
@@ -126,7 +129,49 @@ func run() error {
 		return errors.Join(runErr, err)
 	}
 
-	return runErr
+	return errors.Join(runErr, writeFailures(*out, false))
+}
+
+// resultsFile is the results file: out, or the default for the model,
+// effort, and mode, made absolute. The run directories beside it hold
+// uah's state directories, which uah resolves in the workspace, where a
+// relative one would be inside it.
+func resultsFile(out, root, model, effort, mode string) (string, error) {
+	if out == "" {
+		out = filepath.Join(root, "tools", "agentbench", "results", model+"-"+effort+"-"+mode+".jsonl")
+	}
+
+	return filepath.Abs(out)
+}
+
+// writeFailures writes the failures report of a results file's uah runs,
+// counting them again from their artifacts when recount is set (a run
+// whose artifacts are gone keeps its counts).
+func writeFailures(out string, recount bool) error {
+	results, err := bench.LoadResults(out)
+	if err != nil {
+		return err
+	}
+	if recount {
+		for i, r := range results {
+			if r.Harness != bench.HarnessUAH || r.StartedAt.IsZero() {
+				continue
+			}
+			if _, err := os.Stat(r.Artifacts); err != nil {
+				continue
+			}
+			if results[i].Failures, err = bench.RunFailures(r); err != nil {
+				return fmt.Errorf("%s: %w", r.Key, err)
+			}
+		}
+	}
+	md := strings.TrimSuffix(out, filepath.Ext(out)) + "-failures.md"
+	if err := os.WriteFile(md, []byte(bench.FailuresReport(results)), 0o644); err != nil {
+		return err
+	}
+	fmt.Fprintln(os.Stderr, "failures report:", md)
+
+	return nil
 }
 
 func writeReport(out string, price bench.Price) error {
@@ -146,14 +191,24 @@ func writeReport(out string, price bench.Price) error {
 	return nil
 }
 
-// harnesses checks the mode and the variant, sets the harnesses to run, and builds uah from this tree
-// unless -uah names a binary.
+// harnesses checks the mode and the variant, finds the login shell for
+// -owner-env without -shell, sets the harnesses to run, and builds uah from
+// this tree unless -uah names a binary.
 func harnesses(ctx context.Context, cfg *bench.Config, harness, root string) error {
 	if cfg.Mode != bench.ModeAuto && cfg.Mode != bench.ModeWorkspace {
 		return fmt.Errorf("bad -mode %q (want auto or workspace)", cfg.Mode)
 	}
 	if len(cfg.UAHEnv)+len(cfg.UAHConfig) > 0 && cfg.Variant == "" {
 		return errors.New("-uah-env and -uah-config need -variant, so their runs do not count as the control's")
+	}
+	if cfg.OwnerEnv && cfg.Shell == "" {
+		var err error
+		if cfg.Shell, err = bench.LoginShell(ctx); err != nil {
+			return err
+		}
+	}
+	if cfg.OwnerEnv {
+		fmt.Fprintln(os.Stderr, "owner environment, SHELL="+cfg.Shell)
 	}
 	switch harness {
 	case "both":
@@ -207,8 +262,9 @@ func repoRoot(ctx context.Context) (string, error) {
 }
 
 // analyze parses the results file's runs again when remeasure is set,
-// then writes the per-turn report when turns is set, else the report.
-func analyze(out string, price bench.Price, remeasure, turns bool) error {
+// then writes the per-turn report when turns is set, the failures report
+// (counted again) when failures is, else the report.
+func analyze(out string, price bench.Price, remeasure, turns, failures bool) error {
 	if remeasure {
 		if err := bench.Remeasure(out, price); err != nil {
 			return err
@@ -216,6 +272,9 @@ func analyze(out string, price bench.Price, remeasure, turns bool) error {
 	}
 	if turns {
 		return writeTurns(out, price)
+	}
+	if failures {
+		return writeFailures(out, true)
 	}
 
 	return writeReport(out, price)

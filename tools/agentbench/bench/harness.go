@@ -38,7 +38,7 @@ const (
 
 func invocation(cfg Config, env *runEnv, fx *Fixture, t Task, k Key, ws, art string) harnessRun {
 	prompt := fx.Expand(t.Prompt)
-	runEnv := append(slicesClone(env.base), fx.Env...)
+	runEnv := append(slicesClone(env.harness), fx.Env...)
 	if fx.Home != "" {
 		// A fake home keeps the login where it is.
 		runEnv = append(runEnv, "CODEX_HOME="+env.codexHome)
