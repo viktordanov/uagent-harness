@@ -41,8 +41,8 @@ func Commands() []Command {
 		{Name: cmdReviewName, Args: "[target]", Help: "a read-only reviewer looks at your changes (uncommitted, branch <name>, commit <sha>, or instructions) and lists findings", run: cmdReview},
 		{Name: "context", Help: "what fills the context window: prompt, instructions, skills, tools, messages", WhileBusy: true, run: cmdContext},
 		{Name: "config", Help: "settings: auto-compact, compaction model, model, effort, fast mode, adaptive effort, permission mode, web search, details, mouse; saved to the user file", WhileBusy: true, run: cmdConfig},
-		{Name: "status", Help: "session, settings, totals, and your plan's usage", WhileBusy: true, run: cmdStatus},
-		{Name: "usage", Help: "your plan's usage: each limit, what is left, and when it resets (openai-codex)", WhileBusy: true, run: cmdUsage},
+		{Name: "status", Help: "session, settings, totals, prompt cache, and your plan's usage", WhileBusy: true, run: cmdStatus},
+		{Name: "usage", Help: "your plan's usage: each limit, what is left, and when it resets (openai-codex); this session's prompt cache", WhileBusy: true, run: cmdUsage},
 		{Name: "mcp", Args: "[verbose]", Help: "MCP servers: state, transport, and tool count; verbose adds auth and each tool", WhileBusy: true, run: cmdMCP},
 		{Name: cmdAgentsName, Args: "[name]", Help: "subagents the agent started, and their state; a name shows that agent's transcript as it works", WhileBusy: true, run: cmdAgents},
 		{Name: "sandbox", Help: "what commands may do: the permission mode and its sandbox (shift+tab changes it)", WhileBusy: true, run: cmdSandbox},
@@ -221,7 +221,7 @@ func cmdStatus(s *State, _ string) []Effect {
 		s.notice(session.LevelInfo, joinDetail("now: "+w.What, s.Live.Progress.Phase))
 	}
 
-	return []Effect{EffLoadActivity{}, EffLoadUsage{Reason: UsageStatus}}
+	return append([]Effect{EffLoadActivity{}, EffLoadUsage{Reason: UsageStatus}}, s.loadCache()...)
 }
 
 func cmdHelp(s *State, _ string) []Effect {

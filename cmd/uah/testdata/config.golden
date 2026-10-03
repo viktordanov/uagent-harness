@@ -11,6 +11,8 @@ request_max_attempts                              10                            
 max_disk                                          1G                            flag
 fast                                              true                          user file
 adaptive_effort                                   off                           default
+context_preparation                               true                          default
+model_verbosity                                   low                           default
 permission_mode                                   read-only                     env
 sandbox_mode                                      read-only                     env
 approval_policy                                   on-request                    default

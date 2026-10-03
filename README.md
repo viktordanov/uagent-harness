@@ -140,7 +140,7 @@ It exits 0 when the run succeeds, 1 when it fails, 2 on a usage error, 3 at the 
 ```sh
 uah sessions                           # this directory's sessions, newest first (--all: every directory)
 uah sessions --search "flaky parser"   # sessions whose prompts or answers contain the words
-uah sessions show 3f2a                 # the transcript (--json)
+uah sessions show 3f2a                 # the transcript and the prompt cache line (--json)
 uah sessions --json -C ~/src/app --since 2026-09-29T08:00:00Z   # a directory's sessions active since then
 uah sessions rm 3f2a                   # delete a session with its runs and subagents (--dry-run, --json)
 ```
@@ -163,7 +163,8 @@ To remove an image, delete its placeholder: one backspace at its end removes it 
 - For this session: type `/model` in the TUI and pick a model, then one of its efforts (its default is preselected; esc goes back to the models). `/model gpt-6-luna` asks only for the effort, and `/model gpt-6-luna low` sets both at once. `/effort low`, or alt+, and alt+., change only the effort. It applies from the next model request, even mid-run.
 - At start: `uah -m gpt-6-luna -e medium`, and `--fast` for priority processing.
 - For every session: `model` and `effort` in the [configuration](#configuration).
-- Adaptive effort: the model thinks less on the turns that only follow tool results, and a new session starts with the workspace's context (the git branch and status, the tracked files, and the files AGENTS.md includes), so it need not look them up. `1-step` goes one effort level below yours on those turns, `2-steps` two, never below low; the first request and every turn with your message stay at your effort. `off` is the default. On the agent benchmark at high effort, at the same pass rate, it cut wall time by 18–35% and cost by 16–25%, more at 2 steps. Set it with alt+e, `/adaptive [off|1-step|2-steps]`, or the `/config` row (from the next model request, even mid-run); the footer then shows `high↓` or `high⇊`, and `high→low` while a lowered follow-up is out, `--adaptive-effort` at start, or `adaptive_effort` for new sessions. A session keeps its own value, as it keeps its effort.
+- Adaptive effort: the model thinks less on the turns that only follow tool results. `1-step` goes one effort level below yours on those turns, `2-steps` two, never below low; the first request and every turn with your message stay at your effort. `off` is the default. On the agent benchmark at high effort, at the same pass rate, it cut wall time by 18–35% and cost by 16–25%, more at 2 steps. Set it with alt+e, `/adaptive [off|1-step|2-steps]`, or the `/config` row (from the next model request, even mid-run); the footer then shows `high↓` or `high⇊`, and `high→low` while a lowered follow-up is out, `--adaptive-effort` at start, or `adaptive_effort` for new sessions. A session keeps its own value, as it keeps its effort.
+- On gpt-6.1-sol and the other gpt-6 models, uah changes the effort as Codex does, with an update in the conversation rather than in the request, so the prompt cache survives adaptive effort's switches and `/effort`. A backend that rejects the update gets the request again without it, and the session then changes the effort per request, with a one-line notice.
 - See what the provider offers: `uah models` (`--json`, `--refresh`), `/model ` then tab in the TUI, or tab after `-m`. In the TUI, `/model` refuses a model the provider does not list, with the nearest names ("gpt-luna-6 is not available on openai-codex; did you mean gpt-6-luna?"), and `uah doctor` warns about one; `-m` and the configuration are not checked: the model goes to the provider as written.
 
 ### Usage limits
@@ -179,6 +180,7 @@ uah usage --json   # the same for scripts
 - In the TUI, `/usage` shows the same, `/status` shows a row per window, and the footer shows the tightest one beside the context meter (`weekly 78% left · 64% context left`).
 - A notice warns once when a window passes 75, 90, and 95% used. When a run stops at the limit, a notice says when to try again.
 - `uah doctor` warns from 90% used.
+- `/usage`, `/status`, and `uah sessions show` also show the session's prompt cache: how much input the cache served, and the input it missed by cause, such as `prompt cache 86% · missed 119k: effort switches 72k, cold start 9k, other 38k · ≈20% of usage (API-price estimate)`. See [session prompt cache](internal/usage/README.md#session-prompt-cache).
 
 Windows are named by their length (5h, daily, weekly), because a plan can have only a weekly window. uah reads the usage when you ask and after each run, never on a timer. Other providers have no usage to show.
 
@@ -212,7 +214,7 @@ Press shift+tab in the TUI. It cycles three modes, and the footer shows the curr
 
 | Mode | Commands can | What needs approval |
 | --- | --- | --- |
-| read only | Read files, write nothing | You |
+| read only | Read files; write only the session's private `$TMPDIR` | You |
 | workspace (default) | Write the workspace | You |
 | auto | Write the workspace | The auto-reviewer decides; you are not asked |
 | yolo (only with `--yolo`) | Anything your user can: no sandbox | Nothing: every command, patch, and MCP tool runs unasked; only `forbid` rules refuse |
@@ -311,11 +313,15 @@ uah compacts automatically at 90% of the context window. It first replaces old t
 ### Custom prompts
 
 ```sh
-uah prompts init           # writes compact.md, system.md, system-codex.md, system-runner.md, and review.md to ~/.uah/prompts
+uah prompts init           # writes compact.md, system.md, system-codex.md, system-runner.md, review.md, and the context modules to ~/.uah/prompts
 uah prompts show system    # prints a built-in prompt: compact, system, system-codex, system-runner, or review
+uah prompts show context/environment/fish   # prints a context module
+uah context --show         # lists the context modules for this workspace and prints the context a new session gets
 ```
 
 `uah prompts init` starts from the built-in compaction prompt, uah's default system prompt (`system.md`), and the auto-review policy. It prints the lines to add to your user file: `experimental_compact_prompt_file`, `model_instructions_file`, and `[review] policy_file`. The default system prompt is Codex's prompt for gpt-6.1-sol with uah's tool names ([the changes](docs/configuration.md#codexs-prompt)). The command also writes Codex's unmodified prompt as `system-codex.md` and the runner's short host prompt as `system-runner.md`, and prints their `model_instructions_file` lines commented out, so each is used only when you choose it. AGENTS.md files and the [environment context](docs/configuration.md#the-environment-context) still follow the system prompt. Edit the files; each new session reads them. It overwrites existing files only with `--force`.
+
+The [prepared context](internal/contextprep/README.md#modules) a new session starts with is made of Markdown modules too. `uah prompts init` writes them under `~/.uah/prompts/context/`; a file there replaces the built-in of the same path, so delete the ones you do not change. Add your own in `~/.uah/prompts/context.d/`, or a project's in `.uah/context.d/` (used after `uah context trust`). Each starts with front matter that says when it applies, such as `when: {shell: [fish]}` or `files: [go.mod]`. A library of modules (`go`, `python-venv`, `node`, `rust`, `docker`, `git-lfs`) ships turned off; `[context] modules = ["go"]` turns one on. `uah context` shows which modules apply here and why.
 
 ### Hook setup
 
@@ -361,7 +367,7 @@ Earlier versions used `~/.config/uagent`, `~/.local/state/unreal-agent`, and a p
 
 | Group | Keys |
 | --- | --- |
-| Model | `provider`, `model`, `effort`, `fast`, `adaptive_effort`, `web_search`, `max_disk`, `request_max_attempts` |
+| Model | `provider`, `model`, `effort`, `fast`, `adaptive_effort`, `model_verbosity`, `context_preparation`, `web_search`, `max_disk`, `request_max_attempts` |
 | Sandbox | `permission_mode`, `sandbox_mode`, `user_shell_sandbox`; `[sandbox_workspace_write]` `network_access`, `writable_roots`; `[shell_environment_policy]` `inherit`, `ignore_default_excludes`, `exclude`, `include_only`, `set` |
 | Approvals | `approval_policy`, `approvals_reviewer`; `[approvals]` `allow`, `forbid`; `[review]` `model`, `effort`, `timeout`, `policy_file` |
 | Compaction | `auto_compact_percent`, `model_auto_compact_token_limit`, `model_context_window`, `compact_model`, `compact_effort`, `compact_prompt`, `experimental_compact_prompt_file`, `compact_user_message_max_tokens` |
@@ -444,10 +450,20 @@ Read more: [patches](internal/patch/README.md), and how patches are approved in 
 ### Instructions and skills
 
 <!-- memoria:import src="internal/instructions/README.md#summary" -->
-uah finds instruction files the way Codex does: the user's AGENTS.md, then one file per directory from the project root down to the workspace (AGENTS.override.md, else AGENTS.md, else a configured fallback such as CLAUDE.md). They are joined, capped at 32 KiB, and placed after the base instructions (uah's default prompt, adapted from Codex's, or the file that Codex's `model_instructions_file` key names), and Codex's environment context (the workspace, shell, date, and time zone) follows them. Skills come from Codex's skill folders.
+uah finds instruction files the way Codex does: the user's AGENTS.md, then one file per directory from the project root down to the workspace (AGENTS.override.md, else AGENTS.md, else a configured fallback such as CLAUDE.md). A line that is only `@path` in a file is replaced by that file's text, as Claude Code's imports are. They are joined, capped at 32 KiB, and placed after the base instructions (uah's default prompt, adapted from Codex's, or the file that Codex's `model_instructions_file` key names), and Codex's environment context (the workspace, shell, date, and time zone) follows them. Skills come from Codex's skill folders.
 <!-- /memoria:import -->
 
 `--no-instructions` turns this off. Read more: [instructions](internal/instructions/README.md).
+<!-- /memoria:section -->
+
+<!-- memoria:section id="contextprep" files="internal/app/resolve.go internal/config/config.go internal/app/context.go cmd/uah/context.go" -->
+### Context preparation
+
+<!-- memoria:import src="internal/contextprep/README.md#summary" -->
+Every new session starts with one developer message of prepared context, before the first user message. This includes a subagent's session. The message has the git branch, the status, and the tracked files. It names the loaded instruction files, so the model does not search for more. It also gives the shell's and the OS's traps, the sandbox's limits and the session's private `$TMPDIR`, and how to size the Bash tool's output. The text comes from Markdown modules that `uah prompts init` writes to `~/.uah/prompts/context/` to edit; `~/.uah/prompts/context.d/` and a project's `.uah/context.d/` add modules, and `uah context` shows which apply and why. The system prompt does not change, and the message stays in the session's history, so the prompt cache holds. Resumed and forked sessions get no new message. Turn it off with `context_preparation = false`, `--no-context-preparation`, or `UAH_CONTEXT_PREPARATION=off`.
+<!-- /memoria:import -->
+
+Read more: [context preparation](internal/contextprep/README.md).
 <!-- /memoria:section -->
 
 <!-- memoria:section id="sandbox" files="internal/app/setup.go internal/app/resolve.go" -->

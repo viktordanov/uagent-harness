@@ -19,6 +19,7 @@ import (
 	"github.com/viktordanov/uah/internal/session"
 	"github.com/viktordanov/uah/internal/store"
 	"github.com/viktordanov/uah/internal/tui/bubble"
+	"github.com/viktordanov/uah/internal/usage/cachestats"
 )
 
 // tuiAction is the default action: open the terminal UI, optionally with a
@@ -125,6 +126,7 @@ func openTUI(ctx context.Context, cmd *cli.Command, launch tuiLaunch) error {
 		Windows:  st.Models.Window,
 		Usage:    st.Usage, // read after each run and on /status, never on a timer
 		Activity: func() (map[string]int, error) { return store.ActivityIn(ctx, st.StateDir, time.Now(), 7*12) },
+		Cache:    func(id string) ([]cachestats.Attributed, error) { return session.CacheStats(st.StateDir, id) },
 		Sessions: func() ([]session.Info, error) {
 			infos, err := store.List(ctx, st.StateDir)
 

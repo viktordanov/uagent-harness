@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strings"
 
 	"github.com/viktordanov/uah-core/harness/session"
 	"github.com/viktordanov/uah-core/harness/tool"
@@ -19,6 +18,7 @@ import (
 	"github.com/viktordanov/uah/internal/engine"
 	"github.com/viktordanov/uah/internal/mcp"
 	"github.com/viktordanov/uah/internal/sandbox"
+	uahsession "github.com/viktordanov/uah/internal/session"
 )
 
 // tools builds the registry the coordinator runs: Bash, ViewImage, and
@@ -29,6 +29,7 @@ import (
 // interrupt.
 func (w *wiring) tools(ctx, approvals context.Context, req core.Request, sessionID session.ID) (tool.Registry, error) {
 	scope := w.e.scope(string(sessionID))
+	req.SessionID = string(sessionID)
 	req.DisallowedTools = scope.disallow(req.DisallowedTools)
 	translators, err := w.translators(req, sessionID) //nolint:contextcheck,nolintlint // on Linux, the sandbox probes bwrap once per process, with its own timeout; not on darwin
 	if err != nil {
@@ -59,7 +60,6 @@ func (w *wiring) tools(ctx, approvals context.Context, req core.Request, session
 	gate.approved = scope.approvesTool
 	registry = withMCP(registry, scope.mcpTools(mcpTools), req.DisallowedTools, gate)
 	registry = withPatch(registry, offersPatch(w.e.models, req), w.patchGate(approvals, req))
-	req.SessionID = string(sessionID)
 	registry = w.withAgents(registry, req)
 
 	return withPreToolUse(approvals, registry, w.e.cfg.Hooks, req, w.l.SessionsDir), nil
@@ -108,10 +108,7 @@ func (w *wiring) translators(req core.Request, sessionID session.ID) (tool.Stati
 	if err := os.MkdirAll(opsDir, 0o700); err != nil {
 		return tool.StaticTranslators{}, fmt.Errorf("failed to create the operation directory: %w", err)
 	}
-	shell := strings.TrimSpace(w.getenv("SHELL"))
-	if shell == "" {
-		shell = "/bin/sh"
-	}
+	shell := w.shell()
 	run := bash.New(bash.Config{Shell: shell, Directory: req.Workspace, BaseDirectory: opsDir})
 	if w.e.cfg.Sandbox != nil {
 		var err error
@@ -159,10 +156,12 @@ func (w *wiring) mcpTools(ctx context.Context) ([]mcp.Tool, error) {
 	return tools, nil
 }
 
-// policy is the configured sandbox policy for the request's workspace.
+// policy is the configured sandbox policy for the request's workspace,
+// with the session's private temporary directory.
 func (w *wiring) policy(req core.Request, mode sandbox.Mode) sandbox.Policy {
 	p := *w.e.cfg.Sandbox
 	p.Mode, p.Workspace = mode, req.Workspace
+	p.TempDir = uahsession.TempDir(w.l.SessionsDir, req.SessionID)
 
 	return p
 }

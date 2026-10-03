@@ -296,7 +296,7 @@ func TestReduce_Commands(t *testing.T) {
 		"path on own line":  {from: opened(), text: "/tmp/a.json\nsummarize it", effects: []state.Effect{state.EffSubmit{Text: "/tmp/a.json\nsummarize it"}}},
 		"command then line": {from: opened(), text: "/nope\nmore", notice: "unknown command /nope"},
 		"help":              {from: opened(), text: "/help", notice: "/model <id>"},
-		"status":            {from: opened(), text: "/status", notice: "session sess-1 · embedded engine", effects: []state.Effect{state.EffLoadActivity{}, state.EffLoadUsage{Reason: state.UsageStatus}}},
+		"status":            {from: opened(), text: "/status", notice: "session sess-1 · embedded engine", effects: []state.Effect{state.EffLoadActivity{}, state.EffLoadUsage{Reason: state.UsageStatus}, state.EffLoadCache{SessionID: "sess-1"}}},
 	}
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {

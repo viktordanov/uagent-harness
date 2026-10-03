@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/viktordanov/uah/internal/app"
+	"github.com/viktordanov/uah/internal/config"
 	"github.com/viktordanov/uah/internal/models"
 	"github.com/viktordanov/uah/internal/session"
 )
@@ -84,6 +85,29 @@ func TestEffortNotice(t *testing.T) {
 	res, err = app.Setup(context.Background(), in, io.Discard)
 	require.NoError(t, err)
 	assert.Empty(t, res.Options.Notices)
+}
+
+// TestVerbosity: --model-verbosity wins over model_verbosity, and a model
+// whose entry does not support verbosity opens with Codex's warning.
+func TestVerbosity(t *testing.T) {
+	_, in := setupEnv(t)
+	in.Model = "gpt-6.1-sol"
+	r, err := app.Resolve(in, session.Info{}, config.Config{ModelVerbosity: "high"})
+	require.NoError(t, err)
+	assert.Equal(t, "high", r.Verbosity)
+	in.ModelVerbosity = "medium"
+	r, err = app.Resolve(in, session.Info{}, config.Config{ModelVerbosity: "high"})
+	require.NoError(t, err)
+	assert.Equal(t, "medium", r.Verbosity)
+
+	res, err := app.Setup(context.Background(), in, io.Discard)
+	require.NoError(t, err)
+	assert.Empty(t, res.Options.Notices)
+
+	in.Model = "gpt-unlisted"
+	res, err = app.Setup(context.Background(), in, io.Discard)
+	require.NoError(t, err)
+	assert.Contains(t, res.Options.Notices, "model_verbosity is set but ignored as the model does not support verbosity: gpt-unlisted")
 }
 
 func TestDefaultModelFromCatalog(t *testing.T) {

@@ -58,6 +58,36 @@ func Kept(covered []llm.Item, maxTokens int) []llm.Item {
 	return picked
 }
 
+// Developer is the developer messages among covered, in order, which a
+// compaction keeps whole: the harness's own context, such as the context a
+// session starts with (internal/contextprep), as Codex keeps its initial
+// context.
+func Developer(covered []llm.Item) []llm.Item {
+	var out []llm.Item
+	for _, item := range covered {
+		if m, ok := item.Data.(llm.Message); ok && item.Type == llm.ItemMessage && m.Role == llm.RoleDeveloper {
+			out = append(out, item)
+		}
+	}
+
+	return out
+}
+
+// Configured is the effort the last configuration update among covered
+// set, "" when covered has none. A compaction drops the updates it covers,
+// and the requests after it carry this effort instead, as Codex sets a new
+// baseline after a compaction (uah's effort updates,
+// internal/engine/embedded/adaptive.go).
+func Configured(covered []llm.Item) llm.ReasoningEffort {
+	for _, item := range slices.Backward(covered) {
+		if u, ok := item.Data.(llm.ConfigurationUpdate); ok && item.Type == llm.ItemConfigurationUpdate {
+			return u.ReasoningEffort
+		}
+	}
+
+	return ""
+}
+
 // ApproxTokens is Codex's estimate of text's tokens: bytes/4, rounded up.
 func ApproxTokens(text string) int {
 	return (len(text) + bytesPerToken - 1) / bytesPerToken

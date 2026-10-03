@@ -21,6 +21,7 @@ import (
 
 	"github.com/viktordanov/uah/internal/approval"
 	"github.com/viktordanov/uah/internal/compaction"
+	"github.com/viktordanov/uah/internal/contextprep"
 	"github.com/viktordanov/uah/internal/engine"
 	"github.com/viktordanov/uah/internal/engine/codexauth"
 	"github.com/viktordanov/uah/internal/hooks"
@@ -72,6 +73,18 @@ type Config struct {
 	// InstructionFiles are the instruction files in the host prompt, in
 	// order, so /context can list them.
 	InstructionFiles []string
+	// ContextModules are where context preparation's modules come from
+	// besides the built-ins.
+	ContextModules contextprep.Settings
+	// ContextPreparation starts each new session, subagents' included,
+	// with the prepared context (internal/contextprep) before its first
+	// message.
+	ContextPreparation bool
+	// EffortUpdates changes the effort with a configuration update in the
+	// history, where the model takes one (adaptive.go); UAH_EFFORT_UPDATES=off
+	// turns it off. A session whose backend rejects them falls back to the
+	// request's effort (effortfallback.go).
+	EffortUpdates bool
 	// AutoReview puts the auto-reviewer in front of the user for actions
 	// that need approval (approvals_reviewer = "auto_review"), with Review's
 	// model, effort, and timeout.
@@ -84,6 +97,10 @@ type Config struct {
 	// WebSearch offers the provider's hosted web search tool to a run on a
 	// provider that has it (Provider.WebSearch), subagents' runs included.
 	WebSearch bool
+	// Verbosity is model_verbosity: low, medium, or high in place of the
+	// model's default_verbosity, for a model whose catalog entry supports
+	// verbosity ("": the default), as Codex's key.
+	Verbosity string
 	// Subagents, when set, offers its tools to the runs it attaches and
 	// hears when the user interrupts a run; the engine closes it when it is
 	// an io.Closer.

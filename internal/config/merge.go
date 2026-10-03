@@ -18,6 +18,7 @@ func merge(base, over Config) Config {
 	set(&base.Effort, over.Effort)
 	set(&base.MaxDisk, over.MaxDisk)
 	set(&base.WebSearch, over.WebSearch)
+	set(&base.ModelVerbosity, over.ModelVerbosity)
 	base.Fast = base.Fast || over.Fast
 	base.TUI.Details = base.TUI.Details || over.TUI.Details
 	if over.TUI.Mouse != nil {
@@ -29,6 +30,12 @@ func merge(base, over Config) Config {
 	set(&base.History.Persistence, over.History.Persistence)
 	if over.History.MaxBytes != nil {
 		base.History.MaxBytes = over.History.MaxBytes
+	}
+	if over.ContextPreparation != nil {
+		base.ContextPreparation = over.ContextPreparation
+	}
+	if over.Context.Modules != nil {
+		base.Context.Modules = over.Context.Modules
 	}
 	if over.AutoCompactPercent != nil {
 		base.AutoCompactPercent = over.AutoCompactPercent

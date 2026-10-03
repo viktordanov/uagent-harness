@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/viktordanov/uah-core/harness/llm"
+
 	"github.com/viktordanov/uagent/core"
 
 	"github.com/viktordanov/uah/internal/engine"
@@ -49,6 +51,13 @@ func (w *wiring) client(req core.Request, opts engine.Options) (string, *switche
 
 		return c, nil
 	})
+	if err == nil {
+		sw.verbosity = func(model string) llm.Verbosity {
+			v, _ := w.e.models.Verbosity(p.Name, model, w.e.cfg.Verbosity)
+
+			return llm.Verbosity(v)
+		}
+	}
 
 	return model, sw, err
 }

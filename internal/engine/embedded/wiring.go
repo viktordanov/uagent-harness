@@ -1,6 +1,7 @@
 package embedded
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -124,7 +125,10 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 	if err != nil {
 		return nil, err
 	}
-	messages = w.primed(ctx, req, opts, messages)
+	if req.SessionID == "" {
+		req.SessionID = uuid.NewString() // as openStore would, so the prepared context knows it
+	}
+	messages = w.prepared(ctx, req, messages)
 	model, sw, err := w.client(req, opts)
 	if err != nil {
 		return nil, err
@@ -165,6 +169,9 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 	sw.images = w.e.pastedImages
 	sw.stream, sw.text, sw.diag = w.emit, opts.Stream, w.l.Stderr
 	sw.adaptive.steps = session.AdaptiveSteps(opts.AdaptiveEffort)
+	if err := w.effortUpdates(ctx, sw, s, req); err != nil {
+		return nil, err
+	}
 	operations := operation.NewLocalOperationManager(runCtx, newMCPJobs(runCtx, w.e.cfg.MCP), newAgentJobs(runCtx, w.e.cfg.Subagents, string(s.id)), newPatchJobs(runCtx))
 	first := compaction.Trigger("")
 	switch {
@@ -202,6 +209,7 @@ func (w *wiring) start(ctx context.Context, opts engine.Options) (*agent, error)
 		Tools:                 registry,
 		Operations:            operations,
 		Wake:                  wakePolicy(),
+		EffortUpdate:          sw.effortUpdate,
 	})
 	w.launch(runCtx, a, coord, obs, func() { s.store.RemoveObserver(prefetchID); s.store.RemoveObserver(observerID) })
 
@@ -252,6 +260,29 @@ func (w *wiring) compactor(ctx context.Context, s runStore, sw *switcher, first 
 		ctx: ctx, next: sw, log: log, emit: emit, logger: cfg.Logger, before: before, remote: w.remoteCompaction(), window: cfg.ContextWindow, windows: w.e.models.Window, settings: cfg.Compaction,
 		record: rec, older: records, cuts: cuts, pending: first, focus: focus, used: used,
 	}, nil
+}
+
+// effortUpdates turns effort updates on for the run when they are on and
+// the backend has not rejected them in the session (adaptive.go,
+// effortfallback.go): each request then carries the session's first
+// effort, so the session's runs share one prompt cache.
+func (w *wiring) effortUpdates(ctx context.Context, sw *switcher, s runStore, req core.Request) error {
+	if !w.e.cfg.EffortUpdates {
+		return nil
+	}
+	dir := w.e.sessionsDir()
+	if off, err := updatesRejected(dir, string(s.id)); err != nil || off {
+		return err
+	}
+	items, err := allItems(ctx, s.store, s.id)
+	if err != nil {
+		return err
+	}
+	sw.base = cmp.Or(firstEffort(items), reasoningEffort(req.Effort))
+	sw.updates = func(model string) bool { return w.e.models.EffortUpdates(req.Provider, model) }
+	sw.offUpdates = func(e engine.EffortUpdatesOff) error { return saveUpdatesRejected(dir, string(s.id), e) }
+
+	return nil
 }
 
 // remoteCompaction reports whether the run's compactions go to the

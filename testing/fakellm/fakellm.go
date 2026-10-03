@@ -101,10 +101,14 @@ type Request struct {
 	Model       string
 	Effort      string
 	ServiceTier string
+	// Verbosity is text.verbosity ("": no text field).
+	Verbosity string
 	// UserTexts are the user messages in the request input, in order.
 	UserTexts []string
 	// System is the system prompt (the system messages in the input).
 	System string
+	// DeveloperTexts are the developer messages in the input, in order.
+	DeveloperTexts []string
 	// ToolOutputs are the tool results in the input, in order.
 	ToolOutputs []string
 	// CallIDs are the tool calls in the input, in order.
@@ -117,6 +121,9 @@ type Request struct {
 	// tools as sent.
 	ToolNames []string
 	ToolDefs  []json.RawMessage
+	// EffortUpdates are the efforts of the configuration_update items in
+	// the input, in order.
+	EffortUpdates []string
 	// Input are the input items as sent, in order.
 	Input []json.RawMessage
 	// CacheKey is the prompt cache key.
@@ -142,6 +149,11 @@ type Server struct {
 	// a request is empty (its Arrival is kept), and routes never match. A performance harness sets it so the fake model costs little
 	// next to what it measures.
 	Light bool
+	// RejectEffortUpdates, set before the first request, answers every
+	// request with a configuration_update item with a 400 that names it, as
+	// a backend without effort updates does, without taking a reply from
+	// the script.
+	RejectEffortUpdates bool
 
 	srv   *httptest.Server
 	conns atomic.Int64
@@ -273,7 +285,11 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 	s.requests = append(s.requests, req)
 	s.arrivals = append(s.arrivals, arrival)
 	n := len(s.requests)
-	reply := s.next(req)
+	rejected := s.RejectEffortUpdates && len(req.EffortUpdates) > 0
+	reply := Reply{Fail: http.StatusBadRequest, FailBody: rejectedUpdate}
+	if !rejected {
+		reply = s.next(req)
+	}
 	s.mu.Unlock()
 	if reply.From != nil {
 		reply = reply.From(req)
@@ -455,6 +471,10 @@ func replyUsage(n int, reply Reply) *usage {
 }
 
 // failWith answers with the reply's HTTP status and a Responses API error.
+// rejectedUpdate is the 400's body for RejectEffortUpdates, in the
+// Responses API's shape for an input item of an unknown type.
+const rejectedUpdate = `{"error":{"message":"Invalid value: 'configuration_update'. Supported values are: 'message', 'function_call', 'function_call_output', and 'reasoning'.","type":"invalid_request_error","param":"input[2].type","code":"invalid_value"}}`
+
 func failWith(w http.ResponseWriter, reply Reply) {
 	body, err := json.Marshal(map[string]any{"error": map[string]any{
 		"code": reply.FailCode, "message": "fakellm: " + reply.FailCode, "type": "invalid_request_error",

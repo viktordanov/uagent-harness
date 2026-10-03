@@ -92,7 +92,7 @@ A session of 10,000 records cannot be made by running turns: every model request
 1. The session file's items and operation records, split into tokens: text kept as is, and the values each copy changes.
 2. Each copy gets fresh IDs (each UUID's fourth group is the copy's number; the session ID stays), fakellm's response and call IDs with the copy's number, sequence numbers moved past the previous copy, times 2 minutes apart ending now, and the scratch home's path.
 3. The first turn of a copy follows the previous copy's last turn, so the turn chain is whole.
-4. Each copy gets its run record (`events.jsonl`, `request.json`, `summary.json`, `stderr.log`) and the operations' output files.
+4. Each copy gets its run record (`events.jsonl`, `request.json`, `summary.json`, `stderr.log`) and the operations' output files; the recorded session's `$TMPDIR` is not an operation and is left out.
 
 | Size | Records | Session file | Runs |
 | --- | --- | --- | --- |
@@ -108,7 +108,7 @@ A size is a number of records, so a fixture holds as many workload turns as fit:
 <!-- memoria:section id="real" files="perf/real.go" -->
 ## Real sessions
 
-`-real <uah home>` adds the largest sessions of that home (`-real-sessions`, default 3) to the per-size scenarios `load`, `tui`, and `turn`, as `real-1`, `real-2`, and so on. Each is copied into the scratch home: its session file, sidecar, operation outputs, and run records, with the home's path rewritten. The harness never writes to that home and reads nothing else from it: no configuration, credentials, or index.
+`-real <uah home>` adds the largest sessions of that home (`-real-sessions`, default 3) to the per-size scenarios `load`, `tui`, and `turn`, as `real-1`, `real-2`, and so on. Each is copied into the scratch home: its session file, sidecar, operation outputs (not the commands' `$TMPDIR`, `operations/<id>/tmp`), and run records, with the home's path rewritten. The harness never writes to that home and reads nothing else from it: no configuration, credentials, or index.
 
 A session with an operation that never finished is skipped: resuming it would carry the operation on, and its recorded paths can point outside the copy. The turn on a real session answers with text only, since its workspace is not here. A recorded `SkillUse` call needs its tool to restore, so the scratch workspace has one stub skill.
 <!-- /memoria:section -->

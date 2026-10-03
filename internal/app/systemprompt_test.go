@@ -22,7 +22,8 @@ import (
 // TestSetup_ModelInstructionsFile sets model_instructions_file to a path
 // relative to the user file, as Codex resolves it: a missing or empty file
 // stops the session, and the file's text replaces the default base instructions
-// in the model request, after the runner's preamble and before AGENTS.md. A subagent's request
+// in the model request, after the runner's preamble and before AGENTS.md,
+// whose @ line is expanded. A subagent's request
 // carries the same system prompt with Codex's subagent note, and /context
 // counts the file as the system prompt.
 func TestSetup_ModelInstructionsFile(t *testing.T) {
@@ -41,7 +42,8 @@ func TestSetup_ModelInstructionsFile(t *testing.T) {
 	require.ErrorContains(t, err, "is empty")
 
 	writeFile(t, prompt, "# Project instructions\n\nBASE-PROMPT: answer briefly.\n")
-	writeFile(t, filepath.Join(e.Workspace, "AGENTS.md"), "Use tabs in Go files.")
+	writeFile(t, filepath.Join(e.Workspace, "AGENTS.md"), "Style:\n@docs/style.md")
+	writeFile(t, filepath.Join(e.Workspace, "docs", "style.md"), "Use tabs in Go files.")
 	llm := fakellm.New(t,
 		fakellm.Reply{Calls: []fakellm.Call{{Name: "spawn_agent", Args: `{"message":"CHILD-S check the build"}`}}},
 		fakellm.Reply{From: func(req fakellm.Request) fakellm.Reply {
@@ -66,14 +68,15 @@ func TestSetup_ModelInstructionsFile(t *testing.T) {
 	reqs := llm.Requests()
 	root := reqs[0]
 	assert.Contains(t, root.System, "\n\n"+want, "the file follows the runner's preamble, and the instructions follow it")
-	assert.Contains(t, root.System, "Use tabs in Go files.")
+	assert.Contains(t, root.System, "Style:\n<include path=\""+filepath.Join(e.Workspace, "docs", "style.md")+"\">\nUse tabs in Go files.\n</include>",
+		"an @ line is expanded in place")
 	assert.NotContains(t, root.System, "You are uah", "the default base instructions are replaced")
 	child := slices.IndexFunc(reqs, func(r fakellm.Request) bool {
 		return slices.ContainsFunc(r.UserTexts, func(u string) bool { return strings.HasPrefix(u, "CHILD-S") })
 	})
 	require.GreaterOrEqual(t, child, 0)
 	assert.Equal(t, root.System, reqs[child].System, "a subagent gets the same system prompt")
-	assert.True(t, strings.HasSuffix(reqs[child].UserTexts[0], "\n\n"+instructions.SubagentNote), "and Codex's subagent note with its task")
+	assert.True(t, strings.HasSuffix(reqs[child].UserTexts[len(reqs[child].UserTexts)-1], "\n\n"+instructions.SubagentNote), "and Codex's subagent note with its task")
 
 	u, ok := s.ContextUsage()
 	require.True(t, ok)

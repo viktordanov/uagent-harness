@@ -37,7 +37,7 @@ Field names are the runner's Go field names, such as `Sequence` and `RecordedAt`
 
 | Kind | `Data` | What a reader shows |
 | --- | --- | --- |
-| `input` | `ID`, `Kind`, and `Payload` | For `Kind` `external`, a message the user sent: `Payload` is a JSON string with the text. For `control`, a runner instruction, such as a settings change or "stop when idle", with `Payload` `{"Mode", "Reason", "Parameters"}`. A reader of the conversation skips control inputs and `crash` inputs. |
+| `input` | `ID`, `Kind`, and `Payload` | For `Kind` `external`, a message the user sent: `Payload` is a JSON string with the text. For `developer`, the harness's developer message, such as the [prepared context](../contextprep/README.md) a new session starts with (since ledger item 108; earlier sessions have it as an `external` input that starts with `<context_preparation>`), with the same `Payload`. For `control`, a runner instruction, such as a settings change or "stop when idle", with `Payload` `{"Mode", "Reason", "Parameters"}`. A reader of the conversation skips control inputs and `crash` inputs. |
 | `turn` | `ID`, `PreviousTurnID`, and `Type` (`regular` or `compaction`) | The start of one model request. The items that follow belong to it. |
 | `model_response` | `TurnID` and `Response`: `ID`, `Stop`, `Output`, `Usage`, and `Failure` | What the model returned. `Output` is a list of `{"ProviderID", "Type", "Data"}`. |
 | `tool_call_status` | `TurnID`, `CallID`, and `Status` (`Error`, and `WaitingFor`, the operations the call waits for) | The state of a tool call. The line also has `data.Operations`, next to `data.Item`: snapshots of the operations the call starts. |
@@ -72,6 +72,7 @@ These files change what the model sees. They never remove an item from the sessi
 - `sessions/<id>.compaction.jsonl`: one line for each compaction, with its `summary`, its `trigger`, and the time `at`. After a compaction, the model sees the summary in place of the older items. A transcript still shows every item, and can show a marker at `at`.
 - `sessions/<id>.rewind.jsonl`: one line for each time the user went back to an earlier message, with `message_id`, `from`, and `to`. The items with a `Sequence` from `from` to `to` left the model's context. A transcript can show them as the old branch, or leave them out.
 - `sessions/<id>.websearch.jsonl`: one line for each hosted web search, which the runner leaves out of the session file: the `web_search_call` `item` as Codex sends it back, the ID of the output item it came `before` (or, when none followed it, `after`), and the time `at`. The model sees the search next to that item for as long as the item is in its context.
+- `sessions/<id>.effortupdates.json`: present once the backend rejected the session's effort updates (`configuration_update` items): the time `at` and the `error`. Its later runs and its forks then change the effort per request.
 - `sessions/operations/<id>/<operation>/`: the full output of each command, in `out` and `err`. The operation snapshots in the session file give the paths (`State.OutPath` and `State.ErrPath`) and, when the operation is done, its `State.Result`.
 <!-- /memoria:section -->
 

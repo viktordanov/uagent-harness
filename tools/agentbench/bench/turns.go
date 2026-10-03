@@ -8,6 +8,8 @@ import (
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/viktordanov/uah/internal/usage/cachestats"
 )
 
 // Sessions of several user messages, turn by turn: what each user turn
@@ -133,51 +135,44 @@ func Rules() []Rule {
 	return rules
 }
 
-// cacheBlock is the provider's prompt cache granularity in tokens.
-const cacheBlock = 128
-
 // Replay is the main agent's tokens had its requests gone at the efforts
 // rule picks, with the user's effort high and the lowered one low. The
-// cache model: each effort keeps the longest prompt sent at it, and a
-// request finds cached the part of its input that prompt covers, in whole
-// blocks; a compaction leaves every effort only the cross-session prefix
-// (the first request's cached input). A request moved to the other effort
-// has its output, reasoning included, scaled by ratio, the output at high
-// per output at low. The subagents' tokens are not included.
+// cache model is internal/cachestats.Cache: each effort keeps the longest
+// prompt sent at it, and a request finds cached the part of its input that
+// prompt covers, in whole blocks; a compaction leaves every effort only the
+// cross-session prefix (the first request's cached input). A request moved
+// to the other effort has its output, reasoning included, scaled by ratio,
+// the output at high per output at low. The subagents' tokens are not
+// included.
 func (rr RunRequests) Replay(rule Rule, high, low string, ratio float64) Tokens {
 	var total Tokens
-	var base int64
-	prefix := map[string]int64{}
+	var cache *cachestats.Cache
 	compaction := 0
 	for i, r := range rr.Requests {
 		if r.Agent != "" {
 			continue
 		}
-		if total.Input == 0 {
-			base = r.Tokens.Cached
+		if cache == nil {
+			cache = cachestats.NewCache(r.Tokens.Cached)
 		}
-		reset := false
 		for compaction < len(rr.Compactions) && rr.Compactions[compaction].StartMS <= r.StartMS {
-			compaction, reset = compaction+1, true
+			compaction++
+			cache.Reset()
 		}
-		if reset || total.Input == 0 {
-			prefix = map[string]int64{high: base, low: base}
-		}
-		hit := func(e string) int64 { return min(r.Tokens.Input, prefix[e]) / cacheBlock * cacheBlock }
 		req := ReplayRequest{Index: i, Turn: r.Turn, Opener: rr.opener(i), Input: r.Tokens.Input}
 		e := high
-		if rule.Lower(req, r.Tokens.Input-hit(high)) {
+		if rule.Lower(req, r.Tokens.Input-cache.Hit(high, r.Tokens.Input)) {
 			e = low
 		}
 		tok := r.Tokens
-		tok.Cached = hit(e)
+		tok.Cached = cache.Hit(e, r.Tokens.Input)
 		switch {
 		case r.Effort == low && e == high:
 			tok.Output, tok.Reasoning = int64(float64(tok.Output)*ratio), int64(float64(tok.Reasoning)*ratio)
 		case r.Effort == high && e == low:
 			tok.Output, tok.Reasoning = int64(float64(tok.Output)/ratio), int64(float64(tok.Reasoning)/ratio)
 		}
-		prefix[e] = max(prefix[e], r.Tokens.Input)
+		cache.Sent(e, r.Tokens.Input)
 		total = total.Add(tok)
 	}
 

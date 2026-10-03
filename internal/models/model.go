@@ -45,6 +45,17 @@ type Model struct {
 	// ApplyPatchTool is Codex's apply_patch_tool_type ("freeform"): the
 	// model is trained on the apply_patch tool (empty: not known).
 	ApplyPatchTool string `json:"apply_patch_tool,omitempty"`
+	// SupportsVerbosity is Codex's support_verbosity: the model takes the
+	// Responses API's text.verbosity.
+	SupportsVerbosity bool `json:"support_verbosity,omitempty"`
+	// DefaultVerbosity is Codex's default_verbosity: low, medium, or high,
+	// sent when model_verbosity is unset ("": none).
+	DefaultVerbosity string `json:"default_verbosity,omitempty"`
+	// EffortUpdates is Codex's supports_reasoning_effort_updates: the model
+	// takes a configuration_update input item that changes the effort from
+	// its place in the history on, so the request keeps its effort and its
+	// prompt cache.
+	EffortUpdates bool `json:"supports_reasoning_effort_updates,omitempty"`
 }
 
 // SupportsPriority reports whether the model accepts service_tier
@@ -141,6 +152,19 @@ func (c Catalog) Metadata(id string) (Model, bool) {
 	}
 
 	return longestPrefix(rest, c.Models)
+}
+
+// Verbosity is the text.verbosity a request to the model carries, as
+// Codex's ModelClient picks it (core/src/client.rs): for a model whose entry
+// supports verbosity, override (model_verbosity) else the entry's default;
+// for any other model, or one no entry describes, none. ignored reports an
+// override the model does not take, which Codex warns about.
+func (c Catalog) Verbosity(model, override string) (verbosity string, ignored bool) {
+	if m, ok := c.Metadata(model); ok && m.SupportsVerbosity {
+		return cmp.Or(override, m.DefaultVerbosity), false
+	}
+
+	return "", override != ""
 }
 
 func longestPrefix(id string, models []Model) (Model, bool) {

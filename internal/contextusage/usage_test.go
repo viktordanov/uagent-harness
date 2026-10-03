@@ -1,6 +1,7 @@
 package contextusage_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -64,4 +65,29 @@ func TestAnalyze(t *testing.T) {
 	}
 	assert.InDelta(t, 10000, sum, 10, "categories add up to the reported tokens")
 	assert.Equal(t, int64(272000-10000), scaled.Free())
+}
+
+// TestAnalyze_Developer counts a developer message, uah's prepared
+// context, as the system prompt, not as the user's.
+func TestAnalyze_Developer(t *testing.T) {
+	req := llm.Request{Model: llm.Model{ID: "gpt-test"}, Input: []llm.Item{
+		msg(llm.RoleSystem, "Base."),
+		msg(llm.RoleDeveloper, "<context_preparation>\n"+strings.Repeat("x", 400)+"\n</context_preparation>"),
+		msg(llm.RoleUser, "hi"),
+	}}
+	with := contextusage.Analyze(req, 0, 272000, compaction.Settings{}, nil)
+	req.Input = append(req.Input[:1], req.Input[2:]...)
+	without := contextusage.Analyze(req, 0, 272000, compaction.Settings{}, nil)
+
+	tokens := func(u contextusage.Usage, name string) int64 {
+		for _, c := range u.Categories {
+			if c.Name == name {
+				return c.Tokens
+			}
+		}
+
+		return 0
+	}
+	assert.Greater(t, tokens(with, contextusage.SystemPrompt), tokens(without, contextusage.SystemPrompt)+90)
+	assert.Equal(t, tokens(without, contextusage.UserMessages), tokens(with, contextusage.UserMessages))
 }

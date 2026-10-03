@@ -229,6 +229,27 @@ func TestRunAndSessions(t *testing.T) {
 	assert.Contains(t, show.stdout, "✓ hello")
 	assert.Contains(t, show.stdout, "› second")
 	assert.Contains(t, show.stdout, "✓ A; B")
+	assert.Contains(t, show.stdout, "\nprompt cache ", "the session's prompt cache follows the transcript")
+
+	showJSON := uahWith(t, env, "", "sessions", "show", "--json", id)
+	require.Equal(t, 0, showJSON.code, showJSON.stderr)
+	var shown struct {
+		Cache struct {
+			Requests int `json:"requests"`
+			Missed   []struct {
+				Cause string `json:"cause"`
+			} `json:"missed"`
+			ByRequest []struct {
+				Model  string `json:"model"`
+				Effort string `json:"effort"`
+			} `json:"by_request"`
+		} `json:"cache"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(showJSON.stdout), &shown))
+	assert.Positive(t, shown.Cache.Requests)
+	require.Len(t, shown.Cache.ByRequest, shown.Cache.Requests)
+	assert.NotEmpty(t, shown.Cache.ByRequest[0].Model)
+	assert.NotNil(t, shown.Cache.Missed, "an empty list, not null")
 
 	noneHere := uahWith(t, env, "", "run", "--last", "hi")
 	assert.Equal(t, 2, noneHere.code, "no session in this directory")

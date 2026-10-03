@@ -45,8 +45,8 @@ type modelCall struct {
 	max        int
 	diag       io.Writer // a line per attempt: the run's stderr.log
 	wake, done chan struct{}
-	// effort and effortReason go in each attempt's line.
-	effort, effortReason string
+	// effort goes in each attempt's line.
+	effort effortLine
 
 	mu       sync.Mutex
 	pending  []core.Event
@@ -81,9 +81,14 @@ type attemptDiag struct {
 	LongestGapMS int64     `json:"longest_gap_ms"`
 	Tool         string    `json:"tool,omitempty"`
 	// Effort is the effort the request went at; EffortReason, with adaptive
-	// effort on, why (adaptive.go).
+	// effort on, why (adaptive.go). With effort updates, RequestEffort is
+	// the effort the request carried, which keys the prompt cache, Effort
+	// the one the history's last configuration update set, and
+	// EffortUpdate says the update was added before this request.
 	Effort        string `json:"effort,omitempty"`
 	EffortReason  string `json:"effort_reason,omitempty"`
+	RequestEffort string `json:"request_effort,omitempty"`
+	EffortUpdate  bool   `json:"effort_update,omitempty"`
 	NetworkWaitMS int64  `json:"network_wait_ms"`
 	Result        string `json:"result"`
 	Reason        string `json:"reason,omitempty"`
@@ -204,7 +209,7 @@ func (c *modelCall) progressLocked(phase string, force bool) {
 		bytes = c.a.SentBytes
 	}
 	c.shown = now
-	c.pushLocked(engine.ModelProgress{At: c.last, Phase: phase, Attempt: c.a.Attempt, Bytes: bytes, Tool: c.tool.name, Target: c.tool.target, ToolBytes: c.tool.bytes, Effort: c.effort})
+	c.pushLocked(engine.ModelProgress{At: c.last, Phase: phase, Attempt: c.a.Attempt, Bytes: bytes, Tool: c.tool.name, Target: c.tool.target, ToolBytes: c.tool.bytes, Effort: c.effort.effort})
 }
 
 // phase reports a new phase, and its time into the attempt in ms.
@@ -217,11 +222,18 @@ func (c *modelCall) phase(phase string, ms *int64) {
 	c.progressLocked(phase, true)
 }
 
-// setEffort records the request's effort and why, for its attempts' lines.
-func (c *modelCall) setEffort(effort, reason string) {
+// effortLine is what an attempt's line says of its request's effort
+// (attemptDiag).
+type effortLine struct {
+	effort, reason, request string
+	update                  bool
+}
+
+// setEffort records the request's effort, for its attempts' lines.
+func (c *modelCall) setEffort(e effortLine) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.effort, c.effortReason = effort, reason
+	c.effort = e
 }
 
 // start begins an attempt: the one before it was a retry, its text void.
@@ -231,7 +243,7 @@ func (c *modelCall) start(sent int64) {
 	c.writeLocked("retry")
 	c.a = attemptDiag{
 		Diag: "model_attempt", At: time.Now(), Kind: c.kind, Attempt: c.a.Attempt + 1, Max: c.max, SentBytes: sent,
-		Effort: c.effort, EffortReason: c.effortReason,
+		Effort: c.effort.effort, EffortReason: c.effort.reason, RequestEffort: c.effort.request, EffortUpdate: c.effort.update,
 	}
 	c.last, c.lost, c.terminal, c.failure, c.tool, c.outputs = c.a.At, false, "", apiError{}, toolCall{}, attemptOutputs{}
 	c.remote.reset()

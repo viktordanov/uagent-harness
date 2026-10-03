@@ -13,8 +13,10 @@ import (
 const DefaultTTL = 300 * time.Second
 
 // cacheVersion changes when the entry's shape does; another version is a
-// miss, as Codex treats another client_version.
-const cacheVersion = 1
+// miss, as Codex treats another client_version. Version 2 added the
+// models' verbosity, which a version 1 entry lacks, and version 3
+// supports_reasoning_effort_updates.
+const cacheVersion = 3
 
 // entry is one provider's cached list: Codex's ModelsCacheEntry
 // (models-manager/src/cache.rs) with the provider in the file name.

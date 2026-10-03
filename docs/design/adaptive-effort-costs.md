@@ -20,6 +20,10 @@ Five chat tasks (Go and Python repos, 6–7 messages each, real read/edit/test w
 
 Usage is the bill at API prices (uncached input \$1.25, cached input \$0.125, output \$10 per million tokens). Section *Usage on a subscription* shows how the result changes if a plan weighs tokens differently. Three runs first failed on a flaw in one task's check (it restored a test file the agent had legitimately extended); with the check fixed, all pass. A sixth task, where only the "off" group compacted its context, is left out of this table so the groups compare like for like; with it, the totals are −16% / −31% / −35% usage and −31% / −45% / −37% time.
 
+## Effort updates
+
+Since effort updates, a model that takes Codex's `configuration_update` item (gpt-6.1-sol and the other gpt-6 models) keeps **one** cache: every request carries the session's first effort, and an item in the history sets the effort the model reasons at, lower before a follow-up and back before a user message ([engine](../../internal/engine/README.md#adaptive-effort)). A probe (6 trials, gpt-6.1-sol, a 33k-token prompt) found a request with an update **99.5% cached**, as at the same effort, against 0% when the request's effort changed; its reasoning fell from about 1,030 to 380 tokens, as at the lower effort, held on later requests without a new item, and rose again with an update back. So the **catch-up term below is gone**: with updates, the usage model is the equation without $(u-c)(m-1)kg$, and adaptive effort keeps the other two savings (less output, slower growth). At 1-step, where the catch-up (about \$0.011 a message) and the output saving nearly cancelled, both savings now count. The figures below were measured before updates, with the request's effort switching; the benchmark comparison of the two is still to run, with `UAH_EFFORT_UPDATES=off` for the old behaviour ([agentbench](../../tools/agentbench/README.md#variants)). A backend that rejects the item turns the updates off for the session, and its switches are effort misses again.
+
 ## Why there is a cost at all: two caches
 
 ![An adaptive session: message 1 runs high then medium; message 2's high request re-bills message 1's tool work](../assets/adaptive-effort-caches.svg)
@@ -33,6 +37,8 @@ Every request re-reads the whole conversation, so **each message costs more than
 1. **It adds a fixed catch-up per message**, the previous message's tool work re-billed uncached: about \$0.011 per message at 1-step.
 2. **It writes less per message** (output is the most expensive token): about \$0.009 saved per message at 1-step.
 3. **It makes the conversation grow more slowly**, so every later request re-reads less. This saving is small at first and **grows with every message**.
+
+[Effort updates](#effort-updates) remove (1): the effort changes without leaving the cache.
 
 At 1-step, (1) and (2) nearly cancel, and (3) decides; at 2-steps, (2) alone already beats (1). The chart shows the resulting cost of each message:
 
@@ -118,6 +124,6 @@ On a ChatGPT plan you don't see dollars; you see a share of your 5-hour and week
 
 What would move the projections:
 
-- **Long pauses between messages.** If a pause outlasts the cache (minutes), both caches expire and adaptive pays about one extra full-context miss per message. In that case 1-step can cost more than off; 2-steps and time savings are unaffected.
+- **Long pauses between messages.** If a pause outlasts the cache, both caches expire and adaptive pays about one extra full-context miss per message. In that case 1-step can cost more than off; 2-steps and time savings are unaffected. The owner's real sessions show how often this happens ([agentbench `-cache-sessions`](../../tools/agentbench/README.md#real-sessions-prompt-cache)): the cache outlived pauses of up to 30 minutes about 9 times in 10, and 8% of the messages came after a longer pause. `/usage` shows each session's misses by cause ([session prompt cache](../../internal/usage/README.md#session-prompt-cache)).
 - **Compaction.** It resets the conversation, cutting the quadratic term that favours adaptive in long sessions.
 - **Harder tasks.** These chats pass even at all-medium, so they can't show what high effort buys. Earlier benchmarks found review and judgment tasks sensitive to effort; that is the next thing to test.

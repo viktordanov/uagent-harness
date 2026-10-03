@@ -76,14 +76,19 @@ func (a *agent) Send(in core.UserInput) error {
 	return a.submit(input)
 }
 
-// messageInput is a user message as the inbox takes it.
+// messageInput is a message as the inbox takes it: the user's, or a
+// developer message (core.RoleDeveloper) such as the prepared context.
 func messageInput(in core.UserInput) (inbox.Input, error) {
 	payload, err := json.Marshal(in.Text)
 	if err != nil {
 		return inbox.Input{}, fmt.Errorf("failed to encode message: %w", err)
 	}
+	kind := inbox.InputExternal
+	if in.Role == core.RoleDeveloper {
+		kind = inbox.InputDeveloper
+	}
 
-	return inbox.Input{ID: inbox.ID(in.ID), Kind: inbox.InputExternal, Payload: payload}, nil
+	return inbox.Input{ID: inbox.ID(in.ID), Kind: kind, Payload: payload}, nil
 }
 
 // controlInput is a control message as the inbox takes it.

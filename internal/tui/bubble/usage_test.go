@@ -14,6 +14,7 @@ import (
 
 	"github.com/viktordanov/uah/internal/tui/bubble"
 	"github.com/viktordanov/uah/internal/usage"
+	"github.com/viktordanov/uah/internal/usage/cachestats"
 	"github.com/viktordanov/uah/testing/harnesstest"
 )
 
@@ -63,4 +64,26 @@ func TestTUI_NoUsage(t *testing.T) {
 	d.key(tea.KeyEnter, 0)
 	d.waitFor("usage is not available for openai-codex")
 	assert.NotContains(t, d.view(), "% left")
+}
+
+// TestTUI_Cache shows the session's prompt cache on /usage, read for the
+// open session.
+func TestTUI_Cache(t *testing.T) {
+	d0 := deps(t, "simple.jsonl")
+	var asked atomic.Value
+	d0.Cache = func(id string) ([]cachestats.Attributed, error) {
+		asked.Store(id)
+
+		return []cachestats.Attributed{{
+			Request: cachestats.Request{Input: 12_000, Cached: 4_096, Output: 100},
+			Misses:  []cachestats.Miss{{Cause: cachestats.CauseCold, Tokens: 7_904}},
+		}}, nil
+	}
+	d := start(t, d0)
+	d.until("the session is open", func() bool { return d.m.(bubble.Model).Exit().SessionID != "" })
+
+	d.typeText("/usage")
+	d.key(tea.KeyEnter, 0)
+	d.waitFor("prompt cache 34% · missed 8k: cold start 8k")
+	assert.Equal(t, d.m.(bubble.Model).Exit().SessionID, asked.Load())
 }

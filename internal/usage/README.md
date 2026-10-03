@@ -11,7 +11,10 @@ The usage package reads the ChatGPT subscription's rate limits for the openai-co
 2. [Reading usage](#reading-usage)
 3. [Rows, warnings, and the limit](#rows-warnings-and-the-limit)
 4. [Headers and errors](#headers-and-errors)
-5. [Tests and the probe](#tests-and-the-probe)
+5. [Session prompt cache](#session-prompt-cache)
+6. [Tests and the probe](#tests-and-the-probe)
+
+The `cachestats` package accounts for what a session spends on its prompt cache: per request, the input the provider could have served from the cache, what it served, and why the rest missed. `/usage`, `/status`, and `uah sessions show` show it.
 
 The facts about Codex were checked against Codex `rust-v0.156.1`, and the facts about the runner against unreal-agent v0.1.1.
 <!-- /memoria:section -->
@@ -76,10 +79,51 @@ The backend also sends the rate limits as headers on each `/responses` call (`x-
 `ParseLimitReached` reads the body of a 429 whose error type is `usage_limit_reached`, which gives the plan and the reset time.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="development" files="parse_test.go headers_test.go fetch_test.go reader_test.go rows_test.go probe_test.go testdata/pro_weekly_only.json testdata/plus_two_windows.json" -->
+<!-- memoria:section id="cache" files="cachestats/cache.go cachestats/attribute.go cachestats/summary.go" -->
+## Session prompt cache
+
+OpenAI keeps a prompt cache per model and per reasoning effort, and drops it after the cache is idle for some time. A session pays for input it sent before when adaptive effort switches the effort, when the user switches the model or pauses, and when a compaction rewrites the history. The [cost study](../../docs/design/adaptive-effort-costs.md) measures the effort switches in the benchmark. `cachestats` measures all of these causes in real sessions.
+
+`session.CacheRequests` (in `internal/session`) reads a session's model requests from what its runs recorded. So it works for every past session, and it needs no new record:
+
+| Field | From |
+| --- | --- |
+| Input, cached input, output; start and end | Each `model_response` and the `turn` before it, in the run's events |
+| Model | The run's request |
+| Effort | The request's `model_attempt` line in the run's `stderr.log`: its `request_effort`, the effort the request carried, which an effort update (a `configuration_update` item) leaves at the session's base, else its `effort` (with adaptive effort, or after the backend rejected the updates, the request's own effort); in a run from before uah logged it, the run's latest settings |
+| Rewritten | A compaction that succeeded, or a rewind, since the request before |
+| Opener | The first request after a user's message |
+
+`Cache` is the cache model, which agentbench's `-turns` replay also uses. Each key (model and effort) keeps the longest prompt sent at it. A request finds cached the part of its input that this prompt covers, in whole blocks of 128 tokens. A rewritten history leaves every key only the base, which is the first request's cached input (the instructions and tools that sessions share).
+
+`Attribute(requests, TTL)` gives each request `Expected` (what its own key holds), `Reachable` (what any key holds, so the input past it is new and is not a miss), the gaps since the request before and since the last request at the same key, and its misses by cause:
+
+| Cause | Rule |
+| --- | --- |
+| `cold` | The session's first request: all its uncached input |
+| `compaction` | The first request after a compaction or a rewind: all its uncached input |
+| `idle` | A request that came more than `TTL` after the request before it: all its missed input |
+| `effort` | The part sent before only at another request effort; an effort update keeps the request's effort, so it causes none. Also the rest of the miss when this effort's cache was unused for more than `TTL` while the other effort was in use |
+| `model` | As `effort`, when the request before it went to another model. A model shares no cache with another model, so all of the miss is `model` |
+| `other` | The rest: the provider evicted the prefix or did not route to it. A request just after the first one of a session often misses all of it |
+
+A miss of at most `NoiseFloor` (1,024 tokens) does not count. `TTL` is 30 minutes. This value comes from the owner's sessions (agentbench `-cache-sessions`): after a pause of up to 30 minutes, the cache served about 90% of the messages at the same effort, as after short pauses; after 30 minutes to 3 hours, 67%; after more than 3 hours, none.
+
+`Summarize` totals the requests: the cached share, the misses by cause in the order of `Causes`, and `MissedShare`, which is what the missed input cost (the uncached price less the cached price) as a share of the session's usage at `APIPrice`. `APIPrice` is \$1.25, \$0.125, and \$10 per million uncached, cached, and output tokens, as in the cost study. The subscription's weighting is not published, so the share is an estimate. `Summary.Line` is the line that the TUI and `uah sessions show` print:
+
+```text
+cache 86% · missed 119k: effort switches 72k, cold start 9k, other 38k · ≈20% of usage (API-price estimate)
+```
+
+`uah sessions show --json` adds `cache`: the summary (`requests`, `input`, `cached`, `output`, `missed` by cause, `missed_share`, `idle_gaps`, `longest_idle_gap_ms`) and `by_request`, each request with its model, effort, tokens, `expected`, `gap_ms`, and `misses`.
+<!-- /memoria:section -->
+
+<!-- memoria:section id="development" files="parse_test.go headers_test.go fetch_test.go reader_test.go rows_test.go probe_test.go testdata/pro_weekly_only.json testdata/plus_two_windows.json cachestats/attribute_test.go" -->
 ## Tests and the probe
 
 `testdata/pro_weekly_only.json` is the response that a Pro login received on 2026-09-24, with the identifiers replaced. `plus_two_windows.json` is synthetic and has two windows, an additional limit, and a reached limit. The header tests use the header names that a real `/responses` call returned. `Fetch` is tested against a loopback server, for the headers, the path, and errors that contain no secrets. The reader is tested against a loopback server with a test clock: the cache, one request for many callers, the context, errors that keep the last snapshot, and unsupported providers. `uah usage`, `uah doctor`, and the TUI are tested against loopback servers too; no test calls the real backend.
+
+`cachestats/attribute_test.go` attributes synthetic request sequences: one effort (new content is no miss), an effort switch each way, a pause past the TTL and one within it, an effort whose cache expired while the other served, a model change, a compaction, and misses under the noise floor. It also checks the summary line and the share at API prices. `internal/session/cachestats_test.go` reads requests from run events and a `stderr.log` with attempt lines.
 
 `probe_test.go` needs the `probe` build tag and a Codex login. It sends one real GET to the usage endpoint and makes one small model call through `Transport`:
 

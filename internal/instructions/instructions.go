@@ -34,6 +34,9 @@ const RunnerHostPrompt = `You are an AI agent running inside an isolated sandbox
 type File struct {
 	Path  string
 	Bytes int
+	// Includes are the files Assemble expanded into this one from its @
+	// lines, in order.
+	Includes []string
 }
 
 // Options are Codex's AGENTS.md settings (codex-rs/core/src/agents_md.rs).
@@ -146,13 +149,15 @@ func stat(path string) (File, bool, error) {
 	return File{Path: path, Bytes: int(info.Size())}, true, nil
 }
 
-// Assemble joins the files in order under headers naming each path. It stops
-// before the file that would pass maxBytes; a first file larger than the cap
-// is cut. used lists the files included.
+// Assemble joins the files in order under headers naming each path, with
+// their @ lines expanded (includer). It stops before the file that would
+// pass maxBytes; a first file larger than the cap is cut. used lists the
+// files included, each with the files expanded into it.
 func Assemble(files []File, maxBytes int) (text string, used []File, truncated bool, err error) {
 	if maxBytes <= 0 {
 		maxBytes = DefaultMaxBytes
 	}
+	x := newIncluder(files)
 	var b strings.Builder
 	for _, f := range files {
 		data, err := os.ReadFile(f.Path)
@@ -162,7 +167,9 @@ func Assemble(files []File, maxBytes int) (text string, used []File, truncated b
 		if strings.TrimSpace(string(data)) == "" {
 			continue // Codex skips blank files
 		}
-		block := fmt.Sprintf("## %s\n\n%s\n", f.Path, strings.TrimSpace(string(data)))
+		var body string
+		body, f.Includes = x.expand(strings.TrimSpace(string(data)), f.Path, 0)
+		block := fmt.Sprintf("## %s\n\n%s\n", f.Path, body)
 		if b.Len()+len(block) > maxBytes {
 			truncated = true
 			if b.Len() == 0 {

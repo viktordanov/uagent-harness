@@ -53,6 +53,19 @@ func TestRewindPoint_TakesTheInputsThatWentWithTheMessage(t *testing.T) {
 	assert.Empty(t, held)
 }
 
+func TestRewindPoint_KeepsTheDeveloperMessage(t *testing.T) {
+	prepared := input(t, "ctx", "<context_preparation>\n</context_preparation>")
+	in := prepared.Data.(inbox.Input)
+	in.Kind = inbox.InputDeveloper
+	prepared.Data = in
+	items := []sessionstore.Item{prepared, input(t, "m1", "first"), turn("t1"), response("t1")}
+
+	from, held, err := rewindPoint(items, "m1")
+	require.NoError(t, err)
+	assert.Equal(t, 1, from, "the prepared context stays")
+	assert.Empty(t, held)
+}
+
 func TestRewindPoint_RefusesAMessageSentWhileAToolCallWaited(t *testing.T) {
 	items := []sessionstore.Item{
 		input(t, "m1", "first"), turn("t1"), response("t1", "c1"),

@@ -49,6 +49,13 @@ func TestReduce_CompactionWarning(t *testing.T) {
 	assert.Equal(t, session.LevelWarning, s.Items[len(s.Items)-2].Level)
 }
 
+func TestReduce_EffortUpdatesOff(t *testing.T) {
+	s, _ := apply(opened(), engine.EffortUpdatesOff{At: t0, Err: "rejected"})
+	last := s.Items[len(s.Items)-1]
+	assert.Equal(t, "effort updates were rejected by the backend; switching effort per request (cache misses on switches)", last.Text)
+	assert.Equal(t, session.LevelWarning, last.Level)
+}
+
 func TestReduce_ReloadedCompactionAndInterrupt(t *testing.T) {
 	s := opened()
 	history := []session.LoadedRun{{

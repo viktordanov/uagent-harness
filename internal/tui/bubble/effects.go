@@ -116,6 +116,8 @@ func (m Model) run(e state.Effect) tea.Cmd { //nolint:gocyclo // a dispatch swit
 		}
 	case state.EffLoadUsage:
 		return m.loadUsage(e)
+	case state.EffLoadCache:
+		return m.loadCache(e)
 	case state.EffLoadModels:
 		if m.deps.Models == nil { // no list, so /model says so instead of loading forever
 			return func() tea.Msg {

@@ -96,6 +96,15 @@ func TestLoad(t *testing.T) {
 		require.ErrorContains(t, err, `unknown key "timeout"`)
 	})
 
+	t.Run("effort_updates is an unknown key: only UAH_EFFORT_UPDATES turns them off", func(t *testing.T) {
+		user := filepath.Join(t.TempDir(), "config.toml")
+		write(t, user, "effort_updates = false\n")
+
+		_, _, err := config.Load(user, t.TempDir())
+
+		require.ErrorContains(t, err, `unknown key "effort_updates"`)
+	})
+
 	t.Run("a project file cannot trust itself", func(t *testing.T) {
 		root := t.TempDir()
 		ws := filepath.Join(root, "ws")

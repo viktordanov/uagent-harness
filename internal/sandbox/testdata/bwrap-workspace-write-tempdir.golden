@@ -1,0 +1,15 @@
+--new-session
+--die-with-parent
+--ro-bind / /
+--dev /dev
+--bind $SYSTMP $SYSTMP
+--bind $BASE/ws $BASE/ws
+--ro-bind $BASE/ws/.git $BASE/ws/.git
+--bind $BASE/tmpdir $BASE/tmpdir
+--bind $BASE/session-tmp $BASE/session-tmp
+--unshare-user
+--unshare-pid
+--unshare-ipc
+--unshare-net
+--proc /proc
+--cap-drop ALL

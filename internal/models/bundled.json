@@ -2,6 +2,7 @@
   "models": [
     {
       "slug": "gpt-6-astra",
+      "supports_reasoning_effort_updates": true,
       "display_name": "GPT-6-Astra",
       "description": "Frontier intelligence for the most demanding work.",
       "visibility": "list",
@@ -67,10 +68,13 @@
         "team"
       ],
       "minimal_client_version": "0.153.0",
-      "apply_patch_tool_type": "freeform"
+      "apply_patch_tool_type": "freeform",
+      "support_verbosity": true,
+      "default_verbosity": "low"
     },
     {
       "slug": "gpt-6.1-sol",
+      "supports_reasoning_effort_updates": true,
       "display_name": "GPT-6.1-Sol",
       "description": "Latest workhorse model for coding and everyday work.",
       "visibility": "list",
@@ -137,10 +141,13 @@
         "team"
       ],
       "minimal_client_version": "0.153.0",
-      "apply_patch_tool_type": "freeform"
+      "apply_patch_tool_type": "freeform",
+      "support_verbosity": true,
+      "default_verbosity": "low"
     },
     {
       "slug": "gpt-6-sol",
+      "supports_reasoning_effort_updates": true,
       "display_name": "GPT-6-Sol",
       "description": "Previous generation workhorse model.",
       "visibility": "list",
@@ -206,10 +213,13 @@
         "team"
       ],
       "minimal_client_version": "0.155.0",
-      "apply_patch_tool_type": "freeform"
+      "apply_patch_tool_type": "freeform",
+      "support_verbosity": true,
+      "default_verbosity": "low"
     },
     {
       "slug": "gpt-6-luna",
+      "supports_reasoning_effort_updates": true,
       "display_name": "GPT-6-Luna",
       "description": "Fast and affordable model for easier tasks.",
       "visibility": "list",
@@ -272,7 +282,9 @@
         "team"
       ],
       "minimal_client_version": "0.155.0",
-      "apply_patch_tool_type": "freeform"
+      "apply_patch_tool_type": "freeform",
+      "support_verbosity": true,
+      "default_verbosity": "low"
     },
     {
       "slug": "gpt-5.6-sol",
@@ -341,7 +353,9 @@
         "team"
       ],
       "minimal_client_version": "0.144.0",
-      "apply_patch_tool_type": "freeform"
+      "apply_patch_tool_type": "freeform",
+      "support_verbosity": true,
+      "default_verbosity": "low"
     },
     {
       "slug": "gpt-5.6-terra",
@@ -410,7 +424,9 @@
         "team"
       ],
       "minimal_client_version": "0.144.0",
-      "apply_patch_tool_type": "freeform"
+      "apply_patch_tool_type": "freeform",
+      "support_verbosity": true,
+      "default_verbosity": "low"
     },
     {
       "slug": "gpt-5.6-luna",
@@ -476,7 +492,9 @@
         "team"
       ],
       "minimal_client_version": "0.144.0",
-      "apply_patch_tool_type": "freeform"
+      "apply_patch_tool_type": "freeform",
+      "support_verbosity": true,
+      "default_verbosity": "low"
     },
     {
       "slug": "gpt-daybreak-blue-latest",
@@ -535,7 +553,9 @@
         "team"
       ],
       "minimal_client_version": "0.142.2",
-      "apply_patch_tool_type": "freeform"
+      "apply_patch_tool_type": "freeform",
+      "support_verbosity": true,
+      "default_verbosity": "low"
     },
     {
       "slug": "gpt-daybreak-red-latest",
@@ -594,7 +614,9 @@
         "team"
       ],
       "minimal_client_version": "0.142.2",
-      "apply_patch_tool_type": "freeform"
+      "apply_patch_tool_type": "freeform",
+      "support_verbosity": true,
+      "default_verbosity": "high"
     },
     {
       "slug": "gpt-5.5",
@@ -657,7 +679,9 @@
         "team"
       ],
       "minimal_client_version": "0.124.0",
-      "apply_patch_tool_type": "freeform"
+      "apply_patch_tool_type": "freeform",
+      "support_verbosity": true,
+      "default_verbosity": "low"
     },
     {
       "slug": "codex-auto-review",
@@ -720,7 +744,9 @@
         "team"
       ],
       "minimal_client_version": "0.98.0",
-      "apply_patch_tool_type": "freeform"
+      "apply_patch_tool_type": "freeform",
+      "support_verbosity": true,
+      "default_verbosity": "low"
     }
   ]
 }

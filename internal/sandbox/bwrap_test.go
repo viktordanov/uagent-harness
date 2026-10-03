@@ -23,6 +23,16 @@ func TestBwrapArgs(t *testing.T) {
 
 			return sandbox.Policy{Mode: sandbox.ReadOnly, Workspace: mkdir(t, base, "ws", ".git")}
 		}},
+		{"read-only-tempdir", func(t *testing.T, base string) sandbox.Policy {
+			t.Helper()
+
+			return sandbox.Policy{Mode: sandbox.ReadOnly, Workspace: mkdir(t, base, "ws", ".git"), TempDir: mkdir(t, base, "session-tmp")}
+		}},
+		{"workspace-write-tempdir", func(t *testing.T, base string) sandbox.Policy {
+			t.Helper()
+
+			return sandbox.Policy{Mode: sandbox.WorkspaceWrite, Workspace: mkdir(t, base, "ws", ".git"), TempDir: mkdir(t, base, "session-tmp")}
+		}},
 		{"workspace-write-git", func(t *testing.T, base string) sandbox.Policy {
 			t.Helper()
 

@@ -13,6 +13,9 @@ func parseRequest(body []byte) Request {
 		Reasoning   struct {
 			Effort string `json:"effort"`
 		} `json:"reasoning"`
+		Text struct {
+			Verbosity string `json:"verbosity"`
+		} `json:"text"`
 		Tools []struct {
 			Name       string          `json:"name"`
 			Parameters json.RawMessage `json:"parameters"`
@@ -23,6 +26,10 @@ func parseRequest(body []byte) Request {
 			Content json.RawMessage `json:"content"`
 			Output  json.RawMessage `json:"output"`
 			CallID  string          `json:"call_id"`
+			// Reasoning is a configuration_update's.
+			Reasoning struct {
+				Effort string `json:"effort"`
+			} `json:"reasoning"`
 		} `json:"input"`
 	}
 	var items struct {
@@ -31,7 +38,7 @@ func parseRequest(body []byte) Request {
 	}
 	_ = json.Unmarshal(body, &raw)
 	_ = json.Unmarshal(body, &items)
-	req := Request{Model: raw.Model, ServiceTier: raw.ServiceTier, Effort: raw.Reasoning.Effort, Tools: map[string]string{}, Input: items.Input, ToolDefs: items.Tools, CacheKey: raw.CacheKey}
+	req := Request{Model: raw.Model, ServiceTier: raw.ServiceTier, Effort: raw.Reasoning.Effort, Verbosity: raw.Text.Verbosity, Tools: map[string]string{}, Input: items.Input, ToolDefs: items.Tools, CacheKey: raw.CacheKey}
 	for _, t := range raw.Tools {
 		req.Tools[t.Name] = string(t.Parameters)
 		req.ToolNames = append(req.ToolNames, t.Name)
@@ -43,6 +50,11 @@ func parseRequest(body []byte) Request {
 
 			continue
 		}
+		if in.Type == "configuration_update" {
+			req.EffortUpdates = append(req.EffortUpdates, in.Reasoning.Effort)
+
+			continue
+		}
 		if in.Type == "function_call" || in.Type == typeCustomCall {
 			req.CallIDs = append(req.CallIDs, in.CallID)
 
@@ -51,8 +63,10 @@ func parseRequest(body []byte) Request {
 		switch in.Role {
 		case "user":
 			req.UserTexts = append(req.UserTexts, texts(in.Content)...)
-		case "system", "developer":
+		case "system":
 			req.System += strings.Join(texts(in.Content), "\n")
+		case "developer":
+			req.DeveloperTexts = append(req.DeveloperTexts, texts(in.Content)...)
 		}
 	}
 
