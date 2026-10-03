@@ -233,8 +233,10 @@ func (st *Styles) workingLine(now time.Time, w state.Wait, run time.Time) string
 		return line
 	}
 	times := elapsed(now.Sub(run))
-	if w.Since.After(run) {
-		times = elapsed(now.Sub(w.Since)) + " · " + times
+	// The wait's own time only when it reads differently: a wait that
+	// began within the run's first second shows one time, not "6s · 6s".
+	if wait := elapsed(now.Sub(w.Since)); w.Since.After(run) && wait != times {
+		times = wait + " · " + times
 	}
 
 	return line + st.dim.Render(" ("+times+" • "+cmp.Or(w.Hint, "esc to interrupt")+")")
