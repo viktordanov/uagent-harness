@@ -155,12 +155,11 @@ The permission modes:
 | `timeout` | duration | `90s` | override | The limit for one review; a review that times out denies |
 | `policy_file` | path | Codex's review policy | override | A file whose text replaces the review policy, as Codex's `[auto_review] policy` does inline. The fixed framing and the answer format stay. An absolute path or one under `~/`; a missing or empty file stops the session from starting |
 
-`review_model` and `review_effort` are top-level keys for the TUI's `/review` and `uah review` (a code review by a read-only subagent), not for the auto-reviewer above. `review_model` is Codex's key; Codex has no key for the review's effort (checked against Codex main at commit b741e48), so `review_effort` is uah's:
+`review_model` is a top-level key, Codex's, for the TUI's `/review` and `uah review` (a code review by a read-only subagent), not for the auto-reviewer above:
 
 | Key | Type | Default | Merge | Meaning |
 | --- | --- | --- | --- | --- |
-| `review_model` | string | the session's current model, as Codex | override | The model the reviewer runs on, on the session's provider ([the review design](design/review.md)) |
-| `review_effort` | string | the session's current effort, as Codex | override | The reviewer's effort: low, medium, high, xhigh, max, or ultra. It stays fixed for the whole review: adaptive effort is always off for the reviewer, as Codex keeps a review's effort fixed |
+| `review_model` | string | the session's current model, as Codex | override | The model `/review` runs its reviewer on, on the session's provider, with the session's effort ([the review design](design/review.md)) |
 
 `uah prompts init` writes the built-in prompts to `~/.uah/prompts` as a starting point: the review policy (`review.md`), the summary prompt (`compact.md`), uah's default system prompt (`system.md`), Codex's unmodified prompt (`system-codex.md`), and the runner's short host prompt (`system-runner.md`). It prints the `policy_file`, `experimental_compact_prompt_file`, and `model_instructions_file` lines that use them, with the lines for `system-codex.md` and `system-runner.md` commented out, and it overwrites only with `--force`. `uah prompts show <name>` prints one: `compact`, `system`, `system-codex`, `system-runner`, or `review`. `uah prompts init` also writes the [context modules](#context-modules) to `~/.uah/prompts/context.defaults/` as a reference that uah never reads, and overwrites those copies each time; it writes nothing under `~/.uah/prompts/context/`. `uah prompts show context/<path>` prints a module, such as `context/environment/fish`. `uah prompts status` lists the prompt files (absent, identical to the built-in, or edited), the context replacements, and the user's own modules; `uah prompts prune` deletes the replacements identical to the built-in (`--dry-run` lists them).
 
@@ -472,7 +471,6 @@ model_context_window = 272000      # tokens; overrides the model catalog
 # compact_model = "gpt-6-luna"              # a cheaper summary model; default: the session's
 # compact_effort = "medium"
 # review_model = "gpt-6-sol"                # /review's model; default: the session's
-# review_effort = "xhigh"                    # /review's effort, never adaptive; default: the session's
 # compact_prompt = "Summarize for a handoff: decisions, open work, file paths."
 # experimental_compact_prompt_file = "~/.uah/compact.md"
 # compact_user_message_max_tokens = 20000  # default: 20000, at most a quarter of the window

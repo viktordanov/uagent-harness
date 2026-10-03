@@ -309,7 +309,7 @@ uah review --base main --json             # one JSON line: findings, verdict, mo
 uah review --base main -o REVIEW.md       # also write the review's text to a file
 ```
 
-`review_model` and `review_effort` in the [configuration](#configuration) pick the reviewer's model and effort (default: the session's). Adaptive effort is always off for the reviewer, as Codex keeps a review's effort fixed. The [review design](docs/design/review.md) has Codex's behavior and the decisions.
+`review_model` in the [configuration](#configuration) picks the reviewer's model (default: the session's). The [review design](docs/design/review.md) has Codex's behavior and the decisions.
 
 ### MCP setup
 
@@ -431,7 +431,7 @@ Earlier versions used `~/.config/uagent`, `~/.local/state/unreal-agent`, and a p
 | Hooks | `[[hooks.<Event>]]` `matcher`, `command`, `timeout` |
 | MCP servers | `[mcp_servers.<name>]` `command`, `args`, `env`, `env_vars`, `cwd`, `url`, `bearer_token_env_var`, `http_headers`, `env_http_headers`, `enabled`, `required`, `startup_timeout_sec`, `tool_timeout_sec`, `enabled_tools`, `disabled_tools`, `supports_parallel_tool_calls`, `default_tools_approval_mode`, `tools.<tool>.approval_mode`, `auth`, `scopes`, `oauth_resource`, `[oauth]`; `mcp_oauth_credentials_store`, `mcp_oauth_callback_port`, `mcp_oauth_callback_url` |
 | Subagents | `[agents]` `enabled`, `max_concurrent_threads_per_session`, `max_depth`, `default_subagent_model`, `default_subagent_reasoning_effort` |
-| `/review` | `review_model`, `review_effort` |
+| `/review` | `review_model` |
 | TUI | `[tui]` `details`, `mouse`, `title` |
 | Prompt history | `[history]` `persistence`, `max_bytes` |
 | Projects | `[projects."<path>"]` `trusted` |

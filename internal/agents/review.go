@@ -25,16 +25,11 @@ var reviewTools = []string{"Bash", "ViewImage"}
 // ReviewSettings are a reviewer's settings, as Codex sets up its review
 // thread: the parent's in read only mode, with Codex's rubric in place of
 // the base instructions and the project's, then the parent's environment
-// context, and the configured review model and effort (the parent's by
-// default). Adaptive effort is off: Codex keeps a review's effort fixed,
-// and lowering it after tool results would lower it while the reviewer
-// reads the evidence.
+// context, and the configured review model (the parent's by default).
 func (m *Manager) ReviewSettings(parent session.Settings) session.Settings {
 	s := parent.WithMode(approval.ModeReadOnly)
 	s.SystemPrompt = instructions.HostPrompt(codereview.Instructions(), "", environment(parent.SystemPrompt))
 	s.Model = first(m.cfg.ReviewModel, s.Model)
-	s.Effort = first(m.cfg.ReviewEffort, s.Effort)
-	s.AdaptiveEffort = session.AdaptiveOff
 
 	return s
 }
