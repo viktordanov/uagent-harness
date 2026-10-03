@@ -118,6 +118,8 @@ func (p *printer) print(event core.Event) { //nolint:gocyclo // a dispatch switc
 		if e.OK {
 			p.say("reconnected")
 		}
+	case engine.EffortUpdatesOff:
+		p.say("warning: " + e.Text())
 	case engine.WebSearch:
 		if e.Done {
 			p.say(e.Text())

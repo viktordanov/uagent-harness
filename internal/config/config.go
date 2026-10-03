@@ -63,12 +63,6 @@ type Config struct {
 	// sandbox, the workspace, the agent files, and the harness (true by
 	// default).
 	ContextPreparation *bool `toml:"context_preparation"`
-	// EffortUpdates changes a session's effort with a configuration update
-	// in its history instead of the request's effort, for a model whose
-	// catalog entry takes it (supports_reasoning_effort_updates), as Codex
-	// does: adaptive effort and /effort then keep the prompt cache (true by
-	// default).
-	EffortUpdates *bool `toml:"effort_updates"`
 	// Context configures context preparation's modules.
 	Context Context `toml:"context"`
 	// ModelVerbosity is low, medium, or high: the Responses API's
@@ -311,12 +305,6 @@ func (c Config) InstructionOptions() (fallbacks []string, markers []string, maxB
 // prepared context.
 func (c Config) ContextPreparationEnabled() bool {
 	return c.ContextPreparation == nil || *c.ContextPreparation
-}
-
-// EffortUpdatesEnabled reports whether effort changes go as configuration
-// updates where the model takes them.
-func (c Config) EffortUpdatesEnabled() bool {
-	return c.EffortUpdates == nil || *c.EffortUpdates
 }
 
 // InstructionsEnabled reports whether instruction files should be loaded.

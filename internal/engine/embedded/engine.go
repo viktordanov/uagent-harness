@@ -81,7 +81,9 @@ type Config struct {
 	// message.
 	ContextPreparation bool
 	// EffortUpdates changes the effort with a configuration update in the
-	// history, where the model takes one (adaptive.go).
+	// history, where the model takes one (adaptive.go); UAH_EFFORT_UPDATES=off
+	// turns it off. A session whose backend rejects them falls back to the
+	// request's effort (effortfallback.go).
 	EffortUpdates bool
 	// AutoReview puts the auto-reviewer in front of the user for actions
 	// that need approval (approvals_reviewer = "auto_review"), with Review's

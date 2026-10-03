@@ -152,6 +152,13 @@ func sessionEventDTO(event core.Event) (any, bool) {
 
 			OK bool `json:"ok"`
 		}{header("reconnect_ended", e.At), e.OK}, true
+	case engine.EffortUpdatesOff:
+		return struct {
+			sessionHeader
+
+			Message string `json:"message"`
+			Error   string `json:"error"`
+		}{header("effort_updates_off", e.At), e.Text(), e.Err}, true
 	}
 
 	return nil, false

@@ -60,7 +60,8 @@ type Inputs struct {
 	// ContextPreparation is on or off: off from --no-context-preparation,
 	// else its environment variable ("": unset).
 	ContextPreparation string
-	// EffortUpdates is on or off from its environment variable ("": unset).
+	// EffortUpdates is UAH_EFFORT_UPDATES: off turns effort updates off, a
+	// switch for tests and A/B runs ("": unset, on).
 	EffortUpdates string
 	// ModelVerbosity is --model-verbosity or its environment variable
 	// ("": unset).
@@ -91,7 +92,7 @@ type Resolved struct {
 	// context.
 	ContextPreparation bool
 	// EffortUpdates reports whether effort changes go as configuration
-	// updates where the model takes them (effort_updates).
+	// updates where the model takes them (UAH_EFFORT_UPDATES).
 	EffortUpdates bool
 	// Sandbox is the policy commands run under. Its Workspace and
 	// WritableRoots are as given; Setup makes them absolute.
@@ -208,7 +209,7 @@ func Resolve(in Inputs, resumed session.Info, cfg config.Config) (Resolved, erro
 	if err != nil {
 		return Resolved{}, err
 	}
-	updates, err := pickOnOff(in.EffortUpdates, EnvEffortUpdates, cfg.EffortUpdatesEnabled())
+	updates, err := pickOnOff(in.EffortUpdates, EnvEffortUpdates, true)
 	if err != nil {
 		return Resolved{}, err
 	}

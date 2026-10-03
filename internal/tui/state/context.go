@@ -50,6 +50,8 @@ func (s *State) onEngineEvent(ev core.Event) bool {
 		s.notice(LevelDebug, fmt.Sprintf("reconnecting, attempt %d of %d: %s", e.Attempt, e.MaxAttempts, e.Reason))
 	case engine.ReconnectEnded:
 		s.live().Retry = nil
+	case engine.EffortUpdatesOff:
+		s.notice(session.LevelWarning, e.Text())
 	case engine.ModelProgress:
 		s.onProgress(e)
 	case engine.AutoReviewing:
