@@ -14,8 +14,9 @@ concurrency:
 
 jobs:
   # The tests that skip under -short (backoff waits, built runners, the
-  # agentbench dry run, the performance harness) run in the slow job, beside
-  # this one; go test compiles every package, so there is no build step.
+  # performance harness) run in the slow job, beside this one, and the
+  # agentbench dry run in agentbench.yml; go test compiles every package, so
+  # there is no build step.
   test:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -46,7 +47,9 @@ jobs:
       - name: Benchmarks
         run: go test -run '^$' -bench . -benchtime 1x ./internal/tui/render/...
 
-  # slow runs, in full, each package with a test that skips under -short.
+  # slow runs, in full, each package with a test that -short skips, but
+  # the agentbench dry run (agentbench.yml); then, without the race detector,
+  # the tests that skip under it.
   slow:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -57,13 +60,6 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
-      # The agentbench dry run builds every task with its own Go build cache
-      # (tools/agentbench/bench TestTasksValid); a warm one saves most of it.
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: /tmp/uah-agentbench-test/tmp/gocache
-          key: agentbench-gocache-${{ runner.os }}-${{ hashFiles('go.mod', 'tools/agentbench/testdata/tasks/**') }}
-          restore-keys: agentbench-gocache-${{ runner.os }}-
       - name: Install bubblewrap
         run: sudo apt-get update && sudo apt-get install -y bubblewrap
       - name: Enable unprivileged user namespaces
@@ -78,7 +74,11 @@ jobs:
         run: |
           packages=$(grep -rl --include='*_test.go' --exclude='*_darwin_test.go' --exclude-dir=testdata 'testing.Short()' . | xargs -n1 dirname | sort -u)
           echo "$packages"
-          go test -race $packages
+          go test -race -skip '^TestTasksValid$' $packages
+      # The performance ceilings and the Markdown renderer's every-prefix
+      # tests skip under the race detector.
+      - name: Test without the race detector
+        run: go test ./tools/perf/perf ./internal/tui/render/markdown
 
   lint:
     runs-on: ubuntu-24.04

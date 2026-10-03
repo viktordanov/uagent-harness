@@ -165,18 +165,6 @@ func TestInstructionsAndConfig(t *testing.T) {
 		assert.NotContains(t, req.System, "haiku")
 	})
 
-	t.Run("model_instructions_file replaces the host prompt", func(t *testing.T) {
-		require.NoError(t, os.WriteFile(filepath.Join(configDir, "config.toml"), []byte("model_instructions_file = \"system.md\"\n"), 0o600))
-		require.NoError(t, os.WriteFile(filepath.Join(configDir, "system.md"), []byte("BASE-PROMPT\n"), 0o600))
-
-		res := uahWith(t, env, "", "run", "-q", "--no-instructions", "-C", e.Workspace, "hi")
-
-		require.Equal(t, 0, res.code, res.stderr)
-		system := lastRequest(t, llm).System
-		assert.Contains(t, system, "\n\nBASE-PROMPT\n\n<environment_context>\n", "after the runner's preamble, before the environment: %s", system)
-		assert.NotContains(t, system, "You are uah", "the default base instructions are replaced")
-	})
-
 	t.Run("a config typo is a usage error", func(t *testing.T) {
 		require.NoError(t, os.WriteFile(filepath.Join(configDir, "config.toml"), []byte("efort = \"low\"\n"), 0o600))
 

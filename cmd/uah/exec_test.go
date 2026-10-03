@@ -86,10 +86,11 @@ func TestExecOutputLastMessage(t *testing.T) {
 	})
 }
 
-// TestExecJSONIsStream checks --json against --stream, under both names.
+// TestExecJSONIsStream checks that --json streams, under both names;
+// TestInstructionsAndConfig runs --stream.
 func TestExecJSONIsStream(t *testing.T) {
 	t.Parallel()
-	for _, args := range [][]string{{"exec", "--json"}, {"run", "--json"}, {"exec", "--stream"}} {
+	for _, args := range [][]string{{"exec", "--json"}, {"run", "--json"}} {
 		e, env := fakeEnv(t)
 		res := uahWith(t, env, "", append(args, "-C", e.Workspace, "hi")...)
 		require.Equal(t, 0, res.code, res.stderr)
@@ -103,24 +104,17 @@ func TestExecJSONIsStream(t *testing.T) {
 }
 
 // TestExecYolo: a command outside the workspace that workspace mode would
-// escalate, and a headless run then refuses, runs under --yolo without
-// anyone approving it; --yolo takes no --sandbox or --ask.
+// escalate, and a headless run then refuses (TestEmbedded_NoOneToAsk), runs
+// under --yolo without anyone approving it; --yolo takes no --sandbox or
+// --ask.
 func TestExecYolo(t *testing.T) {
 	t.Parallel()
 	outside := harnesstest.OutsideDir(t, "uah-yolo-test-")
 	target := filepath.Join(outside, "x.txt")
-	touch := []fakellm.Reply{{Escalated: []string{"touch " + target}}, {Text: "done"}}
 
-	llm := fakellm.New(t, touch...)
+	llm := fakellm.New(t, fakellm.Reply{Escalated: []string{"touch " + target}}, fakellm.Reply{Text: "done"})
 	e, env := modelEnv(t, llm)
-	res := uahWith(t, env, "", "exec", "-C", e.Workspace, "touch it")
-	require.Equal(t, 0, res.code, res.stderr)
-	assert.NoFileExists(t, target, "workspace mode: no one approves the escalation")
-	assert.Contains(t, lastRequest(t, llm).ToolOutputs[0], "not run")
-
-	llm = fakellm.New(t, touch...)
-	e, env = modelEnv(t, llm)
-	res = uahWith(t, env, "", "exec", "--yolo", "-C", e.Workspace, "touch it")
+	res := uahWith(t, env, "", "exec", "--yolo", "-C", e.Workspace, "touch it")
 	require.Equal(t, 0, res.code, res.stderr)
 	assert.FileExists(t, target, "yolo: it runs, unasked")
 

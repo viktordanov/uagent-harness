@@ -1,0 +1,44 @@
+name: agentbench tasks
+# The dry run of every agentbench task (TestTasksValid) checks the tasks,
+# not uah, so it runs when they change, and nightly.
+on:
+  pull_request:
+    paths:
+      - tools/agentbench/**
+      - .github/workflows/agentbench.yml
+  push:
+    branches: [main]
+    paths:
+      - tools/agentbench/**
+      - .github/workflows/agentbench.yml
+  schedule:
+    - cron: '23 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: agentbench-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tasks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      # Each task builds with its own Go build cache; a warm one saves most
+      # of the run.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /tmp/uah-agentbench-test/tmp/gocache
+          key: agentbench-gocache-${{ runner.os }}-${{ hashFiles('go.mod', 'tools/agentbench/testdata/tasks/**') }}
+          restore-keys: agentbench-gocache-${{ runner.os }}-
+      - name: Dry-run the tasks
+        run: go test -run '^TestTasksValid$' ./tools/agentbench/bench

@@ -238,10 +238,14 @@ func TestExecChecker(t *testing.T) {
 	assert.True(t, filepath.IsAbs(wrapped[0][0]), "argv[0] is found on PATH before the sandbox wraps it: %v", wrapped[0])
 	assert.Equal(t, "$(echo x)", wrapped[0][1])
 
+	// A caller's deadline stops the check as CheckTimeout does, on the same
+	// path, without waiting 2 s.
+	short, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
+	defer cancel()
 	start := time.Now()
-	err = check(ctx, []string{"sleep", "10"}, dir)
+	err = check(short, []string{"sleep", "10"}, dir)
 	require.ErrorContains(t, err, "timed out")
-	assert.Less(t, time.Since(start), contextprep.CheckTimeout+2*time.Second)
+	assert.Less(t, time.Since(start), 2*time.Second)
 
 	require.ErrorIs(t, contextprep.ExecChecker(nil, nil)(ctx, []string{"true"}, dir), contextprep.ErrNoSandbox, "never unsandboxed")
 	require.Error(t, check(ctx, []string{"no-such-command-uah"}, dir))

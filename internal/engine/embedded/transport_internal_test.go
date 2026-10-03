@@ -137,6 +137,20 @@ func TestModelCall_RetriesVisibly(t *testing.T) {
 	}
 }
 
+// TestRetryDelay: the runner's backoff without its jitter, doubling from
+// 2 s to 30 s, from 10 s for an overload, or the server's hint.
+func TestRetryDelay(t *testing.T) {
+	t.Parallel()
+	var got []time.Duration
+	for n := 1; n <= 6; n++ {
+		got = append(got, retryDelay(n, apiError{}, nil))
+	}
+	assert.Equal(t, []time.Duration{2 * time.Second, 4 * time.Second, 8 * time.Second, 16 * time.Second, 30 * time.Second, 30 * time.Second}, got)
+	overloaded := apiError{Code: "server_is_overloaded"}
+	assert.Equal(t, [2]time.Duration{10 * time.Second, 20 * time.Second}, [2]time.Duration{retryDelay(1, overloaded, nil), retryDelay(2, overloaded, nil)})
+	assert.Equal(t, 3*time.Second, retryDelay(1, apiError{}, http.Header{"Retry-After": {"3"}}))
+}
+
 // TestModelCall_HeaderTimeout: a server that takes the request and never
 // answers times out after responseHeaderTimeout, and the retry answers.
 func TestModelCall_HeaderTimeout(t *testing.T) {

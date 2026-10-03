@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -180,7 +179,7 @@ func TestWrapSeatbeltNetwork(t *testing.T) {
 // The default GOCACHE (~/Library/Caches/go-build) is not writable, yet go
 // build still succeeds: Go reads the cache and ignores failed cache writes,
 // so new build results are not kept. A GOCACHE under the workspace or /tmp
-// is writable and works as usual.
+// is writable (TestWrapSeatbelt writes both) and works as usual.
 func TestWrapSeatbeltGoBuild(t *testing.T) {
 	if testing.Short() {
 		t.Skip("builds a program")
@@ -202,42 +201,6 @@ func TestWrapSeatbeltGoBuild(t *testing.T) {
 	code, out = run(t, p, build, nil, nil)
 	t.Logf("default GOCACHE: exit %d\n%s", code, out)
 	assert.Zero(t, code, "go build with a read-only GOCACHE: %s", out)
-
-	tmpCache, err := os.MkdirTemp("/tmp", "uah-sandbox-gocache-")
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = os.RemoveAll(tmpCache) })
-	for _, cache := range []string{filepath.Join(ws, ".gocache"), tmpCache} {
-		code, out = run(t, p, build, []string{"GOCACHE=" + cache}, nil)
-		t.Logf("GOCACHE=%s: exit %d\n%s", cache, code, out)
-		assert.Zero(t, code, out)
-		entries, err := os.ReadDir(cache)
-		require.NoError(t, err)
-		assert.NotEmpty(t, entries, "the build should fill GOCACHE")
-	}
-}
-
-// TestWrapSeatbeltOverhead logs the median time of sh -c true with and
-// without sandbox-exec.
-func TestWrapSeatbeltOverhead(t *testing.T) {
-	if testing.Short() {
-		t.Skip("timing")
-	}
-	ws := workspace(t, false)
-	argv, err := sandbox.Policy{Mode: sandbox.WorkspaceWrite, Workspace: ws}.Wrap([]string{"/bin/sh", "-c", "true"})
-	require.NoError(t, err)
-	median := func(argv []string) time.Duration {
-		var times []time.Duration
-		for range 20 {
-			start := time.Now()
-			require.NoError(t, exec.CommandContext(t.Context(), argv[0], argv[1:]...).Run())
-			times = append(times, time.Since(start))
-		}
-		slices.Sort(times)
-
-		return times[len(times)/2]
-	}
-	t.Logf("median of 20: sh -c true %v, sandbox-exec sh -c true %v",
-		median([]string{"/bin/sh", "-c", "true"}), median(argv))
 }
 
 // shellRun runs command with `<shell> -c` through the sandboxing shell of
@@ -321,7 +284,8 @@ func TestShellSeatbeltTempDir(t *testing.T) {
 
 // TestShellSeatbeltTempDirGoBuild checks that go build runs in read-only
 // mode: Go makes its work directory under $TMPDIR, and a cache pointed at
-// it is kept.
+// it is kept. A build with the default, read-only GOCACHE succeeds too
+// (TestWrapSeatbeltGoBuild).
 func TestShellSeatbeltTempDirGoBuild(t *testing.T) {
 	if testing.Short() {
 		t.Skip("builds a program")
@@ -337,9 +301,7 @@ func TestShellSeatbeltTempDirGoBuild(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(ws, "main.go"), []byte(main), 0o600))
 	p := sandbox.Policy{Mode: sandbox.ReadOnly, Workspace: ws, TempDir: filepath.Join(outsideDir(t), "tmp")}
 
-	code, out := shellRun(t, p, "/bin/sh", goBin+` build -o "$TMPDIR/hello" . && "$TMPDIR/hello"`, nil)
-	assert.Zero(t, code, "go build with the default GOCACHE: %s", out)
-	code, out = shellRun(t, p, "/bin/sh", `GOCACHE="$TMPDIR/go-build" `+goBin+` build -o "$TMPDIR/hello" . && ls "$TMPDIR/go-build"`, nil)
+	code, out := shellRun(t, p, "/bin/sh", `GOCACHE="$TMPDIR/go-build" `+goBin+` build -o "$TMPDIR/hello" . && "$TMPDIR/hello" && ls "$TMPDIR/go-build"`, nil)
 	assert.Zero(t, code, out)
 	assert.NotEmpty(t, strings.TrimSpace(out), "the build fills the cache under $TMPDIR")
 }

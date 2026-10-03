@@ -37,7 +37,18 @@ func answer(t testing.TB) string {
 	return string(b)
 }
 
+// skipUnderRace skips a test that renders many prefixes on one goroutine:
+// the race detector finds nothing there and makes it about five times
+// slower, so the run without it covers it.
+func skipUnderRace(t *testing.T) {
+	t.Helper()
+	if raceEnabled {
+		t.Skip("one goroutine; the run without the race detector covers it")
+	}
+}
+
 func TestIncrementalEqualsFullForEveryPrefix(t *testing.T) {
+	skipUnderRace(t)
 	t.Parallel()
 	st := testStyles()
 	st.CodeStyle = codeStyle(t)
@@ -54,6 +65,7 @@ func TestIncrementalEqualsFullForEveryPrefix(t *testing.T) {
 }
 
 func TestIncrementalEqualsFullWhileStreaming(t *testing.T) {
+	skipUnderRace(t)
 	t.Parallel()
 	st := testStyles()
 	st.CodeStyle = codeStyle(t)

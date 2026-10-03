@@ -164,9 +164,11 @@ func TestTUI_EditTheDraftInTheEditor(t *testing.T) {
 	assert.Len(t, reqs[0].ToolImages, 1)
 }
 
-// TestTUI_EditorRoundTripsAMultiLinePaste: a pasted multi-line draft saved
-// unchanged comes back unchanged.
-func TestTUI_EditorRoundTripsAMultiLinePaste(t *testing.T) {
+// TestTUI_EditorRoundTripsFailsAndEmpties, in one session: a pasted
+// multi-line draft saved unchanged comes back unchanged; an editor that
+// exits non-zero keeps the draft and says so; saving an empty file empties
+// the composer.
+func TestTUI_EditorRoundTripsFailsAndEmpties(t *testing.T) {
 	d := depsIn(t, "simple.jsonl", approval.ModeYolo)
 	fe := useFakeEditor(t, &d, "keep")
 	dr := start(t, d)
@@ -180,30 +182,18 @@ func TestTUI_EditorRoundTripsAMultiLinePaste(t *testing.T) {
 	dr.edit(fe)
 	assert.Equal(t, before, readSeen(t, fe.record).Text)
 	assert.Equal(t, before, dr.draft())
-}
 
-// TestTUI_EditorFailsOrEmpties: an editor that exits non-zero keeps the
-// draft and says so; saving an empty file empties the composer.
-func TestTUI_EditorFailsOrEmpties(t *testing.T) {
-	for _, action := range []string{"fail", "empty"} {
-		t.Run(action, func(t *testing.T) {
-			d := depsIn(t, "simple.jsonl", approval.ModeYolo)
-			fe := useFakeEditor(t, &d, action)
-			dr := start(t, d)
-			dr.until("the session is open", func() bool { return dr.m.(bubble.Model).Exit().SessionID != "" })
-			dr.typeText("a draft")
-			dr.key('g', tea.ModCtrl)
-			dr.edit(fe)
-			if action == "fail" {
-				assert.Contains(t, dr.view(), "the draft is unchanged")
-				assert.Contains(t, dr.view(), fmt.Sprintf("editor: %s: exit status 3", filepath.Base(os.Args[0])))
-				assert.Equal(t, "a draft", dr.draft())
+	t.Setenv(fakeEditorEnv, "fail") // the editor reads it when it starts
+	dr.key('g', tea.ModCtrl)
+	dr.edit(fe)
+	assert.Contains(t, dr.view(), "the draft is unchanged")
+	assert.Contains(t, dr.view(), fmt.Sprintf("editor: %s: exit status 3", filepath.Base(os.Args[0])))
+	assert.Equal(t, before, dr.draft())
 
-				return
-			}
-			assert.Empty(t, dr.draft())
-		})
-	}
+	t.Setenv(fakeEditorEnv, "empty")
+	dr.key('g', tea.ModCtrl)
+	dr.edit(fe)
+	assert.Empty(t, dr.draft())
 }
 
 // TestTUI_EditorRefusesAnExposedDraftDir: in workspace mode, with uah's home

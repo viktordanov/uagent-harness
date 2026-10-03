@@ -19,14 +19,11 @@ var environment = append([]string{
 }, home.Variables...)
 
 // bound is a ceiling for one metric of one scenario: about ten times what
-// the scenario costs on a laptop (and five times that again under the race
-// detector), so only a large regression fails the test.
+// the scenario costs on a laptop, so only a large regression fails the test.
 type bound struct {
 	scenario, metric string
 	max              float64
 }
-
-const metricWakeupsPerS = "wakeups_per_s"
 
 var bounds = []bound{
 	{"load/small", "first_request_ms", 2_000},
@@ -43,8 +40,8 @@ var bounds = []bound{
 	{"idle/tui", "updates_per_s", 1},
 	{"idle/tui", "cpu_ms_per_s", 200},
 	// The renderer checks the view 30 times a second, about 165 wakeups (60
-	// would be about 320); timers, which the race detector does not slow.
-	{"idle/tui", metricWakeupsPerS, 250},
+	// would be about 320).
+	{"idle/tui", "wakeups_per_s", 250},
 	{"agents/small", "peak_goroutines", 1_000},
 	{"leak/5-runs", "goroutines_left", 50},
 	{"leak/5-runs", "conns_after", 20},
@@ -52,20 +49,21 @@ var bounds = []bound{
 
 // TestPerf_SmallFixtures runs every scenario on the small fixture and
 // checks generous ceilings, so CI catches a large regression without
-// flaking on a slow machine. go run ./tools/perf measures properly.
+// flaking on a slow machine. go run ./tools/perf measures properly. The
+// race detector would only blur the ceilings, so it runs without one (CI
+// runs it in a step of its own).
 func TestPerf_SmallFixtures(t *testing.T) {
 	if testing.Short() {
 		t.Skip("the performance harness takes about ten seconds")
+	}
+	if raceEnabled {
+		t.Skip("the ceilings are for a build without the race detector")
 	}
 	for _, k := range environment {
 		t.Setenv(k, os.Getenv(k)) // restored after the test
 	}
 	rep, err := perf.Run(context.Background(), perf.Options{Sizes: []perf.Size{perf.Small}, Scratch: t.TempDir(), Keep: true})
 	require.NoError(t, err)
-	slack := 1.0
-	if raceEnabled {
-		slack = 5
-	}
 	for _, b := range bounds {
 		r, ok := rep.Result(b.scenario)
 		if !assert.True(t, ok, "%s ran", b.scenario) {
@@ -73,11 +71,7 @@ func TestPerf_SmallFixtures(t *testing.T) {
 		}
 		got, ok := r.Metrics[b.metric]
 		if assert.True(t, ok, "%s measured %s", b.scenario, b.metric) {
-			limit := b.max * slack
-			if b.metric == metricWakeupsPerS {
-				limit = b.max
-			}
-			assert.LessOrEqual(t, got, limit, "%s %s", b.scenario, b.metric)
+			assert.LessOrEqual(t, got, b.max, "%s %s", b.scenario, b.metric)
 		}
 	}
 	if t.Failed() {

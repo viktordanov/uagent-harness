@@ -29,15 +29,16 @@ func (e *env) openAttempts(t *testing.T, attempts int) (*session.Session, *event
 }
 
 // TestEmbedded_ReconnectsAfterALostConnection: a connection that drops
-// before the answer, and one that drops halfway through it, are retried
-// with the runner's backoff (2 s, then 4 s), each retry is reported, and
-// the run then finishes as if nothing happened.
+// before the answer is retried after the runner's first backoff (2 s), the
+// retry is reported, and the run then finishes as if nothing happened. A
+// stream cut halfway is TestEmbedded_StreamResetsOnReconnect, and the
+// backoff's later steps TestRetryDelay.
 func TestEmbedded_ReconnectsAfterALostConnection(t *testing.T) {
 	if testing.Short() {
-		t.Skip("waits for the runner's backoff, about 6 s")
+		t.Skip("waits for the runner's backoff, about 2 s")
 	}
 	t.Parallel()
-	e := newEnv(t, fakellm.Reply{Drop: true}, fakellm.Reply{Cut: true, Text: "cut"}, fakellm.Reply{Text: "back"})
+	e := newEnv(t, fakellm.Reply{Drop: true}, fakellm.Reply{Text: "back"})
 	s, ev := e.openAttempts(t, 0)
 	_, err := s.Submit("hello")
 	require.NoError(t, err)
@@ -45,7 +46,7 @@ func TestEmbedded_ReconnectsAfterALostConnection(t *testing.T) {
 
 	assert.Equal(t, core.StatusOK, result.Status)
 	assert.Equal(t, "back", result.Answer)
-	assert.Len(t, e.llm.Requests(), 3)
+	assert.Len(t, e.llm.Requests(), 2)
 	var retries []engine.Reconnecting
 	var ended []engine.ReconnectEnded
 	for _, e := range ev.all {
@@ -56,11 +57,9 @@ func TestEmbedded_ReconnectsAfterALostConnection(t *testing.T) {
 			ended = append(ended, v)
 		}
 	}
-	require.Len(t, retries, 2)
+	require.Len(t, retries, 1)
 	assert.Equal(t, [2]int{2, engine.DefaultMaxAttempts}, [2]int{retries[0].Attempt, retries[0].MaxAttempts})
 	assert.Equal(t, 2*time.Second, retries[0].Delay)
-	assert.Equal(t, 3, retries[1].Attempt, "the stream cut halfway")
-	assert.Equal(t, 4*time.Second, retries[1].Delay)
 	assert.NotEmpty(t, retries[0].Reason)
 	require.NotEmpty(t, ended)
 	assert.True(t, ended[len(ended)-1].OK, "the answer arrived")
