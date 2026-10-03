@@ -13,6 +13,11 @@ type Facts struct {
 	// InstructionFiles are the instruction files (AGENTS.md) the system
 	// prompt holds, in order.
 	InstructionFiles []string
+	// OmittedInstructionFiles are the instruction files the session's
+	// system prompt leaves out on purpose, in order: a session whose
+	// system prompt replaces uah's, such as /review's reviewer, has the
+	// workspace's files here instead of in InstructionFiles.
+	OmittedInstructionFiles []string
 	// Shell is the shell commands run in, a path such as /bin/zsh.
 	Shell string
 	// GOOS is the operating system, as runtime.GOOS names it.

@@ -230,3 +230,69 @@ func TestReview_ReadOnlyUnderYolo(t *testing.T) {
 	assert.NoFileExists(t, filepath.Join(e.Workspace, "written.txt"), "the sandbox is read-only")
 	assert.NoFileExists(t, filepath.Join(e.Workspace, "escalated.txt"), "an escalation is declined")
 }
+
+// TestReview_Usage: the review reports the reviewer's model and effort
+// when it starts and the tokens it used when it ends, and uah sessions and
+// the loaded run show those tokens too.
+func TestReview_Usage(t *testing.T) {
+	e := newEnv(t, agents.Config{ReviewModel: "gpt-review"})
+	e.llm.Route(uncommitted,
+		fakellm.Reply{Commands: []string{"echo one"}},
+		fakellm.Reply{Text: reviewAnswer},
+	)
+	s, ev := e.open(t, false)
+
+	require.NoError(t, s.Review(context.Background(), codereview.Target{Kind: codereview.Uncommitted}))
+	fin := ev.reviewFinished()
+
+	require.Empty(t, fin.Err)
+	i := slices.IndexFunc(ev.all, func(x core.Event) bool { _, ok := x.(session.ReviewStarted); return ok })
+	require.GreaterOrEqual(t, i, 0)
+	started := ev.all[i].(session.ReviewStarted)
+	assert.Equal(t, "gpt-review", started.Model)
+	assert.Equal(t, "high", started.Effort)
+	assert.Positive(t, fin.Tokens.InputTokens, "the reviewer's tokens")
+	assert.Positive(t, fin.Tokens.OutputTokens)
+
+	infos, err := session.Sessions(e.StateDir)
+	require.NoError(t, err)
+	j := slices.IndexFunc(infos, func(in session.Info) bool { return in.ID != s.ID() })
+	require.GreaterOrEqual(t, j, 0)
+	assert.Equal(t, fin.Tokens, infos[j].Tokens, "uah sessions shows the reviewer's tokens")
+	runs, err := session.Load(e.StateDir, infos[j].ID)
+	require.NoError(t, err)
+	require.Len(t, runs, 1)
+	assert.Equal(t, fin.Tokens, runs[0].Record.Result.Stats.Tokens, "and so does its loaded run")
+}
+
+// TestReview_InstructionFilesLeftOut: the reviewer's system prompt
+// replaces uah's without the instruction files, so its prepared context
+// names them as left out instead of saying they are in the system prompt,
+// while the parent's says they are.
+func TestReview_InstructionFilesLeftOut(t *testing.T) {
+	e := newEnv(t, agents.Config{}, fakellm.Reply{Text: "ok"})
+	e.llm.Route(uncommitted, fakellm.Reply{Text: reviewAnswer})
+	agentsFile := filepath.Join(e.Workspace, "AGENTS.md")
+	s, ev := e.open(t, false, func(c *embedded.Config) { c.ContextPreparation, c.InstructionFiles = true, []string{agentsFile} })
+	withPrompt := e.settings()
+	withPrompt.SystemPrompt = instructions.HostPrompt("", "Always use tabs.", "")
+	_, err := s.SetSettings(withPrompt)
+	require.NoError(t, err)
+
+	_, err = s.Submit("hello")
+	require.NoError(t, err)
+	ev.finished()
+	require.NoError(t, s.Review(context.Background(), codereview.Target{Kind: codereview.Uncommitted}))
+	require.Empty(t, ev.reviewFinished().Err)
+
+	parent := strings.Join(e.llm.Requests()[0].DeveloperTexts, "\n")
+	assert.Contains(t, parent, "Instruction files in the system prompt, in order")
+	assert.Contains(t, parent, "- "+agentsFile)
+	reqs := reviewerRequests(e)
+	require.NotEmpty(t, reqs)
+	reviewer := strings.Join(reqs[0].DeveloperTexts, "\n")
+	assert.Contains(t, reviewer, "leaves out the workspace's instruction files on purpose")
+	assert.Contains(t, reviewer, "- "+agentsFile)
+	assert.NotContains(t, reviewer, "Instruction files in the system prompt", "the reviewer's system prompt has none")
+	assert.NotContains(t, reviewer, "there are none to search for")
+}

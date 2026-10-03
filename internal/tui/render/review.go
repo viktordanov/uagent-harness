@@ -63,16 +63,20 @@ func (st *Styles) reviewLines(it state.Item, w int, now time.Time) []string {
 	if r.Running {
 		return []string{
 			"",
-			ansi.Truncate(st.accent.Render("  REVIEW ")+r.Hint+st.dim.Render("  "+elapsed(now.Sub(r.Started))), w, "…"),
+			ansi.Truncate(st.accent.Render("  REVIEW ")+r.Hint+st.dim.Render("  "+strings.Join(append(reviewer(r), elapsed(now.Sub(r.Started))), " · ")), w, "…"),
 			ansi.Truncate(st.dim.Render("    └ ")+st.tool.Render(spin(now))+st.dim.Render(" "+oneLine(cmp.Or(r.Doing, "thinking"))), w, "…"),
 		}
 	}
 	head := st.dim.Render("  REVIEW ") + r.Hint
+	used := ""
+	if parts := reviewer(r); len(parts) > 0 {
+		used = st.dim.Render("  " + strings.Join(parts, " · "))
+	}
 	switch {
 	case r.Err != "":
-		return []string{"", ansi.Truncate(head+st.bad.Render("  failed: "+oneLine(r.Err)), w, "…")}
+		return []string{"", ansi.Truncate(head+st.bad.Render("  failed: "+oneLine(r.Err))+used, w, "…")}
 	case r.Interrupted:
-		return []string{"", ansi.Truncate(head+st.warn.Render("  interrupted"), w, "…")}
+		return []string{"", ansi.Truncate(head+st.warn.Render("  interrupted")+used, w, "…")}
 	}
 	out := []string{"", ansi.Truncate(head+st.dim.Render("  "+reviewSummary(r)), w, "…")}
 	if e := strings.TrimSpace(r.Output.OverallExplanation); e != "" {
@@ -101,7 +105,21 @@ func reviewSummary(r *state.Review) string {
 		parts = append(parts, elapsed(r.Ended.Sub(r.Started)))
 	}
 
-	return strings.Join(parts, " · ")
+	return strings.Join(append(parts, reviewer(r)...), " · ")
+}
+
+// reviewer is what the reviewer runs on, "gpt-6-astra high", and, once it
+// is done, the tokens it used.
+func reviewer(r *state.Review) []string {
+	var out []string
+	if m := strings.TrimSpace(r.Model + " " + r.Effort); m != "" {
+		out = append(out, m)
+	}
+	if n := r.Tokens.InputTokens + r.Tokens.OutputTokens; n > 0 {
+		out = append(out, tokens(n)+" tokens")
+	}
+
+	return out
 }
 
 // findingIndent is where a finding's text starts, after its priority in

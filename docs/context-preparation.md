@@ -57,7 +57,7 @@ The blocks come in this order:
 | `environment` | The shell and the OS, and the constructs that break in a shell that is not POSIX, zsh's gotchas, macOS's bash 3.2, and BSD flags | Modules `environment/*`, `os/*` |
 | `sandbox` | What sandboxed commands may write, the session's private `$TMPDIR`, and what macOS's sandbox blocks | Modules `sandbox/*` |
 | `workspace` | The git branch, `git status --short`, and the tracked files by top directory | Code (git's output), not modules |
-| `agent files` | The instruction files in the system prompt, said to be all of them | Modules `agent-files`, `agent-files-none` |
+| `agent files` | The instruction files in the system prompt, said to be all of them; or, for a session whose system prompt replaces uah's without them (`/review`'s reviewer), the files it leaves out | Modules `agent-files`, `agent-files-omitted`, `agent-files-none` |
 | `harness` | How to size the Bash tool's `max_output_length` | Module `harness/output` |
 | One block per extra module | Each library, user, or project module that applies, titled with its id | The module |
 
@@ -108,7 +108,8 @@ The keys of `when`:
 | `sandbox` | list | The sandbox mode at session start: `read-only`, `workspace-write`, or `none` (yolo, or no sandbox on the system) |
 | `agent` | list | `main` or `subagent` |
 | `network` | bool | Whether sandboxed commands have network access |
-| `instructions` | bool | Whether any instruction files (AGENTS.md and so on) were loaded |
+| `instructions` | bool | Whether any instruction files (AGENTS.md and so on) were loaded into the system prompt |
+| `instructions_omitted` | bool | Whether the system prompt leaves the workspace's instruction files out on purpose, as the system prompt of `/review`'s reviewer does, which replaces uah's |
 
 The text after the front matter may be Markdown. It is data: uah inserts the [placeholders](#placeholders) and sends it, and never runs it.
 
@@ -149,6 +150,7 @@ The text may use these placeholders. Each is replaced with the session's value a
 | `{{workspace}}` | The workspace's path |
 | `{{agent}}` | `main` or `subagent` |
 | `{{instruction_files}}` | The loaded instruction files as a `- ` list; none when none were loaded |
+| `{{omitted_instruction_files}}` | The instruction files the system prompt leaves out on purpose, as a `- ` list; none when it leaves none out |
 | `{{max_output_length}}` | The Bash tool's default output cap |
 
 A module whose placeholder has no value in the session does not apply. For example, a module that uses `{{tmpdir}}` does not apply in yolo mode. Every `{{` in the text must start one of these placeholders.

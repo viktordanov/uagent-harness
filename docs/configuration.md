@@ -155,7 +155,7 @@ The permission modes:
 | `timeout` | duration | `90s` | override | The limit for one review; a review that times out denies |
 | `policy_file` | path | Codex's review policy | override | A file whose text replaces the review policy, as Codex's `[auto_review] policy` does inline. The fixed framing and the answer format stay. An absolute path or one under `~/`; a missing or empty file stops the session from starting |
 
-`review_model` is a top-level key, Codex's, for the TUI's `/review` (a code review by a read-only subagent), not for the auto-reviewer above:
+`review_model` is a top-level key, Codex's, for the TUI's `/review` and `uah review` (a code review by a read-only subagent), not for the auto-reviewer above:
 
 | Key | Type | Default | Merge | Meaning |
 | --- | --- | --- | --- | --- |

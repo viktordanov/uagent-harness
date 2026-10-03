@@ -15,6 +15,7 @@ import (
 	"github.com/viktordanov/uah-core/harness/operation"
 
 	"github.com/viktordanov/uah/internal/contextprep"
+	"github.com/viktordanov/uah/internal/instructions"
 	"github.com/viktordanov/uah/internal/sandbox"
 	"github.com/viktordanov/uah/internal/session"
 )
@@ -46,13 +47,19 @@ func (w *wiring) prepared(ctx context.Context, req core.Request, messages []core
 }
 
 // facts are what the adapters know about the session: its workspace and
-// the instruction files in its system prompt, the shell its commands run in, and the sandbox of its
+// the instruction files in its system prompt, or the ones its system
+// prompt leaves out, the shell its commands run in, and the sandbox of its
 // permission mode when it starts, with the session's private $TMPDIR.
 func (w *wiring) facts(req core.Request) contextprep.Facts {
 	f := contextprep.Facts{
-		Workspace: req.Workspace, InstructionFiles: w.e.cfg.InstructionFiles, Shell: w.shell(), GOOS: runtime.GOOS,
+		Workspace: req.Workspace, Shell: w.shell(), GOOS: runtime.GOOS,
 		MaxOutputLength: operation.DefaultMaxOutputLength,
 		Subagent:        strings.HasPrefix(req.SessionID, session.SubagentIDPrefix),
+	}
+	if instructions.HasProject(req.SystemPrompt) {
+		f.InstructionFiles = w.e.cfg.InstructionFiles
+	} else {
+		f.OmittedInstructionFiles = w.e.cfg.InstructionFiles // a system prompt that replaces uah's: /review's
 	}
 	if w.e.cfg.Sandbox == nil {
 		return f

@@ -30,7 +30,7 @@ var blocks = []block{
 	{keySandbox, []string{
 		"sandbox/read-only", "sandbox/workspace-write", "sandbox/tmpdir", "sandbox/bash-heredoc", "sandbox/processes", "sandbox/local-sockets",
 	}},
-	{"agent files", []string{"agent-files", "agent-files-none"}},
+	{"agent files", []string{"agent-files", "agent-files-omitted", "agent-files-none"}},
 	{"harness", []string{"harness/output"}},
 }
 
@@ -65,7 +65,7 @@ type (
 	// write, the session's $TMPDIR, and what the sandbox blocks.
 	SandboxNotes struct{ Modules *Modules }
 	// AgentFiles is the "agent files" block: the instruction files, said
-	// to be all of them.
+	// to be all of them, or the ones the system prompt leaves out.
 	AgentFiles struct{ Modules *Modules }
 	// Harness is the "harness" block: how to use uah's tools well.
 	Harness struct{ Modules *Modules }
@@ -251,6 +251,13 @@ func (w When) mismatch(f Facts) string {
 
 		return "when.instructions: no instruction files were loaded"
 	}
+	if w.InstructionsOmitted != nil && *w.InstructionsOmitted != (len(f.OmittedInstructionFiles) > 0) {
+		if len(f.OmittedInstructionFiles) > 0 {
+			return "when.instructions_omitted: the system prompt leaves the instruction files out"
+		}
+
+		return "when.instructions_omitted: no instruction files were left out"
+	}
 
 	return ""
 }
@@ -303,6 +310,9 @@ func variables(f Facts) map[string]string {
 	}
 	if len(f.InstructionFiles) > 0 {
 		vars["instruction_files"] = "- " + strings.Join(f.InstructionFiles, "\n- ")
+	}
+	if len(f.OmittedInstructionFiles) > 0 {
+		vars["omitted_instruction_files"] = "- " + strings.Join(f.OmittedInstructionFiles, "\n- ")
 	}
 	if f.MaxOutputLength > 0 {
 		vars["max_output_length"] = strconv.Itoa(f.MaxOutputLength)

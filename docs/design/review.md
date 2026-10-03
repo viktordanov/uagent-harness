@@ -1,6 +1,6 @@
 # `/diff` and `/review`
 
-Status: built (ledger item 65). The package READMEs hold the current contract; this record keeps the research and the decisions.
+Status: built (ledger items 65 and 120). The package READMEs hold the current contract; this record keeps the research and the decisions.
 
 Ledger item 65: `/diff` shows the workspace's git changes, and `/review` has a read-only reviewer look at a set of changes and list its findings, as Codex's commands do.
 
@@ -34,16 +34,19 @@ Checked against Codex rust-v0.156.1 (commit b412ff3). Paths are under `codex-rs/
 
 **The menu.** `/review ` opens Codex's presets in the command menu: `branch`, `uncommitted`, `commit`, and an entry that explains custom instructions. `/review branch ` lists the local branches (default first, the checked-out one marked), and `/review commit ` the newest 100 commits by subject with their short SHA; both filter as you type. The lists are read once per review (`EffLoadReviewTargets`). `/review <text>` is custom instructions. `/review` waits until the agent is idle, as in Codex.
 
-**The run.** `Session.Review(ctx, target)` (`internal/session/review.go`) reports `ReviewStarted`, builds Codex's prompt for the target (`codereview.Prompt`, which finds the merge base), and hands it to the engine's reviewer, `agents.Manager.Review` (`internal/agents/review.go`). The reviewer is a fresh session on the same engine:
+**The run.** `Session.Review(ctx, target)` (`internal/session/review.go`) asks the engine's reviewer for its settings (`ReviewSettings`), reports `ReviewStarted` with the reviewer's model and effort, builds Codex's prompt for the target (`codereview.Prompt`, which finds the merge base), and hands it to the reviewer, `agents.Manager.Review` (`internal/agents/review.go`). The reviewer is a fresh session on the same engine:
 
-- the parent's settings now, in read only mode, with Codex's rubric and the parent's environment context as the system prompt and `review_model` (default: the session's model) as the model;
+- the parent's settings now, in read only mode, with Codex's rubric and the parent's environment context as the system prompt, and `review_model` (default: the session's model) as the model;
+- a prepared context whose agent-files block says the workspace's instruction files are left out of its system prompt, and names them, since its system prompt replaces uah's (`agent-files-omitted`), instead of saying they are in it;
 - the tools `Bash` and `ViewImage` only, through the engine's scope: no `apply_patch`, no MCP tools, no hosted web search (Codex turns search off for a review; the hosted tool and the recorded searches honor the scope), and no agent tools (it is a child, so it is never offered them);
 - `engine.Scope.NeverAsk`: every action that would ask is declined before the auto-reviewer, as Codex's `approval_policy = never`;
 - a sidecar with the parent as its parent, so `uah sessions` lists it; it is not one of the agent's subagents, so `/agents` and the agent tools never see it.
 
-Its tool events come back as `ReviewActivity`, and its last message is parsed with Codex's fallbacks (`codereview.Parse`). `ReviewFinished` carries the findings, `Interrupted`, or the error. Esc esc, `/stop`, and closing the session stop it.
+Its tool events come back as `ReviewActivity`, and its last message is parsed with Codex's fallbacks (`codereview.Parse`). `ReviewFinished` carries the findings, `Interrupted`, or the error, and the tokens the reviewer's run used. Esc esc, `/stop`, and closing the session stop it.
 
-**The findings.** A `KindReview` item: while it runs, `REVIEW changes against 'main'  42s` and the reviewer's latest command; then the verdict line (`2 findings · patch is incorrect · 1m 12s`), the explanation, and each finding with its priority (`P1`, in the error color for P0 and P1), title, place relative to the workspace, and body as Markdown.
+**The findings.** A `KindReview` item: while it runs, `REVIEW changes against 'main'  gpt-6-astra high · 42s` and the reviewer's latest command; then the verdict line (`2 findings · patch is incorrect · 1m 12s · gpt-6-astra high · 52.2k tokens`), the explanation, and each finding with its priority (`P1`, in the error color for P0 and P1), title, place relative to the workspace, and body as Markdown.
+
+**Headless.** `uah review` (`cmd/uah/review.go`) is `codex review`, Codex's `codex exec review`: the same targets and flags (`--uncommitted`, `--base <branch>`, `--commit <sha>` with `--title`, custom instructions or `-` for stdin), refused as Codex refuses them: one target at most, `--title` only with `--commit`, and Codex's message when there is none. It opens a session in `uah exec`'s way and runs `Session.Review`, so the reviewer is the TUI's. Progress goes to stderr: the target with the reviewer's model and effort, its commands, and a last line with the findings, the verdict, the time, the model and effort, and the tokens. The review goes to stdout as Codex renders it (`codereview.Output.Text`); `--json` prints one JSON line instead, with Codex's review output (`findings`, `overall_correctness`, `overall_explanation`, `overall_confidence_score`) and `target`, `status` (`ok`, `interrupted`, or `failed`), `error`, `model`, `effort`, `duration_ms`, and `usage` (the tokens, as `uah exec --json` reports a model response's). `-o` writes the review's text, as `codex exec -o` writes the last message. The exit code is 0 when the reviewer answered, whatever it found, as in Codex; 1 when the review failed, 130 when Ctrl+C stopped it, and 2 for a usage error. The [agent benchmark](../../tools/agentbench/README.md)'s `-review` mode runs it and `codex review` on the branch review task.
 
 **Into the conversation.** As in Codex, the main agent gets the review: Codex's `exit_success.xml` (or `exit_interrupted.xml`) is held and goes out with your next message, as `Session.Inject` does; it starts no run. The transcript shows that message as a note, "the review went to the main agent with this message". A review that failed sends nothing.
 
@@ -59,9 +62,12 @@ The prompts in `internal/codereview/prompts` are Codex's, verbatim (Apache-2.0, 
 - **The reviewer's system prompt is the rubric in place of the host prompt, then the parent's `<environment_context>`**, so uah's default prompt, the subagent note, and AGENTS.md are not in it, as in Codex, whose review thread gets the rubric, the environment context, and the prompt. The runner's own lines about turns and asynchronous tool calls stay before it, since the engine adds them to every request.
 - **A finding without a priority parses.** The rubric allows it; Codex's parser does not, and falls back to the raw text.
 - **The main agent gets the user message only.** Codex also records the rendered review as an assistant message; uah can hold user messages for the next run (`Inject`) but not write an assistant turn into the runner's history, and the user message already carries the whole review.
-- **`review_model` mirrors Codex's key**, with the session's effort. It is a top-level key, apart from `[review]`, which configures the auto-reviewer.
+- **`review_model` mirrors Codex's key**, with the session's effort, adaptive effort included. It is a top-level key, apart from `[review]`, which configures the auto-reviewer.
+- **The reviewer's context tells the truth about the instruction files** (ledger item 120). Context preparation took the engine's instruction files, so the reviewer, whose system prompt has none, was told they were in its system prompt and that there was no need to search for more, and then read AGENTS.md with `cat`. The engine now looks at the session's system prompt: when it has no project instructions, the files are the "omitted" ones, and `agent-files-omitted` names them as left out on purpose. The rubric asks the reviewer to apply the project's instruction files, so it gets their paths rather than "none". This holds for any session whose system prompt replaces uah's; custom roles append to the parent's prompt and keep the files in it.
+- **Tokens come from the run summaries** (ledger item 120). `uah sessions --json` showed 0 tokens for every session, the reviewer's included: uagent v0.7.0's `stream.SummaryFromDTO` reads a `summary.json`'s metadata but not its stats, and both the file scan and the index took the tokens from it. uah now reads the tokens from the summary itself (`session.SummaryTokens`), and the index's schema version 2 rebuilds the rows that recorded 0.
 
 ## Open
 
-- Codex's app server can deliver a review detached; uah has no `uah review` command, since `/review` covers the use.
+- Codex's app server can deliver a review detached; `uah review` covers the headless use, and nothing delivers a review to another client.
+- Codex lowers a review's effort to a middle level the review model supports when `review_model` cannot take the session's effort; uah sends the effort as it is.
 - Codex empties git's filter drivers before `/diff`; uah passes `--no-textconv --no-ext-diff` but does not override `filter.<driver>.clean`.

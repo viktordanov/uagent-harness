@@ -16,7 +16,7 @@ The full guide is `docs/context-preparation.md` in the uah repository (github.co
 
 ## Context preparation
 
-When a new session starts (a main session or a subagent, not a resumed or forked one), uah sends one developer message, `<context_preparation>`, before the first user message. Its blocks, in order: `environment` (shell and OS traps), `sandbox` (what commands may write, `$TMPDIR`), `workspace` (git branch, status, tracked files; code, not modules), `agent files` (the instruction files, said to be all of them), `harness` (sizing Bash output), then one block per extra module that applies, titled with its id. A block is cut at 4 KiB and the message at 16 KiB. Which modules apply is decided once, at session start: a change to a module reaches new sessions only. Turn it off with `context_preparation = false`, `--no-context-preparation`, or `UAH_CONTEXT_PREPARATION=off`.
+When a new session starts (a main session or a subagent, not a resumed or forked one), uah sends one developer message, `<context_preparation>`, before the first user message. Its blocks, in order: `environment` (shell and OS traps), `sandbox` (what commands may write, `$TMPDIR`), `workspace` (git branch, status, tracked files; code, not modules), `agent files` (the instruction files, said to be all of them, or the ones the system prompt leaves out), `harness` (sizing Bash output), then one block per extra module that applies, titled with its id. A block is cut at 4 KiB and the message at 16 KiB. Which modules apply is decided once, at session start: a change to a module reaches new sessions only. Turn it off with `context_preparation = false`, `--no-context-preparation`, or `UAH_CONTEXT_PREPARATION=off`.
 
 Where modules come from:
 
@@ -52,13 +52,13 @@ Run mage test instead of go test; the CI runs the same target. Caches go in {{tm
 | `check` | A command as an argv list, such as `[go, version]`, that must exit 0 |
 | `enabled` | `false`: applies only where `[context] modules` names its id. Default true. A built-in block's module cannot be turned on this way |
 
-The keys of `when`, each a list unless noted: `shell` (`bash`, `zsh`, `sh`, `fish`, `nu`, `xonsh`, `elvish`, `pwsh`, `cmd`, `csh`, `other`), `shell_path` (absolute, such as `/bin/bash`), `os` (Go's names: `darwin`, `linux`, `freebsd`, `windows`), `sandbox` (`read-only`, `workspace-write`, `none`), `agent` (`main`, `subagent`), and two booleans, `network` (the sandbox has network access) and `instructions` (instruction files were loaded).
+The keys of `when`, each a list unless noted: `shell` (`bash`, `zsh`, `sh`, `fish`, `nu`, `xonsh`, `elvish`, `pwsh`, `cmd`, `csh`, `other`), `shell_path` (absolute, such as `/bin/bash`), `os` (Go's names: `darwin`, `linux`, `freebsd`, `windows`), `sandbox` (`read-only`, `workspace-write`, `none`), `agent` (`main`, `subagent`), and three booleans, `network` (the sandbox has network access), `instructions` (instruction files were loaded into the system prompt), and `instructions_omitted` (the system prompt leaves them out on purpose, as `/review`'s reviewer's does).
 
 Matching: every key present must match (AND); within a list, one value is enough (OR); an empty or absent key matches anything. uah decides in this order and stops at the first failure: the file parses, the module is enabled, it is trusted (project modules), `when` matches, a `files` path exists, each placeholder has a value, the check passes. So a check runs only for a module that would otherwise apply.
 
 A check never goes through a shell: `argv[0]` is a name on `PATH` or an absolute path, `;` and `$(...)` are plain words, and it runs in a read-only sandbox with no network, no stdin, only `PATH` and `HOME`, for 2 seconds at most. Without a sandbox it does not run, and the module does not apply. A module's text is never run.
 
-Placeholders in the text: `{{shell}}` (path), `{{shell_name}}`, `{{os}}` (macOS, Linux, ...), `{{goos}}`, `{{mode}}` (sandbox mode or `none`), `{{tmpdir}}`, `{{workspace}}`, `{{agent}}`, `{{instruction_files}}` (a `- ` list), `{{max_output_length}}`. A module whose placeholder has no value in the session, such as `{{tmpdir}}` without a sandbox, does not apply.
+Placeholders in the text: `{{shell}}` (path), `{{shell_name}}`, `{{os}}` (macOS, Linux, ...), `{{goos}}`, `{{mode}}` (sandbox mode or `none`), `{{tmpdir}}`, `{{workspace}}`, `{{agent}}`, `{{instruction_files}}` (a `- ` list), `{{omitted_instruction_files}}` (a `- ` list of the files the system prompt leaves out), `{{max_output_length}}`. A module whose placeholder has no value in the session, such as `{{tmpdir}}` without a sandbox, does not apply.
 
 The schema is strict: an unknown key, a wrong type, an unknown `when` value, or an unknown `{{placeholder}}` is an error; `uah context` lists the file with its error and it never applies. A module file is at most 16 KiB.
 

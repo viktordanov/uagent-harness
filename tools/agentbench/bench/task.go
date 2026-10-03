@@ -72,7 +72,16 @@ type Task struct {
 	// FakeHome gives the run its own HOME, filled from home/, so a task
 	// may edit files under ~ without touching the user's.
 	FakeHome bool `json:"fake_home,omitempty"`
+	// ReviewBase is the base branch of the task's review run (-review):
+	// the harness's review command (`uah review`, `codex review`) reviews
+	// the checked-out branch against it, in place of the prompt, and its
+	// review becomes REVIEW.md for the check.
+	ReviewBase string `json:"review_base,omitempty"`
 }
+
+// ReviewFile is where a review run's harness writes its review, in the
+// workspace, for the check.
+const ReviewFile = "REVIEW.md"
 
 // TagUAHOnly marks a task only uah runs: the plan leaves Codex out.
 const TagUAHOnly = "uah-only"

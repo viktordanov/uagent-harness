@@ -197,6 +197,10 @@ func Assemble(files []File, maxBytes int) (text string, used []File, truncated b
 // the base instructions.
 const ProjectHeader = "# Project instructions\n\nFollow these instructions from the project and the user. Later files are more specific and take precedence.\n"
 
+// HasProject reports whether a system prompt holds the project's
+// instructions, under ProjectHeader as HostPrompt puts them.
+func HasProject(prompt string) bool { return strings.Contains(prompt, "\n"+ProjectHeader) }
+
 // HostPrompt builds the runner's system prompt: the base instructions
 // (model_instructions_file's text, or DefaultPrompt when base is ""), the
 // instructions under ProjectHeader when there are any, and environment

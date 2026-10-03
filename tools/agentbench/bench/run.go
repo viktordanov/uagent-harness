@@ -22,6 +22,9 @@ const (
 	HarnessCodex = "codex"
 )
 
+// CommandReview is Key.Command of a review run.
+const CommandReview = "review"
+
 // Config is one invocation of the benchmark.
 type Config struct {
 	Tasks     []Task
@@ -52,6 +55,10 @@ type Config struct {
 	UAHEnv    []string
 	UAHConfig []string
 	Variant   string
+	// Review runs each task's review command against its ReviewBase
+	// instead of sending its prompt: `uah review` and `codex review`, the
+	// harnesses' /review without a TUI.
+	Review bool
 	// OwnerEnv gives the harness the user's own environment (OwnerEnv)
 	// with Shell as SHELL, instead of the bench's isolated one; the
 	// fixtures and the checks keep the isolated one.
@@ -70,19 +77,26 @@ type Key struct {
 	Model   string `json:"model"`
 	Effort  string `json:"effort"`
 	Repeat  int    `json:"repeat"`
+	// Command is "review" for a review run (-review), "" for the prompt.
+	Command string `json:"command,omitempty"`
 }
 
 func (k Key) String() string {
 	return fmt.Sprintf("%s/%s/%s-%s/%d", k.Task, k.Label(), k.Model, k.Effort, k.Repeat)
 }
 
-// Label is the harness with its variant: "uah", "uah+prompt-runner".
+// Label is the harness with its variant and command: "uah",
+// "uah+prompt-runner", "codex@review".
 func (k Key) Label() string {
-	if k.Variant == "" {
-		return k.Harness
+	l := k.Harness
+	if k.Variant != "" {
+		l += "+" + k.Variant
+	}
+	if k.Command != "" {
+		l += "@" + k.Command
 	}
 
-	return k.Harness + "+" + k.Variant
+	return l
 }
 
 // Run statuses.
@@ -136,6 +150,9 @@ func Plan(cfg Config) []Key {
 					continue
 				}
 				k := Key{Task: t.Name, Harness: h, Model: cfg.Model, Effort: cfg.Effort, Repeat: r}
+				if cfg.Review {
+					k.Command = CommandReview
+				}
 				if h == HarnessUAH {
 					k.Variant = cfg.Variant
 				}

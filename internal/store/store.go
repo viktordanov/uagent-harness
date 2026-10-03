@@ -23,10 +23,13 @@ import (
 	_ "modernc.org/sqlite" // the pure-Go SQLite driver
 
 	"github.com/viktordanov/uah/internal/images"
+	"github.com/viktordanov/uah/internal/session"
 )
 
-// schemaVersion changes when the tables do; an index with another version is rebuilt.
-const schemaVersion = "1"
+// schemaVersion changes when the tables or what goes in them do; an index
+// with another version is rebuilt. Version 2 records the runs' tokens,
+// which version 1 recorded as 0.
+const schemaVersion = "2"
 
 const schema = `
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -197,7 +200,7 @@ func indexRun(ctx context.Context, tx *sql.Tx, dir string, stamp stat) error {
 	if saved, err := harness.LoadRequest(dir); err == nil {
 		req.Prompt, req.Messages = saved.Prompt, saved.Messages
 	}
-	tokens, err := json.Marshal(r.Stats.Tokens)
+	tokens, err := json.Marshal(session.SummaryTokens(dto))
 	if err != nil {
 		return fmt.Errorf("failed to encode tokens: %w", err)
 	}

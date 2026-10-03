@@ -50,6 +50,7 @@ func TestIndexMatchesTheFiles(t *testing.T) {
 	assert.Equal(t, utc(want), utc(got))
 	assert.Equal(t, "first question", got[0].FirstPrompt)
 	assert.Equal(t, 2, got[0].Runs)
+	assert.Positive(t, got[0].Tokens.InputTokens, "the runs' tokens, from their summaries")
 }
 
 func TestReconcile(t *testing.T) {

@@ -28,7 +28,7 @@ Both load `~/.codex/AGENTS.md`, as both do by default. The environment drops `UA
 The uah binary is built from the working tree into the scratch directory at the start, unless `-uah` names one.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="usage" files="main.go bench/run.go bench/dry.go bench/ownerenv.go" -->
+<!-- memoria:section id="usage" files="main.go bench/run.go bench/dry.go bench/ownerenv.go bench/harness.go" -->
 ## Run it
 
 Run every command from the repository root.
@@ -93,6 +93,16 @@ go run ./tools/agentbench -harness uah -repeat 3 -uah-env UAH_ADAPTIVE_EFFORT=2-
 
 The same variant through the configuration is `-uah-config 'adaptive_effort = "2-steps"' -variant adaptive2`. Without the [prepared context](../../internal/contextprep/README.md) a new session starts with, the variant is `-uah-env UAH_CONTEXT_PREPARATION=off -variant noprep`. Effort updates (a `configuration_update` item in the history rather than another request effort, on the gpt-6 models; [engine](../../internal/engine/README.md#adaptive-effort)) have no configuration key; `UAH_EFFORT_UPDATES=off` is their A/B switch, so the variant that switches the request's effort, as uah did before them, is `-uah-env UAH_EFFORT_UPDATES=off -variant noupdates`. Effort switches come from adaptive effort, so compare it with the `adaptive2` variant above: `-uah-env UAH_ADAPTIVE_EFFORT=2-steps -uah-env UAH_EFFORT_UPDATES=off -variant adaptive2-noupdates`. A prompt variant, for example, is `-uah-config 'model_instructions_file = "/tmp/uah-agentbench/prompts/runner.md"' -variant prompt-runner`. The report then has `uah+NAME` as a harness of its own in the per-harness tables, and a table of the variant against the control per task.
 
+### Review runs
+
+`-review` benchmarks the harnesses' `/review` instead of the main agent: each task with a `review_base` runs `uah review` and `codex review` (`codex exec review`) against that base branch, with the same model, effort, mode, and isolation as a prompt run, and the prompt goes unused. Each harness writes its review to `REVIEW.md` in the workspace with its own `-o`, and the task's check reads it, so the go-branch-review task scores both reviewers with the check that scores its prompt runs. The results key has `command: "review"`, the label (and the run's folder) is `uah@review` or `codex@review`, and the default results file is `<model>-<effort>-<mode>-review.jsonl`, apart from the prompt runs. A task without `review_base` is skipped.
+
+```sh
+go run ./tools/agentbench -review -tasks '^go-branch-review$' -model gpt-6-astra -effort high
+```
+
+`uah review --json` prints one JSON line, so uah's timeline comes from the reviewer's session file in the run's state directory, as a subagent's does; Codex's comes from its JSON events, as for a prompt run. Codex reports a review turn's usage as 0 (codex-cli 0.159.3), so only uah's review runs have tokens. To compare `/review` with the main agent's review of the same branch, run the task once with `-review` and once without, and read the two reports side by side.
+
 ### The owner's environment
 
 The bench's environment hides failures that the owner's sessions have, because it sets its own `TMPDIR`, `GOCACHE`, and `GOFLAGS`, and the harness inherits `SHELL` from whatever started the bench. `-owner-env` gives the harness (and only the harness) the environment an interactive session of the owner has (`bench/ownerenv.go`):
@@ -117,7 +127,7 @@ A task is a folder in `testdata/tasks/`:
 
 | Path | Holds |
 | --- | --- |
-| `task.json` | `prompt` (what both harnesses get), `check` (a shell command; exit status 0 passes), `exercises` (one line), `tags`, and optionally `follow_ups` (below), `check_timeout` (default 3m), `timeout` (the run's limit), `solution_delete`, and the fixtures below |
+| `task.json` | `prompt` (what both harnesses get), `check` (a shell command; exit status 0 passes), `exercises` (one line), `tags`, and optionally `follow_ups` (below), `check_timeout` (default 3m), `timeout` (the run's limit), `solution_delete`, `review_base` (the base branch of a [review run](#review-runs)), and the fixtures below |
 | `repo/` | the repository the agent starts from |
 | `solution/` | files laid over `repo/` that solve the task: the reference solution |
 | `check/` | files laid over the agent's result before the check runs: hidden tests, and the original visible tests, so editing a test does not pass it |
