@@ -75,7 +75,7 @@ func call[T any](s *Session, cmd any) (T, error) {
 	}
 }
 
-func (s *Session) loop() {
+func (s *Session) loop() { //nolint:gocyclo // a dispatch switch over a closed set; see docs/documentation/architecture.md
 	defer close(s.done)
 	defer close(s.out)
 	defer s.stop()
@@ -130,6 +130,10 @@ func (s *Session) loop() {
 			s.onAsk(m)
 		case cmdAskGone:
 			s.answer(m.id, m.answer)
+		case cmdQuestions:
+			s.onQuestions(m)
+		case cmdQuestionsGone:
+			s.dropQuestions(m.id)
 		}
 		s.saveQueue()
 	}
@@ -167,6 +171,8 @@ func (s *Session) handle(cmd any) (any, error) {
 		return struct{}{}, s.onRewind(c.id)
 	case cmdResolve:
 		return struct{}{}, s.onResolve(c)
+	case cmdAnswer:
+		return struct{}{}, s.onAnswer(c)
 	case cmdShell:
 		return s.onShell(c), nil
 	case cmdReview:

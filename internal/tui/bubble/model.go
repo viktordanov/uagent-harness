@@ -252,6 +252,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmds = append(cmds, m.run(eff))
 			}
 		}
+		// The agent's questions change the composer's hint.
+		m.composer.Placeholder = render.ShellPlaceholder(m.st)
 		// After the events: a batch that starts a run starts the clock.
 		cmds = append(cmds, m.afterChange())
 

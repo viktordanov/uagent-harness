@@ -16,22 +16,25 @@ import (
 )
 
 // observer writes each persisted session item as one JSON line, exactly as
-// the runner prints it. It also emits the diff of each applied patch and
-// the output of each failed command and finished MCP call, read from the
-// same line, so the live view and a reloaded one agree.
+// the runner prints it. It also emits the diff of each applied patch, the
+// output of each failed command and finished MCP call, and the answers to
+// each request_user_input call, read from the same line, so the live view
+// and a reloaded one agree.
 type observer struct {
 	sessionID session.ID
 	out       io.Writer
 	cancel    context.CancelFunc
-	// emit, when set, receives engine.PatchApplied and engine.ToolOutput.
+	// emit, when set, receives engine.PatchApplied, engine.ToolOutput, and
+	// engine.QuestionsAnswered.
 	emit func(core.Event)
 	// early are the items recorded before the run started, written first.
 	early []sessionstore.Item
 
 	mu      sync.Mutex
 	failure error
-	// patched and output are the calls whose events were emitted.
-	patched, output map[string]bool
+	// patched, output, and answered are the calls whose events were
+	// emitted.
+	patched, output, answered map[string]bool
 }
 
 func (o *observer) observe(id session.ID, item sessionstore.Item) {
@@ -45,8 +48,8 @@ func (o *observer) observe(id session.ID, item sessionstore.Item) {
 	}
 }
 
-// write writes the item and returns the patch it completes and the output
-// it finishes, each once per call.
+// write writes the item and returns the patch it completes, the output it
+// finishes, and the answers it records, each once per call.
 func (o *observer) write(item sessionstore.Item) []core.Event {
 	o.mu.Lock()
 	defer o.mu.Unlock()
@@ -68,6 +71,9 @@ func (o *observer) write(item sessionstore.Item) []core.Event {
 		events = append(events, ev)
 	}
 	if ev, ok := engine.ToolOutputFromItem(line); ok && once(&o.output, ev.CallID) {
+		events = append(events, ev)
+	}
+	if ev, ok := engine.QuestionsFromItem(line); ok && once(&o.answered, ev.CallID) {
 		events = append(events, ev)
 	}
 

@@ -19,6 +19,7 @@ brew install viktordanov/tap/uah
 
 - [Sessions](#resume-a-session) you can resume, search, and [take back to an earlier message](#go-back-to-an-earlier-message), [prompt history](#reuse-an-earlier-prompt) with ↑ and ctrl+r, and a headless [`uah exec`](#headless-mode)
 - [Subagents](#subagents-and-agent-files) that run in parallel, defined in Markdown or TOML agent files
+- [Questions with options](#answer-the-agents-questions): the agent stops to ask, you pick an answer or type your own, as with Codex's `request_user_input`
 - [Context preparation](#context-preparation): each session starts knowing its shell, sandbox, git state, and instruction files, from Markdown modules you can extend
 - [AGENTS.md and skills](#agentsmd-and-skills), and [MCP servers](#mcp-setup) with OAuth
 - A [sandbox](#permission-modes) (Seatbelt, bubblewrap) with [approvals](#command-rules), permission modes, and an auto-reviewer
@@ -104,6 +105,7 @@ Keys worth knowing:
 | ctrl+r | Search your earlier prompts; see [Reuse an earlier prompt](#reuse-an-earlier-prompt) |
 | `/` | Commands, such as `/model`, `/effort`, `/compact`, `/context`, `/diff`, `/review`, `/mcp`, `/agents`, `/status`, `/resume`, and `/new` |
 | `@` | Mention a workspace file (fuzzy search) |
+| ↑ / ↓, 1–9, enter, tab | When the agent asks questions: choose an option, pick one by its number, answer, and go to the next question; type to answer in your own words. See [Answer the agent's questions](#answer-the-agents-questions) |
 | ctrl+t | The detailed view: turns, tokens, and each tool's result |
 | ctrl+g | Edit the prompt in `$VISUAL` or `$EDITOR` (vim by default); the saved text comes back as the prompt, with its images. The draft file lives in `~/.uah/editor`, where sandboxed commands cannot reach it |
 | drag, double click, triple click | Select transcript text, a word, or a line, and copy it to the clipboard. `[tui] mouse = false` leaves selection to the terminal |
@@ -130,6 +132,17 @@ When you quit the TUI, it prints the session's token usage and the command that 
 
 Press esc twice on an empty prompt while the agent is idle, or type `/rewind`: your latest message is selected. Esc or ↑ selects an earlier one and ↓ a later one; enter puts the message back in the prompt, with its images, to edit and send again. The message and everything after it leave the agent's context and the screen, as Codex's backtrack does, and a resumed session keeps the cut. The session file keeps the old branch, and `uah sessions show` prints it. Files the agent changed stay changed. See the [rewind design](docs/design/rewind.md).
 
+### Answer the agent's questions
+
+When the agent needs a decision with a few plausible answers, it stops and asks with Codex's `request_user_input` tool: one to three questions above the prompt, each with its options and what each one means, the recommended one first, and `None of the above`. The agent waits for you, with no time limit.
+
+- ↑ and ↓ choose an option; a number picks it at once.
+- Type to answer in your own words: the text goes with the answer, after the chosen option, or alone under `None of the above`.
+- Enter answers the question and shows the next one; on the last, it sends the answers, and the agent goes on with them. Tab and shift+tab go between the questions.
+- Esc interrupts the agent instead, and keeps what you typed, so you can send a message of your own.
+
+The transcript shows the call as `ASK`, and your answers under it. Only the TUI offers the tool: `uah exec` has no one to answer, so the agent asks in its final answer there, and a script replies with `uah exec --last`. Subagents ask their parent instead. See the [questions design](docs/design/questions.md).
+
 ### Reuse an earlier prompt
 
 On an empty prompt, ↑ brings back your previous prompt in this folder, from this session or an earlier one, and ↓ goes forward again. Each folder has its own prompts, as in Claude Code: the folder is the session's workspace, and `/resume` into a session of another folder shows that folder's prompts. Edit a recalled prompt and it is yours: the arrows move the cursor again. A `!` command comes back in shell mode; a prompt of this run comes back with its images. Ctrl+c on a draft clears it, and ↑ brings it back.
@@ -142,7 +155,7 @@ Prompts are kept in one file, `~/.uah/history.jsonl`, private to you, in Codex's
 
 Drag over the transcript to select text; double click selects a word and triple click a line. Letting go copies the selection to the clipboard, and the footer says how many lines. Dragging to the top row scrolls, and the wheel keeps scrolling during a drag. Esc or a click clears the selection. The copy leaves out the `λ` and `•` columns and the padding around code, so a code block pastes as code. uah copies with OSC 52, which also works over ssh, and with `pbcopy`, `wl-copy`, or `xclip`. To use the terminal's own selection, hold Option (iTerm2, Terminal) or Shift (most others), or set `[tui] mouse = false`. See the [selection design](docs/design/selection.md).
 
-The terminal's title shows the session's state and its workspace: `uah · api` when idle, `uah · working · api` while the agent works, and `uah · approve? · api` while an approval waits, which helps to find a pane among many. `[tui] title = false` turns it off.
+The terminal's title shows the session's state and its workspace: `uah · api` when idle, `uah · working · api` while the agent works, and `uah · approve? · api` while an approval waits, `uah · answer? · api` while the agent's questions wait, which helps to find a pane among many. `[tui] title = false` turns it off.
 
 ### Headless mode
 
@@ -161,7 +174,7 @@ uah exec --ephemeral -o answer.md "..."           # keep no session; write the f
 
 The TUI shows the answer as the model writes it, and `--json` adds `text_delta`, `reasoning_delta`, and `stream_reset` events before the final `assistant_message`. A [web search](#web-search) is a `web_search` event when it starts and when it ends, with its query or URL. A compaction is `compaction_started`, then `compacted` with its `stats`: the strategy, the tokens before and after, and the summary call's usage. Plain `uah exec` prints each answer once, when it is complete. See the [streaming design](docs/design/streaming.md).
 
-It exits 0 when the run succeeds, 1 when it fails, 2 on a usage error, 3 at the disk limit, and 130 on an interrupt. A run has no time limit; a script that needs one wraps it, as in `timeout 30m uah exec …` with GNU coreutils, which exits 124. Nobody can answer an approval headless, so commands that need one are declined with a reason. `uah exec --help` lists the flags.
+It exits 0 when the run succeeds, 1 when it fails, 2 on a usage error, 3 at the disk limit, and 130 on an interrupt. A run has no time limit; a script that needs one wraps it, as in `timeout 30m uah exec …` with GNU coreutils, which exits 124. Nobody can answer an approval headless, so commands that need one are declined with a reason. Nor can anyone answer the agent's questions, so `uah exec` does not offer the question tool, and the agent asks in its answer. `uah exec --help` lists the flags.
 
 ### Search old sessions
 

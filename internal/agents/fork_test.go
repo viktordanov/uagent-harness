@@ -12,6 +12,7 @@ import (
 
 	"github.com/viktordanov/uah/internal/agents"
 	"github.com/viktordanov/uah/internal/engine"
+	"github.com/viktordanov/uah/internal/engine/embedded"
 	"github.com/viktordanov/uah/internal/session"
 	"github.com/viktordanov/uah/testing/fakellm"
 )
@@ -185,3 +186,37 @@ func TestFork_DoesNotRunTheParentsWorkAgain(t *testing.T) {
 	assert.Equal(t, "ran\nlate\n", fileText(t, "stamp.txt"), "each command ran once")
 	assert.Equal(t, "a\nb\n", fileText(t, "notes.txt"), "the patch applied once")
 }
+
+// TestFork_KeepsTheQuestionTool: with request_user_input offered to the
+// main agent, a forked child is offered it too, so its tools stay its
+// parent's, and its call is refused as Codex refuses every thread but the
+// root; a plain child is not offered it.
+func TestFork_KeepsTheQuestionTool(t *testing.T) {
+	e := newEnv(t, agents.Config{},
+		fakellm.Reply{Calls: []fakellm.Call{call("spawn_agent", `{"message":"CHILD-ASKS go on","fork_context":true}`)}},
+		callWith("wait_agent", `{"targets":["ID"]}`),
+		fakellm.Reply{Calls: []fakellm.Call{call("spawn_agent", `{"message":"CHILD-PLAIN look"}`)}},
+		callWith("wait_agent", `{"targets":["ID"]}`),
+		fakellm.Reply{Text: "done"},
+	)
+	e.llm.Route("CHILD-ASKS",
+		fakellm.Reply{Calls: []fakellm.Call{call(engine.QuestionToolName, `{"questions":[{"id":"a","header":"A","question":"Which?","options":[{"label":"X","description":"x"}]}]}`)}},
+		fakellm.Reply{Text: "asked"},
+	)
+	e.llm.Route("CHILD-PLAIN", fakellm.Reply{Text: "plain"})
+	s, ev := e.open(t, true, func(c *embedded.Config) { c.AskUser = true })
+	_, err := s.Submit("delegate")
+	require.NoError(t, err)
+	assert.Equal(t, "done", ev.finished().Answer)
+
+	parent, forked := parentRequest(t, e, 0), requestWith(t, e, "CHILD-ASKS")
+	assert.Contains(t, parent.ToolNames, engine.QuestionToolName)
+	assert.Equal(t, parent.ToolNames, forked.ToolNames, "the fork keeps its parent's tools")
+	assert.Contains(t, childOutputs(e, "CHILD-ASKS"), "request_user_input can only be used by the root thread")
+	assert.NotContains(t, requestWith(t, e, "CHILD-PLAIN").ToolNames, engine.QuestionToolName)
+	for _, x := range ev.all {
+		assert.False(t, isQuestions(x), "no question reached the user")
+	}
+}
+
+func isQuestions(e any) bool { _, ok := e.(session.QuestionsAsked); return ok }

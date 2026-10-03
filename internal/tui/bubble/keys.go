@@ -30,6 +30,14 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) { //nolint:gocycl
 	if _, ok := m.st.PendingApproval(); ok {
 		return m.onApprovalKey(msg)
 	}
+	if _, ok := m.st.PendingQuestions(); ok {
+		if intent := questionIntent(msg.String(), m.composer.Value()); intent != nil {
+			return m.dispatch(intent)
+		}
+		if msg.String() == "!" || msg.String() == "/" || msg.String() == "@" {
+			return m.typeKey(msg) // text, not shell mode or the menu
+		}
+	}
 	if m.st.Config != nil {
 		return m.onConfigKey(msg)
 	}
@@ -155,6 +163,13 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) { //nolint:gocycl
 	case "ctrl+t":
 		return m.dispatch(state.ToggleDetails{})
 	}
+
+	return m.typeKey(msg)
+}
+
+// typeKey gives the key to the composer.
+func (m Model) typeKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	draft := m.composer.Value()
 	var cmd tea.Cmd
 	m.composer, cmd = m.composer.Update(msg)
 	if next := m.composer.Value(); next != draft {
@@ -164,6 +179,37 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) { //nolint:gocycl
 	}
 
 	return m, cmd
+}
+
+// questionIntent maps a key while the agent's questions show: ↑↓ choose,
+// a number picks on an empty composer, enter answers with the composer's
+// text as the note, tab and shift+tab go between the questions, and esc
+// (or ctrl+c on an empty composer) interrupts the run. nil leaves the key
+// to the composer, where the user types an answer of their own.
+func questionIntent(key, draft string) any {
+	switch key {
+	case keyUp, keyCtrlP:
+		return state.QuestionMove{Delta: -1}
+	case keyDown, keyCtrlN:
+		return state.QuestionMove{Delta: 1}
+	case keyEnter, state.KeyCtrlEnter, state.KeyAltEnter:
+		return state.QuestionAnswer{Draft: draft}
+	case state.KeyTab:
+		return state.QuestionSwitch{Delta: 1, Draft: draft}
+	case "shift+tab":
+		return state.QuestionSwitch{Delta: -1, Draft: draft}
+	case keyEsc:
+		return state.QuestionDismiss{}
+	case keyCtrlC:
+		if draft == "" {
+			return state.QuestionDismiss{}
+		}
+	}
+	if len(key) == 1 && key[0] >= '1' && key[0] <= '9' && draft == "" {
+		return state.QuestionPick{Number: int(key[0] - '0')}
+	}
+
+	return nil
 }
 
 // backtrackIntent maps a key while an earlier message is selected, as

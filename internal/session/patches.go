@@ -16,10 +16,11 @@ import (
 )
 
 // loadEvents reads a run's events, as harness.LoadEvents does, and adds
-// the diff of each applied apply_patch call as engine.PatchApplied, and
-// the output of each failed command and finished MCP call as
-// engine.ToolOutput, after the call's ToolFinished, so a reloaded
-// transcript shows them. Both come from the call's finished operation in
+// the diff of each applied apply_patch call as engine.PatchApplied, the
+// output of each failed command and finished MCP call as
+// engine.ToolOutput, and the answers to each request_user_input call as
+// engine.QuestionsAnswered, after the call's ToolFinished, so a reloaded
+// transcript shows them. They come from the call's finished operation in
 // the same file, the item the live engine read them from, so the file is
 // read once. br is reset to the file, so runs share its buffer.
 func loadEvents(br *bufio.Reader, runDir string) ([]core.Event, error) {
@@ -32,7 +33,7 @@ func loadEvents(br *bufio.Reader, runDir string) ([]core.Event, error) {
 	decoder := harness.NewDecoder()
 	var events []core.Event
 	var calls []callEvent
-	patched, output := map[string]bool{}, map[string]bool{}
+	patched, output, answered := map[string]bool{}, map[string]bool{}, map[string]bool{}
 	for {
 		line, err := br.ReadBytes('\n')
 		events = append(events, decoder.Decode(line)...)
@@ -43,6 +44,10 @@ func loadEvents(br *bufio.Reader, runDir string) ([]core.Event, error) {
 		if o, ok := engine.ToolOutputFromItem(line); ok && !output[o.CallID] {
 			output[o.CallID] = true
 			calls = append(calls, callEvent{o, o.CallID})
+		}
+		if q, ok := engine.QuestionsFromItem(line); ok && !answered[q.CallID] {
+			answered[q.CallID] = true
+			calls = append(calls, callEvent{q, q.CallID})
 		}
 		if errors.Is(err, io.EOF) {
 			break

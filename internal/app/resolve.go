@@ -79,6 +79,9 @@ type Inputs struct {
 	// RunStateDir, when set, takes the session's files and run records in
 	// place of StateDir: `uah exec --ephemeral` passes a temporary directory.
 	RunStateDir string
+	// Interactive is a session a user drives, the TUI's: the main agent is
+	// offered request_user_input, whose questions the user answers.
+	Interactive bool
 }
 
 // Resolved is what Resolve decides.

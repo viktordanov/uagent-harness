@@ -25,8 +25,8 @@ const (
 )
 
 // transcript keeps what the auto-reviewer needs from the session's events:
-// the user's messages (trusted) and the latest tool calls without their
-// output (untrusted).
+// the user's messages and answers to the agent's questions (trusted), and
+// the latest tool calls without their output (untrusted).
 type transcript struct {
 	mu     sync.Mutex
 	users  []string
@@ -52,6 +52,12 @@ func (t *transcript) observe(e core.Event) {
 		t.users = keepLast(append(t.users, v.Text), keepUserMessages)
 		if t.onUser != nil {
 			t.onUser()
+		}
+	case engine.QuestionsAnswered:
+		// The user's own words, as Codex keeps request_user_input answers
+		// for its guardian (VerifiedAnswer).
+		if text := answeredText(v); text != "" {
+			t.users = keepLast(append(t.users, text), keepUserMessages)
 		}
 	case core.ToolCalled:
 		t.addLocked(v.CallID, v.Name, v.Arguments)
@@ -94,6 +100,31 @@ func (t *transcript) snapshot() (users []string, calls []review.ToolCall) {
 }
 
 func keepLast[T any](s []T, n int) []T { return s[max(len(s)-n, 0):] }
+
+// answeredText is the user's answers to the agent's questions, as Codex
+// words a verified answer: each question, the chosen option's description,
+// and the answer; "" when nothing was answered.
+func answeredText(e engine.QuestionsAnswered) string {
+	var b strings.Builder
+	for _, q := range e.Questions {
+		answers := slices.DeleteFunc(slices.Clone(e.Answers[q.ID].Answers), func(a string) bool { return strings.TrimSpace(a) == "" })
+		if len(answers) == 0 {
+			continue
+		}
+		if b.Len() > 0 {
+			b.WriteString("\n\n")
+		}
+		b.WriteString("Question: " + q.Question)
+		for _, o := range q.Options {
+			if slices.Contains(answers, o.Label) {
+				b.WriteString("\n" + o.Label + ": " + o.Description)
+			}
+		}
+		b.WriteString("\nAnswer: " + strings.Join(answers, "\n"))
+	}
+
+	return b.String()
+}
 
 // reviewedAsk puts the auto-reviewer in front of the session's ask, as
 // Codex's auto_review does: allow runs the action, deny refuses it with the

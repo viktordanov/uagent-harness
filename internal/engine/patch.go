@@ -51,11 +51,11 @@ func PatchFromItem(line []byte) (PatchApplied, bool) {
 			}
 		}
 	}
-	if json.Unmarshal(line, &item) != nil || item.Kind != "tool_call_status" {
+	if json.Unmarshal(line, &item) != nil || item.Kind != toolCallStatus {
 		return PatchApplied{}, false
 	}
 	for _, op := range item.Data.Operations {
-		if op.Type != remoteJob || op.Status != "completed" || op.State.Plan.Type != PatchPlanType || len(op.State.Handle) == 0 {
+		if op.Type != remoteJob || op.Status != opCompleted || op.State.Plan.Type != PatchPlanType || len(op.State.Handle) == 0 {
 			continue
 		}
 		var h PatchHandle

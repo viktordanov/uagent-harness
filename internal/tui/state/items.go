@@ -112,13 +112,16 @@ type Item struct {
 	// Command is a Bash call's command, whole, as the model sent it.
 	Command string
 	// Verb and Parts are the call's compact line, shaped once when it
-	// arrives (toolcalls.go): Verb its label (READ, LIST, SEARCH; "" for
-	// the tool's own) and Parts its text in styled runs (nil: Label).
+	// arrives (toolcalls.go): Verb its label (READ, LIST, SEARCH, ASK; ""
+	// for the tool's own) and Parts its text in styled runs (nil: Label).
 	Verb  string
 	Parts []cmdparse.Part
 	// ErrorLine says why the call failed; Result sums up an MCP call's
 	// result; Note is the auto-reviewer's approval of it (toolcalls.go).
 	ErrorLine, Result, Note string
+	// Answers are what the user answered to a request_user_input call, a
+	// line per question (questions.go).
+	Answers []string
 	// Group are the names on a call's compact line when calls after it
 	// joined it (skills loaded one after another); MergedInto is the key
 	// of the call whose line shows this one.

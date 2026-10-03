@@ -1,0 +1,24 @@
+│ model:     gpt-6-sol high   /model … │
+│ directory: /workspace/proj           │
+╰──────────────────────────────────────╯
+
+
+λ Plan the users table migration  sendin
+
+
+  ASK    12s     Migration, Rollout
+
+λ Waiting for your answer (12s • esc to…
+ ?  Migration    Rollout
+ The users table can change three ways.
+ Which should the migration take?
+ › 1. Expand and contr…  Add the new co…
+   2. Rename in place    One migration;…
+   3. Copy and swap      Build a new ta…
+   4. None of the above  Type your answ…
+   ↑↓ choose · 1-4 pick · type your own…
+
+
+λ
+
+ gpt-6-sol high · workspace mode · /wo…

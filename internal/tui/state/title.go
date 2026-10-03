@@ -16,6 +16,8 @@ func (s State) WindowTitle() string {
 	switch {
 	case len(s.Approvals) > 0:
 		title += " · approve?"
+	case len(s.Questions) > 0:
+		title += " · answer?"
 	case s.Busy:
 		title += " · working"
 	}

@@ -129,7 +129,7 @@ func Setup(ctx context.Context, in Inputs, logOutput io.Writer) (Result, error) 
 		return Result{}, err
 	}
 	subagents := newAgents(r, cfg, in.Workspace, &opts, catalog)
-	eng := newEngine(r, runDir, logger, parts{servers: servers, approver: approver, subagents: subagents, models: catalog, context: ContextSettings(in.ConfigPath, cfg)}, &opts)
+	eng := newEngine(r, runDir, logger, parts{servers: servers, approver: approver, subagents: subagents, models: catalog, context: ContextSettings(in.ConfigPath, cfg), askUser: in.Interactive}, &opts)
 	subagents.Bind(eng, opts) // children open exactly as this session does
 	opts.Shell = userShell(r, cfg, runDir, approver)
 
@@ -165,6 +165,8 @@ type parts struct {
 	subagents *agents.Manager
 	models    *models.Manager
 	context   contextprep.Settings
+	// askUser offers request_user_input (Inputs.Interactive).
+	askUser bool
 }
 
 // newEngine builds the embedded engine for the resolved settings.
@@ -176,7 +178,7 @@ func newEngine(r Resolved, stateDir string, logger *slog.Logger, p parts, opts *
 		AutoReview: r.ApprovalsReviewer == review.ReviewerAuto, Review: r.Review, WebSearch: r.WebSearch == WebSearchLive, Verbosity: r.Verbosity,
 		InstructionFiles: instructionFiles(opts.Instructions),
 		Compaction:       r.Compaction, ContextWindow: r.Settings.ContextWindow,
-		BeforeCompact: preCompactHook(opts.Hooks, r.Settings), Subagents: p.subagents,
+		BeforeCompact: preCompactHook(opts.Hooks, r.Settings), Subagents: p.subagents, AskUser: p.askUser,
 	}
 
 	return embedded.New(ecfg)

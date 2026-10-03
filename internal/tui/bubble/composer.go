@@ -64,14 +64,15 @@ func firstRowPrompt(mark string) func(textarea.PromptInfo) string {
 	}
 }
 
-// syncShell draws the composer for shell mode after it changed: its mark
-// and placeholder come from the state, through render.
+// syncShell draws the composer for shell mode after it changed, and for
+// the agent's questions: its mark and placeholder come from the state,
+// through render.
 func (m *Model) syncShell(was bool) {
+	m.composer.Placeholder = render.ShellPlaceholder(m.st)
 	if m.st.Shell == was {
 		return
 	}
 	m.composer.SetPromptFunc(2, firstRowPrompt(render.ShellPrompt(m.st)))
-	m.composer.Placeholder = render.ShellPlaceholder(m.st)
 }
 
 // composerStyles draw the composer in the theme: the λ in the accent, and

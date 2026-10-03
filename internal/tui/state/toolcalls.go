@@ -35,6 +35,8 @@ func (s *State) onToolCalled(e core.ToolCalled) {
 		it.Parts = mcpParts(e.Name, e.Arguments)
 	case e.Name == toolSkill:
 		s.joinSkill(&it)
+	case e.Name == engine.QuestionToolName:
+		it.Verb, it.Parts = "ASK", []cmdparse.Part{{Text: questionParts(e.Arguments)}}
 	}
 	s.put(it)
 }

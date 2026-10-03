@@ -222,7 +222,7 @@ The changes fit the prompt to uah's tools; the [system prompt record](design/sys
 | "You are Codex, an agent based on GPT-6" | "You are uah, a coding agent in the user's terminal" |
 | `exec_command` with a `cmd` argument, the shell | `Bash` with a `command` argument |
 | `functions.exec` with `Promise.allSettled` to batch calls | Parallel tool calls in one response |
-| `functions.request_user_input_async` | Ask in the `final` channel, which ends the turn |
+| `functions.request_user_input_async` | Ask in the `final` channel, which ends the turn, or, where a user answers (the TUI), with the blocking `request_user_input` and its options |
 | Interactive visuals, Mermaid, inline visualizations | Codex's own terminal wording: ASCII diagrams, trees, and tables |
 | Skills listed under `## Skills`, read through `skills.list` and `skills.read` | The runner's `<available_skills>` list and `SkillUse` |
 | Apps in the `codex_apps` MCP server, `tool_search`, plugins | Removed; MCP tools keep their `mcp__<server>__<tool>` names |

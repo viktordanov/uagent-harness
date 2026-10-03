@@ -25,6 +25,7 @@ type Wait struct {
 func (s State) CurrentWait() (Wait, bool) {
 	l := s.Live
 	a, asked := s.PendingApproval()
+	q, questioned := s.PendingQuestions()
 	switch {
 	case l == nil:
 		return Wait{}, false
@@ -32,6 +33,8 @@ func (s State) CurrentWait() (Wait, bool) {
 		return Wait{What: "Stopping", Hint: "esc again to force", Since: l.Stopping}, true
 	case asked && !a.Answered:
 		return Wait{What: "Waiting for approval · " + oneLine(a.Command), Since: a.Since}, true
+	case questioned && !q.Sent:
+		return Wait{What: "Waiting for your answer", Since: q.Since}, true
 	case l.Aside != nil:
 		return *l.Aside, true
 	case l.Retry != nil:

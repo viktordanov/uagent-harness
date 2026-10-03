@@ -23,7 +23,8 @@ import (
 
 // tools builds the registry the coordinator runs: Bash, ViewImage, and
 // workspace skills, as the runner registers them, MCP tools, and Codex's
-// apply_patch, with PreToolUse hooks around them. Its static definitions are the tools the model is offered,
+// apply_patch, the agent tools, and request_user_input, with PreToolUse
+// hooks around them. Its static definitions are the tools the model is offered,
 // so a tool added or changed here reaches both. approvals bounds the hooks
 // and approvals of the calls: the run's context, ended early by an
 // interrupt.
@@ -61,6 +62,7 @@ func (w *wiring) tools(ctx, approvals context.Context, req core.Request, session
 	registry = withMCP(registry, scope.mcpTools(mcpTools), req.DisallowedTools, gate)
 	registry = withPatch(registry, offersPatch(w.e.models, req), w.patchGate(approvals, req))
 	registry = w.withAgents(registry, req)
+	registry = withQuestions(registry, questionTranslator{offered: w.offersQuestions(req), root: !isSubagent(req.SessionID), ctx: approvals, ask: w.askUser})
 
 	return withPreToolUse(approvals, registry, w.e.cfg.Hooks, req, w.l.SessionsDir), nil
 }

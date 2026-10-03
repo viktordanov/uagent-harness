@@ -92,7 +92,7 @@ func openTUI(ctx context.Context, cmd *cli.Command, launch tuiLaunch) error {
 		WritableRoots: st.Sandbox.WritableRoots,
 		Open: func(ctx context.Context, id string) (*session.Session, []session.LoadedRun, error) {
 			in := inputs(cmd)
-			in.SessionRef, in.NewSessionID = id, ""
+			in.SessionRef, in.NewSessionID, in.Interactive = id, "", true
 			if id == "" {
 				in.NewSessionID = newID.take() // the first new session only; /new gets a fresh ID
 			}
