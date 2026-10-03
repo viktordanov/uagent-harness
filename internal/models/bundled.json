@@ -147,6 +147,7 @@
     },
     {
       "slug": "gpt-6-sol",
+      "supports_reasoning_effort_updates": true,
       "display_name": "GPT-6-Sol",
       "description": "Previous generation workhorse model.",
       "visibility": "list",
@@ -218,6 +219,7 @@
     },
     {
       "slug": "gpt-6-luna",
+      "supports_reasoning_effort_updates": true,
       "display_name": "GPT-6-Luna",
       "description": "Fast and affordable model for easier tasks.",
       "visibility": "list",

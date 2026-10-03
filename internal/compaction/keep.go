@@ -73,17 +73,19 @@ func Developer(covered []llm.Item) []llm.Item {
 	return out
 }
 
-// Configured is the last configuration update among covered, which a
-// compaction keeps so the effort it set still holds after it (uah's effort
-// updates, internal/engine/embedded/adaptive.go); none when covered has none.
-func Configured(covered []llm.Item) []llm.Item {
+// Configured is the effort the last configuration update among covered
+// set, "" when covered has none. A compaction drops the updates it covers,
+// and the requests after it carry this effort instead, as Codex sets a new
+// baseline after a compaction (uah's effort updates,
+// internal/engine/embedded/adaptive.go).
+func Configured(covered []llm.Item) llm.ReasoningEffort {
 	for _, item := range slices.Backward(covered) {
-		if item.Type == llm.ItemConfigurationUpdate {
-			return []llm.Item{item}
+		if u, ok := item.Data.(llm.ConfigurationUpdate); ok && item.Type == llm.ItemConfigurationUpdate {
+			return u.ReasoningEffort
 		}
 	}
 
-	return nil
+	return ""
 }
 
 // ApproxTokens is Codex's estimate of text's tokens: bytes/4, rounded up.

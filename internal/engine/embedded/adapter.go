@@ -85,9 +85,11 @@ func (s *switcher) Respond(ctx context.Context, req llm.Request, opts llm.Reques
 	v, model := s.variant, s.model
 	line := effortLine{}
 	if s.updatingLocked(req.Model.ID) {
-		// The history's updates set the effort; the request keeps the base.
-		line.effort, line.request = string(lastEffort(req.Input, s.base)), string(s.base)
-		req.Model.ReasoningEffort = s.base
+		// The history's updates set the effort; the request keeps the base,
+		// or after a compaction its pin.
+		base := requestEffort(ctx, s.base)
+		line.effort, line.request = string(lastEffort(req.Input, base)), string(base)
+		req.Model.ReasoningEffort = base
 		if c := s.update; c != nil && !compacting {
 			line.reason, line.update = c.reason, c.updated
 			s.update = nil

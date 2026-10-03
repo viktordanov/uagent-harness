@@ -11,8 +11,9 @@ import (
 // bundledJSON is the offline fallback: the fields uah uses from Codex's
 // codex-rs/models-manager/models.json at rust-v0.159.1, in Codex's shape so
 // the ChatGPT backend's response and this file share one parser. The
-// supports_reasoning_effort_updates flags are from a later models.json
-// (main at b741e48).
+// supports_reasoning_effort_updates flags are from later lists: Codex's
+// models.json at main b741e48 (gpt-6-astra, gpt-6.1-sol) and the ChatGPT
+// backend's list of 2026-10-03 (gpt-6-sol, gpt-6-luna).
 //
 //go:embed bundled.json
 var bundledJSON []byte

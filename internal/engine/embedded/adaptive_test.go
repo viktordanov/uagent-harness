@@ -143,7 +143,7 @@ func TestAdaptiveEffort_Updates(t *testing.T) {
 		set     [][]string // each request's updates, in order
 	}{
 		{"updates", "gpt-6.1-sol", true, []string{"high", "high", "high", "high"},
-			[][]string{nil, {"low"}, {"low", "high"}, {"low", "high", "medium"}}},
+			[][]string{{"high"}, {"high", "low"}, {"high", "low", "high"}, {"high", "low", "high", "medium"}}},
 		{"effort_updates off", "gpt-6.1-sol", false, []string{"high", "low", "high", "medium"}, [][]string{nil, nil, nil, nil}},
 		{"a model without them", "gpt-test", true, []string{"high", "low", "high", "medium"}, [][]string{nil, nil, nil, nil}},
 	}

@@ -131,7 +131,7 @@ func (c *compactor) Respond(ctx context.Context, req llm.Request, opts llm.Reque
 			return llm.Response{}, ctx.Err()
 		}
 	}
-	req.Input = c.apply(req.Input)
+	ctx, req.Input = c.applyPinned(ctx, req.Input)
 	resp, err := c.next.Respond(c.withItem(ctx), req, opts)
 	if err == nil {
 		c.mu.Lock()
@@ -207,16 +207,36 @@ func (c *compactor) autoLimit() int64 {
 // not match it (a session file changed outside uah) goes out in full, and
 // the mismatch is reported once.
 func (c *compactor) apply(input []llm.Item) []llm.Item {
+	out, _ := c.applied(input)
+
+	return out
+}
+
+// applyPinned is apply, with the effort the compaction pins the request
+// to in ctx (withEffortPin): the effort the covered history last set with
+// an update, which the compaction drops (adaptive.go).
+func (c *compactor) applyPinned(ctx context.Context, input []llm.Item) (context.Context, []llm.Item) {
+	out, covered := c.applied(input)
+	if effort := compaction.Configured(covered); effort != "" {
+		ctx = withEffortPin(ctx, effort)
+	}
+
+	return ctx, out
+}
+
+// applied is apply, with the items the compaction covered (none when it
+// did not apply).
+func (c *compactor) applied(input []llm.Item) ([]llm.Item, []llm.Item) {
 	c.mu.Lock()
 	c.settleLocked(input)
 	rec := c.record
 	c.mu.Unlock()
 	if rec == nil {
-		return input
+		return input, nil
 	}
 	out, err := compaction.Apply(input, *rec)
 	if err == nil {
-		return out
+		return out, input[1 : 1+rec.Covered]
 	}
 	c.mu.Lock()
 	report := !c.stale
@@ -230,7 +250,7 @@ func (c *compactor) apply(input []llm.Item) []llm.Item {
 		c.emit(engine.Compacted{At: time.Now(), Trigger: rec.Trigger, Err: msg})
 	}
 
-	return input
+	return input, nil
 }
 
 // lastUsage is the context the session's last model response used (input

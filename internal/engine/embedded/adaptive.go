@@ -2,6 +2,7 @@ package embedded
 
 import (
 	"cmp"
+	"context"
 	"fmt"
 	"slices"
 
@@ -18,15 +19,18 @@ import (
 
 // Effort updates: for a model that takes them (effort_updates and the
 // catalog's supports_reasoning_effort_updates, as in Codex), every request
-// carries the session's base effort, its first, and a turn whose effort
-// differs from the one the history last set gets a configuration_update
-// item that sets it (effortUpdate): the router's lower effort before a
-// follow-up and the user's again before a user message, or a new /effort.
-// The coordinator records the effort with the turn, so the item stays in
-// the history at its place, and the prompt cache, keyed on the request's
-// effort, survives every switch. A model without them, or effort ultra,
-// which only the request can carry, gets the items stripped and the
-// request's effort set as before.
+// carries the session's base effort, its first, and the first turn and
+// every turn whose effort differs from the one the history last set get a
+// configuration_update item that sets it (effortUpdate): the baseline,
+// the router's lower effort before a follow-up and the user's again before
+// a user message, or a new /effort. The coordinator records the effort
+// with the turn, so the item stays in the history at its place, and the
+// prompt cache, keyed on the request's effort, survives every switch.
+// After a compaction, which drops the updates it covers, the requests
+// carry the effort the covered history last set instead (withEffortPin),
+// as Codex sets a new baseline then. A model without updates, or effort
+// ultra, which only the request can carry, gets the items stripped and
+// the request's effort set as before.
 
 // adaptiveRouter picks each turn request's effort.
 type adaptiveRouter struct {
@@ -61,7 +65,8 @@ func (s *switcher) effortUpdate(req llm.Request) llm.ReasoningEffort {
 	if s.adaptive.steps > 0 {
 		c = s.adaptive.route(req.Input, c.effort, false)
 	}
-	c.updated = c.effort != lastEffort(req.Input, s.base)
+	// The first turn sets its effort too, as Codex's baseline.
+	c.updated = c.effort != lastEffort(req.Input, s.base) || !slices.ContainsFunc(req.Input, isUpdate)
 	s.update = &c
 	if !c.updated {
 		return ""
@@ -75,6 +80,27 @@ func (s *switcher) effortUpdate(req llm.Request) llm.ReasoningEffort {
 // takes them, and the effort is not ultra. It holds s.mu.
 func (s *switcher) updatingLocked(model string) bool {
 	return s.updates != nil && s.base != "" && !s.variant.ultra && s.updates(cmp.Or(s.model, model))
+}
+
+func isUpdate(it llm.Item) bool { return it.Type == llm.ItemConfigurationUpdate }
+
+// effortPinKey carries the effort a compaction pins the request to.
+type effortPinKey struct{}
+
+// withEffortPin gives the request the effort to carry in place of the
+// session's base: after a compaction, the one the covered history last set.
+func withEffortPin(ctx context.Context, effort llm.ReasoningEffort) context.Context {
+	return context.WithValue(ctx, effortPinKey{}, effort)
+}
+
+// requestEffort is the effort a request carries with effort updates: the
+// compaction's pin, else base.
+func requestEffort(ctx context.Context, base llm.ReasoningEffort) llm.ReasoningEffort {
+	if pin, ok := ctx.Value(effortPinKey{}).(llm.ReasoningEffort); ok {
+		return pin
+	}
+
+	return base
 }
 
 // lastEffort is the effort the input's last configuration update set, else

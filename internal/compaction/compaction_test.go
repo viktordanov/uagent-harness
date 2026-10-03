@@ -80,11 +80,12 @@ func effortUpdate(effort llm.ReasoningEffort) llm.Item {
 	return llm.Item{Type: llm.ItemConfigurationUpdate, Data: llm.ConfigurationUpdate{ReasoningEffort: effort}}
 }
 
-func TestApply_KeepsTheLastEffortUpdate(t *testing.T) {
+func TestApply_DropsTheCoveredEffortUpdates(t *testing.T) {
 	history := []llm.Item{
 		msg(llm.RoleSystem, "sys"), msg(llm.RoleUser, "first"), call("a"), effortUpdate(llm.ReasoningEffortLow),
 		result("a", "out a"), msg(llm.RoleAssistant, "done"), effortUpdate(llm.ReasoningEffortHigh), msg(llm.RoleUser, "second"),
 		call("b"), effortUpdate(llm.ReasoningEffortMedium), result("b", "out b"), msg(llm.RoleAssistant, "done"),
+		effortUpdate(llm.ReasoningEffortLow),
 	}
 	rec, err := compaction.NewRecordCovering(history, 10, "the summary", compaction.TriggerManual, "m", time.Now())
 	require.NoError(t, err)
@@ -92,10 +93,11 @@ func TestApply_KeepsTheLastEffortUpdate(t *testing.T) {
 	got, err := compaction.Apply(history, rec)
 	require.NoError(t, err)
 	assert.Equal(t, []string{
-		"system: sys", "effort medium", "user: first", "user: second", "user: " + compaction.SummaryPrefix + "\nthe summary",
-		"assistant: done",
-	}, texts(got), "the effort the covered history last set holds")
-	assert.Equal(t, llm.ReasoningEffortMedium, llm.Request{Model: llm.Model{ReasoningEffort: llm.ReasoningEffortHigh}, Input: got}.Effort())
+		"system: sys", "user: first", "user: second", "user: " + compaction.SummaryPrefix + "\nthe summary",
+		"assistant: done", "effort low",
+	}, texts(got), "only the updates after the covered items")
+	assert.Equal(t, llm.ReasoningEffortMedium, compaction.Configured(history[1:11]), "the effort the covered items last set")
+	assert.Empty(t, compaction.Configured(history[1:3]))
 }
 
 func TestNewRecord_LeavesNewUserMessagesAfterTheSummary(t *testing.T) {
