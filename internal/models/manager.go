@@ -223,6 +223,20 @@ func (m *Manager) Verbosity(provider, model, override string) (string, bool) {
 	return m.Cached(provider).Verbosity(model, override)
 }
 
+// EffortUpdates reports whether the provider's model takes configuration
+// updates of its effort, as Codex's ModelClient decides it
+// (reasoning_effort_override_enabled in core/src/client.rs): on OpenAI's
+// providers, for a model whose entry has supports_reasoning_effort_updates,
+// from the provider's last list, else the bundled one.
+func (m *Manager) EffortUpdates(provider, model string) bool {
+	if provider != ProviderOpenAI && provider != ProviderCodex {
+		return false
+	}
+	md, ok := m.Cached(provider).Metadata(model)
+
+	return ok && md.EffortUpdates
+}
+
 // ErrUnavailable matches an UnavailableError.
 var ErrUnavailable = errors.New("the model is not available")
 

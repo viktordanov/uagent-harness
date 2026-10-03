@@ -48,6 +48,13 @@ type switcher struct {
 	// adaptive picks each turn request's effort when adaptive effort is
 	// on (adaptive.go); setAdaptive changes it.
 	adaptive adaptiveRouter
+	// updates, when set, reports whether a model takes effort updates
+	// (effort_updates and the catalog); base is then the effort each
+	// request carries, the session's first, and update effortUpdate's
+	// choice for the next turn request (adaptive.go).
+	updates func(model string) bool
+	base    llm.ReasoningEffort
+	update  *effortChoice
 	// max is the attempt limit; diag gets the diagnostics (modelcall.go).
 	max  int
 	diag io.Writer
@@ -76,19 +83,30 @@ func (s *switcher) Respond(ctx context.Context, req llm.Request, opts llm.Reques
 	_, compacting := ctx.Value(remoteCallKey{}).(*remoteCall)
 	s.mu.Lock()
 	v, model := s.variant, s.model
-	reason := ""
-	if s.adaptive.steps > 0 && !compacting {
-		c := s.adaptive.route(req.Input, req.Model.ReasoningEffort, v.ultra)
-		req.Model.ReasoningEffort, v.ultra, reason = c.effort, c.ultra, c.reason
+	line := effortLine{}
+	if s.updatingLocked(req.Model.ID) {
+		// The history's updates set the effort; the request keeps the base.
+		line.effort, line.request = string(lastEffort(req.Input, s.base)), string(s.base)
+		req.Model.ReasoningEffort = s.base
+		if c := s.update; c != nil && !compacting {
+			line.reason, line.update = c.reason, c.updated
+			s.update = nil
+		}
+	} else {
+		req = req.WithoutConfigurationUpdates()
+		if s.adaptive.steps > 0 && !compacting {
+			c := s.adaptive.route(req.Input, req.Model.ReasoningEffort, v.ultra)
+			req.Model.ReasoningEffort, v.ultra, line.reason = c.effort, c.ultra, c.reason
+		}
+		line.effort = string(req.Model.ReasoningEffort)
+		if v.ultra {
+			line.effort = effortUltra
+		}
 	}
 	client, err := s.clientLocked(v)
 	s.mu.Unlock()
 	if err != nil {
 		return llm.Response{}, err
-	}
-	effort := string(req.Model.ReasoningEffort)
-	if v.ultra {
-		effort = effortUltra
 	}
 	if model != "" {
 		req.Model.ID = model
@@ -108,7 +126,7 @@ func (s *switcher) Respond(ctx context.Context, req llm.Request, opts llm.Reques
 	}
 	ctx, done := s.observe(ctx, kindTurn)
 	if c, ok := ctx.Value(callKey{}).(*modelCall); ok {
-		c.setEffort(effort, reason)
+		c.setEffort(line)
 	}
 	resp, err := client.Respond(ctx, req, opts)
 	err = done(err)
@@ -243,6 +261,9 @@ func (s *switcher) direct() llm.Adapter {
 		if req.Model.ID == "" {
 			req.Model.ID = model
 		}
+		// A one-shot call picks its own effort; a compaction summary's
+		// history may carry updates (adaptive.go).
+		req = req.WithoutConfigurationUpdates()
 		req.Model.Verbosity = s.verbosityFor(req.Model)
 		if s.images != nil {
 			req = s.images(req) // a compaction summary sees the pasted images too

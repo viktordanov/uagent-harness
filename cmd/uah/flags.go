@@ -172,6 +172,7 @@ func inputs(cmd *cli.Command) app.Inputs {
 		NoInstructions: cmd.Bool("no-instructions"),
 
 		ContextPreparation: contextPreparation(cmd),
+		EffortUpdates:      os.Getenv(app.EnvEffortUpdates),
 	}
 }
 

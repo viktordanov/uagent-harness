@@ -10,7 +10,9 @@ import (
 
 // bundledJSON is the offline fallback: the fields uah uses from Codex's
 // codex-rs/models-manager/models.json at rust-v0.159.1, in Codex's shape so
-// the ChatGPT backend's response and this file share one parser.
+// the ChatGPT backend's response and this file share one parser. The
+// supports_reasoning_effort_updates flags are from a later models.json
+// (main at b741e48).
 //
 //go:embed bundled.json
 var bundledJSON []byte
@@ -49,6 +51,7 @@ type codexModel struct {
 	ApplyPatchToolType string   `json:"apply_patch_tool_type"`
 	SupportVerbosity   bool     `json:"support_verbosity"`
 	DefaultVerbosity   string   `json:"default_verbosity"`
+	EffortUpdates      bool     `json:"supports_reasoning_effort_updates"`
 }
 
 func (c codexModel) model() Model {
@@ -59,7 +62,7 @@ func (c codexModel) model() Model {
 		DefaultEffort: c.DefaultReasoning, DefaultServiceTier: c.DefaultServiceTier,
 		Priority: c.Priority, Hidden: c.Visibility != "" && c.Visibility != "list",
 		Plans: c.AvailableInPlans, MinClientVersion: c.MinClientVersion, ApplyPatchTool: c.ApplyPatchToolType,
-		SupportsVerbosity: c.SupportVerbosity, DefaultVerbosity: c.DefaultVerbosity,
+		SupportsVerbosity: c.SupportVerbosity, DefaultVerbosity: c.DefaultVerbosity, EffortUpdates: c.EffortUpdates,
 	}
 	if m.ContextWindow == 0 {
 		m.ContextWindow = m.MaxContextWindow

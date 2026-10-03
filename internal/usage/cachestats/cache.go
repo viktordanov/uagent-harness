@@ -1,10 +1,11 @@
 // Package cachestats accounts for a session's prompt cache: per request,
 // the input the provider could have served from its cache, what it did
 // serve, and why the rest missed. The provider keeps a prompt cache per
-// model and effort, and lets it expire after some idle minutes, so a
-// session that switches effort, switches model, pauses, or rewrites its
-// history pays for input it already sent. See
-// docs/design/adaptive-effort-costs.md.
+// model and request effort, and lets it expire after some idle minutes, so
+// a session that switches effort, switches model, pauses, or rewrites its
+// history pays for input it already sent. An effort update (a
+// configuration_update item) leaves the request's effort, and the cache, as
+// they are. See docs/design/adaptive-effort-costs.md.
 package cachestats
 
 // Block is the provider's prompt cache granularity in tokens.

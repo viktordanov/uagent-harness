@@ -1,6 +1,7 @@
 package embedded
 
 import (
+	"cmp"
 	"fmt"
 	"slices"
 
@@ -15,6 +16,18 @@ import (
 // lowering only some follow-ups changed the effort between requests more
 // often, which costs the prompt cache more than the lower effort saves.
 
+// Effort updates: for a model that takes them (effort_updates and the
+// catalog's supports_reasoning_effort_updates, as in Codex), every request
+// carries the session's base effort, its first, and a turn whose effort
+// differs from the one the history last set gets a configuration_update
+// item that sets it (effortUpdate): the router's lower effort before a
+// follow-up and the user's again before a user message, or a new /effort.
+// The coordinator records the effort with the turn, so the item stays in
+// the history at its place, and the prompt cache, keyed on the request's
+// effort, survives every switch. A model without them, or effort ultra,
+// which only the request can carry, gets the items stripped and the
+// request's effort set as before.
+
 // adaptiveRouter picks each turn request's effort.
 type adaptiveRouter struct {
 	// steps is how many levels a follow-up goes down: 1 or 2 (0: off).
@@ -27,6 +40,47 @@ type effortChoice struct {
 	effort llm.ReasoningEffort
 	ultra  bool
 	reason string
+	// updated is set when a configuration update set the effort for the
+	// request.
+	updated bool
+}
+
+// effortUpdate is the coordinator's EffortUpdate: with effort updates in
+// use, the effort to set for the turn request built as req, whose effort
+// is the user's: adaptive effort's choice, else the user's, when the
+// history last set another (lastEffort); "" otherwise. Respond logs the
+// choice for its request.
+func (s *switcher) effortUpdate(req llm.Request) llm.ReasoningEffort {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.update = nil
+	if !s.updatingLocked(req.Model.ID) {
+		return ""
+	}
+	c := effortChoice{effort: req.Model.ReasoningEffort}
+	if s.adaptive.steps > 0 {
+		c = s.adaptive.route(req.Input, c.effort, false)
+	}
+	c.updated = c.effort != lastEffort(req.Input, s.base)
+	s.update = &c
+	if !c.updated {
+		return ""
+	}
+
+	return c.effort
+}
+
+// updatingLocked reports whether a request to model, or to the live model
+// when one is set, uses effort updates: effort_updates is on, the model
+// takes them, and the effort is not ultra. It holds s.mu.
+func (s *switcher) updatingLocked(model string) bool {
+	return s.updates != nil && s.base != "" && !s.variant.ultra && s.updates(cmp.Or(s.model, model))
+}
+
+// lastEffort is the effort the input's last configuration update set, else
+// base.
+func lastEffort(input []llm.Item, base llm.ReasoningEffort) llm.ReasoningEffort {
+	return llm.Request{Model: llm.Model{ReasoningEffort: base}, Input: input}.Effort()
 }
 
 // route picks the effort for a request at e (ultra: at effort ultra).

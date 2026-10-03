@@ -75,12 +75,16 @@ func CacheStats(stateDir, id string) ([]cachestats.Attributed, error) {
 
 // attempt is the part of a model_attempt line of a run's stderr.log
 // (internal/engine/embedded/modelcall.go) that says a request's effort.
+// With effort updates, RequestEffort is the effort the request carried,
+// which keys the prompt cache, and Effort the one an update in its history
+// set.
 type attempt struct {
-	Diag   string    `json:"diag"`
-	At     time.Time `json:"at"`
-	Kind   string    `json:"kind"`
-	Effort string    `json:"effort"`
-	Result string    `json:"result"`
+	Diag          string    `json:"diag"`
+	At            time.Time `json:"at"`
+	Kind          string    `json:"kind"`
+	Effort        string    `json:"effort"`
+	RequestEffort string    `json:"request_effort"`
+	Result        string    `json:"result"`
 }
 
 type attempts []attempt
@@ -110,13 +114,14 @@ func readAttempts(path string) attempts {
 // the two are taken a few milliseconds apart.
 const attemptSlack = 2 * time.Second
 
-// effort is the effort of the last attempt between start and end, "" when
-// none.
+// effort is the effort that keys the prompt cache of the last attempt
+// between start and end, "" when none: the request's, which an effort
+// update leaves as it is.
 func (as attempts) effort(start, end time.Time) string {
 	e := ""
 	for _, a := range as {
 		if !a.At.Before(start.Add(-attemptSlack)) && !a.At.After(end) {
-			e = a.Effort
+			e = cmp.Or(a.RequestEffort, a.Effort)
 		}
 	}
 

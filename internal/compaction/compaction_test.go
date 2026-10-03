@@ -33,6 +33,8 @@ func texts(items []llm.Item) []string {
 			out = append(out, "call "+d.CallID)
 		case llm.ToolResult:
 			out = append(out, "result "+d.CallID)
+		case llm.ConfigurationUpdate:
+			out = append(out, "effort "+string(d.ReasoningEffort))
 		}
 	}
 
@@ -72,6 +74,28 @@ func TestApply_KeepsDeveloperMessages(t *testing.T) {
 	assert.Equal(t, []string{
 		"system: sys", "developer: prepared", "user: " + compaction.SummaryPrefix + "\nthe summary",
 	}, texts(got))
+}
+
+func effortUpdate(effort llm.ReasoningEffort) llm.Item {
+	return llm.Item{Type: llm.ItemConfigurationUpdate, Data: llm.ConfigurationUpdate{ReasoningEffort: effort}}
+}
+
+func TestApply_KeepsTheLastEffortUpdate(t *testing.T) {
+	history := []llm.Item{
+		msg(llm.RoleSystem, "sys"), msg(llm.RoleUser, "first"), call("a"), effortUpdate(llm.ReasoningEffortLow),
+		result("a", "out a"), msg(llm.RoleAssistant, "done"), effortUpdate(llm.ReasoningEffortHigh), msg(llm.RoleUser, "second"),
+		call("b"), effortUpdate(llm.ReasoningEffortMedium), result("b", "out b"), msg(llm.RoleAssistant, "done"),
+	}
+	rec, err := compaction.NewRecordCovering(history, 10, "the summary", compaction.TriggerManual, "m", time.Now())
+	require.NoError(t, err)
+
+	got, err := compaction.Apply(history, rec)
+	require.NoError(t, err)
+	assert.Equal(t, []string{
+		"system: sys", "effort medium", "user: first", "user: second", "user: " + compaction.SummaryPrefix + "\nthe summary",
+		"assistant: done",
+	}, texts(got), "the effort the covered history last set holds")
+	assert.Equal(t, llm.ReasoningEffortMedium, llm.Request{Model: llm.Model{ReasoningEffort: llm.ReasoningEffortHigh}, Input: got}.Effort())
 }
 
 func TestNewRecord_LeavesNewUserMessagesAfterTheSummary(t *testing.T) {

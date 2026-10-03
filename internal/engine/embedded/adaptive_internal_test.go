@@ -50,3 +50,42 @@ func TestLowerEffort(t *testing.T) {
 	assert.Equal(t, llm.ReasoningEffortMax, lowerEffort(llm.ReasoningEffortMax, true, 1), "ultra")
 	assert.Equal(t, llm.ReasoningEffortXHigh, lowerEffort(llm.ReasoningEffortMax, true, 2), "ultra, two steps")
 }
+
+func TestEffortUpdate(t *testing.T) {
+	msg := func(role llm.Role) llm.Item {
+		return llm.Item{Type: llm.ItemMessage, Data: llm.Message{Role: role, Text: "x"}}
+	}
+	update := func(e llm.ReasoningEffort) llm.Item {
+		return llm.Item{Type: llm.ItemConfigurationUpdate, Data: llm.ConfigurationUpdate{ReasoningEffort: e}}
+	}
+	call := llm.Item{Type: llm.ItemToolCall, Data: llm.ToolCall{CallID: "c"}}
+	result := llm.Item{Type: llm.ItemToolResult, Data: llm.ToolResult{CallID: "c"}}
+	system, user := msg(llm.RoleSystem), msg(llm.RoleUser)
+	request := func(e llm.ReasoningEffort, input ...llm.Item) llm.Request {
+		return llm.Request{Model: llm.Model{ID: "m", ReasoningEffort: e}, Input: input}
+	}
+	newSwitcher := func(steps int) *switcher {
+		return &switcher{adaptive: adaptiveRouter{steps: steps}, base: "high", updates: func(model string) bool { return model == "m" }}
+	}
+
+	s := newSwitcher(2)
+	assert.Empty(t, s.effortUpdate(request("high", system, user)), "the first request at the base")
+	assert.Equal(t, effortChoice{effort: "high", reason: "2-steps: first request"}, *s.update)
+	assert.Equal(t, llm.ReasoningEffortLow, s.effortUpdate(request("high", system, user, call, result)), "a follow-up lowered")
+	assert.Equal(t, effortChoice{effort: "low", reason: "2-steps: tool results only", updated: true}, *s.update)
+	assert.Empty(t, s.effortUpdate(request("high", system, user, call, update("low"), result, call, result)), "still low")
+	assert.Equal(t, llm.ReasoningEffortHigh, s.effortUpdate(request("high", system, user, call, update("low"), result, msg(llm.RoleAssistant), user)), "raised for a user message")
+
+	off := newSwitcher(0)
+	assert.Equal(t, llm.ReasoningEffortMedium, off.effortUpdate(request("medium", system, user)), "a new effort without adaptive effort")
+	assert.Empty(t, off.effortUpdate(request("high", system, update("high"), user)), "the effort the history set")
+
+	other := newSwitcher(2)
+	other.model = "other" // the live model
+	assert.Empty(t, other.effortUpdate(request("high", system, user, call, result)), "an unsupported model")
+	assert.Nil(t, other.update)
+	other.model = ""
+	other.variant.ultra = true
+	assert.Empty(t, other.effortUpdate(request("max", system, user, call, result)), "ultra only the request carries")
+	assert.Nil(t, other.update)
+}

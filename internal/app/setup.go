@@ -172,7 +172,7 @@ func newEngine(r Resolved, stateDir string, logger *slog.Logger, p parts, opts *
 	ecfg := embedded.Config{
 		StateDir: stateDir, MaxDisk: r.MaxDisk, Logger: logger, Provider: r.Settings.Provider, Hooks: opts.Hooks,
 		Sandbox: &r.Sandbox, SandboxDir: filepath.Join(stateDir, "sandbox"), Env: r.Env, MCP: p.servers, Approver: p.approver, Models: p.models,
-		ContextPreparation: r.ContextPreparation, ContextModules: p.context,
+		ContextPreparation: r.ContextPreparation, ContextModules: p.context, EffortUpdates: r.EffortUpdates,
 		AutoReview: r.ApprovalsReviewer == review.ReviewerAuto, Review: r.Review, WebSearch: r.WebSearch == WebSearchLive, Verbosity: r.Verbosity,
 		InstructionFiles: instructionFiles(opts.Instructions),
 		Compaction:       r.Compaction, ContextWindow: r.Settings.ContextWindow,

@@ -29,6 +29,8 @@ const (
 	// EnvContextPreparation is on or off, as --no-context-preparation
 	// turns it off.
 	EnvContextPreparation = "UAH_CONTEXT_PREPARATION"
+	// EnvEffortUpdates is on or off: effort_updates.
+	EnvEffortUpdates = "UAH_EFFORT_UPDATES"
 	// EnvModelVerbosity is --model-verbosity's variable.
 	EnvModelVerbosity = "UAH_MODEL_VERBOSITY"
 	// EnvMaxAttempts is the runner's variable for the attempt limit.
@@ -101,7 +103,7 @@ type Origins struct {
 // files, and explains the effective configuration. It builds no engine.
 func Inspect(ctx context.Context, in Inputs) (Report, error) {
 	o := Origins{Env: map[string]string{}}
-	for _, name := range []string{EnvProvider, EnvModel, EnvSandbox, EnvAsk, EnvMaxAttempts, EnvAdaptiveEffort, EnvContextPreparation, EnvModelVerbosity} {
+	for _, name := range []string{EnvProvider, EnvModel, EnvSandbox, EnvAsk, EnvMaxAttempts, EnvAdaptiveEffort, EnvContextPreparation, EnvEffortUpdates, EnvModelVerbosity} {
 		o.Env[name] = os.Getenv(name)
 	}
 	var err error
@@ -198,6 +200,8 @@ func sessionSettings(in Inputs, o Origins, r Resolved, cfg config.Config) []Sett
 			overrides(l, func(c config.Config) any { return c.AdaptiveEffort }), FromDefault)),
 		one("context_preparation", r.ContextPreparation, pick(input(in.ContextPreparation, EnvContextPreparation, env),
 			overrides(l, func(c config.Config) any { return c.ContextPreparation }), FromDefault)),
+		one("effort_updates", r.EffortUpdates, pick(input(in.EffortUpdates, EnvEffortUpdates, env),
+			overrides(l, func(c config.Config) any { return c.EffortUpdates }), FromDefault)),
 		one("model_verbosity", modelVerbosity(o, r), pick(input(in.ModelVerbosity, EnvModelVerbosity, env),
 			overrides(l, func(c config.Config) any { return c.ModelVerbosity }), FromDefault)),
 		one("permission_mode", string(s.Mode), modeSource(in, o)),

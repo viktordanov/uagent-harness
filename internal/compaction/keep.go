@@ -73,6 +73,19 @@ func Developer(covered []llm.Item) []llm.Item {
 	return out
 }
 
+// Configured is the last configuration update among covered, which a
+// compaction keeps so the effort it set still holds after it (uah's effort
+// updates, internal/engine/embedded/adaptive.go); none when covered has none.
+func Configured(covered []llm.Item) []llm.Item {
+	for _, item := range slices.Backward(covered) {
+		if item.Type == llm.ItemConfigurationUpdate {
+			return []llm.Item{item}
+		}
+	}
+
+	return nil
+}
+
 // ApproxTokens is Codex's estimate of text's tokens: bytes/4, rounded up.
 func ApproxTokens(text string) int {
 	return (len(text) + bytesPerToken - 1) / bytesPerToken
