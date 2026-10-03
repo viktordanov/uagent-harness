@@ -121,6 +121,9 @@ type Request struct {
 	// tools as sent.
 	ToolNames []string
 	ToolDefs  []json.RawMessage
+	// EffortUpdates are the efforts of the configuration_update items in
+	// the input, in order.
+	EffortUpdates []string
 	// Input are the input items as sent, in order.
 	Input []json.RawMessage
 	// CacheKey is the prompt cache key.

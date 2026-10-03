@@ -157,7 +157,7 @@ func NewRecordCovering(input []llm.Item, covered int, summary string, trigger Tr
 // record: the system message, the covered developer messages (Developer),
 // the covered user messages that Kept keeps (up to the record's cap), the
 // summary, and the items after the covered ones, with the elided outputs as
-// stubs. A tool result whose call was covered
+// stubs. The covered configuration updates are dropped (Configured). A tool result whose call was covered
 // becomes a user-role note, so no output lacks its call. A record that
 // covers nothing only elides.
 func Apply(input []llm.Item, rec Record) ([]llm.Item, error) {

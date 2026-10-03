@@ -51,6 +51,11 @@ type Model struct {
 	// DefaultVerbosity is Codex's default_verbosity: low, medium, or high,
 	// sent when model_verbosity is unset ("": none).
 	DefaultVerbosity string `json:"default_verbosity,omitempty"`
+	// EffortUpdates is Codex's supports_reasoning_effort_updates: the model
+	// takes a configuration_update input item that changes the effort from
+	// its place in the history on, so the request keeps its effort and its
+	// prompt cache.
+	EffortUpdates bool `json:"supports_reasoning_effort_updates,omitempty"`
 }
 
 // SupportsPriority reports whether the model accepts service_tier

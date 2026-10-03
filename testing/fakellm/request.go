@@ -26,6 +26,10 @@ func parseRequest(body []byte) Request {
 			Content json.RawMessage `json:"content"`
 			Output  json.RawMessage `json:"output"`
 			CallID  string          `json:"call_id"`
+			// Reasoning is a configuration_update's.
+			Reasoning struct {
+				Effort string `json:"effort"`
+			} `json:"reasoning"`
 		} `json:"input"`
 	}
 	var items struct {
@@ -43,6 +47,11 @@ func parseRequest(body []byte) Request {
 		if in.Type == "function_call_output" || in.Type == "custom_tool_call_output" {
 			req.ToolOutputs = append(req.ToolOutputs, strings.Join(texts(in.Output), ""))
 			req.ToolImages = append(req.ToolImages, images(in.Output)...)
+
+			continue
+		}
+		if in.Type == "configuration_update" {
+			req.EffortUpdates = append(req.EffortUpdates, in.Reasoning.Effort)
 
 			continue
 		}

@@ -22,8 +22,8 @@ func (c *compactor) remoteCompact(ctx context.Context, req llm.Request, opts llm
 		return compaction.Record{}, errNothingToCompact
 	}
 	call := &remoteCall{}
-	callCtx := c.withItem(context.WithValue(ctx, remoteCallKey{}, call))
-	resp, err := c.next.Respond(callCtx, llm.Request{Model: req.Model, Input: c.apply(req.Input[:1+covered]), Tools: req.Tools}, opts)
+	callCtx, input := c.applyPinned(context.WithValue(ctx, remoteCallKey{}, call), req.Input[:1+covered])
+	resp, err := c.next.Respond(c.withItem(callCtx), llm.Request{Model: req.Model, Input: input, Tools: req.Tools}, opts)
 	if err != nil {
 		return compaction.Record{}, err // the coordinator's model errors read as they are
 	}

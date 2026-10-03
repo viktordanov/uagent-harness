@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/viktordanov/uah-core/harness/inbox"
+	"github.com/viktordanov/uah-core/harness/llm"
 	"github.com/viktordanov/uah-core/harness/operation"
 	"github.com/viktordanov/uah-core/harness/session"
 	"github.com/viktordanov/uah-core/harness/sessionstore"
@@ -90,6 +91,23 @@ func recordInputs(ctx context.Context, store sessionstore.Store, id session.ID, 
 	}
 
 	return nil
+}
+
+// firstEffort is the effort of the session's first settings among items, a
+// fork's inherited ones included; "" when it has none.
+func firstEffort(items []sessionstore.Item) llm.ReasoningEffort {
+	for _, it := range items {
+		in, ok := it.Data.(inbox.Input)
+		if !ok || in.Kind != inbox.InputControl {
+			continue
+		}
+		msg, err := in.DecodeControlMessage()
+		if settings, ok := msg.Parameters.(inbox.Settings); err == nil && ok {
+			return settings.ReasoningEffort
+		}
+	}
+
+	return ""
 }
 
 // openSession resumes the session, or creates it when it does not exist.

@@ -72,3 +72,44 @@ not json
 	}
 	assert.Equal(t, want, got)
 }
+
+// TestCacheRequests_EffortUpdates: with effort updates, the requests carry
+// the session's base effort whatever effort an update set, so the cache's
+// key is the request's effort and a switch costs no effort miss.
+func TestCacheRequests_EffortUpdates(t *testing.T) {
+	at := time.Date(2026, 10, 3, 9, 0, 0, 0, time.UTC)
+	sec := func(n int) time.Time { return at.Add(time.Duration(n) * time.Second) }
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, uharness.StderrFile), []byte(
+		`{"diag":"model_attempt","at":"2026-10-03T09:00:00.05Z","kind":"turn","effort":"high","request_effort":"high","result":"ok"}
+{"diag":"model_attempt","at":"2026-10-03T09:00:10.05Z","kind":"turn","effort":"low","request_effort":"high","effort_update":true,"result":"ok"}
+{"diag":"model_attempt","at":"2026-10-03T09:00:20.05Z","kind":"turn","effort":"high","request_effort":"high","effort_update":true,"result":"ok"}
+`), 0o600))
+	tokens := func(in, cached int64) core.Tokens {
+		return core.Tokens{InputTokens: in, CachedInputTokens: cached, OutputTokens: 100}
+	}
+	runs := []session.LoadedRun{{
+		Record: uharness.RunRecord{Dir: dir, Result: core.Result{Request: core.Request{Model: "gpt-a", Effort: "high"}}},
+		Events: []core.Event{
+			core.UserMessage{At: sec(0), ID: "m1", Text: "fix it"},
+			core.TurnStarted{At: sec(0), Turn: 1},
+			core.ModelResponded{At: sec(9), Turn: 1, Usage: tokens(12_000, 0)},
+			core.TurnStarted{At: sec(10), Turn: 2},
+			core.ModelResponded{At: sec(19), Turn: 2, Usage: tokens(13_000, 11_904)},
+			core.TurnStarted{At: sec(20), Turn: 3},
+			core.ModelResponded{At: sec(29), Turn: 3, Usage: tokens(14_000, 12_928)},
+		},
+	}}
+
+	got := cachestats.Attribute(session.CacheRequests(runs), cachestats.TTL)
+
+	require.Len(t, got, 3)
+	for _, r := range got {
+		assert.Equal(t, "high", r.Effort, "the request's effort keys the cache")
+	}
+	for _, r := range got[1:] {
+		for _, m := range r.Misses {
+			assert.NotEqual(t, cachestats.CauseEffort, m.Cause, "an update keeps the cache")
+		}
+	}
+}

@@ -90,7 +90,7 @@ OpenAI keeps a prompt cache per model and per reasoning effort, and drops it aft
 | --- | --- |
 | Input, cached input, output; start and end | Each `model_response` and the `turn` before it, in the run's events |
 | Model | The run's request |
-| Effort | The request's `model_attempt` line in the run's `stderr.log` (with adaptive effort, the request's own effort); in a run from before uah logged it, the run's latest settings |
+| Effort | The request's `model_attempt` line in the run's `stderr.log`: its `request_effort`, the effort the request carried, which an effort update (a `configuration_update` item, `effort_updates`) leaves at the session's base, else its `effort` (with adaptive effort, the request's own effort); in a run from before uah logged it, the run's latest settings |
 | Rewritten | A compaction that succeeded, or a rewind, since the request before |
 | Opener | The first request after a user's message |
 
@@ -103,7 +103,7 @@ OpenAI keeps a prompt cache per model and per reasoning effort, and drops it aft
 | `cold` | The session's first request: all its uncached input |
 | `compaction` | The first request after a compaction or a rewind: all its uncached input |
 | `idle` | A request that came more than `TTL` after the request before it: all its missed input |
-| `effort` | The part sent before only at another effort. Also the rest of the miss when this effort's cache was unused for more than `TTL` while the other effort was in use |
+| `effort` | The part sent before only at another request effort; an effort update keeps the request's effort, so it causes none. Also the rest of the miss when this effort's cache was unused for more than `TTL` while the other effort was in use |
 | `model` | As `effort`, when the request before it went to another model. A model shares no cache with another model, so all of the miss is `model` |
 | `other` | The rest: the provider evicted the prefix or did not route to it. A request just after the first one of a session often misses all of it |
 

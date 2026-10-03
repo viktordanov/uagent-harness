@@ -387,6 +387,17 @@ func TestResolve(t *testing.T) {
 			want: func(r *app.Resolved) {},
 		},
 		{
+			name: "effort_updates off in the config file",
+			cfg:  config.Config{EffortUpdates: new(false)},
+			want: func(r *app.Resolved) { r.EffortUpdates = false },
+		},
+		{
+			name: "UAH_EFFORT_UPDATES=off beats the config file",
+			in:   func(in *app.Inputs) { in.EffortUpdates = "off" },
+			cfg:  config.Config{EffortUpdates: new(true)},
+			want: func(r *app.Resolved) { r.EffortUpdates = false },
+		},
+		{
 			name: "the prompt file is read by Setup",
 			cfg:  config.Config{ExperimentalCompactPromptFile: "/prompts/compact.md"},
 			want: func(r *app.Resolved) { r.CompactPromptFile = "/prompts/compact.md" },
@@ -404,7 +415,7 @@ func TestResolve(t *testing.T) {
 					Workspace: "/ws", Mode: approval.ModeWorkspace, Sandbox: string(sandbox.WorkspaceWrite),
 					MaxAttempts: engine.DefaultMaxAttempts, AdaptiveEffort: session.AdaptiveOff,
 				},
-				MaxDisk: 5 << 30, Instructions: true, ContextPreparation: true,
+				MaxDisk: 5 << 30, Instructions: true, ContextPreparation: true, EffortUpdates: true,
 				Sandbox: sandbox.Policy{Mode: sandbox.WorkspaceWrite}, Compaction: compaction.Settings{Percent: 90, Elision: compaction.DefaultElision, KeepCalls: compaction.DefaultKeepCalls, Remote: true}, Approval: approval.OnRequest,
 				ApprovalsReviewer: review.ReviewerUser,
 				Review:            review.Config{Model: review.CodexModel, Effort: llm.ReasoningEffortLow, Timeout: review.DefaultTimeout},

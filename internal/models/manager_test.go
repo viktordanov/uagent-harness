@@ -258,6 +258,16 @@ func TestVerbosity(t *testing.T) {
 	}
 }
 
+func TestEffortUpdates(t *testing.T) {
+	m := models.New(models.Options{})
+	assert.True(t, m.EffortUpdates(models.ProviderCodex, "gpt-6.1-sol"), "the bundled entry has supports_reasoning_effort_updates")
+	assert.True(t, m.EffortUpdates(models.ProviderOpenAI, "gpt-6-astra"))
+	assert.True(t, m.EffortUpdates(models.ProviderCodex, "gpt-6-sol"))
+	assert.False(t, m.EffortUpdates(models.ProviderCodex, "gpt-5.6-sol"), "an entry without it")
+	assert.False(t, m.EffortUpdates(models.ProviderCodex, "gpt-unlisted"), "no entry")
+	assert.False(t, m.EffortUpdates("openrouter", "gpt-6.1-sol"), "only OpenAI's providers, as in Codex")
+}
+
 func TestApplyPatch(t *testing.T) {
 	m := models.New(models.Options{})
 	assert.True(t, m.ApplyPatch(models.ProviderCodex, "gpt-5.5"), "the bundled entry has apply_patch_tool_type")

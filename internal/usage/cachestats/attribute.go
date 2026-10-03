@@ -43,7 +43,10 @@ const NoiseFloor = 1024
 type Request struct {
 	Start, End time.Time
 	Model      string
-	Effort     string
+	// Effort is the effort the request carried, which keys its cache. With
+	// effort updates it is the session's base effort, whatever effort a
+	// configuration update in the history set, so a switch keeps the cache.
+	Effort string
 	// Input includes Cached; Output includes the reasoning.
 	Input, Cached, Output int64
 	// Rewritten is set when the history was compacted or rewound since the

@@ -80,6 +80,9 @@ type Config struct {
 	// with the prepared context (internal/contextprep) before its first
 	// message.
 	ContextPreparation bool
+	// EffortUpdates changes the effort with a configuration update in the
+	// history, where the model takes one (adaptive.go).
+	EffortUpdates bool
 	// AutoReview puts the auto-reviewer in front of the user for actions
 	// that need approval (approvals_reviewer = "auto_review"), with Review's
 	// model, effort, and timeout.

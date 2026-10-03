@@ -60,6 +60,8 @@ type Inputs struct {
 	// ContextPreparation is on or off: off from --no-context-preparation,
 	// else its environment variable ("": unset).
 	ContextPreparation string
+	// EffortUpdates is on or off from its environment variable ("": unset).
+	EffortUpdates string
 	// ModelVerbosity is --model-verbosity or its environment variable
 	// ("": unset).
 	ModelVerbosity string
@@ -88,6 +90,9 @@ type Resolved struct {
 	// ContextPreparation reports whether new sessions start with prepared
 	// context.
 	ContextPreparation bool
+	// EffortUpdates reports whether effort changes go as configuration
+	// updates where the model takes them (effort_updates).
+	EffortUpdates bool
 	// Sandbox is the policy commands run under. Its Workspace and
 	// WritableRoots are as given; Setup makes them absolute.
 	Sandbox sandbox.Policy
@@ -203,9 +208,13 @@ func Resolve(in Inputs, resumed session.Info, cfg config.Config) (Resolved, erro
 	if err != nil {
 		return Resolved{}, err
 	}
+	updates, err := pickOnOff(in.EffortUpdates, EnvEffortUpdates, cfg.EffortUpdatesEnabled())
+	if err != nil {
+		return Resolved{}, err
+	}
 
 	return Resolved{
-		Settings: s, MaxDisk: maxDisk, Instructions: !in.NoInstructions && cfg.InstructionsEnabled(), ContextPreparation: prepare,
+		Settings: s, MaxDisk: maxDisk, Instructions: !in.NoInstructions && cfg.InstructionsEnabled(), ContextPreparation: prepare, EffortUpdates: updates,
 		Sandbox: policy, Env: envPolicy, Compaction: compact, CompactPromptFile: promptFile, Approval: approvalPolicy, Rules: configured,
 		ApprovalsReviewer: reviewer, Review: reviewCfg, Agents: agentSettings, WebSearch: webSearch, Verbosity: verbosity, DefaultModel: defaulted,
 	}, nil
@@ -214,16 +223,21 @@ func Resolve(in Inputs, resumed session.Info, cfg config.Config) (Resolved, erro
 // pickContextPreparation is the flag or its variable, on or off, else
 // context_preparation.
 func pickContextPreparation(in Inputs, cfg config.Config) (bool, error) {
-	switch in.ContextPreparation {
+	return pickOnOff(in.ContextPreparation, EnvContextPreparation, cfg.ContextPreparationEnabled())
+}
+
+// pickOnOff is value, on or off from the variable env, else configured.
+func pickOnOff(value, env string, configured bool) (bool, error) {
+	switch value {
 	case "":
-		return cfg.ContextPreparationEnabled(), nil
+		return configured, nil
 	case "on":
 		return true, nil
 	case "off":
 		return false, nil
 	}
 
-	return false, usage(fmt.Errorf("invalid %s %q (want on or off)", EnvContextPreparation, in.ContextPreparation))
+	return false, usage(fmt.Errorf("invalid %s %q (want on or off)", env, value))
 }
 
 // pickEnv checks the configured environment policy.
