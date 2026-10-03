@@ -49,8 +49,11 @@ type (
 
 func (EffLoadUsage) effect() {}
 
-// cmdUsage is /usage: the plan's usage, read fresh, as uah usage prints it.
-func cmdUsage(*State, string) []Effect { return []Effect{EffLoadUsage{Reason: UsageStatus}} }
+// cmdUsage is /usage: the plan's usage, read fresh, as uah usage prints it,
+// and the open session's prompt cache.
+func cmdUsage(s *State, _ string) []Effect {
+	return append([]Effect{EffLoadUsage{Reason: UsageStatus}}, s.loadCache()...)
+}
 
 // Usage is what the TUI knows of the subscription's usage.
 type Usage struct {

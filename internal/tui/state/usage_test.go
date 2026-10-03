@@ -14,6 +14,7 @@ import (
 	"github.com/viktordanov/uah/internal/session"
 	"github.com/viktordanov/uah/internal/tui/state"
 	"github.com/viktordanov/uah/internal/usage"
+	"github.com/viktordanov/uah/internal/usage/cachestats"
 )
 
 // weekly is a snapshot with a weekly window used, resetting at 15:00 on
@@ -146,9 +147,25 @@ func TestUsage_LimitReached(t *testing.T) {
 // also while the agent works.
 func TestUsage_Command(t *testing.T) {
 	s, effects := apply(opened(), state.Submit{Text: "/usage"})
-	assert.Equal(t, []state.Effect{state.EffLoadUsage{Reason: state.UsageStatus}}, effects)
+	assert.Equal(t, []state.Effect{state.EffLoadUsage{Reason: state.UsageStatus}, state.EffLoadCache{SessionID: "sess-1"}}, effects)
 	n := len(s.Items)
 	s, _ = apply(s, state.UsageLoaded{Reason: state.UsageStatus, Snapshot: weekly(22), At: t0})
 	assert.Contains(t, notices(s, n)[0], "usage · pro plan\n")
 	assert.Contains(t, s.Suggestions("/us")[0].Label, "usage", "the menu offers it")
+}
+
+func TestUsage_Cache(t *testing.T) {
+	_, effects := apply(opened(), state.Submit{Text: "/status"})
+	assert.Contains(t, effects, state.EffLoadCache{SessionID: "sess-1"}, "/status shows the cache too")
+	_, effects = apply(state.New(t0), state.Submit{Text: "/usage"})
+	assert.NotContains(t, effects, state.EffLoadCache{}, "no session, no cache to read")
+
+	s := opened()
+	n := len(s.Items)
+	sum := cachestats.Summary{
+		Requests: 9, Input: 400_000, Cached: 352_000, Output: 9_000, MissedShare: 0.08,
+		Missed: []cachestats.Miss{{Cause: cachestats.CauseEffort, Tokens: 28_000}, {Cause: cachestats.CauseIdle, Tokens: 9_000}, {Cause: cachestats.CauseCold, Tokens: 4_000}},
+	}
+	s, _ = apply(s, state.CacheLoaded{Summary: sum})
+	assert.Equal(t, []string{"prompt cache 88% · missed 41k: effort switches 28k, idle 9k, cold start 4k · ≈8% of usage (API-price estimate)"}, notices(s, n))
 }

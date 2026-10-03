@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/viktordanov/uah/internal/usage/cachestats"
 	"github.com/viktordanov/uah/tools/agentbench/bench"
 )
 
@@ -59,6 +60,8 @@ func run() error {
 	var uahConfig envList
 	fs.Var(&uahConfig, "uah-config", "a top-level line added to uah's generated config file, such as 'model_instructions_file = \"/path\"' (repeatable; needs -variant)")
 	variant := fs.String("variant", "", "label of the uah runs, part of their results key, so they sit beside the control runs (no -variant) in one results file and the report compares them")
+	cacheSessions := fs.String("cache-sessions", "", "report the prompt cache of every session in this uah home (such as ~/.uah): misses by cause, and how the cache fared across the pauses between messages; no runs")
+	cacheTTL := fs.Duration("cache-ttl", cachestats.TTL, "with -cache-sessions, the idle time after which a miss counts as idle")
 	priceIn := fs.Float64("price-in", 1.25, "USD per million uncached input tokens, for the cost estimate")
 	priceCached := fs.Float64("price-cached", 0.125, "USD per million cached input tokens")
 	priceOut := fs.Float64("price-out", 10, "USD per million output tokens (reasoning included)")
@@ -68,6 +71,15 @@ func run() error {
 	}
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		return err
+	}
+	if *cacheSessions != "" {
+		sessions, err := bench.CacheSessions(*cacheSessions)
+		if err != nil {
+			return err
+		}
+		fmt.Print(bench.CacheSessionsReport(sessions, *cacheTTL, cachestats.Price{Input: *priceIn, Cached: *priceCached, Output: *priceOut}))
+
+		return nil
 	}
 	root, err := repoRoot(context.Background())
 	if err != nil {
