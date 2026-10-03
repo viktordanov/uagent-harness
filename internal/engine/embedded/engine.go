@@ -101,6 +101,11 @@ type Config struct {
 	// model's default_verbosity, for a model whose catalog entry supports
 	// verbosity ("": the default), as Codex's key.
 	Verbosity string
+	// AskUser offers request_user_input, Codex's blocking question tool,
+	// to the main agent (and, refused, to its forks, which keep its tools):
+	// a user drives the sessions, as in the TUI. A run asks through
+	// Options.AskUser.
+	AskUser bool
 	// Subagents, when set, offers its tools to the runs it attaches and
 	// hears when the user interrupts a run; the engine closes it when it is
 	// an io.Closer.

@@ -1,0 +1,40 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+╭──────────────────────────────────────╮
+│ λ uah                                │
+│                                      │
+│ model:     gpt-6-sol high   /model … │
+│ directory: /workspace/proj           │
+╰──────────────────────────────────────╯
+
+╭─ Run outside the sandbox? ───────────╮
+│ Reason: it downloads the installer   │
+│ $ curl -fsSL https://example.com/in… │
+│                                      │
+│   y Yes, proceed                     │
+│   s Yes, and don't ask again for co… │
+│   n No, and tell the agent what to … │
+╰─ y yes · s always for the prefix ·… ─╯
+
+
+λ
+
+ gpt-6-sol high · workspace mode · /wo…

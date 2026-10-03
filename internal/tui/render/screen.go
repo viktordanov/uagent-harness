@@ -38,7 +38,7 @@ func Screen(s state.State, c *Cache, f Frame) (string, int) {
 	if s.Mode == state.ModePicker {
 		return c.styles.picker(s, f), -1
 	}
-	if s.View != nil && len(s.Approvals) == 0 { // an approval is the session's: it shows there
+	if s.View != nil && len(s.Approvals) == 0 && len(s.Questions) == 0 { // an approval or a question is the session's: it shows there
 		return agentScreen(s, c, f)
 	}
 	var top []string
@@ -176,12 +176,15 @@ func (st *Styles) headerLine(s state.State, w int) string {
 	return markYolo(left+strings.Repeat(" ", gap)+right, st.header, st.yoloChip)
 }
 
-// panelLines shows a pending approval, the /config panel, the /model
-// picker, the suggestion menu while typing a command or an "@" mention, or
-// else the queue.
+// panelLines shows a pending approval, the agent's questions, the /config
+// panel, the /model picker, the suggestion menu while typing a command or
+// an "@" mention, or else the queue.
 func (st *Styles) panelLines(s state.State, f Frame) []string {
 	if a, ok := s.PendingApproval(); ok {
 		return st.approvalLines(a, f.Width)
+	}
+	if q, ok := s.PendingQuestions(); ok {
+		return st.questionLines(q, f.Width)
 	}
 	if s.Config != nil {
 		return st.configLines(s, f.Width)
@@ -252,8 +255,12 @@ func (st *Styles) statusLine(s state.State, w int) string {
 }
 
 // compactHint is the compact footer's key hint: while the agent works, the
-// send keys that work in this terminal, in place of the commands' hint.
+// send keys that work in this terminal, in place of the commands' hint;
+// none while an approval or the agent's questions show their own.
 func compactHint(s state.State) string {
+	if panelShown(s) {
+		return "" // the panel names its keys
+	}
 	if s.Working() {
 		return s.Keys.SendHint(true) + " "
 	}
@@ -291,6 +298,9 @@ func (st *Styles) footerLine(s state.State, w int) string {
 	if s.Shell {
 		hint = shellHint
 	}
+	if panelShown(s) {
+		hint = "" // the panel names its keys
+	}
 	if gap := w - ansi.StringWidth(text) - ansi.StringWidth(hint); gap > 0 {
 		text += strings.Repeat(" ", gap) + hint
 	}
@@ -321,11 +331,18 @@ func (st *Styles) compactFooter(s state.State, w int) string {
 	if s.Shell {
 		hint = shellHint
 	}
+	before := func(text string) { // text, then the hint
+		if hint == "" {
+			hint = text + " "
+		} else {
+			hint = text + " · " + hint
+		}
+	}
 	if pct, ok := s.ContextLeft(); ok {
-		hint = fmt.Sprintf("%d%% context left · %s", pct, hint)
+		before(fmt.Sprintf("%d%% context left", pct))
 	}
 	if u, ok := s.UsageLeft(); ok {
-		hint = u + " · " + hint // the plan's tightest window
+		before(u) // the plan's tightest window
 	}
 	// The hint wins over the left side, which is cut when the line is
 	// full: from the end, the live →low part only when the model and the
@@ -451,4 +468,13 @@ func age(now, t time.Time) string {
 	}
 
 	return fmt.Sprintf("%dd ago", int(d.Hours()/24))
+}
+
+// panelShown reports whether an approval or the agent's questions wait, in
+// the panel that names its own keys.
+func panelShown(s state.State) bool {
+	_, approval := s.PendingApproval()
+	_, questions := s.PendingQuestions()
+
+	return approval || questions
 }

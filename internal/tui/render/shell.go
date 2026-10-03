@@ -26,10 +26,14 @@ func ShellPrompt(s state.State) string {
 	return "λ "
 }
 
-// ShellPlaceholder is the empty composer's hint.
+// ShellPlaceholder is the empty composer's hint: shell mode's, the agent's
+// questions', or the usual one.
 func ShellPlaceholder(s state.State) string {
 	if s.Shell {
 		return "Run a command in the workspace · esc to leave shell mode"
+	}
+	if q, ok := s.PendingQuestions(); ok {
+		return questionPlaceholder(q)
 	}
 
 	return "Ask uah to do anything · / for commands"
@@ -84,4 +88,18 @@ func (st *Styles) shellStatus(it state.Item, now time.Time) string {
 	}
 
 	return st.bad.Render(fmt.Sprintf("✗ exit %d", it.Exit)) + st.dim.Render(" · "+secs(it.Duration))
+}
+
+// questionPlaceholder is the composer's hint while the agent's questions
+// show: what typing does there, if anything.
+func questionPlaceholder(q *state.Questions) string {
+	question := q.Questions[q.Current]
+	switch {
+	case q.Noting >= 0:
+		return "Note on " + question.Options[q.Noting].Label + " · enter keeps it · esc drops it"
+	case q.OwnRow():
+		return "Type your own answer · enter sends it"
+	}
+
+	return "Choose an answer above · n adds a note"
 }

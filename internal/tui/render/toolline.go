@@ -143,7 +143,8 @@ type toolNote struct {
 }
 
 // toolNotes are a call's second lines, in order: why it failed, an MCP
-// result, the auto-reviewer's approval.
+// result, the user's answers to the agent's questions, the auto-reviewer's
+// approval.
 func (st *Styles) toolNotes(it state.Item) []toolNote {
 	var out []toolNote
 	if it.Tool == state.ToolFailed && !noMatches(it) {
@@ -157,6 +158,9 @@ func (st *Styles) toolNotes(it state.Item) []toolNote {
 	}
 	if it.Result != "" && it.Tool == state.ToolOK {
 		out = append(out, toolNote{oneLine(it.Result), st.comment})
+	}
+	for _, a := range it.Answers {
+		out = append(out, toolNote{a, st.comment})
 	}
 	if it.Note != "" {
 		out = append(out, toolNote{oneLine(it.Note), st.notice})

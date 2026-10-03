@@ -1,0 +1,40 @@
+
+
+
+
+
+
+
+
+
+
+
+╭────────────────────────────────────────────────╮
+│ λ uah                                          │
+│                                                │
+│ model:     gpt-6-sol high   /model to change   │
+│ directory: /workspace/proj                     │
+╰────────────────────────────────────────────────╯
+
+
+λ Waiting for your answer (5s • esc to interrupt)
+╭─ ? Handler ──────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Which shape should the users API handler take?                                                                       │
+│                                                                                                                      │
+│ › 1. net/http (Recommended)                     ┌ net/http (Recommended) ──────────────────────────────────────────┐ │
+│      No dependency; routing by hand.            │ func (s *Server) users(w http.ResponseWriter, r *http.Request) { │ │
+│   2. chi router                                 │     id := r.PathValue("id")                                      │ │
+│      Middleware and route groups.               │     u, err := s.store.User(r.Context(), id)                      │ │
+│   3. Generated (oapi)                           │     if err != nil {                                              │ │
+│      From the OpenAPI spec.                     │         http.Error(w, err.Error(), http.StatusNotFound)          │ │
+│   4. Type your own answer                       │         return                                                   │ │
+│                                                 │     }                                                            │ │
+│                                                 │     json.NewEncoder(w).Encode(u)                                 │ │
+│                                                 │ }                                                                │ │
+│                                                 └──────────────────────────────────────────────────────────────────┘ │
+╰─ ↑↓ choose · 1-4 pick · n note · enter send · esc interrupt ─────────────────────────────────────────────────────────╯
+
+
+λ
+
+ gpt-6-sol high · workspace mode · /workspace/proj

@@ -3,13 +3,12 @@ package render
 import (
 	"strings"
 
-	"github.com/charmbracelet/x/ansi"
-
 	"github.com/viktordanov/uah/internal/tui/state"
 )
 
-// approvalLines is the approval overlay above the composer, after Codex's:
-// the question, the model's reason, the command, and the choices with
+// approvalLines is the approval above the composer, after Codex's, in the
+// panel the agent's questions share: the question in the frame, in the
+// warning color, the model's reason, the command, and the choices with
 // their keys.
 func (st *Styles) approvalLines(a state.Approval, w int) []string {
 	title := "Run this command?"
@@ -19,33 +18,36 @@ func (st *Styles) approvalLines(a state.Approval, w int) []string {
 	case a.Escalation:
 		title = "Run outside the sandbox?"
 	}
-	out := []string{st.warn.Bold(true).Render(ansi.Truncate(" "+title, w, "…"))}
+	inner := max(w-4, panelMin)
+	var body []string
 	if a.Justification != "" {
-		out = append(out, st.italic.Render(ansi.Truncate(" Reason: "+oneLine(a.Justification), w, "…")))
+		body = append(body, st.italic.Render("Reason: "+oneLine(a.Justification)))
 	}
 	for line := range strings.SplitSeq(strings.TrimRight(a.Command, "\n"), "\n") {
-		out = append(out, st.bold.Render(ansi.Truncate(" $ "+line, w, "…")))
-		if len(out) > 8 {
-			out = append(out, st.dim.Render(" …"))
+		body = append(body, st.bold.Render("$ "+line))
+		if len(body) > 8 {
+			body = append(body, st.dim.Render("…"))
 
 			break
 		}
 	}
 	if a.Answered {
-		return append(out, st.dim.Render(" answering…"))
+		return st.panel(title, st.warn.Bold(true), body, "answering…", w)
 	}
-	choices := [][2]string{{"y", "Yes, proceed"}}
+	keys, labels := []string{"y"}, []string{"Yes, proceed"}
+	hint := "y yes"
 	if len(a.Prefix) > 0 {
-		choices = append(choices, [2]string{"s", "Yes, and don't ask again for commands that start with `" + strings.Join(a.Prefix, " ") + "`"})
+		keys, labels = append(keys, "s"), append(labels, "Yes, and don't ask again for commands that start with `"+strings.Join(a.Prefix, " ")+"`")
+		hint += " · s always for the prefix"
 	}
 	if a.MCPTool != "" {
 		// Codex's MCP prompt says "Allow and don't ask me again".
-		choices = append(choices, [2]string{"a", "Yes, and don't ask again for this tool"})
+		keys, labels = append(keys, "a"), append(labels, "Yes, and don't ask again for this tool")
+		hint += " · a always for the tool"
 	}
-	choices = append(choices, [2]string{"n", "No, and tell the agent what to do differently (esc)"})
-	for _, c := range choices {
-		out = append(out, ansi.Truncate("   "+st.bold.Render(c[0])+"  "+c[1], w, "…"))
-	}
+	keys, labels = append(keys, "n"), append(labels, "No, and tell the agent what to do differently")
+	body = append(body, "")
+	body = append(body, st.choiceRows(keys, labels, make([]string, len(keys)), -1, inner)...)
 
-	return out
+	return st.panel(title, st.warn.Bold(true), body, hint+" · n or esc no", w)
 }

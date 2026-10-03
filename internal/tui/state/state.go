@@ -96,6 +96,9 @@ type State struct {
 	Queue []Queued
 	// Approvals are commands waiting for the user, in order.
 	Approvals []Approval
+	// Questions are the agent's questions waiting for the user's answers,
+	// in order (questions.go).
+	Questions []Questions
 	Live      *Live
 	Busy      bool // from a message sent until the session is idle
 	Totals    Totals

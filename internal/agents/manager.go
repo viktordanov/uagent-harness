@@ -205,6 +205,16 @@ func (m *Manager) parentOf(id string) string {
 	return parent
 }
 
+// Forked reports whether a session is a child started with fork_context.
+// The engine offers such a child its parent's request_user_input, which
+// only the main agent may call, so the tools stay its parent's.
+func (m *Manager) Forked(id string) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	return m.forked(id)
+}
+
 // forked reports whether a session is a child started with fork_context,
 // from the live children and then the agent records. It holds m.mu.
 func (m *Manager) forked(id string) bool {

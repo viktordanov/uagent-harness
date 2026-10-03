@@ -94,6 +94,9 @@ type Options struct {
 	// stays open until it is answered, its context ends, or the session
 	// closes (nil: no one can).
 	AskAnytime approval.Ask
+	// AskUser asks the user the agent's questions (request_user_input) and
+	// waits for the answers; nil means no one can, as in a headless run.
+	AskUser AskUser
 	// Notify adds an engine event to the session's stream, also after the
 	// run ends, such as a subagent's progress (nil: the run's stream).
 	Notify func(core.Event)

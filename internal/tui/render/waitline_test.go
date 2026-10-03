@@ -37,4 +37,13 @@ func TestWaitLine(t *testing.T) {
 
 	stopping := apply(s, session.InputQueued{At: t0}, state.Esc{}, state.Esc{}, state.Tick{Now: t0.Add(75 * time.Second)})
 	assert.Contains(t, screen(stopping, ""), "Stopping (3s · 1m 15s • esc again to force)")
+
+	// A wait that began within the run's first second reads as the run:
+	// one time, not "6s · 6s".
+	early := apply(base(),
+		core.RunStarted{At: t0, RunID: "r1"},
+		session.QuestionsAsked{At: t0.Add(400 * time.Millisecond), ID: "q1", CallID: "c1", Questions: []engine.Question{{ID: "a", Header: "A", Question: "Which?", Options: []engine.QuestionOption{{Label: "X"}}}}},
+		state.Tick{Now: t0.Add(6 * time.Second)},
+	)
+	assert.Contains(t, screen(early, ""), "Waiting for your answer (6s • esc to interrupt)")
 }

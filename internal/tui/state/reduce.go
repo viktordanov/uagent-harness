@@ -88,7 +88,7 @@ func reduce(s State, ev any) (State, []Effect) {
 	if s.onUsage(ev) {
 		return s, nil
 	}
-	for _, on := range []func(*State, any) ([]Effect, bool){(*State).onCache, (*State).onImages, (*State).onEditor, (*State).onConfig, (*State).onModelPicker, (*State).onMenu, (*State).onHistory, (*State).onKeys} {
+	for _, on := range []func(*State, any) ([]Effect, bool){(*State).onQuestions, (*State).onCache, (*State).onImages, (*State).onEditor, (*State).onConfig, (*State).onModelPicker, (*State).onMenu, (*State).onHistory, (*State).onKeys} {
 		if effects, ok := on(&s, ev); ok {
 			return s, effects
 		}
@@ -105,9 +105,13 @@ func (s *State) onEvent(ev core.Event) { //nolint:gocyclo // a dispatch switch o
 			s.View = nil
 		}
 		s.SessionID, s.Resumed, s.Engine, s.Settings = e.ID, e.Resumed, e.Engine, e.Settings
-		s.Queue, s.Live, s.Busy, s.Quitting, s.Approvals, s.Reviewing = nil, nil, false, false, nil, ""
+		s.Queue, s.Live, s.Busy, s.Quitting, s.Approvals, s.Questions, s.Reviewing = nil, nil, false, false, nil, nil, ""
 	case session.InstructionsLoaded:
 		s.Files = e.Files
+	case session.QuestionsAsked:
+		s.askQuestions(e)
+	case session.QuestionsAnswered:
+		s.closeQuestions(e)
 	case session.InputQueued:
 		s.Queue = append(s.Queue, Queued{ID: e.Input.ID, Text: e.Input.Text, AfterTool: e.AfterTool})
 		s.Busy = true

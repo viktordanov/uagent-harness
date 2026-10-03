@@ -92,6 +92,7 @@ Every key may be set in the user file, in a layer, and in a trusted project file
 | `model_verbosity` | string | the model's `default_verbosity` | `--model-verbosity`, `UAH_MODEL_VERBOSITY` | override | How much the model writes: `low`, `medium`, or `high`, sent as the Responses API's `text.verbosity`, as Codex's key. As in Codex, only a model whose catalog entry has `support_verbosity` gets it: unset, it gets the entry's `default_verbosity` (`low` for every model in Codex's catalog at rust-v0.159.1, gpt-6.1-sol included); set, it gets this value. Any other model, or one no catalog entry describes, gets no `text` field, and a session that opens with `model_verbosity` set on such a model shows Codex's warning. `uah config` shows the value the session's model gets ("" for none) |
 | `adaptive_effort` | string | `off` | `--adaptive-effort`, `UAH_ADAPTIVE_EFFORT` | override | Adaptive effort for new sessions: `off`, `1-step`, or `2-steps`. On, the model thinks less on follow-up turns: a request that only follows tool results goes one (`1-step`) or two (`2-steps`) effort levels below `effort`, never below low (at `high`, 2 steps is `low`). The first request and a request with a user message go at `effort`. A session keeps its own value, as it keeps its effort; `/adaptive`, alt+e, and `/config` change it for the current session from its next model request, and the footer marks the effort (`high↓`, `high⇊`; `high→low` while a lowered follow-up is out). Measured on the agent benchmark at high effort, at the same pass rate: 1 step cut wall time by about a quarter and cost by 16–21%; 2 steps cut wall time by about a third and cost by a quarter ([agent tuning](design/agent-tuning.md#lean-mode-rules)) |
 | `context_preparation` | bool | true | `--no-context-preparation`, `UAH_CONTEXT_PREPARATION` (`on` or `off`) | override | Start each new session, subagents' included, with one developer message of [prepared context](../internal/contextprep/README.md) before the first user message: git's state and tracked files, the instruction files (said to be all of them), how to size Bash output, the shell's and OS's traps, and the sandbox. Resumed and forked sessions get none. Off, nothing is added; the agent benchmark turns it off to compare |
+| `[tools.experimental_request_user_input]` `enabled` | bool | true | `UAH_REQUEST_USER_INPUT` (`on` or `off`) | override, can unset | The agent's question tool, `request_user_input`, as Codex's key (`experimental_request_user_input` in the `[tools]` table): in the TUI, the main agent stops to ask a few questions with options and waits for the answers ([questions](design/questions.md)). `false` stops offering it, and the default system prompt says to ask in the final message instead, as before the tool. `uah exec` never offers it. Set it in a `config.d` layer or the file `UAH_EXTRA_CONFIG` names to turn it off for one integration, such as a web terminal that cannot show the picker |
 | `[context]` `modules` | list of strings | `[]` | none | override | The ids of [context modules](#context-modules) to turn on that ship turned off: the library's `go`, `python-venv`, `node`, `rust`, `docker`, and `git-lfs`, or a user's or project's module with `enabled: false` |
 
 #### Context modules
@@ -222,7 +223,7 @@ The changes fit the prompt to uah's tools; the [system prompt record](design/sys
 | "You are Codex, an agent based on GPT-6" | "You are uah, a coding agent in the user's terminal" |
 | `exec_command` with a `cmd` argument, the shell | `Bash` with a `command` argument |
 | `functions.exec` with `Promise.allSettled` to batch calls | Parallel tool calls in one response |
-| `functions.request_user_input_async` | Ask in the `final` channel, which ends the turn |
+| `functions.request_user_input_async` | Ask in the `final` channel, which ends the turn, or, where a user answers (the TUI), with the blocking `request_user_input` and its options |
 | Interactive visuals, Mermaid, inline visualizations | Codex's own terminal wording: ASCII diagrams, trees, and tables |
 | Skills listed under `## Skills`, read through `skills.list` and `skills.read` | The runner's `<available_skills>` list and `SkillUse` |
 | Apps in the `codex_apps` MCP server, `tool_search`, plugins | Removed; MCP tools keep their `mcp__<server>__<tool>` names |
@@ -418,6 +419,7 @@ developer_instructions = "Review the diff you are given. List only real bugs, ea
 | `UAH_ASK` | `--ask` | `approval_policy` | The approval policy |
 | `UAH_ADAPTIVE_EFFORT` | `--adaptive-effort` | `adaptive_effort` | Adaptive effort: off, 1-step, or 2-steps |
 | `UAH_CONTEXT_PREPARATION` | `--no-context-preparation` (off) | `context_preparation` | Context preparation: on or off |
+| `UAH_REQUEST_USER_INPUT` | none | `[tools.experimental_request_user_input] enabled` | The agent's question tool: on or off |
 | `UAH_MODEL_VERBOSITY` | `--model-verbosity` | `model_verbosity` | The model's verbosity: low, medium, or high |
 | `UAH_HOME` | none | none | uah's home, `~/.uah` by default |
 | `UAH_CONFIG` | `--config` | none | The user file, `<home>/config.toml` by default |
@@ -425,6 +427,8 @@ developer_instructions = "Review the diff you are given. List only real bugs, ea
 | `UAH_EXTRA_CONFIG` | none | none | One more configuration layer, merged after `config.d` and before the project file |
 | `CODEX_HOME` | none | none | Codex's directory (`~/.codex`) for `AGENTS.md` and skills |
 | `BROWSER` | none | none | The program `uah mcp login` opens the authorization URL with, instead of the system's opener |
+
+To turn the question tool off for one integration only, give it a layer of its own: `UAH_EXTRA_CONFIG=~/.uah/web-tty.toml uah` with that file holding `[tools.experimental_request_user_input]` and `enabled = false`, or `UAH_REQUEST_USER_INPUT=off` in its environment. A file in `config.d` turns it off everywhere.
 
 `UAGENT_CONFIG` and `UAGENT_STATE_DIR` are no longer read. When either is set, uah prints a line naming its replacement, and `uah doctor` warns.
 
@@ -501,6 +505,9 @@ set = { CI = "1" }
 model = "codex-auto-review"
 effort = "low"
 timeout = "90s"
+
+[tools.experimental_request_user_input]
+enabled = true                     # false: the agent asks in its final message, with no picker
 
 [tui]
 details = false

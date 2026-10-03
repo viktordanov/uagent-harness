@@ -191,9 +191,11 @@ func (s *Session) onResolve(c cmdResolve) error {
 	return nil
 }
 
-// declinePending declines the pending approvals, so a waiting run can stop:
-// all of them, or only the run's, which end with it.
+// declinePending declines the pending approvals and cancels the pending
+// questions, so a waiting run can stop: all approvals, or only the run's,
+// which end with it.
 func (s *Session) declinePending(all bool) {
+	s.cancelQuestions()
 	for id, p := range s.approvals {
 		if all || !p.anytime {
 			s.answer(id, approval.Decline)

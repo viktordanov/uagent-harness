@@ -65,6 +65,8 @@ type Config struct {
 	ContextPreparation *bool `toml:"context_preparation"`
 	// Context configures context preparation's modules.
 	Context Context `toml:"context"`
+	// Tools turns tools on or off, in Codex's [tools] table.
+	Tools Tools `toml:"tools"`
 	// ModelVerbosity is low, medium, or high: the Responses API's
 	// text.verbosity in place of the model's default, for a model that
 	// supports verbosity, as Codex's key.
@@ -129,6 +131,27 @@ type Config struct {
 
 	// Projects are keyed by absolute workspace path.
 	Projects map[string]Project `toml:"projects"`
+}
+
+// Tools is Codex's [tools] table.
+type Tools struct {
+	// ExperimentalRequestUserInput is the agent's question tool
+	// (request_user_input), as Codex's key: on by default, where a user can
+	// answer it.
+	ExperimentalRequestUserInput ToolToggle `toml:"experimental_request_user_input"`
+}
+
+// ToolToggle is Codex's { enabled = … } for one tool.
+type ToolToggle struct {
+	Enabled *bool `toml:"enabled"`
+}
+
+// RequestUserInputEnabled reports whether the agent may ask the user
+// questions with request_user_input (true by default).
+func (c Config) RequestUserInputEnabled() bool {
+	e := c.Tools.ExperimentalRequestUserInput.Enabled
+
+	return e == nil || *e
 }
 
 // Context configures context preparation's modules ([context]).

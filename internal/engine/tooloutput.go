@@ -12,8 +12,14 @@ import (
 // state.
 const MCPPlanType = "uah.mcp_call"
 
-// remoteJob is the runner's operation type for a remote job.
-const remoteJob = "remote_job"
+// The runner's names in a session item: an operation's type for a remote
+// job, the kind of an item with a call's status, and an operation's status
+// once it completed.
+const (
+	remoteJob      = "remote_job"
+	toolCallStatus = "tool_call_status"
+	opCompleted    = "completed"
+)
 
 // outputKeep is how much of a command's output or an MCP result a
 // ToolOutput keeps: enough for the line the TUI shows.
@@ -71,7 +77,7 @@ func ToolOutputFromItem(line []byte) (ToolOutput, bool) {
 		return ToolOutput{}, false
 	}
 	var item toolStatusItem
-	if json.Unmarshal(line, &item) != nil || item.Kind != "tool_call_status" {
+	if json.Unmarshal(line, &item) != nil || item.Kind != toolCallStatus {
 		return ToolOutput{}, false
 	}
 	out := ToolOutput{At: item.RecordedAt, CallID: item.Data.CallID}
@@ -89,7 +95,7 @@ func ToolOutputFromItem(line []byte) (ToolOutput, bool) {
 			}
 
 			return out, true
-		case op.Type == remoteJob && st.Plan.Type == MCPPlanType && op.Status == "completed":
+		case op.Type == remoteJob && st.Plan.Type == MCPPlanType && op.Status == opCompleted:
 			out.Result, out.Size = head(st.TerminalResult), len(st.TerminalResult)
 
 			return out, true

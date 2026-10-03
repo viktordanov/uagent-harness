@@ -79,6 +79,11 @@ type Inputs struct {
 	// RunStateDir, when set, takes the session's files and run records in
 	// place of StateDir: `uah exec --ephemeral` passes a temporary directory.
 	RunStateDir string
+	// Interactive is a session a user drives, the TUI's: the main agent is
+	// offered request_user_input, whose questions the user answers.
+	Interactive bool
+	// RequestUserInput is UAH_REQUEST_USER_INPUT, on or off ("": unset).
+	RequestUserInput string
 }
 
 // Resolved is what Resolve decides.
@@ -91,6 +96,11 @@ type Resolved struct {
 	// ContextPreparation reports whether new sessions start with prepared
 	// context.
 	ContextPreparation bool
+	// RequestUserInput reports whether the agent may ask the user with
+	// request_user_input where a user can answer
+	// ([tools.experimental_request_user_input] enabled, or
+	// UAH_REQUEST_USER_INPUT). Off, the default prompt does not name it.
+	RequestUserInput bool
 	// EffortUpdates reports whether effort changes go as configuration
 	// updates where the model takes them (UAH_EFFORT_UPDATES).
 	EffortUpdates bool
@@ -213,9 +223,13 @@ func Resolve(in Inputs, resumed session.Info, cfg config.Config) (Resolved, erro
 	if err != nil {
 		return Resolved{}, err
 	}
+	questions, err := pickOnOff(in.RequestUserInput, EnvRequestUserInput, cfg.RequestUserInputEnabled())
+	if err != nil {
+		return Resolved{}, err
+	}
 
 	return Resolved{
-		Settings: s, MaxDisk: maxDisk, Instructions: !in.NoInstructions && cfg.InstructionsEnabled(), ContextPreparation: prepare, EffortUpdates: updates,
+		Settings: s, MaxDisk: maxDisk, Instructions: !in.NoInstructions && cfg.InstructionsEnabled(), ContextPreparation: prepare, EffortUpdates: updates, RequestUserInput: questions,
 		Sandbox: policy, Env: envPolicy, Compaction: compact, CompactPromptFile: promptFile, Approval: approvalPolicy, Rules: configured,
 		ApprovalsReviewer: reviewer, Review: reviewCfg, Agents: agentSettings, WebSearch: webSearch, Verbosity: verbosity, DefaultModel: defaulted,
 	}, nil
