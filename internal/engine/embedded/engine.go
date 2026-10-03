@@ -72,6 +72,10 @@ type Config struct {
 	// InstructionFiles are the instruction files in the host prompt, in
 	// order, so /context can list them.
 	InstructionFiles []string
+	// ContextPreparation starts each new session, subagents' included,
+	// with the prepared context (internal/contextprep) before its first
+	// message.
+	ContextPreparation bool
 	// AutoReview puts the auto-reviewer in front of the user for actions
 	// that need approval (approvals_reviewer = "auto_review"), with Review's
 	// model, effort, and timeout.

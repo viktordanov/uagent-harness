@@ -30,6 +30,9 @@ func merge(base, over Config) Config {
 	if over.History.MaxBytes != nil {
 		base.History.MaxBytes = over.History.MaxBytes
 	}
+	if over.ContextPreparation != nil {
+		base.ContextPreparation = over.ContextPreparation
+	}
 	if over.AutoCompactPercent != nil {
 		base.AutoCompactPercent = over.AutoCompactPercent
 	}

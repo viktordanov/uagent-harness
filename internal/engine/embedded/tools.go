@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strings"
 
 	"github.com/viktordanov/uah-core/harness/session"
 	"github.com/viktordanov/uah-core/harness/tool"
@@ -108,10 +107,7 @@ func (w *wiring) translators(req core.Request, sessionID session.ID) (tool.Stati
 	if err := os.MkdirAll(opsDir, 0o700); err != nil {
 		return tool.StaticTranslators{}, fmt.Errorf("failed to create the operation directory: %w", err)
 	}
-	shell := strings.TrimSpace(w.getenv("SHELL"))
-	if shell == "" {
-		shell = "/bin/sh"
-	}
+	shell := w.shell()
 	run := bash.New(bash.Config{Shell: shell, Directory: req.Workspace, BaseDirectory: opsDir})
 	if w.e.cfg.Sandbox != nil {
 		var err error

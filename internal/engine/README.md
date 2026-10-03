@@ -17,7 +17,8 @@ The embedded engine runs uah-core's packages inside uah, so messages, model, eff
 6. [Remote jobs](#remote-jobs)
 7. [Extending the engine](#extending-the-engine)
 8. [Adaptive effort](#adaptive-effort)
-9. [Tests](#tests)
+9. [Context preparation](#context-preparation)
+10. [Tests](#tests)
 <!-- /memoria:section -->
 
 <!-- memoria:section id="interface" files="engine.go events.go subagents.go patch.go tooloutput.go embedded/scope.go" -->
@@ -111,7 +112,7 @@ The embedded engine is a uagent `harness.Backend`. uagent still owns the run: th
 2. The session store (`store.go`).
 3. The tool registry (`tools.go`, below).
 4. The operation manager with the remote job handlers.
-5. The inbox, with "stop when idle" (`agent.go`). The initial effort and the messages go into the session before the coordinator restores it (`openStore`), so it asks the model once with them and any input a stopped run left unread; a session with an operation still to finish gets them through the inbox instead, so the model is asked once that result is in. The items are written to the run's output before the coordinator starts. With [adaptive effort](#adaptive-effort) on, a new main session's messages start with the workspace context.
+5. The inbox, with "stop when idle" (`agent.go`). The initial effort and the messages go into the session before the coordinator restores it (`openStore`), so it asks the model once with them and any input a stopped run left unread; a session with an operation still to finish gets them through the inbox instead, so the model is asked once that result is in. The items are written to the run's output before the coordinator starts. With [context preparation](#context-preparation) on, a new session's messages start with the prepared context.
 6. The context builder with the host prompt (uah's default prompt when the request has none), the skills, and the tools.
 7. The coordinator, on its own goroutine. A panic in runner code becomes an error, so it cannot take down the TUI.
 
@@ -267,10 +268,10 @@ A job that had already started before the run stopped fails with "interrupted" w
 A change the runtime itself needs is made in [uah-core](#uah-core) and tagged there; uah wires uah-core's packages as `uah-core-runner` does and never patches them, and the equivalence test below keeps the two in step.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="adaptive" files="embedded/adaptive.go embedded/primed.go embedded/adaptive_internal_test.go" -->
+<!-- memoria:section id="adaptive" files="embedded/adaptive.go embedded/adaptive_internal_test.go" -->
 ## Adaptive effort
 
-Adaptive effort (`engine.Options.AdaptiveEffort`: `"1-step"` or `"2-steps"`; `"off"` or empty is off) makes the model think less on follow-up turns and starts a new session with the workspace's context. It is a session setting, like the effort: `session.Settings.AdaptiveEffort` goes with each run, and `Run.SetAdaptiveEffort` changes it for the live run's next model request (`/adaptive`, `/config`). A subagent starts with its parent's. It was called Lean mode while it was measured.
+Adaptive effort (`engine.Options.AdaptiveEffort`: `"1-step"` or `"2-steps"`; `"off"` or empty is off) makes the model think less on follow-up turns. It is a session setting, like the effort: `session.Settings.AdaptiveEffort` goes with each run, and `Run.SetAdaptiveEffort` changes it for the live run's next model request (`/adaptive`, `/config`). A subagent starts with its parent's. It was called Lean mode while it was measured.
 
 **Effort routing.** The switcher (`adapter.go`) asks its `adaptiveRouter` (`adaptive.go`) for each turn request's effort while the steps are not 0; a remote compaction and the direct calls (summaries, the auto-reviewer) keep theirs. A request whose input since the model's last output is only tool results goes the setting's steps below the user's effort E, never below low. The first request, a request with a user message (a steer, an injected notification, a heartbeat), and one without tool results go at E. The levels are low, medium, high, xhigh, max, and ultra above max: one step down from high is medium, two are low; from ultra (then on the plain client) one is max and two are xhigh.
 
@@ -278,10 +279,20 @@ A benchmark of finer rules, which lowered only the follow-ups after plain confir
 
 Each attempt's `model_attempt` line in the run's `stderr.log` carries `effort` and, with adaptive effort on, `effort_reason`: the steps and why, such as `1-step: tool results only` or `2-steps: user message`. The agent benchmark reads them.
 
-**Primed first turn.** With adaptive effort on when it starts, a new session of the main agent (not a subagent, a fork, or a resumed session) gets one more user message before the user's: a `<workspace_context>` block of at most about 4 KB that `primed.go` gathers before the first request. Turning adaptive effort on later primes nothing. The block holds the files that instruction files include with an `@` line (such as `@RTK.md`; the system prompt keeps each instruction file under a `## <path>` header, which resolves a relative include), the git branch and `git status --short` (at most 20 lines), and `git ls-files` by top directory with file counts (at most 40 entries). Each git command has 2 seconds. The system prompt does not change, so the prompt cache holds.
+Before context preparation, adaptive effort also started a new main session with a `<workspace_context>` message, its "primed first turn". That message is now the [prepared context](#context-preparation)'s `workspace` and `agent files` blocks, for every new session.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="tests" files="embedded/embedded_test.go embedded/patch_test.go embedded/patch_tool_test.go embedded/approval_test.go embedded/compact_test.go embedded/compact_settings_test.go embedded/context_test.go embedded/mcp_test.go embedded/mcpjobs_internal_test.go embedded/sandbox_test.go embedded/mode_test.go embedded/images_test.go embedded/clients_test.go embedded/reconnect_test.go embedded/transport_internal_test.go embedded/stream_test.go embedded/stream_internal_test.go embedded/rewind_test.go embedded/rewind_internal_test.go embedded/fork_internal_test.go embedded/store_internal_test.go embedded/sessionlog_test.go embedded/sessionlog_internal_test.go embedded/codexlogin_test.go codexauth/codexauth_test.go codexauth/login_test.go codexauth/file_internal_test.go embedded/websearch_test.go embedded/searchlog_internal_test.go embedded/compact_remote_test.go embedded/remotecompact_internal_test.go embedded/compact_probe_test.go embedded/remote_probe_test.go embedded/adaptive_test.go embedded/wake_internal_test.go embedded/parallel_test.go embedded/prefetch_internal_test.go" -->
+<!-- memoria:section id="prepare" files="embedded/prepare.go embedded/autoreview.go" -->
+## Context preparation
+
+With `Config.ContextPreparation` on (`context_preparation`, true by default), a new session starts with one more user message before its first: the [prepared context](../contextprep/README.md). `prepare.go` gathers it when the run starts, before the session store records the run's messages. This applies to the main agent's sessions and to subagents' sessions. A resumed or forked session already has a session file, so it gets nothing new; its message is in its history. A session that starts without an ID gets its ID here, before the store opens, so the adapters see it.
+
+`facts` fill `contextprep.Facts` from the request and the run: the workspace, the system prompt, the shell (`$SHELL`, or `/bin/sh`, the one `translators` runs commands in), `runtime.GOOS`, the subagent flag (the `subagent-` ID prefix), and the sandbox of the permission mode when the run starts. A read-only subagent gets `read-only`. Yolo mode, no configured sandbox, and a system without a sandbox (where commands ask instead) give no sandbox mode. `adapters` registers `Workspace`, `AgentFiles` with the session's skills, and `Harness`.
+
+The message is a normal user input, so the session file, compaction, and rewind treat it like any other. It takes no turn of its own. It goes with the first request, and the system prompt does not change, so the prompt cache holds. The auto-reviewer's transcript (`autoreview.go`) leaves it out.
+<!-- /memoria:section -->
+
+<!-- memoria:section id="tests" files="embedded/embedded_test.go embedded/patch_test.go embedded/patch_tool_test.go embedded/approval_test.go embedded/compact_test.go embedded/compact_settings_test.go embedded/context_test.go embedded/mcp_test.go embedded/mcpjobs_internal_test.go embedded/sandbox_test.go embedded/mode_test.go embedded/images_test.go embedded/clients_test.go embedded/reconnect_test.go embedded/transport_internal_test.go embedded/stream_test.go embedded/stream_internal_test.go embedded/rewind_test.go embedded/rewind_internal_test.go embedded/fork_internal_test.go embedded/store_internal_test.go embedded/sessionlog_test.go embedded/sessionlog_internal_test.go embedded/codexlogin_test.go codexauth/codexauth_test.go codexauth/login_test.go codexauth/file_internal_test.go embedded/websearch_test.go embedded/searchlog_internal_test.go embedded/compact_remote_test.go embedded/remotecompact_internal_test.go embedded/compact_probe_test.go embedded/remote_probe_test.go embedded/adaptive_test.go embedded/prepare_test.go embedded/wake_internal_test.go embedded/parallel_test.go embedded/prefetch_internal_test.go" -->
 ## Tests
 
 The tests run against `testing/fakellm`, a scripted Responses API, and need no tokens. The ones that compare with the real runner drive it through `harnesstest.RunnerEngine`, a test-only engine over uagent's harness that spawns a runner binary.
@@ -292,7 +303,8 @@ The tests run against `testing/fakellm`, a scripted Responses API, and need no t
 | `TestEmbedded_SteersALiveRun`, `TestEmbedded_ChangesSettingsLive`, `TestEmbedded_InterruptThenContinue` | Live input, live settings, and interrupts |
 | `TestEmbedded_ResumesAProcessSession` | A session the real runner started resumes on the embedded engine with its history. `go test -short` skips it |
 | `patch_test.go`, `patch_tool_test.go` | `apply_patch` end to end: the custom tool's definition, patches inside and outside the workspace, read only, protected paths, declines, verification, hooks and their `updatedInput`, the approver's input, the live mode; a session recorded with the function tool rewinds, resumes, and goes on with a custom call, its old call sent back as recorded |
-| `adaptive_test.go`, `adaptive_internal_test.go` | Adaptive effort off, at 1 step, and at 2 steps: the primed context before the first message only, with the include, git's state, and the files, and the same system prompt; a follow-up after tool results one or two levels lower, a read as much as a confirmation, and each request's effort and its reason in the attempt's diagnostics; a change during a run that lowers the next follow-up, primes nothing, and turned off brings it back; which inputs keep the user's effort; the steps down, floored at low, with ultra |
+| `prepare_test.go` | Context preparation off, on, and in a subagent's session: the prepared context before the first message only, with git's state, the files, the instruction files and the include, and the harness's guidance, and the same system prompt as with it off |
+| `adaptive_test.go`, `adaptive_internal_test.go` | Adaptive effort off, at 1 step, and at 2 steps: a follow-up after tool results one or two levels lower, a read as much as a confirmation, and each request's effort and its reason in the attempt's diagnostics; a change during a run that lowers the next follow-up, and turned off brings it back; which inputs keep the user's effort; the steps down, floored at low, with ultra |
 | `approval_test.go`, `sandbox_test.go` | Escalation, rules, "don't ask again", headless denial, PermissionRequest hooks, auto-review (its start always paired with its end), and the sandbox |
 | `parallel_test.go`, `prefetch_internal_test.go` | The approvals of one response's calls run at once: three auto-reviews that each wait for the others finish in about one review's time, each with its own verdict; three prompts open at once, each answer reaching its call; "don't ask again" on one prompt settling another; PreToolUse hooks that each wait for the others, one rewriting the command the user is then asked about; an interrupt ending three reviews at once. The prefetcher decides each gated call once, falls back to deciding in `Translate`, drops a stale decision, and refuses a call whose decision panicked |
 | `mode_test.go` | Permission modes: a live switch to read only makes the next write fail in the sandbox and the next request describe it; Auto mode lets the reviewer allow or decline without asking, also once its breaker opens |

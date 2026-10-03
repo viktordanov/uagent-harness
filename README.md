@@ -163,7 +163,7 @@ To remove an image, delete its placeholder: one backspace at its end removes it 
 - For this session: type `/model` in the TUI and pick a model, then one of its efforts (its default is preselected; esc goes back to the models). `/model gpt-6-luna` asks only for the effort, and `/model gpt-6-luna low` sets both at once. `/effort low`, or alt+, and alt+., change only the effort. It applies from the next model request, even mid-run.
 - At start: `uah -m gpt-6-luna -e medium`, and `--fast` for priority processing.
 - For every session: `model` and `effort` in the [configuration](#configuration).
-- Adaptive effort: the model thinks less on the turns that only follow tool results, and a new session starts with the workspace's context (the git branch and status, the tracked files, and the files AGENTS.md includes), so it need not look them up. `1-step` goes one effort level below yours on those turns, `2-steps` two, never below low; the first request and every turn with your message stay at your effort. `off` is the default. On the agent benchmark at high effort, at the same pass rate, it cut wall time by 18–35% and cost by 16–25%, more at 2 steps. Set it with alt+e, `/adaptive [off|1-step|2-steps]`, or the `/config` row (from the next model request, even mid-run); the footer then shows `high↓` or `high⇊`, and `high→low` while a lowered follow-up is out, `--adaptive-effort` at start, or `adaptive_effort` for new sessions. A session keeps its own value, as it keeps its effort.
+- Adaptive effort: the model thinks less on the turns that only follow tool results. `1-step` goes one effort level below yours on those turns, `2-steps` two, never below low; the first request and every turn with your message stay at your effort. `off` is the default. On the agent benchmark at high effort, at the same pass rate, it cut wall time by 18–35% and cost by 16–25%, more at 2 steps. Set it with alt+e, `/adaptive [off|1-step|2-steps]`, or the `/config` row (from the next model request, even mid-run); the footer then shows `high↓` or `high⇊`, and `high→low` while a lowered follow-up is out, `--adaptive-effort` at start, or `adaptive_effort` for new sessions. A session keeps its own value, as it keeps its effort.
 - See what the provider offers: `uah models` (`--json`, `--refresh`), `/model ` then tab in the TUI, or tab after `-m`. In the TUI, `/model` refuses a model the provider does not list, with the nearest names ("gpt-luna-6 is not available on openai-codex; did you mean gpt-6-luna?"), and `uah doctor` warns about one; `-m` and the configuration are not checked: the model goes to the provider as written.
 
 ### Usage limits
@@ -361,7 +361,7 @@ Earlier versions used `~/.config/uagent`, `~/.local/state/unreal-agent`, and a p
 
 | Group | Keys |
 | --- | --- |
-| Model | `provider`, `model`, `effort`, `fast`, `adaptive_effort`, `web_search`, `max_disk`, `request_max_attempts` |
+| Model | `provider`, `model`, `effort`, `fast`, `adaptive_effort`, `context_preparation`, `web_search`, `max_disk`, `request_max_attempts` |
 | Sandbox | `permission_mode`, `sandbox_mode`, `user_shell_sandbox`; `[sandbox_workspace_write]` `network_access`, `writable_roots`; `[shell_environment_policy]` `inherit`, `ignore_default_excludes`, `exclude`, `include_only`, `set` |
 | Approvals | `approval_policy`, `approvals_reviewer`; `[approvals]` `allow`, `forbid`; `[review]` `model`, `effort`, `timeout`, `policy_file` |
 | Compaction | `auto_compact_percent`, `model_auto_compact_token_limit`, `model_context_window`, `compact_model`, `compact_effort`, `compact_prompt`, `experimental_compact_prompt_file`, `compact_user_message_max_tokens` |
@@ -448,6 +448,16 @@ uah finds instruction files the way Codex does: the user's AGENTS.md, then one f
 <!-- /memoria:import -->
 
 `--no-instructions` turns this off. Read more: [instructions](internal/instructions/README.md).
+<!-- /memoria:section -->
+
+<!-- memoria:section id="contextprep" files="internal/app/resolve.go internal/config/config.go" -->
+### Context preparation
+
+<!-- memoria:import src="internal/contextprep/README.md#summary" -->
+Every new session starts with one message of prepared context, before the first user message. This includes a subagent's session. The message has the git branch, the status, and the tracked files. It names the loaded instruction files, so the model does not search for more. It includes the files that AGENTS.md includes with an `@` line, and the skills that say they apply to every message. It also tells the model how to size the Bash tool's output, and gives the shell and OS traps and the sandbox's limits. The system prompt does not change, and the message stays in the session's history, so the prompt cache holds. Resumed and forked sessions get no new message. Turn it off with `context_preparation = false`, `--no-context-preparation`, or `UAH_CONTEXT_PREPARATION=off`.
+<!-- /memoria:import -->
+
+Read more: [context preparation](internal/contextprep/README.md).
 <!-- /memoria:section -->
 
 <!-- memoria:section id="sandbox" files="internal/app/setup.go internal/app/resolve.go" -->

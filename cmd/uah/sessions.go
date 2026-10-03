@@ -17,6 +17,7 @@ import (
 	"github.com/viktordanov/uagent/core"
 
 	"github.com/viktordanov/uah/internal/app"
+	"github.com/viktordanov/uah/internal/contextprep"
 	"github.com/viktordanov/uah/internal/engine"
 	"github.com/viktordanov/uah/internal/home"
 	"github.com/viktordanov/uah/internal/images"
@@ -202,6 +203,11 @@ func printTranscript(w io.Writer, info session.Info, runs []session.LoadedRun) {
 		for _, e := range r.Events {
 			switch m := e.(type) {
 			case core.UserMessage:
+				if contextprep.IsPrepared(m.Text) {
+					fmt.Fprintf(w, "  (prepared context, %d bytes)\n", len(m.Text))
+
+					continue
+				}
 				said[m.ID] = m.Text
 				fmt.Fprintf(w, "› %s\n", m.Text)
 			case core.ToolCalled:

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"slices"
 	"strconv"
 	"strings"
@@ -94,12 +95,19 @@ func sessionFlags() []cli.Flag {
 			Sources: cli.EnvVars(home.EnvConfig), TakesFile: true,
 		},
 		&cli.BoolFlag{Name: "no-instructions", Usage: "do not load AGENTS.md or CLAUDE.md files"},
+		&cli.BoolFlag{
+			Name:  flagNoContextPreparation,
+			Usage: "start new sessions without prepared context (the workspace, agent files, harness, environment, and sandbox); " + app.EnvContextPreparation + "=off does the same",
+		},
 		&cli.StringFlag{Name: "log-level", Usage: "diagnostic log level: debug, info, warn, error", Value: "warn", Validator: oneOfMap("log-level", app.LogLevels)},
 	}
 }
 
 // flagSessionID is --session-id, the ID of a new session.
 const flagSessionID = "session-id"
+
+// flagNoContextPreparation is --no-context-preparation.
+const flagNoContextPreparation = "no-context-preparation"
 
 // flagYolo is --yolo, Codex's --dangerously-bypass-approvals-and-sandbox.
 const flagYolo = "yolo"
@@ -156,7 +164,19 @@ func inputs(cmd *cli.Command) app.Inputs {
 		Yolo:           cmd.Bool(flagYolo),
 		AllowDotenv:    cmd.Bool("allow-dotenv"),
 		NoInstructions: cmd.Bool("no-instructions"),
+
+		ContextPreparation: contextPreparation(cmd),
 	}
+}
+
+// contextPreparation is off with --no-context-preparation, else its
+// environment variable.
+func contextPreparation(cmd *cli.Command) string {
+	if cmd.Bool(flagNoContextPreparation) {
+		return "off"
+	}
+
+	return os.Getenv(app.EnvContextPreparation)
 }
 
 // oneOf accepts one of allowed, or empty (unset).

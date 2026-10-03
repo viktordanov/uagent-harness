@@ -56,6 +56,7 @@ The exceptions, as the code applies them:
 - `--fast` given, even as `--fast=false`, wins. Otherwise the resumed session's fast mode wins, unless a `--provider` flag changes the provider. Otherwise `fast` is on when any file turns it on.
 - The permission mode is yolo with `--yolo`, else `--sandbox` (or `UAH_SANDBOX`) as a mode, else the resumed session's unless it was yolo, else `permission_mode`, else `sandbox_mode` as a mode, else `workspace`. `sandbox_mode` follows from the mode. A project file's `sandbox_mode` does not override a user file's `permission_mode`, because `permission_mode` from any file comes first.
 - `--no-instructions` turns instructions off whatever the files say; no flag turns them on over `enabled = false`.
+- `--no-context-preparation` turns context preparation off; `UAH_CONTEXT_PREPARATION=on` turns it on over `context_preparation = false`.
 - `project_doc_max_bytes`, from any file, wins over `[instructions] max_bytes` from any file.
 - Keys without a flag come only from the files and the defaults.
 
@@ -83,7 +84,8 @@ Every key may be set in the user file, in a layer, and in a trusted project file
 | `max_disk` | size | `5G` | `--max-disk` | override | Stop a run when tool output exceeds this size (`500M`, `5G`, bytes without a suffix); `0` disables it |
 | `fast` | bool | false | `--fast` | OR | Priority processing (`service_tier = "priority"`); needs the openai or openai-codex provider, and any other provider refuses it before the session starts |
 | `web_search` | string | `live` | none | override | The provider's hosted web search tool, as Codex's key: `live` offers it on openai and openai-codex (other providers never get it), `disabled` does not. Codex's `cached` and `indexed` are errors: the runner sends the tool without Codex's access options, which the API treats as live search. The search runs on the provider's servers, so the sandbox's network rule does not apply; it is offered in every permission mode, as in Codex ([web search](design/web-search.md)) |
-| `adaptive_effort` | string | `off` | `--adaptive-effort`, `UAH_ADAPTIVE_EFFORT` | override | Adaptive effort for new sessions: `off`, `1-step`, or `2-steps`. On, the model thinks less on follow-up turns: a request that only follows tool results goes one (`1-step`) or two (`2-steps`) effort levels below `effort`, never below low (at `high`, 2 steps is `low`). The first request and a request with a user message go at `effort`. A new session's first message also carries the files AGENTS.md includes with `@`, the git branch and status, and the tracked files by top directory, so the model need not look them up. A session keeps its own value, as it keeps its effort; `/adaptive`, alt+e, and `/config` change it for the current session from its next model request, and the footer marks the effort (`high↓`, `high⇊`; `high→low` while a lowered follow-up is out). Measured on the agent benchmark at high effort, at the same pass rate: 1 step cut wall time by about a quarter and cost by 16–21%; 2 steps cut wall time by about a third and cost by a quarter ([agent tuning](design/agent-tuning.md#lean-mode-rules)) |
+| `adaptive_effort` | string | `off` | `--adaptive-effort`, `UAH_ADAPTIVE_EFFORT` | override | Adaptive effort for new sessions: `off`, `1-step`, or `2-steps`. On, the model thinks less on follow-up turns: a request that only follows tool results goes one (`1-step`) or two (`2-steps`) effort levels below `effort`, never below low (at `high`, 2 steps is `low`). The first request and a request with a user message go at `effort`. A session keeps its own value, as it keeps its effort; `/adaptive`, alt+e, and `/config` change it for the current session from its next model request, and the footer marks the effort (`high↓`, `high⇊`; `high→low` while a lowered follow-up is out). Measured on the agent benchmark at high effort, at the same pass rate: 1 step cut wall time by about a quarter and cost by 16–21%; 2 steps cut wall time by about a third and cost by a quarter ([agent tuning](design/agent-tuning.md#lean-mode-rules)) |
+| `context_preparation` | bool | true | `--no-context-preparation`, `UAH_CONTEXT_PREPARATION` (`on` or `off`) | override | Start each new session, subagents' included, with one message of [prepared context](../internal/contextprep/README.md) before the first user message: git's state and tracked files, the instruction files and their `@` includes, the skills that apply to every message, how to size Bash output, the shell's and OS's traps, and the sandbox. Resumed and forked sessions get none. Off, nothing is added; the agent benchmark turns it off to compare |
 
 ### Sandbox and approvals
 
@@ -404,6 +406,7 @@ developer_instructions = "Review the diff you are given. List only real bugs, ea
 | `UAH_SANDBOX` | `--sandbox` | `sandbox_mode` | The sandbox mode, and the permission mode of that sandbox |
 | `UAH_ASK` | `--ask` | `approval_policy` | The approval policy |
 | `UAH_ADAPTIVE_EFFORT` | `--adaptive-effort` | `adaptive_effort` | Adaptive effort: off, 1-step, or 2-steps |
+| `UAH_CONTEXT_PREPARATION` | `--no-context-preparation` (off) | `context_preparation` | Context preparation: on or off |
 | `UAH_HOME` | none | none | uah's home, `~/.uah` by default |
 | `UAH_CONFIG` | `--config` | none | The user file, `<home>/config.toml` by default |
 | `UAH_STATE_DIR` | `--state-dir` | none | Sessions, logs, and run records; the home by default |
@@ -439,6 +442,7 @@ request_max_attempts = 10          # per model request; a lost connection is ret
 fast = false                       # priority processing
 web_search = "live"                # or disabled: the provider's hosted web search
 adaptive_effort = "off"            # or 1-step, 2-steps: lower effort on follow-up turns
+context_preparation = true         # start new sessions with the prepared context
 sandbox_mode = "workspace-write"   # read-only, workspace-write; no sandbox is --yolo
 # permission_mode = "workspace"    # read-only, workspace, auto; wins over sandbox_mode
 approval_policy = "on-request"     # or never

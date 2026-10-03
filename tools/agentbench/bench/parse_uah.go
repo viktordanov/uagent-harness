@@ -110,9 +110,7 @@ func (p *uahParser) model(e uahEvent) bool {
 			p.effort = e.Effort
 		}
 	case "user_message":
-		// Adaptive effort's primed first turn is a message of uah's, not the
-		// user's: its requests go with the prompt that follows it.
-		if !strings.HasPrefix(e.Text, "<workspace_context>") {
+		if !uahsMessage(e.Text) {
 			tl.Turns++
 		}
 	case "turn_started":
@@ -412,4 +410,11 @@ func addFirstBytes(tl *Timeline, stateDir string) {
 			}
 		}
 	}
+}
+
+// uahsMessage reports whether a user message is uah's, not the user's: the
+// prepared context (in earlier versions, adaptive effort's primed first
+// turn), whose requests go with the prompt that follows it.
+func uahsMessage(text string) bool {
+	return strings.HasPrefix(text, "<context_preparation>") || strings.HasPrefix(text, "<workspace_context>")
 }

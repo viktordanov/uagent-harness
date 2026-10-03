@@ -56,9 +56,13 @@ type Config struct {
 	// AdaptiveEffort is adaptive effort for new sessions: off (the
 	// default), 1-step, or 2-steps. On, the model thinks one or two effort
 	// levels less on follow-up turns (requests that only follow tool
-	// results), and a new session starts with the workspace's context. A
-	// session keeps its own, as it keeps its effort.
+	// results). A session keeps its own, as it keeps its effort.
 	AdaptiveEffort string `toml:"adaptive_effort"`
+	// ContextPreparation starts each new session, subagents' included,
+	// with one message of prepared context: the workspace, the agent
+	// files, the harness, the environment, and the sandbox (true by
+	// default).
+	ContextPreparation *bool `toml:"context_preparation"`
 
 	// AutoCompactPercent compacts the context once a response used this
 	// share of the model's window (default 90; 0 turns it off).
@@ -282,6 +286,12 @@ func (c Config) InstructionOptions() (fallbacks []string, markers []string, maxB
 	}
 
 	return c.ProjectDocFallbackFilenames, markers, maxBytes
+}
+
+// ContextPreparationEnabled reports whether new sessions start with
+// prepared context.
+func (c Config) ContextPreparationEnabled() bool {
+	return c.ContextPreparation == nil || *c.ContextPreparation
 }
 
 // InstructionsEnabled reports whether instruction files should be loaded.

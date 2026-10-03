@@ -13,6 +13,7 @@ import (
 	"github.com/viktordanov/uah-core/harness/sessionstore/localfile"
 
 	"github.com/viktordanov/uah/internal/app"
+	"github.com/viktordanov/uah/internal/contextprep"
 	"github.com/viktordanov/uah/internal/session"
 	"github.com/viktordanov/uah/internal/sessionfile"
 	"github.com/viktordanov/uah/testing/fakellm"
@@ -72,7 +73,9 @@ func TestSessionFileFollowsTheDocumentedFormat(t *testing.T) {
 			calls = append(calls, st.CallID)
 		}
 	}
-	assert.Equal(t, []string{"hello"}, said)
+	require.Len(t, said, 2)
+	assert.True(t, contextprep.IsPrepared(said[0]), "the prepared context comes first: %s", said[0])
+	assert.Equal(t, "hello", said[1])
 	assert.Contains(t, answers, "done")
 	assert.NotEmpty(t, calls, "the Bash call's status")
 	for _, k := range []sessionfile.Kind{sessionfile.KindInput, sessionfile.KindTurn, sessionfile.KindModelResponse, sessionfile.KindToolCallStatus} {

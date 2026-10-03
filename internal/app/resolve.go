@@ -57,6 +57,9 @@ type Inputs struct {
 	// AdaptiveEffort is --adaptive-effort or its environment variable
 	// ("": unset).
 	AdaptiveEffort string
+	// ContextPreparation is on or off: off from --no-context-preparation,
+	// else its environment variable ("": unset).
+	ContextPreparation string
 	// Sandbox is the --sandbox mode.
 	Sandbox string
 	// Ask is the --ask approval policy.
@@ -79,6 +82,9 @@ type Resolved struct {
 	MaxDisk  int64
 	// Instructions reports whether to load AGENTS.md and CLAUDE.md files.
 	Instructions bool
+	// ContextPreparation reports whether new sessions start with prepared
+	// context.
+	ContextPreparation bool
 	// Sandbox is the policy commands run under. Its Workspace and
 	// WritableRoots are as given; Setup makes them absolute.
 	Sandbox sandbox.Policy
@@ -184,12 +190,31 @@ func Resolve(in Inputs, resumed session.Info, cfg config.Config) (Resolved, erro
 	if err != nil {
 		return Resolved{}, err
 	}
+	prepare, err := pickContextPreparation(in, cfg)
+	if err != nil {
+		return Resolved{}, err
+	}
 
 	return Resolved{
-		Settings: s, MaxDisk: maxDisk, Instructions: !in.NoInstructions && cfg.InstructionsEnabled(),
+		Settings: s, MaxDisk: maxDisk, Instructions: !in.NoInstructions && cfg.InstructionsEnabled(), ContextPreparation: prepare,
 		Sandbox: policy, Env: envPolicy, Compaction: compact, CompactPromptFile: promptFile, Approval: approvalPolicy, Rules: configured,
 		ApprovalsReviewer: reviewer, Review: reviewCfg, Agents: agentSettings, WebSearch: webSearch, DefaultModel: defaulted,
 	}, nil
+}
+
+// pickContextPreparation is the flag or its variable, on or off, else
+// context_preparation.
+func pickContextPreparation(in Inputs, cfg config.Config) (bool, error) {
+	switch in.ContextPreparation {
+	case "":
+		return cfg.ContextPreparationEnabled(), nil
+	case "on":
+		return true, nil
+	case "off":
+		return false, nil
+	}
+
+	return false, usage(fmt.Errorf("invalid %s %q (want on or off)", EnvContextPreparation, in.ContextPreparation))
 }
 
 // pickEnv checks the configured environment policy.

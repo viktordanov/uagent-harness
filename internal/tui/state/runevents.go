@@ -7,6 +7,7 @@ import (
 
 	"github.com/viktordanov/uagent/core"
 
+	"github.com/viktordanov/uah/internal/contextprep"
 	"github.com/viktordanov/uah/internal/engine"
 	"github.com/viktordanov/uah/internal/images"
 	"github.com/viktordanov/uah/internal/session"
@@ -29,6 +30,9 @@ func (s *State) onRunEvent(ev core.Event) { //nolint:gocyclo // a dispatch switc
 		note, ok := s.agentNote(e.Text)
 		if !ok {
 			note, ok = reviewNote(e.Text)
+		}
+		if !ok {
+			note, ok = preparedNote(e.Text)
 		}
 		if ok {
 			s.put(Item{Kind: KindNotice, Key: "msg:" + e.ID, Text: note, Level: session.LevelInfo})
@@ -84,3 +88,13 @@ func (s *State) onRunEvent(ev core.Event) { //nolint:gocyclo // a dispatch switc
 }
 
 func (s *State) turnKey(turn int) string { return fmt.Sprintf("turn:%s:%d", s.live().RunID, turn) }
+
+// preparedNote stands for the prepared context a new session starts with,
+// uah's message rather than the user's.
+func preparedNote(text string) (string, bool) {
+	if !contextprep.IsPrepared(text) {
+		return "", false
+	}
+
+	return fmt.Sprintf("uah prepared the session's context (%.1f KB)", float64(len(text))/1024), true
+}
