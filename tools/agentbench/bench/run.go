@@ -52,8 +52,13 @@ type Config struct {
 	UAHEnv    []string
 	UAHConfig []string
 	Variant   string
-	Keep      bool
-	Log       io.Writer
+	// OwnerEnv gives the harness the user's own environment (OwnerEnv)
+	// with Shell as SHELL, instead of the bench's isolated one; the
+	// fixtures and the checks keep the isolated one.
+	OwnerEnv bool
+	Shell    string
+	Keep     bool
+	Log      io.Writer
 }
 
 // Key names a run; a results file holds each key once.
@@ -105,6 +110,11 @@ type Result struct {
 	// UAHConfig what -uah-config added to its configuration file.
 	Env       []string `json:"env,omitempty"`
 	UAHConfig []string `json:"uah_config,omitempty"`
+	// Shell is the harness's SHELL when it ran with the owner's
+	// environment (-owner-env), else "".
+	Shell string `json:"owner_env_shell,omitempty"`
+	// Failures counts a uah run's failed and wasted calls (failures.go).
+	Failures *Failures `json:"failures,omitempty"`
 	// Artifacts is the run's directory: the stamped event stream, stderr,
 	// the timeline, the diff, and uah's state.
 	Artifacts string `json:"artifacts"`
@@ -188,7 +198,7 @@ func Execute(ctx context.Context, cfg Config) error {
 	if len(todo) == 0 {
 		return nil
 	}
-	env, err := newEnv(cfg.Work, cfg.Mode, cfg.Variant, cfg.UAHConfig)
+	env, err := newEnv(ctx, cfg)
 	if err != nil {
 		return err
 	}
@@ -245,14 +255,19 @@ type runEnv struct {
 	uahHome   string
 	uahConfig string // uah's user configuration: the permission mode and -uah-config's lines
 	codexHome string // the user's, for a run with a fake home
-	base      []string
+	// base is the environment of the fixtures and the checks, and harness
+	// the harness's: base, or the owner's with -owner-env.
+	base    []string
+	harness []string
 }
 
 // newEnv makes the shared directories and the base environment: the
 // user's, without variables that would steer either harness away from its
 // defaults, with a temporary directory both sandboxes let commands write
-// (and the Go build cache in it), and no network for Go.
-func newEnv(work, mode, variant string, extra []string) (*runEnv, error) {
+// (and the Go build cache in it), and no network for Go. With
+// cfg.OwnerEnv the harness gets the owner's environment instead.
+func newEnv(ctx context.Context, cfg Config) (*runEnv, error) {
+	work, mode, variant, extra := cfg.Work, cfg.Mode, cfg.Variant, cfg.UAHConfig
 	e := &runEnv{work: work, tmp: filepath.Join(work, "tmp"), uahHome: filepath.Join(work, "uah-home"), codexHome: os.Getenv("CODEX_HOME")}
 	if e.codexHome == "" {
 		home, err := os.UserHomeDir()
@@ -294,6 +309,13 @@ func newEnv(work, mode, variant string, extra []string) (*runEnv, error) {
 		"PYTHONDONTWRITEBYTECODE=1",
 		"NO_COLOR=1",
 	)
+	e.harness = e.base
+	if cfg.OwnerEnv {
+		if err := checkShell(cfg.Shell); err != nil {
+			return nil, err
+		}
+		e.harness = OwnerEnv(os.Environ(), cfg.Shell, UserTempDir(ctx))
+	}
 
 	return e, nil
 }
@@ -378,6 +400,9 @@ func runOne(ctx context.Context, cfg Config, env *runEnv, t Task, k Key) (res Re
 	if k.Harness == HarnessUAH {
 		res.Env, res.UAHConfig = cfg.UAHEnv, cfg.UAHConfig
 	}
+	if cfg.OwnerEnv {
+		res.Shell = cfg.Shell
+	}
 	out, err := launch(ctx, inv, limit, art)
 	res.ExitCode, res.Status = out.exit, out.status
 	if err != nil {
@@ -436,8 +461,38 @@ func measure(res *Result, price Price) error {
 	tl.End = res.StartedAt.Add(wall)
 	res.Metrics = tl.Compute(wall, price)
 	writeJSON(filepath.Join(res.Artifacts, "timeline.json"), tl)
+	if res.Harness == HarnessUAH {
+		if res.Failures, err = RunFailures(*res); err != nil {
+			return err
+		}
+	}
 
 	return nil
+}
+
+// RunFailures counts a uah run's failures from its artifacts.
+func RunFailures(res Result) (*Failures, error) {
+	return CountFailures(filepath.Join(res.Artifacts, "uah-state"), mainSession(filepath.Join(res.Artifacts, "stream.jsonl")))
+}
+
+// mainSession is the session a uah stream opened first, or "".
+func mainSession(stream string) string {
+	f, err := os.Open(stream)
+	if err != nil {
+		return ""
+	}
+	defer f.Close()
+	id := ""
+	_ = eachLine(f, func(_ time.Time, line []byte) error {
+		var e uahEvent
+		if id == "" && json.Unmarshal(line, &e) == nil && e.Type == "session_opened" {
+			id = e.ID
+		}
+
+		return nil
+	})
+
+	return id
 }
 
 // Remeasure parses every run in the results file again, as after a change

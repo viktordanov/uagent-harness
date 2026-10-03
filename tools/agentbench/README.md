@@ -1,4 +1,4 @@
-<!-- memoria:section id="overview" files="main.go bench/run.go bench/harness.go" -->
+<!-- memoria:section id="overview" files="main.go bench/run.go bench/harness.go bench/ownerenv.go" -->
 # Agent benchmark
 
 <!-- memoria:export id="summary" -->
@@ -23,12 +23,12 @@ A task with [follow-up prompts](#follow-up-prompts) runs on uah alone: `uah exec
 
 `-mode` sets the permission mode of both. `auto`, the default and the owner's everyday mode, has a reviewer model decide what needs approval: uah's `permission_mode = "auto"` (the generated configuration file holds only that key) and Codex's `--approve-for-me`, which implies the workspace-write sandbox. `workspace` refuses it: uah's `--sandbox workspace-write --ask never` and Codex's `-s workspace-write -c approval_policy="never"`. A task that needs the network or files outside the workspace passes only in `auto`.
 
-Both load `~/.codex/AGENTS.md`, as both do by default. The environment drops `UAH_*`, `OPENAI_*`, `GO*`, and web-tty's variables, and sets `TMPDIR` to a shared directory in the scratch directory, which both sandboxes let commands write; the Go build cache lives there (`GOCACHE`), with `GOFLAGS=-count=1` so a slow suite is slow every time, `GOPROXY=off`, and `GOTOOLCHAIN=local`.
+Both load `~/.codex/AGENTS.md`, as both do by default. The environment drops `UAH_*`, `OPENAI_*`, `GO*`, and web-tty's variables, and sets `TMPDIR` to a shared directory in the scratch directory, which both sandboxes let commands write; the Go build cache lives there (`GOCACHE`), with `GOFLAGS=-count=1` so a slow suite is slow every time, `GOPROXY=off`, and `GOTOOLCHAIN=local`. [`-owner-env`](#the-owners-environment) gives the harness the owner's environment instead.
 
 The uah binary is built from the working tree into the scratch directory at the start, unless `-uah` names one.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="usage" files="main.go bench/run.go bench/dry.go" -->
+<!-- memoria:section id="usage" files="main.go bench/run.go bench/dry.go bench/ownerenv.go" -->
 ## Run it
 
 Run every command from the repository root.
@@ -60,6 +60,9 @@ go run ./tools/agentbench -turns -out R.jsonl        # the per-turn report of mu
 | `-uah-env` | none | `KEY=VALUE` added to uah's environment, after the variables the harness drops; repeatable; needs `-variant` |
 | `-uah-config` | none | a top-level `key = value` line added to uah's generated configuration file; repeatable; needs `-variant` |
 | `-variant` | none | a label for the uah runs, part of their results key; see [variants](#variants) |
+| `-owner-env` | off | give the harness the owner's environment; see [the owner's environment](#the-owners-environment) |
+| `-shell` | the login shell | the harness's `SHELL` with `-owner-env` |
+| `-failures` | off | count the failures of the results file's uah runs again from their artifacts and write the [failures report](#failures) |
 | `-turns` | off | write the [per-turn report](#the-per-turn-report) of the results file's uah runs and the requests it read; a `-requests.jsonl` file is read as is |
 | `-price-in`, `-price-cached`, `-price-out` | 1.25, 0.125, 10 | US dollars per million tokens, for the cost estimate |
 
@@ -74,7 +77,7 @@ Each run appends one line to the results file and leaves a directory next to it,
 - `check.txt`: the check's output;
 - `uah-state/` (uah only): the session files, the subagents' sessions, and each run's `stderr.log` diagnostics.
 
-At the end the command writes `<results>.md`, the [report](#metrics-and-the-report).
+At the end the command writes `<results>.md`, the [report](#metrics-and-the-report), and `<results>-failures.md`, the [failures report](#failures).
 
 ### Variants
 
@@ -86,6 +89,22 @@ go run ./tools/agentbench -harness uah -repeat 3 -uah-env UAH_ADAPTIVE_EFFORT=2-
 ```
 
 The same variant through the configuration is `-uah-config 'adaptive_effort = "2-steps"' -variant adaptive2`. A prompt variant, for example, is `-uah-config 'model_instructions_file = "/tmp/uah-agentbench/prompts/runner.md"' -variant prompt-runner`. The report then has `uah+NAME` as a harness of its own in the per-harness tables, and a table of the variant against the control per task.
+
+### The owner's environment
+
+The bench's environment hides failures that the owner's sessions have, because it sets its own `TMPDIR`, `GOCACHE`, and `GOFLAGS`, and the harness inherits `SHELL` from whatever started the bench. `-owner-env` gives the harness (and only the harness) the environment an interactive session of the owner has (`bench/ownerenv.go`):
+
+- `SHELL` is the login shell: `-shell`, else the user database's (`dscl . -read ~ UserShell` on macOS, `getent passwd` elsewhere), else `$SHELL`. For the owner it is fish, where the model's POSIX `sh` (here-documents, `for … do`, `x=1`) fails.
+- `TMPDIR` is the login session's (`getconf DARWIN_USER_TEMP_DIR` on macOS), else the inherited one, so a bench started from a sandboxed tool still gives the owner's. A read-only subagent cannot write it.
+- `GOCACHE`, `GOFLAGS`, `GOPATH`, `GOPROXY`, and `GOTOOLCHAIN` are the user's, or Go's defaults: the build cache is `~/Library/Caches/go-build`, which uah's sandbox does not let commands write, and test results are cached. No `GOPROXY=off`: no task's `go.mod` requires a module, so nothing is fetched, and a command that tries goes through the sandbox's network rules as in the owner's sessions.
+- It still drops `UAH_*`, `OPENAI_*`, `CLAUDE*`, and web-tty's variables, and sets `NO_COLOR` and `PYTHONDONTWRITEBYTECODE` as the bench does.
+
+The rest is the bench's: the fixture, the workspace, the check and its environment, the throwaway `UAH_HOME` and state directory. The owner's `~/.codex/AGENTS.md` and the skills in `$CODEX_HOME/skills` load as in every run (the home directory is the user's unless the task fakes it, and `CODEX_HOME` stays the user's). Each result records the shell in `owner_env_shell`. The owner turns adaptive effort on per session (`2-steps`, mostly), not in the configuration, so a run like the owner's passes it as a variant:
+
+```sh
+go run ./tools/agentbench -harness uah -mode auto -effort high -owner-env \
+  -uah-env UAH_ADAPTIVE_EFFORT=2-steps -variant base -repeat 6 -out tools/agentbench/results/owner.jsonl
+```
 <!-- /memoria:section -->
 
 <!-- memoria:section id="tasks" files="bench/task.go bench/fixture.go bench/dry.go bench/harness.go bench/run.go" -->
@@ -192,7 +211,7 @@ Both streams become one `Timeline` (`timeline.json`), with times in milliseconds
 **Codex** reports neither model requests nor per-request tokens, and its events carry no times. The harness stamps each line as it reads it (Codex writes a line per event), and the parser infers requests: the model is busy from a turn's start, or from the end of the last running command, until the next command starts or the turn completes. A gap shorter than 300 ms is not a request but Codex running the next call of the same response, one after another. A patch (`file_change`), which has no start event, ends the request that issued it. A command that starts while another still runs (Codex hands the model a long command before it ends) follows a request from the last event to it, so Codex's overlap is counted where its events show it. Tokens are the turns' totals (`inferred` is `["requests", "request_tokens"]`). Codex's model time is an estimate: a request that ends in a message with no call, while a command runs, is not seen.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="metrics" files="bench/timeline.go bench/behavior.go bench/report.go bench/report_variant.go bench/turns.go main.go" -->
+<!-- memoria:section id="metrics" files="bench/timeline.go bench/behavior.go bench/report.go bench/report_variant.go bench/turns.go bench/failures.go bench/report_failures.go main.go" -->
 ## Metrics and the report
 
 Each result line holds the run's `metrics`:
@@ -228,6 +247,23 @@ The mining of the owner's sessions (P7) found the model is about 89% of the wall
 
 The report has, per model and effort: a table per harness (runs, pass rate, medians of the times and counts, token totals, total cost); a table per harness of `behavior` summed over its runs; a table per task with uah against Codex (pass counts, median wall times and their ratio, uah's overlap, each one's most concurrent calls, median input tokens, median cost); for each [variant](#variants), a table per task and over all its runs against the control (pass counts, median wall times and their ratio, requests, output tokens, and patch tokens); and every run, with its status, the split of its wall time, its longest call, and the size of its diff. A run's status is `done` (exit 0), `failed` (non-zero), `timeout`, or `error`; a timed-out run does not pass, even if its check does.
 
+### Failures
+
+A uah run's result also has `failures` (`bench/failures.go`): what goes wrong in the environment rather than in the task, as the mining of the owner's sessions found it. It reads every session file in the run's `uah-state`, the main agent's and the subagents', with each call's arguments, its status, and its operation's result (exit code, stderr, the tail of stdout, whether the output was truncated).
+
+| Field | Meaning |
+| --- | --- |
+| `calls`, `commands` | every tool call, and the `Bash` calls |
+| `failed`, `by_cause`, `subagent_failed` | the calls that failed, by cause, and how many were subagents'. A call's error status is `patch-context-mismatch`, `reviewer-denied`, `approval-refused`, or `tool-error`; a command's cause is the first rule its output matches: `fish-syntax` (`fish:` with a parse error, or exit 127), `sandbox-tmpdir` (a here-document's or Go's temporary file), `go-cache` (the build cache's path or `GOCACHE` in the output: rtk's summary of a `go test` keeps only the path), `sandbox-git-write`, `sandbox-write` (not permitted, read-only), `network`, `bsd-vs-gnu`, `cmd-not-found`, `test-fail`, `build-fail`, `file-not-found`, `search-no-match`, `script-error`, else `empty-exit` or `other-nonzero`; `timeout` and `canceled` first |
+| `wrapped`, `heredocs` | commands run through `sh -c`, `bash -c`, or `zsh -c` (after an `rtk` or `rtk proxy` prefix), and commands with a here-document |
+| `gocache_overrides`, `tmpdir_overrides` | commands that set `GOCACHE`, or `TMPDIR` or `GOTMPDIR`, by hand |
+| `truncated`, `truncated_retried` | outputs cut to the call's `max_output_length`, and those whose next request (same agent) runs the command again (its first 25 bytes) or reads a file it read |
+| `rereads` | reads (`cat`, `sed -n`, `nl`, `head`, `tail`) of a file the same agent's previous request read |
+| `agents_lookups` | commands naming `AGENTS.md` or `CLAUDE.md`: looking for instructions that are already loaded |
+| `skill_uses`, `include_reads` | `SkillUse` calls, and commands naming `RTK.md`, the file the owner's `AGENTS.md` includes: the startup ritual, in a request of its own (`behavior.ritual_requests`) or not |
+
+`<results>-failures.md` has, for the uah runs, a summary per harness label and a row per task and label (pass count, median wall time, requests, tokens, cached share of the input, and the counts summed: failures by group (fish, Go cache, temporary directory, sandbox, network, other), the share of wrapped commands, ritual requests, skill loads, and the rest), every cause per label, and a row per run. The run writes it at the end; `-failures` counts the runs again from their artifacts and rewrites it, for a results file from before a change to the rules.
+
 ### The per-turn report
 
 `-turns` reads the timeline of each uah run in the results file and writes `<results>-requests.jsonl`, each run's requests and compactions, one line per run, which [history](#history) keeps beside the results, and `<results>-turns.md` (`bench/turns.go`). Given that requests file it reads it as is. The report has, per task, user turn, and group (a harness label, with the effort when it is not high), the medians of the context at the turn's first request (its opener, the user's message), the opener's and the first follow-up's uncached input, the turn's reasoning, output, model time and cost; the same turns summed over the tasks; and replays.
@@ -243,10 +279,10 @@ The estimate is uncached input, cached input, and output tokens at the `-price-*
 As a scale, each smoke pass (two tasks, both harnesses, effort low, 4 runs) took 40 to 95 s a run, about 510,000 input tokens (85% cached) and 3,000 to 5,000 output tokens in all: under $0.20 at the default rates. A full pass of 35 tasks × 2 harnesses × 3 repeats is 210 runs (raise `-max-runs`): at low effort about 27 million input tokens, $10, and 4 hours at `-parallel 1`; at high effort expect two to four times the tokens and the time.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="test" files="bench/bench_test.go bench/variant_test.go bench/followup_test.go bench/turns_test.go bench/testdata/uah.jsonl bench/testdata/codex.jsonl" -->
+<!-- memoria:section id="test" files="bench/bench_test.go bench/variant_test.go bench/followup_test.go bench/turns_test.go bench/failures_test.go bench/ownerenv_test.go bench/ownerenv_internal_test.go bench/testdata/uah.jsonl bench/testdata/codex.jsonl" -->
 ## The test
 
-`go test ./tools/agentbench/...` makes no model calls. It parses a recorded uah stream and a stamped Codex stream of the same prompt (two commands in parallel, then an answer) and checks the requests, calls, tokens, and metrics; checks the metrics' arithmetic and the `behavior` counts, the cache split by effort included, on synthetic timelines; reads a request's effort and its reason from a `model_attempt` line; loads every task; dry-runs every task not tagged `slow` (about 5 s with a warm build cache, which it keeps in `$TMPDIR/uah-agentbench-test`; `-short` skips it); checks the plan's order, a variant's keys, its configuration file, and the report's variant table; checks that a `uah-only` task has no Codex run and that follow-ups need that tag; runs a task with two follow-ups against a fake `uah` script that answers each message and goes idle, to see each sent after the run before it ended; parses compactions from a synthetic stream; and, on a synthetic session of two turns, checks each request's turn, the per-turn split, and the replay's cache model under each rule and across a compaction.
+`go test ./tools/agentbench/...` makes no model calls. It parses a recorded uah stream and a stamped Codex stream of the same prompt (two commands in parallel, then an answer) and checks the requests, calls, tokens, and metrics; checks the metrics' arithmetic and the `behavior` counts, the cache split by effort included, on synthetic timelines; reads a request's effort and its reason from a `model_attempt` line; loads every task; dry-runs every task not tagged `slow` (about 5 s with a warm build cache, which it keeps in `$TMPDIR/uah-agentbench-test`; `-short` skips it); checks the plan's order, a variant's keys, its configuration file, and the report's variant table; checks that a `uah-only` task has no Codex run and that follow-ups need that tag; runs a task with two follow-ups against a fake `uah` script that answers each message and goes idle, to see each sent after the run before it ended; parses compactions from a synthetic stream; and, on a synthetic session of two turns, checks each request's turn, the per-turn split, and the replay's cache model under each rule and across a compaction. It builds the owner's environment from a given one and checks what it keeps, drops, and sets, and that only the harness gets it; parses a login shell from `dscl` and `getent`; and counts the failures of a synthetic main session and subagent session (a fish error, a build cache denial, a here-document's temporary file, a network error, a reviewer's denial, a wrapped command, a truncated output read again), classifies sample command outputs, and finds the files a read command reads.
 <!-- /memoria:section -->
 
 ## History

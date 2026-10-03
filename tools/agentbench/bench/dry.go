@@ -25,7 +25,7 @@ func (v Validation) OK() bool { return v.Error == "" && !v.Untouched.Passed && v
 // Validate dry-runs each task, parallel at once, with no model calls. It
 // uses the same environment as a run, so it also warms the Go build cache.
 func Validate(ctx context.Context, tasks []Task, work string, parallel int) ([]Validation, error) {
-	env, err := newEnv(work, ModeWorkspace, "", nil)
+	env, err := newEnv(ctx, Config{Work: work, Mode: ModeWorkspace})
 	if err != nil {
 		return nil, err
 	}
