@@ -115,18 +115,7 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 	if *dry {
-		vs, err := bench.Validate(ctx, tasks, *work, max(*parallel, 4))
-		fmt.Print(bench.FormatValidation(vs))
-		if err != nil {
-			return err
-		}
-		for _, v := range vs {
-			if !v.OK() {
-				return errors.New("some tasks are not valid")
-			}
-		}
-
-		return nil
+		return validate(ctx, tasks, *work, max(*parallel, 4))
 	}
 	cfg := bench.Config{
 		Tasks: tasks, Repeat: *repeat, Model: *model, Effort: *effort, Parallel: *parallel, Timeout: *timeout,
@@ -321,6 +310,22 @@ func writeTurns(out string, price bench.Price) error {
 		return err
 	}
 	fmt.Fprintln(os.Stderr, "per-turn report:", md)
+
+	return nil
+}
+
+// validate dry-runs the tasks' checks and prints the result.
+func validate(ctx context.Context, tasks []bench.Task, work string, parallel int) error {
+	vs, err := bench.Validate(ctx, tasks, work, parallel)
+	fmt.Print(bench.FormatValidation(vs))
+	if err != nil {
+		return err
+	}
+	for _, v := range vs {
+		if !v.OK() {
+			return errors.New("some tasks are not valid")
+		}
+	}
 
 	return nil
 }
