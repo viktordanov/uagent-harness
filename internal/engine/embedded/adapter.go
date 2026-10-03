@@ -5,11 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"sync"
 
 	"github.com/viktordanov/uah-core/harness/llm"
 
 	"github.com/viktordanov/uagent/core"
+
+	"github.com/viktordanov/uah/internal/engine"
 )
 
 // switcher is the llm.Adapter the coordinator calls. It applies the live
@@ -49,12 +52,16 @@ type switcher struct {
 	// on (adaptive.go); setAdaptive changes it.
 	adaptive adaptiveRouter
 	// updates, when set, reports whether a model takes effort updates
-	// (effort_updates and the catalog); base is then the effort each
+	// (UAH_EFFORT_UPDATES and the catalog); base is then the effort each
 	// request carries, the session's first, and update effortUpdate's
-	// choice for the next turn request (adaptive.go).
-	updates func(model string) bool
-	base    llm.ReasoningEffort
-	update  *effortChoice
+	// choice for the next turn request (adaptive.go). rejected is set once
+	// the backend rejected them, and offUpdates saves that for the
+	// session's later runs (effortfallback.go).
+	updates    func(model string) bool
+	base       llm.ReasoningEffort
+	update     *effortChoice
+	rejected   bool
+	offUpdates func(engine.EffortUpdatesOff) error
 	// max is the attempt limit; diag gets the diagnostics (modelcall.go).
 	max  int
 	diag io.Writer
@@ -80,16 +87,28 @@ func newSwitcher(model string, v variant, maxAttempts int, build func(variant) (
 }
 
 func (s *switcher) Respond(ctx context.Context, req llm.Request, opts llm.RequestOptions) (llm.Response, error) {
+	resp, updates, err := s.respond(ctx, req, opts)
+	if err != nil && updates && ctx.Err() == nil {
+		return s.fallBack(ctx, req, opts, err)
+	}
+
+	return resp, err // the coordinator wraps model errors
+}
+
+// respond sends req; updates reports whether it carried effort updates.
+func (s *switcher) respond(ctx context.Context, req llm.Request, opts llm.RequestOptions) (resp llm.Response, updates bool, err error) {
 	_, compacting := ctx.Value(remoteCallKey{}).(*remoteCall)
+	_, retry := ctx.Value(noUpdatesKey{}).(bool)
 	s.mu.Lock()
 	v, model := s.variant, s.model
 	line := effortLine{}
-	if s.updatingLocked(req.Model.ID) {
+	if !retry && s.updatingLocked(req.Model.ID) {
 		// The history's updates set the effort; the request keeps the base,
 		// or after a compaction its pin.
 		base := requestEffort(ctx, s.base)
 		line.effort, line.request = string(lastEffort(req.Input, base)), string(base)
 		req.Model.ReasoningEffort = base
+		updates = slices.ContainsFunc(req.Input, isUpdate)
 		if c := s.update; c != nil && !compacting {
 			line.reason, line.update = c.reason, c.updated
 			s.update = nil
@@ -108,7 +127,7 @@ func (s *switcher) Respond(ctx context.Context, req llm.Request, opts llm.Reques
 	client, err := s.clientLocked(v)
 	s.mu.Unlock()
 	if err != nil {
-		return llm.Response{}, err
+		return llm.Response{}, false, err
 	}
 	if model != "" {
 		req.Model.ID = model
@@ -130,13 +149,13 @@ func (s *switcher) Respond(ctx context.Context, req llm.Request, opts llm.Reques
 	if c, ok := ctx.Value(callKey{}).(*modelCall); ok {
 		c.setEffort(line)
 	}
-	resp, err := client.Respond(ctx, req, opts)
+	resp, err = client.Respond(ctx, req, opts)
 	err = done(err)
 	if err == nil && s.seen != nil && !compacting {
 		s.seen(req, resp.Usage)
 	}
 
-	return resp, err // the coordinator wraps model errors
+	return resp, updates, err
 }
 
 // verbosityFor is the request's verbosity, else the model's (verbosity).

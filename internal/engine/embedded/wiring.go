@@ -262,12 +262,17 @@ func (w *wiring) compactor(ctx context.Context, s runStore, sw *switcher, first 
 	}, nil
 }
 
-// effortUpdates turns effort updates on for the run when effort_updates is
-// on (adaptive.go): each request then carries the session's first effort,
-// so the session's runs share one prompt cache.
+// effortUpdates turns effort updates on for the run when they are on and
+// the backend has not rejected them in the session (adaptive.go,
+// effortfallback.go): each request then carries the session's first
+// effort, so the session's runs share one prompt cache.
 func (w *wiring) effortUpdates(ctx context.Context, sw *switcher, s runStore, req core.Request) error {
 	if !w.e.cfg.EffortUpdates {
 		return nil
+	}
+	dir := w.e.sessionsDir()
+	if off, err := updatesRejected(dir, string(s.id)); err != nil || off {
+		return err
 	}
 	items, err := allItems(ctx, s.store, s.id)
 	if err != nil {
@@ -275,6 +280,7 @@ func (w *wiring) effortUpdates(ctx context.Context, sw *switcher, s runStore, re
 	}
 	sw.base = cmp.Or(firstEffort(items), reasoningEffort(req.Effort))
 	sw.updates = func(model string) bool { return w.e.models.EffortUpdates(req.Provider, model) }
+	sw.offUpdates = func(e engine.EffortUpdatesOff) error { return saveUpdatesRejected(dir, string(s.id), e) }
 
 	return nil
 }

@@ -34,9 +34,6 @@ func merge(base, over Config) Config {
 	if over.ContextPreparation != nil {
 		base.ContextPreparation = over.ContextPreparation
 	}
-	if over.EffortUpdates != nil {
-		base.EffortUpdates = over.EffortUpdates
-	}
 	if over.Context.Modules != nil {
 		base.Context.Modules = over.Context.Modules
 	}

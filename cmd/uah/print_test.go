@@ -30,3 +30,12 @@ func TestPrinter_Agents(t *testing.T) {
 	quiet.print(engine.AgentActivity{ID: "a1", Event: core.ToolFinished{Name: "Bash"}})
 	assert.Empty(t, out.String())
 }
+
+// TestPrinter_EffortUpdatesOff warns on stderr when the backend rejects
+// effort updates.
+func TestPrinter_EffortUpdatesOff(t *testing.T) {
+	var out bytes.Buffer
+	newPrinter(&out, false).print(engine.EffortUpdatesOff{Err: "rejected"})
+
+	assert.Contains(t, out.String(), "warning: effort updates were rejected by the backend; switching effort per request (cache misses on switches)")
+}

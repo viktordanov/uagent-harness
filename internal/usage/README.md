@@ -90,7 +90,7 @@ OpenAI keeps a prompt cache per model and per reasoning effort, and drops it aft
 | --- | --- |
 | Input, cached input, output; start and end | Each `model_response` and the `turn` before it, in the run's events |
 | Model | The run's request |
-| Effort | The request's `model_attempt` line in the run's `stderr.log`: its `request_effort`, the effort the request carried, which an effort update (a `configuration_update` item, `effort_updates`) leaves at the session's base, else its `effort` (with adaptive effort, the request's own effort); in a run from before uah logged it, the run's latest settings |
+| Effort | The request's `model_attempt` line in the run's `stderr.log`: its `request_effort`, the effort the request carried, which an effort update (a `configuration_update` item) leaves at the session's base, else its `effort` (with adaptive effort, or after the backend rejected the updates, the request's own effort); in a run from before uah logged it, the run's latest settings |
 | Rewritten | A compaction that succeeded, or a rewind, since the request before |
 | Opener | The first request after a user's message |
 

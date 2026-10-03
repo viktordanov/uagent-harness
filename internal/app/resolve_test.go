@@ -387,15 +387,14 @@ func TestResolve(t *testing.T) {
 			want: func(r *app.Resolved) {},
 		},
 		{
-			name: "effort_updates off in the config file",
-			cfg:  config.Config{EffortUpdates: new(false)},
+			name: "UAH_EFFORT_UPDATES=off",
+			in:   func(in *app.Inputs) { in.EffortUpdates = "off" },
 			want: func(r *app.Resolved) { r.EffortUpdates = false },
 		},
 		{
-			name: "UAH_EFFORT_UPDATES=off beats the config file",
-			in:   func(in *app.Inputs) { in.EffortUpdates = "off" },
-			cfg:  config.Config{EffortUpdates: new(true)},
-			want: func(r *app.Resolved) { r.EffortUpdates = false },
+			name: "UAH_EFFORT_UPDATES=on",
+			in:   func(in *app.Inputs) { in.EffortUpdates = "on" },
+			want: func(r *app.Resolved) {},
 		},
 		{
 			name: "the prompt file is read by Setup",

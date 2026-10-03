@@ -113,3 +113,42 @@ func TestCacheRequests_EffortUpdates(t *testing.T) {
 		}
 	}
 }
+
+// TestCacheRequests_EffortUpdatesRejected: after the backend rejected the
+// updates, the retry and the later requests carry their own effort, so a
+// switch is an effort miss again.
+func TestCacheRequests_EffortUpdatesRejected(t *testing.T) {
+	at := time.Date(2026, 10, 3, 9, 0, 0, 0, time.UTC)
+	sec := func(n int) time.Time { return at.Add(time.Duration(n) * time.Second) }
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, uharness.StderrFile), []byte(
+		`{"diag":"model_attempt","at":"2026-10-03T09:00:00.05Z","kind":"turn","effort":"high","request_effort":"high","effort_update":true,"result":"failed"}
+{"diag":"effort_updates","at":"2026-10-03T09:00:00.06Z","result":"off","error":"rejected"}
+{"diag":"model_attempt","at":"2026-10-03T09:00:00.07Z","kind":"turn","effort":"high","result":"ok"}
+{"diag":"model_attempt","at":"2026-10-03T09:00:10.05Z","kind":"turn","effort":"low","result":"ok"}
+`), 0o600))
+	tokens := func(in, cached int64) core.Tokens {
+		return core.Tokens{InputTokens: in, CachedInputTokens: cached, OutputTokens: 100}
+	}
+	runs := []session.LoadedRun{{
+		Record: uharness.RunRecord{Dir: dir, Result: core.Result{Request: core.Request{Model: "gpt-a", Effort: "high"}}},
+		Events: []core.Event{
+			core.UserMessage{At: sec(0), ID: "m1", Text: "fix it"},
+			core.TurnStarted{At: sec(0), Turn: 1},
+			core.ModelResponded{At: sec(9), Turn: 1, Usage: tokens(12_000, 0)},
+			core.TurnStarted{At: sec(10), Turn: 2},
+			core.ModelResponded{At: sec(19), Turn: 2, Usage: tokens(13_000, 0)},
+		},
+	}}
+
+	got := cachestats.Attribute(session.CacheRequests(runs), cachestats.TTL)
+
+	require.Len(t, got, 2)
+	assert.Equal(t, "high", got[0].Effort)
+	assert.Equal(t, "low", got[1].Effort, "the request's own effort")
+	causes := []cachestats.Cause{}
+	for _, m := range got[1].Misses {
+		causes = append(causes, m.Cause)
+	}
+	assert.Contains(t, causes, cachestats.CauseEffort)
+}

@@ -17,7 +17,7 @@ import (
 // lowering only some follow-ups changed the effort between requests more
 // often, which costs the prompt cache more than the lower effort saves.
 
-// Effort updates: for a model that takes them (effort_updates and the
+// Effort updates: for a model that takes them (UAH_EFFORT_UPDATES and the
 // catalog's supports_reasoning_effort_updates, as in Codex), every request
 // carries the session's base effort, its first, and the first turn and
 // every turn whose effort differs from the one the history last set get a
@@ -30,7 +30,8 @@ import (
 // carry the effort the covered history last set instead (withEffortPin),
 // as Codex sets a new baseline then. A model without updates, or effort
 // ultra, which only the request can carry, gets the items stripped and
-// the request's effort set as before.
+// the request's effort set as before, and so does a session whose backend
+// rejected them (effortfallback.go).
 
 // adaptiveRouter picks each turn request's effort.
 type adaptiveRouter struct {
@@ -76,10 +77,11 @@ func (s *switcher) effortUpdate(req llm.Request) llm.ReasoningEffort {
 }
 
 // updatingLocked reports whether a request to model, or to the live model
-// when one is set, uses effort updates: effort_updates is on, the model
-// takes them, and the effort is not ultra. It holds s.mu.
+// when one is set, uses effort updates: they are on, the backend has not
+// rejected them, the model takes them, and the effort is not ultra. It
+// holds s.mu.
 func (s *switcher) updatingLocked(model string) bool {
-	return s.updates != nil && s.base != "" && !s.variant.ultra && s.updates(cmp.Or(s.model, model))
+	return s.updates != nil && !s.rejected && s.base != "" && !s.variant.ultra && s.updates(cmp.Or(s.model, model))
 }
 
 func isUpdate(it llm.Item) bool { return it.Type == llm.ItemConfigurationUpdate }

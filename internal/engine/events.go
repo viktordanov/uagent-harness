@@ -48,6 +48,22 @@ type Rewound struct {
 
 func (e Rewound) OccurredAt() time.Time { return e.At }
 
+// EffortUpdatesOff means the backend rejected a request's effort updates
+// (its configuration_update items): the engine sent the request again
+// without them, at the effort they set, and the session changes its effort
+// per request from then on, resumed too. Err is the backend's error.
+type EffortUpdatesOff struct {
+	At  time.Time
+	Err string
+}
+
+func (e EffortUpdatesOff) OccurredAt() time.Time { return e.At }
+
+// Text is the one line a front end shows for it.
+func (e EffortUpdatesOff) Text() string {
+	return "effort updates were rejected by the backend; switching effort per request (cache misses on switches)"
+}
+
 // AutoReviewed reports the auto-reviewer's verdict on an action that needed
 // approval. Outcome is allow, deny, or ask_user (the user decides).
 type AutoReviewed struct {

@@ -28,7 +28,8 @@ var _ engine.Forker = (*Engine)(nil)
 // Fork creates the session childID from the parent's history as it was
 // when the model made the call callID: every item before the turn that
 // made it that no rewind cut, written in one go as the runner's session
-// store writes them, and the compactions that applied to it. The child's
+// store writes them, the compactions that applied to it, and its web
+// searches, and effort updates off when the backend rejected them. The child's
 // first run adds its messages after them, so its first model request
 // starts with the items of the parent's request that made the call.
 //
@@ -63,6 +64,9 @@ func (e *Engine) Fork(ctx context.Context, parentID, childID, callID string) err
 		return err
 	}
 	if err := copyCompactions(dir, parentID, childID, at); err != nil {
+		return err
+	}
+	if err := copyUpdatesRejected(dir, parentID, childID); err != nil {
 		return err
 	}
 
