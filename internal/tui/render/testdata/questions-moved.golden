@@ -15,8 +15,8 @@
 │   1. Expand and contract (Recommended)  Add the new column, backfill it, and drop the old one i… │
 │ › 2. Rename in place                    One migration; the table is locked for about a minute.   │
 │   3. Copy and swap                      Build a new table and swap it in; needs twice the disk … │
-│   4. None of the above                  Type your answer below.                                  │
-╰─ ↑↓ choose · 1-4 pick · type your own · enter answer · tab next · esc interrupt ─────────────────╯
+│   4. Type your own answer                                                                        │
+╰─ ↑↓ choose · 1-4 pick · n note · enter answer · tab next · esc interrupt ────────────────────────╯
 
 
 λ

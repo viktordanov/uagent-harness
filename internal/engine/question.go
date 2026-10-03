@@ -25,10 +25,13 @@ const OtherAnswer = "None of the above"
 // NotePrefix starts an answer the user typed, as Codex's TUI sends a note.
 const NotePrefix = "user_note: "
 
-// QuestionOption is one choice of a question.
+// QuestionOption is one choice of a question. Preview is uah's addition
+// to Codex's schema: an optional monospace text (code, an ASCII layout, a
+// config) the picker shows beside the options.
 type QuestionOption struct {
 	Label       string `json:"label"`
 	Description string `json:"description"`
+	Preview     string `json:"preview,omitempty"`
 }
 
 // Question is one of a request_user_input call's questions.

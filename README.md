@@ -105,7 +105,7 @@ Keys worth knowing:
 | ctrl+r | Search your earlier prompts; see [Reuse an earlier prompt](#reuse-an-earlier-prompt) |
 | `/` | Commands, such as `/model`, `/effort`, `/compact`, `/context`, `/diff`, `/review`, `/mcp`, `/agents`, `/status`, `/resume`, and `/new` |
 | `@` | Mention a workspace file (fuzzy search) |
-| ↑ / ↓, 1–9, enter, tab | When the agent asks questions: choose an option, pick one by its number, answer, and go to the next question; type to answer in your own words. See [Answer the agent's questions](#answer-the-agents-questions) |
+| ↑ / ↓, 1–9, n, enter, tab | When the agent asks questions: choose an option, pick one by its number, add a note, answer, and go to the next question; the last row takes your own words. See [Answer the agent's questions](#answer-the-agents-questions) |
 | ctrl+t | The detailed view: turns, tokens, and each tool's result |
 | ctrl+g | Edit the prompt in `$VISUAL` or `$EDITOR` (vim by default); the saved text comes back as the prompt, with its images. The draft file lives in `~/.uah/editor`, where sandboxed commands cannot reach it |
 | drag, double click, triple click | Select transcript text, a word, or a line, and copy it to the clipboard. `[tui] mouse = false` leaves selection to the terminal |
@@ -134,10 +134,11 @@ Press esc twice on an empty prompt while the agent is idle, or type `/rewind`: y
 
 ### Answer the agent's questions
 
-When the agent needs a decision with a few plausible answers, it stops and asks with Codex's `request_user_input` tool: one to three questions above the prompt, each with its options and what each one means, the recommended one first, and `None of the above`. The agent waits for you, with no time limit.
+When the agent needs a decision with a few plausible answers, it stops and asks with Codex's `request_user_input` tool: one to three questions above the prompt, each with its options and what each one means, the recommended one first, and `Type your own answer`. When the options are things to compare, such as three versions of a handler, the highlighted option's preview shows beside the list (under it on a narrow terminal). The agent waits for you, with no time limit.
 
-- ↑ and ↓ choose an option; a number picks it at once.
-- Type to answer in your own words: the text goes with the answer, after the chosen option, or alone under `None of the above`.
+- ↑ and ↓ choose an option; a number picks it at once. Other letters do nothing, so nothing is answered by accident.
+- `n` adds a note to the highlighted option: type it, enter keeps it (✎), esc drops it. The note goes with the answer.
+- `Type your own answer`, the last row, takes your own words in the prompt.
 - Enter answers the question and shows the next one; on the last, it sends the answers, and the agent goes on with them. Tab and shift+tab go between the questions.
 - Esc interrupts the agent instead, and keeps what you typed, so you can send a message of your own.
 

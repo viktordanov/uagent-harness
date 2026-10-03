@@ -59,8 +59,9 @@ func questionDeps(t *testing.T) (bubble.Deps, *fakellm.Server) {
 }
 
 // TestTUI_AnswerTheAgentsQuestions: the picker shows the first question;
-// ↓ and enter answer it, typed text answers the second in the user's own
-// words, and the model's next request carries both answers.
+// a stray letter does nothing, ↓ and n write a note on an option, enter
+// keeps it and enter answers; the second question's own-answer row takes
+// typed words; the model's next request carries both answers.
 func TestTUI_AnswerTheAgentsQuestions(t *testing.T) {
 	deps, llm := questionDeps(t)
 	d := start(t, deps)
@@ -70,21 +71,29 @@ func TestTUI_AnswerTheAgentsQuestions(t *testing.T) {
 	d.waitFor("Which way should the migration take?")
 	assert.Contains(t, d.view(), "› 1. Expand and contract (Recommended)")
 	assert.Contains(t, d.view(), "Waiting for your answer")
+	d.typeText("x")
+	assert.Empty(t, d.draft(), "the options take no text")
 	d.key(tea.KeyDown, 0)
 	assert.Contains(t, d.view(), "› 2. Rename in place")
+	d.typeText("n")
+	assert.Contains(t, d.view(), "Note on Rename in place")
+	d.typeText("lock it after 6pm")
+	d.key(tea.KeyEnter, 0)
+	assert.Contains(t, d.view(), "✎ lock it after 6pm")
 	d.key(tea.KeyEnter, 0)
 
 	d.waitFor("When should it run?")
+	d.typeText("3")
+	assert.Contains(t, d.view(), "› 3. Type your own answer")
 	d.typeText("after the Friday backup")
-	assert.Contains(t, d.view(), "› 3. None of the above", "typing answers in the user's own words")
 	d.key(tea.KeyEnter, 0)
 
 	d.waitFor("Planned it your way.")
-	assert.Contains(t, d.view(), "Migration: Rename in place")
-	assert.Contains(t, d.view(), "Rollout: None of the above · after the Friday backup")
+	assert.Contains(t, d.view(), "Migration: Rename in place · lock it after 6pm")
+	assert.Contains(t, d.view(), "Rollout: after the Friday backup")
 	reqs := llm.Requests()
 	require.Len(t, reqs, 2)
-	assert.JSONEq(t, `{"answers":{"strategy":{"answers":["Rename in place"]},"rollout":{"answers":["None of the above","user_note: after the Friday backup"]}}}`,
+	assert.JSONEq(t, `{"answers":{"strategy":{"answers":["Rename in place","user_note: lock it after 6pm"]},"rollout":{"answers":["None of the above","user_note: after the Friday backup"]}}}`,
 		reqs[1].ToolOutputs[0])
 	assert.Empty(t, d.draft(), "the composer is free again")
 }
@@ -99,8 +108,9 @@ func TestTUI_DismissTheAgentsQuestions(t *testing.T) {
 	d.key(tea.KeyEnter, 0)
 
 	d.waitFor("Which way should the migration take?")
-	d.key('2', 0) // a number picks on an empty composer
+	d.key('2', 0) // a number picks and answers
 	d.waitFor("When should it run?")
+	d.key('3', 0)
 	d.typeText("use expand and contract")
 	d.key(tea.KeyEscape, 0)
 	d.until("the picker closes", func() bool { return !strings.Contains(d.view(), "When should it run?") })

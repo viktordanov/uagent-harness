@@ -1,4 +1,3 @@
-│ directory: /workspace/proj                     │
 ╰────────────────────────────────────────────────╯
 
 
@@ -12,13 +11,14 @@
 │  Migration    Rollout                                                                            │
 │ The users table can change three ways. Which should the migration take?                          │
 │                                                                                                  │
-│ › 1. Expand and contract (Recommended)  Add the new column, backfill it, and drop the old one i… │
-│   2. Rename in place                    One migration; the table is locked for about a minute.   │
+│   1. Expand and contract (Recommended)  Add the new column, backfill it, and drop the old one i… │
+│ › 2. Rename in place ✎                  One migration; the table is locked for about a minute.   │
+│      ✎ writing a note below…                                                                     │
 │   3. Copy and swap                      Build a new table and swap it in; needs twice the disk … │
 │   4. Type your own answer                                                                        │
-╰─ ↑↓ choose · 1-4 pick · n note · enter answer · tab next · esc interrupt ────────────────────────╯
+╰─ enter keep the note · esc drop it ──────────────────────────────────────────────────────────────╯
 
 
-λ
+λ lock it after 6pm
 
  gpt-6-sol high · workspace mode · /workspace/proj

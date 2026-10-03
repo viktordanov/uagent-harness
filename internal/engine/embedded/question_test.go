@@ -3,6 +3,7 @@ package embedded_test
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -71,7 +72,10 @@ func TestQuestions_Offered(t *testing.T) {
 					Required   []string
 					Properties map[string]struct {
 						Description string
-						Items       struct{ Required []string }
+						Items       struct {
+							Required   []string
+							Properties map[string]struct{ Description string }
+						}
 					}
 				}
 			}
@@ -94,7 +98,10 @@ func TestQuestions_Offered(t *testing.T) {
 			description = def.Description
 		}
 	}
-	assert.Equal(t, "Request user input for one to three short questions and wait for the response.", description)
+	assert.True(t, strings.HasPrefix(description, "Request user input for one to three short questions and wait for the response. "), "Codex's sentence first")
+	assert.Contains(t, description, "give each option a `preview`")
+	assert.Contains(t, q.Items.Properties["options"].Items.Properties["preview"].Description, "Optional.")
+	assert.NotContains(t, q.Items.Properties["options"].Items.Required, "preview", "a model trained on Codex's schema leaves it out")
 }
 
 // TestQuestions_AnswerReturnsToTheModel: the call waits for the user, as
@@ -204,4 +211,25 @@ func TestQuestions_NeedOptions(t *testing.T) {
 	require.Len(t, reqs, 2)
 	assert.Equal(t, []string{"request_user_input requires non-empty options for every question"}, reqs[1].ToolOutputs)
 	assert.Equal(t, 0, countKind[session.QuestionsAsked](ev.all))
+}
+
+// TestQuestions_Previews: an option's preview reaches the user and stays
+// with the questions in the session file; a call without previews, as a
+// model trained on Codex's schema makes, works as before.
+func TestQuestions_Previews(t *testing.T) {
+	withPreview := `{"questions":[{"id":"h","header":"Handler","question":"Which handler?","options":[` +
+		`{"label":"Plain","description":"net/http.","preview":"func h(w http.ResponseWriter, r *http.Request) {}"},` +
+		`{"label":"Chi","description":"A router."}]}]}`
+	e := newEnv(t, askCall(withPreview), fakellm.Reply{Text: "done"})
+	s, ev := e.openAsking(t, true)
+	_, err := s.Submit("go")
+	require.NoError(t, err)
+	asked := ev.until("QuestionsAsked", isA[session.QuestionsAsked]).(session.QuestionsAsked)
+	assert.Equal(t, "func h(w http.ResponseWriter, r *http.Request) {}", asked.Questions[0].Options[0].Preview)
+	assert.Empty(t, asked.Questions[0].Options[1].Preview)
+	require.NoError(t, s.AnswerQuestions(asked.ID, engine.Answers{"h": {Answers: []string{"Plain"}}}))
+	recorded := ev.until("engine.QuestionsAnswered", isA[engine.QuestionsAnswered]).(engine.QuestionsAnswered)
+	assert.Equal(t, asked.Questions, recorded.Questions)
+	ev.finished()
+	assert.JSONEq(t, `{"answers":{"h":{"answers":["Plain"]}}}`, e.llm.Requests()[1].ToolOutputs[0])
 }

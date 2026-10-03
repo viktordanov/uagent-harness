@@ -54,13 +54,57 @@ func TestScreen_Questions(t *testing.T) {
 	s = apply(s, state.QuestionMove{Delta: 1})
 	golden(t, "questions-moved", screen(s, ""))
 
-	// The first answer shows the second question, its tab marked done.
-	s = apply(s, state.QuestionAnswer{Draft: ""})
-	golden(t, "questions-second", screen(s, "after the Friday backup"))
+	// n writes a note on the chosen option; enter keeps it under the row.
+	s = apply(s, state.QuestionNote{})
+	golden(t, "questions-noting", screen(s, "lock it after 6pm"))
+	s = apply(s, state.QuestionAnswer{Draft: "lock it after 6pm"})
+	assert.Contains(t, screen(s, ""), "2. Rename in place ✎")
+	assert.Contains(t, screen(s, ""), "✎ lock it after 6pm")
 
-	// Typing chose "None of the above".
-	s = apply(s, state.DraftChanged{Draft: "after the Friday backup"})
-	assert.Contains(t, screen(s, "after the Friday backup"), "› 3. None of the above")
+	// The first answer shows the second question, its tab marked done, and
+	// the last row takes the user's own words.
+	s = apply(s, state.QuestionAnswer{}, state.QuestionMove{Delta: -1})
+	golden(t, "questions-second", screen(s, "after the Friday backup"))
+}
+
+// handlers is a question whose options carry code previews.
+var handlers = []engine.Question{{ID: "handler", Header: "Handler", Question: "Which shape should the users API handler take?", Options: []engine.QuestionOption{
+	{Label: "net/http (Recommended)", Description: "No dependency; routing by hand.", Preview: "func (s *Server) users(w http.ResponseWriter, r *http.Request) {\n\tid := r.PathValue(\"id\")\n\tu, err := s.store.User(r.Context(), id)\n\tif err != nil {\n\t\thttp.Error(w, err.Error(), http.StatusNotFound)\n\t\treturn\n\t}\n\tjson.NewEncoder(w).Encode(u)\n}"},
+	{Label: "chi router", Description: "Middleware and route groups.", Preview: "r := chi.NewRouter()\nr.Use(middleware.Logger)\nr.Get(\"/users/{id}\", s.user)"},
+	{Label: "Generated (oapi)", Description: "From the OpenAPI spec.", Preview: strings.Repeat("// generated\n", 20)},
+}}}
+
+func previewing(t *testing.T) state.State {
+	t.Helper()
+	s := apply(base(),
+		core.RunStarted{At: t0, RunID: "20260924-120000-3f2a1b2c"},
+		session.QuestionsAsked{At: t0, ID: "q1", CallID: "c1", Questions: handlers},
+	)
+	s.Now = t0.Add(5 * time.Second)
+
+	return s
+}
+
+// TestScreen_QuestionPreviews: options with previews show the chosen one's
+// beside the list on a wide screen, under it on a narrow one, cut to 14
+// lines with "… N more lines", and following the choice.
+func TestScreen_QuestionPreviews(t *testing.T) {
+	s := previewing(t)
+	golden(t, "questions-preview", screenAt(s, "", 120))
+	golden(t, "questions-preview-narrow", screenAt(s, "", 70))
+
+	// The reducer owns its state, so each step starts from a fresh one.
+	more := screenAt(apply(previewing(t), state.QuestionMove{Delta: 2}), "", 120)
+	assert.Contains(t, more, "… 6 more lines")
+	assert.Contains(t, more, "┌ Generated (oapi)")
+	own := screenAt(apply(previewing(t), state.QuestionMove{Delta: -1}), "", 120)
+	assert.Contains(t, own, "Your own answer, typed below.")
+	for _, w := range []int{120, 70, 40} {
+		out, _ := render.Screen(previewing(t), render.NewCache(render.Amber), render.Frame{Width: w, Height: 40, Composer: "λ ", ComposerHeight: 1})
+		for line := range strings.SplitSeq(out, "\n") {
+			assert.LessOrEqual(t, ansi.StringWidth(line), w, "%q", ansi.Strip(line))
+		}
+	}
 }
 
 // TestScreen_QuestionsNarrow: at 40 columns every line fits, the labels
@@ -88,7 +132,7 @@ func TestScreen_QuestionsAnswered(t *testing.T) {
 }
 
 func screenAt(s state.State, draft string, w int) string {
-	out, _ := render.Screen(s, render.NewCache(render.Amber), render.Frame{Width: w, Height: 24, Composer: "λ " + draft, ComposerHeight: 1, Draft: draft})
+	out, _ := render.Screen(s, render.NewCache(render.Amber), render.Frame{Width: w, Height: 40, Composer: "λ " + draft, ComposerHeight: 1, Draft: draft})
 	lines := strings.Split(ansi.Strip(out), "\n")
 	for i := range lines {
 		lines[i] = strings.TrimRight(lines[i], " ")

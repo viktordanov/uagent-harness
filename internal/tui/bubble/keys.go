@@ -30,11 +30,15 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) { //nolint:gocycl
 	if _, ok := m.st.PendingApproval(); ok {
 		return m.onApprovalKey(msg)
 	}
-	if _, ok := m.st.PendingQuestions(); ok {
-		if intent := questionIntent(msg.String(), m.composer.Value()); intent != nil {
+	if q, ok := m.st.PendingQuestions(); ok {
+		if intent := questionIntent(msg.String(), m.composer.Value(), q.Typing()); intent != nil {
 			return m.dispatch(intent)
 		}
-		if msg.String() == "!" || msg.String() == "/" || msg.String() == "@" {
+		if !q.Typing() {
+			return m, nil // the options take no text, so no key starts an answer by accident
+		}
+		switch msg.String() {
+		case "!", "/", "@":
 			return m.typeKey(msg) // text, not shell mode or the menu
 		}
 	}
@@ -181,17 +185,19 @@ func (m Model) typeKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-// questionIntent maps a key while the agent's questions show: ↑↓ choose,
-// a number picks on an empty composer, enter answers with the composer's
-// text as the note, tab and shift+tab go between the questions, and esc
-// (or ctrl+c on an empty composer) interrupts the run. nil leaves the key
-// to the composer, where the user types an answer of their own.
-func questionIntent(key, draft string) any {
+// questionIntent maps a key while the agent's questions show. On the
+// options: ↑↓ choose, a number picks, n notes the chosen option, enter
+// answers, tab and shift+tab go between the questions, and esc (or ctrl+c)
+// interrupts the run. While the composer holds an answer of the user's own
+// or a note (typing), letters and numbers type, ↑↓ leave the own answer
+// (not a note), enter answers or keeps the note, and esc drops the note or
+// interrupts. nil leaves the key to the composer.
+func questionIntent(key, draft string, typing bool) any {
 	switch key {
 	case keyUp, keyCtrlP:
-		return state.QuestionMove{Delta: -1}
+		return state.QuestionMove{Delta: -1, Draft: draft}
 	case keyDown, keyCtrlN:
-		return state.QuestionMove{Delta: 1}
+		return state.QuestionMove{Delta: 1, Draft: draft}
 	case keyEnter, state.KeyCtrlEnter, state.KeyAltEnter:
 		return state.QuestionAnswer{Draft: draft}
 	case state.KeyTab:
@@ -205,7 +211,13 @@ func questionIntent(key, draft string) any {
 			return state.QuestionDismiss{}
 		}
 	}
-	if len(key) == 1 && key[0] >= '1' && key[0] <= '9' && draft == "" {
+	if typing {
+		return nil
+	}
+	if key == "n" {
+		return state.QuestionNote{}
+	}
+	if len(key) == 1 && key[0] >= '1' && key[0] <= '9' {
 		return state.QuestionPick{Number: int(key[0] - '0')}
 	}
 

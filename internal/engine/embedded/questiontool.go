@@ -31,12 +31,16 @@ import (
 
 const questionPlanVersion operation.RemoteJobPlanVersion = 1
 
-// Codex's texts, word for word.
+// Codex's texts, word for word; the description's first sentence is
+// Codex's, the rest is about uah's previews.
 const (
-	questionDescription = "Request user input for one to three short questions and wait for the response."
-	questionRootOnly    = "request_user_input can only be used by the root thread"
-	questionCanceled    = "request_user_input was cancelled before receiving a response"
-	questionNoOptions   = "request_user_input requires non-empty options for every question"
+	questionDescription = "Request user input for one to three short questions and wait for the response. " +
+		"When the options are concrete artifacts the user needs to compare visually, such as code variants, layouts, or configurations, " +
+		"give each option a `preview`: the user sees the highlighted option's preview beside the list. " +
+		"Leave previews out for simple preference questions."
+	questionRootOnly  = "request_user_input can only be used by the root thread"
+	questionCanceled  = "request_user_input was cancelled before receiving a response"
+	questionNoOptions = "request_user_input requires non-empty options for every question"
 )
 
 // questionNoUser refuses a call no one can answer: the session's only reader
@@ -44,7 +48,9 @@ const (
 const questionNoUser = "request_user_input is not available: no user can answer in this session; ask in your final message instead"
 
 // questionSchema is Codex's schema for the tool, word for word, with its
-// keys in the order Codex's BTreeMap sends them.
+// keys in the order Codex's BTreeMap sends them, and one addition: an
+// option's optional `preview`, which a model trained on Codex's schema
+// can leave out.
 const questionSchema = `{"type":"object","properties":{"questions":{"type":"array",` +
 	`"description":"Questions to show the user. Prefer 1 and do not exceed 3",` +
 	`"items":{"type":"object","properties":{` +
@@ -54,7 +60,8 @@ const questionSchema = `{"type":"object","properties":{"questions":{"type":"arra
 	`Do not include an \"Other\" option in this list; the client will add a free-form \"Other\" option automatically.",` +
 	`"items":{"type":"object","properties":{` +
 	`"description":{"type":"string","description":"One short sentence explaining impact/tradeoff if selected."},` +
-	`"label":{"type":"string","description":"User-facing label (1-5 words)."}},` +
+	`"label":{"type":"string","description":"User-facing label (1-5 words)."},` +
+	`"preview":{"type":"string","description":"Optional. What the option looks like, shown in monospace beside the options: a short code snippet, an ASCII mockup or diagram, or a config example. Only when the options are artifacts to compare; at most about 15 lines."}},` +
 	`"required":["label","description"],"additionalProperties":false}},` +
 	`"question":{"type":"string","description":"Single-sentence prompt shown to the user."}},` +
 	`"required":["id","header","question","options"],"additionalProperties":false}}},` +
