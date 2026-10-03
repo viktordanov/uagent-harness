@@ -311,11 +311,15 @@ uah compacts automatically at 90% of the context window. It first replaces old t
 ### Custom prompts
 
 ```sh
-uah prompts init           # writes compact.md, system.md, system-codex.md, system-runner.md, and review.md to ~/.uah/prompts
+uah prompts init           # writes compact.md, system.md, system-codex.md, system-runner.md, review.md, and the context modules to ~/.uah/prompts
 uah prompts show system    # prints a built-in prompt: compact, system, system-codex, system-runner, or review
+uah prompts show context/environment/fish   # prints a context module
+uah context --show         # lists the context modules for this workspace and prints the context a new session gets
 ```
 
 `uah prompts init` starts from the built-in compaction prompt, uah's default system prompt (`system.md`), and the auto-review policy. It prints the lines to add to your user file: `experimental_compact_prompt_file`, `model_instructions_file`, and `[review] policy_file`. The default system prompt is Codex's prompt for gpt-6.1-sol with uah's tool names ([the changes](docs/configuration.md#codexs-prompt)). The command also writes Codex's unmodified prompt as `system-codex.md` and the runner's short host prompt as `system-runner.md`, and prints their `model_instructions_file` lines commented out, so each is used only when you choose it. AGENTS.md files and the [environment context](docs/configuration.md#the-environment-context) still follow the system prompt. Edit the files; each new session reads them. It overwrites existing files only with `--force`.
+
+The [prepared context](internal/contextprep/README.md#modules) a new session starts with is made of Markdown modules too. `uah prompts init` writes them under `~/.uah/prompts/context/`; a file there replaces the built-in of the same path, so delete the ones you do not change. Add your own in `~/.uah/prompts/context.d/`, or a project's in `.uah/context.d/` (used after `uah context trust`). Each starts with front matter that says when it applies, such as `when: {shell: [fish]}` or `files: [go.mod]`. A library of modules (`go`, `python-venv`, `node`, `rust`, `docker`, `git-lfs`) ships turned off; `[context] modules = ["go"]` turns one on. `uah context` shows which modules apply here and why.
 
 ### Hook setup
 
@@ -450,11 +454,11 @@ uah finds instruction files the way Codex does: the user's AGENTS.md, then one f
 `--no-instructions` turns this off. Read more: [instructions](internal/instructions/README.md).
 <!-- /memoria:section -->
 
-<!-- memoria:section id="contextprep" files="internal/app/resolve.go internal/config/config.go" -->
+<!-- memoria:section id="contextprep" files="internal/app/resolve.go internal/config/config.go internal/app/context.go cmd/uah/context.go" -->
 ### Context preparation
 
 <!-- memoria:import src="internal/contextprep/README.md#summary" -->
-Every new session starts with one developer message of prepared context, before the first user message. This includes a subagent's session. The message has the git branch, the status, and the tracked files. It names the loaded instruction files, so the model does not search for more. It also gives the shell's and the OS's traps, the sandbox's limits and the session's private `$TMPDIR`, and how to size the Bash tool's output. The system prompt does not change, and the message stays in the session's history, so the prompt cache holds. Resumed and forked sessions get no new message. Turn it off with `context_preparation = false`, `--no-context-preparation`, or `UAH_CONTEXT_PREPARATION=off`.
+Every new session starts with one developer message of prepared context, before the first user message. This includes a subagent's session. The message has the git branch, the status, and the tracked files. It names the loaded instruction files, so the model does not search for more. It also gives the shell's and the OS's traps, the sandbox's limits and the session's private `$TMPDIR`, and how to size the Bash tool's output. The text comes from Markdown modules that `uah prompts init` writes to `~/.uah/prompts/context/` to edit; `~/.uah/prompts/context.d/` and a project's `.uah/context.d/` add modules, and `uah context` shows which apply and why. The system prompt does not change, and the message stays in the session's history, so the prompt cache holds. Resumed and forked sessions get no new message. Turn it off with `context_preparation = false`, `--no-context-preparation`, or `UAH_CONTEXT_PREPARATION=off`.
 <!-- /memoria:import -->
 
 Read more: [context preparation](internal/contextprep/README.md).

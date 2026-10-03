@@ -21,6 +21,7 @@ import (
 
 	"github.com/viktordanov/uah/internal/approval"
 	"github.com/viktordanov/uah/internal/compaction"
+	"github.com/viktordanov/uah/internal/contextprep"
 	"github.com/viktordanov/uah/internal/engine"
 	"github.com/viktordanov/uah/internal/engine/codexauth"
 	"github.com/viktordanov/uah/internal/hooks"
@@ -72,6 +73,9 @@ type Config struct {
 	// InstructionFiles are the instruction files in the host prompt, in
 	// order, so /context can list them.
 	InstructionFiles []string
+	// ContextModules are where context preparation's modules come from
+	// besides the built-ins.
+	ContextModules contextprep.Settings
 	// ContextPreparation starts each new session, subagents' included,
 	// with the prepared context (internal/contextprep) before its first
 	// message.

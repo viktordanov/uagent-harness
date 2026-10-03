@@ -23,7 +23,7 @@ const (
 type Workspace struct{}
 
 // Name is the block's name.
-func (Workspace) Name() string { return "workspace" }
+func (Workspace) Name() string { return keyWorkspace }
 
 // Prepare gathers the block with read-only git commands.
 func (Workspace) Prepare(ctx context.Context, f Facts) string {

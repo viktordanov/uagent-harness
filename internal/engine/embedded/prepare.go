@@ -37,7 +37,7 @@ func (w *wiring) prepared(ctx context.Context, req core.Request, messages []core
 	if !errors.Is(err, fs.ErrNotExist) {
 		return messages // resumed or forked
 	}
-	text := contextprep.Prepare(ctx, w.facts(req), adapters()...) //nolint:contextcheck,nolintlint // on Linux, the sandbox probes bwrap once per process, with its own timeout; not on darwin
+	text := contextprep.Prepare(ctx, w.facts(req), w.modules(req).Adapters()...) //nolint:contextcheck,nolintlint // on Linux, the sandbox probes bwrap once per process, with its own timeout; not on darwin
 	if text == "" {
 		return messages
 	}
@@ -51,7 +51,8 @@ func (w *wiring) prepared(ctx context.Context, req core.Request, messages []core
 func (w *wiring) facts(req core.Request) contextprep.Facts {
 	f := contextprep.Facts{
 		Workspace: req.Workspace, InstructionFiles: w.e.cfg.InstructionFiles, Shell: w.shell(), GOOS: runtime.GOOS,
-		Subagent: strings.HasPrefix(req.SessionID, session.SubagentIDPrefix),
+		MaxOutputLength: operation.DefaultMaxOutputLength,
+		Subagent:        strings.HasPrefix(req.SessionID, session.SubagentIDPrefix),
 	}
 	if w.e.cfg.Sandbox == nil {
 		return f
@@ -69,15 +70,18 @@ func (w *wiring) facts(req core.Request) contextprep.Facts {
 	return f
 }
 
-// adapters are the blocks of the prepared context, in order.
-func adapters() []contextprep.Adapter {
-	return []contextprep.Adapter{
-		contextprep.Environment{},
-		contextprep.SandboxNotes{},
-		contextprep.Workspace{},
-		contextprep.AgentFiles{},
-		contextprep.Harness{MaxOutputLength: operation.DefaultMaxOutputLength},
+// modules are the session's context modules: the built-ins, the user's
+// and the project's, and the library's the configuration turns on. A
+// module's check runs in a read-only sandbox with no network, with only
+// PATH and HOME; without a sandbox, checks do not run.
+func (w *wiring) modules(req core.Request) *contextprep.Modules {
+	var check contextprep.Checker
+	if w.e.cfg.Sandbox != nil {
+		p := sandbox.Policy{Mode: sandbox.ReadOnly, Workspace: req.Workspace}
+		check = contextprep.ExecChecker(p.Wrap, []string{"PATH=" + w.getenv("PATH"), "HOME=" + w.getenv("HOME")})
 	}
+
+	return contextprep.Load(w.e.cfg.ContextModules.Sources(req.Workspace, check))
 }
 
 // shell is the user's shell, which commands run in: $SHELL, or /bin/sh.

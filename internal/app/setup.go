@@ -15,6 +15,7 @@ import (
 	"github.com/viktordanov/uah/internal/approval"
 	"github.com/viktordanov/uah/internal/compaction"
 	"github.com/viktordanov/uah/internal/config"
+	"github.com/viktordanov/uah/internal/contextprep"
 	"github.com/viktordanov/uah/internal/engine"
 	"github.com/viktordanov/uah/internal/engine/embedded"
 	"github.com/viktordanov/uah/internal/hooks"
@@ -130,7 +131,7 @@ func Setup(ctx context.Context, in Inputs, logOutput io.Writer) (Result, error) 
 		return Result{}, err
 	}
 	subagents := newAgents(r, cfg, in.Workspace, &opts, catalog)
-	eng := newEngine(r, runDir, logger, parts{servers: servers, approver: approver, subagents: subagents, models: catalog}, &opts)
+	eng := newEngine(r, runDir, logger, parts{servers: servers, approver: approver, subagents: subagents, models: catalog, context: ContextSettings(in.ConfigPath, cfg)}, &opts)
 	subagents.Bind(eng, opts) // children open exactly as this session does
 	opts.Shell = userShell(r, cfg, runDir, approver)
 
@@ -165,6 +166,7 @@ type parts struct {
 	approver  *approval.Approver
 	subagents *agents.Manager
 	models    *models.Manager
+	context   contextprep.Settings
 }
 
 // newEngine builds the embedded engine for the resolved settings.
@@ -172,8 +174,8 @@ func newEngine(r Resolved, stateDir string, logger *slog.Logger, p parts, opts *
 	ecfg := embedded.Config{
 		StateDir: stateDir, MaxDisk: r.MaxDisk, Logger: logger, Provider: r.Settings.Provider, Hooks: opts.Hooks,
 		Sandbox: &r.Sandbox, SandboxDir: filepath.Join(stateDir, "sandbox"), Env: r.Env, MCP: p.servers, Approver: p.approver, Models: p.models,
-		ContextPreparation: r.ContextPreparation,
-		AutoReview:         r.ApprovalsReviewer == review.ReviewerAuto, Review: r.Review, WebSearch: r.WebSearch == WebSearchLive,
+		ContextPreparation: r.ContextPreparation, ContextModules: p.context,
+		AutoReview: r.ApprovalsReviewer == review.ReviewerAuto, Review: r.Review, WebSearch: r.WebSearch == WebSearchLive,
 		InstructionFiles: instructionFiles(opts.Instructions),
 		Compaction:       r.Compaction, ContextWindow: r.Settings.ContextWindow,
 		BeforeCompact: preCompactHook(opts.Hooks, r.Settings), Subagents: p.subagents,

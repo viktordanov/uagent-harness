@@ -21,6 +21,9 @@ type Facts struct {
 	Sandbox Sandbox
 	// Subagent is true in a subagent's session.
 	Subagent bool
+	// MaxOutputLength is the Bash tool's default max_output_length, or 0
+	// when it is not known.
+	MaxOutputLength int
 }
 
 // Sandbox describes the sandbox commands run in.

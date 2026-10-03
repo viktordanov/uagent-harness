@@ -51,9 +51,10 @@ func TestSandboxNotesPrepare(t *testing.T) {
 				".git, .uah, .agents, and .codex stay read-only.\n" + scratch,
 		},
 		{
+			// A sandboxed session always has one; without, the $TMPDIR line has no value.
 			name: "read-only without a temp dir",
 			f:    contextprep.Facts{GOOS: "linux", Sandbox: contextprep.Sandbox{Mode: "read-only"}},
-			want: "Sandbox: read-only. Commands can read any file and write nothing.",
+			want: "Sandbox: read-only. Commands can read any file and write only $TMPDIR.",
 		},
 		{
 			name: "read-only with macOS's bash",

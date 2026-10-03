@@ -3,11 +3,14 @@ package main_test
 import (
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/viktordanov/uah/internal/contextprep"
 	"github.com/viktordanov/uah/internal/instructions"
 )
 
@@ -27,17 +30,32 @@ func TestPrompts(t *testing.T) {
 	codex := filepath.Join(dir, "system-codex.md")
 	runner := filepath.Join(dir, "system-runner.md")
 	review := filepath.Join(dir, "review.md")
-	assert.Equal(t, "Wrote "+compact+"\nWrote "+system+"\nWrote "+codex+"\nWrote "+runner+"\nWrote "+review+"\n\nTo use them, add to "+user+":\n\n"+
+	modules := filepath.Join(dir, "context")
+	assert.Equal(t, "Wrote "+compact+"\nWrote "+system+"\nWrote "+codex+"\nWrote "+runner+"\nWrote "+review+"\n"+
+		"Wrote "+strconv.Itoa(len(contextprep.Builtins()))+" context modules under "+modules+"\n\nTo use them, add to "+user+":\n\n"+
 		"experimental_compact_prompt_file = \""+compact+"\"\n\n"+
 		"model_instructions_file = \""+system+"\"\n"+
 		"# Or Codex's own prompt, unmodified (gpt-6.1-sol's; it names Codex's tools, see docs/configuration.md):\n"+
 		"# model_instructions_file = \""+codex+"\"\n"+
 		"# Or the runner's short host prompt, uah's default before the Codex-based one:\n"+
 		"# model_instructions_file = \""+runner+"\"\n\n"+
-		"[review]\npolicy_file = \""+review+"\"\n", res.stdout)
+		"[review]\npolicy_file = \""+review+"\"\n\n"+
+		"A context module under "+modules+" replaces the built-in of the same path as long as it exists;\n"+
+		"delete the ones you do not change, so later versions' text reaches you. `uah context` lists them.\n", res.stdout)
+	fish, err := os.ReadFile(filepath.Join(modules, "environment", "fish.md"))
+	require.NoError(t, err)
+	shown := uahWith(t, env, "", "prompts", "show", "context/environment/fish")
+	require.Equal(t, 0, shown.code, shown.stderr)
+	assert.Equal(t, string(fish), shown.stdout, "a context module, front matter and all")
+	assert.True(t, strings.HasPrefix(shown.stdout, "---\nid: fish\n"), shown.stdout)
+	_, err = os.Stat(filepath.Join(modules, "library", "go.md"))
+	require.NoError(t, err, "the library too")
+	shown = uahWith(t, env, "", "prompts", "show", "context/environment/nope")
+	assert.Equal(t, 2, shown.code)
+	assert.Contains(t, shown.stderr, "no context module environment/nope")
 	data, err := os.ReadFile(review)
 	require.NoError(t, err)
-	shown := uahWith(t, env, "", "prompts", "show", "review")
+	shown = uahWith(t, env, "", "prompts", "show", "review")
 	require.Equal(t, 0, shown.code, shown.stderr)
 	assert.Equal(t, string(data), shown.stdout)
 	assert.Contains(t, shown.stdout, "risk")

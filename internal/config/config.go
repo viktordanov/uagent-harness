@@ -63,6 +63,8 @@ type Config struct {
 	// sandbox, the workspace, the agent files, and the harness (true by
 	// default).
 	ContextPreparation *bool `toml:"context_preparation"`
+	// Context configures context preparation's modules.
+	Context Context `toml:"context"`
 
 	// AutoCompactPercent compacts the context once a response used this
 	// share of the model's window (default 90; 0 turns it off).
@@ -123,6 +125,13 @@ type Config struct {
 
 	// Projects are keyed by absolute workspace path.
 	Projects map[string]Project `toml:"projects"`
+}
+
+// Context configures context preparation's modules ([context]).
+type Context struct {
+	// Modules are module ids to turn on that ship turned off, such as the
+	// library's "go" (internal/contextprep).
+	Modules []string `toml:"modules"`
 }
 
 // Agents configures subagents with Codex's [agents] keys. Unset values

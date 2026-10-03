@@ -33,6 +33,9 @@ func merge(base, over Config) Config {
 	if over.ContextPreparation != nil {
 		base.ContextPreparation = over.ContextPreparation
 	}
+	if over.Context.Modules != nil {
+		base.Context.Modules = over.Context.Modules
+	}
 	if over.AutoCompactPercent != nil {
 		base.AutoCompactPercent = over.AutoCompactPercent
 	}
