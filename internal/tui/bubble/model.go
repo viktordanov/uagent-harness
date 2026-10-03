@@ -23,6 +23,7 @@ import (
 	"github.com/viktordanov/uah/internal/tui/render"
 	"github.com/viktordanov/uah/internal/tui/state"
 	"github.com/viktordanov/uah/internal/usage"
+	"github.com/viktordanov/uah/internal/usage/cachestats"
 )
 
 const (
@@ -77,6 +78,9 @@ type Deps struct {
 	// Usage reads the subscription's usage for /status, the footer, and the
 	// warnings (nil: none, as for a provider without usage).
 	Usage usage.Reader
+	// Cache reads a session's prompt cache accounting from its recorded
+	// runs, for /usage and /status (optional; session.CacheStats).
+	Cache func(id string) ([]cachestats.Attributed, error)
 	// Now is the clock (default time.Now).
 	Now func() time.Time
 	// Images stores images pasted into the composer, and Clipboard reads
@@ -276,7 +280,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case state.Failed, state.SessionsLoaded, state.ActivityLoaded, state.FilesLoaded, state.MCPListed, state.ContextShown,
 		state.ModelsLoaded, state.ConfigLoaded, state.ConfigSaved, state.ImageAttached, state.ImageFailed, state.DraftEdited:
 		return m.dispatch(msg)
-	case state.UsageLoaded, state.Copied, state.DiffShown, state.ReviewTargetsLoaded, state.PromptsLoaded:
+	case state.UsageLoaded, state.CacheLoaded, state.Copied, state.DiffShown, state.ReviewTargetsLoaded, state.PromptsLoaded:
 		return m.dispatch(msg)
 	}
 	var cmd tea.Cmd

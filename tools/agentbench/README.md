@@ -41,6 +41,7 @@ go run ./tools/agentbench -repeat 3 -parallel 2 -max-runs 150        # the full 
 go run ./tools/agentbench -report                   # rewrite the report from the results file
 go run ./tools/agentbench -remeasure                # parse the saved runs again (after a parser or price change), then report
 go run ./tools/agentbench -turns -out R.jsonl        # the per-turn report of multi-message runs, and their requests
+go run ./tools/agentbench -cache-sessions ~/.uah     # the prompt cache of your real sessions; no runs
 ```
 
 | Flag | Default | Meaning |
@@ -61,6 +62,8 @@ go run ./tools/agentbench -turns -out R.jsonl        # the per-turn report of mu
 | `-uah-config` | none | a top-level `key = value` line added to uah's generated configuration file; repeatable; needs `-variant` |
 | `-variant` | none | a label for the uah runs, part of their results key; see [variants](#variants) |
 | `-turns` | off | write the [per-turn report](#the-per-turn-report) of the results file's uah runs and the requests it read; a `-requests.jsonl` file is read as is |
+| `-cache-sessions` | none | a uah home: print the [prompt cache report](#real-sessions-prompt-cache) of its sessions instead of running |
+| `-cache-ttl` | 30m | with `-cache-sessions`, the pause after which a miss counts as idle |
 | `-price-in`, `-price-cached`, `-price-out` | 1.25, 0.125, 10 | US dollars per million tokens, for the cost estimate |
 
 The plan runs each repeat over every task, alternating which harness goes first, so neither always meets a warmer cache or a quieter hour. **Resume** is the default: a run whose key (task, harness, model, effort, repeat) is in the results file is skipped, except one that ended in `error` (the harness could not start it, for example). Stop with ctrl+c and start the same command again to continue. The results file and the run directories are in `tools/agentbench/results/`, which git ignores.
@@ -192,7 +195,7 @@ Both streams become one `Timeline` (`timeline.json`), with times in milliseconds
 **Codex** reports neither model requests nor per-request tokens, and its events carry no times. The harness stamps each line as it reads it (Codex writes a line per event), and the parser infers requests: the model is busy from a turn's start, or from the end of the last running command, until the next command starts or the turn completes. A gap shorter than 300 ms is not a request but Codex running the next call of the same response, one after another. A patch (`file_change`), which has no start event, ends the request that issued it. A command that starts while another still runs (Codex hands the model a long command before it ends) follows a request from the last event to it, so Codex's overlap is counted where its events show it. Tokens are the turns' totals (`inferred` is `["requests", "request_tokens"]`). Codex's model time is an estimate: a request that ends in a message with no call, while a command runs, is not seen.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="metrics" files="bench/timeline.go bench/behavior.go bench/report.go bench/report_variant.go bench/turns.go main.go" -->
+<!-- memoria:section id="metrics" files="bench/timeline.go bench/behavior.go bench/report.go bench/report_variant.go bench/turns.go bench/cachesessions.go main.go" -->
 ## Metrics and the report
 
 Each result line holds the run's `metrics`:
@@ -232,7 +235,26 @@ The report has, per model and effort: a table per harness (runs, pass rate, medi
 
 `-turns` reads the timeline of each uah run in the results file and writes `<results>-requests.jsonl`, each run's requests and compactions, one line per run, which [history](#history) keeps beside the results, and `<results>-turns.md` (`bench/turns.go`). Given that requests file it reads it as is. The report has, per task, user turn, and group (a harness label, with the effort when it is not high), the medians of the context at the turn's first request (its opener, the user's message), the opener's and the first follow-up's uncached input, the turn's reasoning, output, model time and cost; the same turns summed over the tasks; and replays.
 
-The provider keeps a prompt cache per effort, so with [adaptive effort](../../internal/engine/README.md#adaptive-effort) a user turn misses twice: its opener, at the user's effort, finds only what the previous opener sent, not the previous turn's tool work, and its first follow-up, at the lower effort, misses the user's message and one response. A replay sends each run's main agent requests again under an effort rule (`Rules`): off, R0 as adaptive effort has it, later messages lowered too, a message lowered when its miss at the user's effort is larger than a threshold, and R0 below a context size with adaptive effort off above it. Its cache model: each effort keeps the longest prompt sent at it, a request finds cached the part of its input that prompt covers in whole 128-token blocks, and a compaction leaves only the cross-session prefix. A request moved to the other effort has its output scaled by the ratio of the control's mean follow-up output to the group's. The `recorded` rule keeps each request's own effort, so the model can be checked against the run's cached tokens. A replay keeps each run's requests: a rule that changes the effort would change what the model does after it, which the replay cannot see.
+The provider keeps a prompt cache per effort, so with [adaptive effort](../../internal/engine/README.md#adaptive-effort) a user turn misses twice: its opener, at the user's effort, finds only what the previous opener sent, not the previous turn's tool work, and its first follow-up, at the lower effort, misses the user's message and one response. A replay sends each run's main agent requests again under an effort rule (`Rules`): off, R0 as adaptive effort has it, later messages lowered too, a message lowered when its miss at the user's effort is larger than a threshold, and R0 below a context size with adaptive effort off above it. Its cache model is `cachestats.Cache` ([internal/usage](../../internal/usage/README.md#session-prompt-cache)): each effort keeps the longest prompt sent at it, a request finds cached the part of its input that prompt covers in whole 128-token blocks, and a compaction leaves only the cross-session prefix. A request moved to the other effort has its output scaled by the ratio of the control's mean follow-up output to the group's. The `recorded` rule keeps each request's own effort, so the model can be checked against the run's cached tokens. A replay keeps each run's requests: a rule that changes the effort would change what the model does after it, which the replay cannot see.
+
+### Real sessions' prompt cache
+
+The benchmark sends each message as soon as the run before it ends, so it never sees a pause long enough for the cache to expire. `-cache-sessions <uah home>` reads every session there with the [cache accounting](../../internal/usage/README.md#session-prompt-cache) of `/usage` and prints a markdown report (`bench/cachesessions.go`) without running anything: the summary line over all sessions, the missed input by cause, the sessions that missed the most, and a table of the user's messages by the pause before them. In that table, a probe is a message at the same model and effort as the request before it, with at least 8k tokens of it expected cached. It held when the provider served all but 1,024 tokens of that.
+
+The owner's home on 2026-10-03 (90 sessions, 2,429 requests, `-cache-ttl 30m`):
+
+| Pause before the message | Messages | Probes | Held |
+| --- | ---: | ---: | ---: |
+| < 1 min | 143 | 100 | 91% |
+| 1–5 min | 89 | 83 | 94% |
+| 5–10 min | 21 | 17 | 88% |
+| 10–30 min | 23 | 17 | 88% |
+| 30–60 min | 8 | 6 | 67% |
+| 1–3 h | 6 | 6 | 67% |
+| 3–24 h | 10 | 7 | 0% |
+| > 24 h | 1 | 1 | 0% |
+
+The cache outlived pauses of up to 30 minutes as often as short ones (about 9 in 10), so the TTL estimate is 30 minutes, not the 5 to 10 that OpenAI documents. 25 of the 301 messages (8%) came after a longer pause, and 12 of the 20 probes among them found the cache gone. Overall the cache served 94% of the input. Of the 7.9M missed tokens, 32% were other (the provider's own misses, often the request just after a session's first), 24% idle, 18% compaction, 16% effort switches, 7% cold starts, and 2% model switches. At API prices the missed input was about 13% of the usage.
 <!-- /memoria:section -->
 
 <!-- memoria:section id="cost" files="main.go bench/timeline.go" -->
@@ -243,10 +265,10 @@ The estimate is uncached input, cached input, and output tokens at the `-price-*
 As a scale, each smoke pass (two tasks, both harnesses, effort low, 4 runs) took 40 to 95 s a run, about 510,000 input tokens (85% cached) and 3,000 to 5,000 output tokens in all: under $0.20 at the default rates. A full pass of 35 tasks × 2 harnesses × 3 repeats is 210 runs (raise `-max-runs`): at low effort about 27 million input tokens, $10, and 4 hours at `-parallel 1`; at high effort expect two to four times the tokens and the time.
 <!-- /memoria:section -->
 
-<!-- memoria:section id="test" files="bench/bench_test.go bench/variant_test.go bench/followup_test.go bench/turns_test.go bench/testdata/uah.jsonl bench/testdata/codex.jsonl" -->
+<!-- memoria:section id="test" files="bench/bench_test.go bench/variant_test.go bench/followup_test.go bench/turns_test.go bench/cachesessions_test.go bench/testdata/uah.jsonl bench/testdata/codex.jsonl" -->
 ## The test
 
-`go test ./tools/agentbench/...` makes no model calls. It parses a recorded uah stream and a stamped Codex stream of the same prompt (two commands in parallel, then an answer) and checks the requests, calls, tokens, and metrics; checks the metrics' arithmetic and the `behavior` counts, the cache split by effort included, on synthetic timelines; reads a request's effort and its reason from a `model_attempt` line; loads every task; dry-runs every task not tagged `slow` (about 5 s with a warm build cache, which it keeps in `$TMPDIR/uah-agentbench-test`; `-short` skips it); checks the plan's order, a variant's keys, its configuration file, and the report's variant table; checks that a `uah-only` task has no Codex run and that follow-ups need that tag; runs a task with two follow-ups against a fake `uah` script that answers each message and goes idle, to see each sent after the run before it ended; parses compactions from a synthetic stream; and, on a synthetic session of two turns, checks each request's turn, the per-turn split, and the replay's cache model under each rule and across a compaction.
+`go test ./tools/agentbench/...` makes no model calls. It parses a recorded uah stream and a stamped Codex stream of the same prompt (two commands in parallel, then an answer) and checks the requests, calls, tokens, and metrics; checks the metrics' arithmetic and the `behavior` counts, the cache split by effort included, on synthetic timelines; reads a request's effort and its reason from a `model_attempt` line; loads every task; dry-runs every task not tagged `slow` (about 5 s with a warm build cache, which it keeps in `$TMPDIR/uah-agentbench-test`; `-short` skips it); checks the plan's order, a variant's keys, its configuration file, and the report's variant table; checks that a `uah-only` task has no Codex run and that follow-ups need that tag; runs a task with two follow-ups against a fake `uah` script that answers each message and goes idle, to see each sent after the run before it ended; parses compactions from a synthetic stream; and, on a synthetic session of two turns, checks each request's turn, the per-turn split, and the replay's cache model under each rule and across a compaction; and, on a synthetic session, the `-cache-sessions` report's causes and pause table.
 <!-- /memoria:section -->
 
 ## History

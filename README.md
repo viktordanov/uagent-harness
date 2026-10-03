@@ -140,7 +140,7 @@ It exits 0 when the run succeeds, 1 when it fails, 2 on a usage error, 3 at the 
 ```sh
 uah sessions                           # this directory's sessions, newest first (--all: every directory)
 uah sessions --search "flaky parser"   # sessions whose prompts or answers contain the words
-uah sessions show 3f2a                 # the transcript (--json)
+uah sessions show 3f2a                 # the transcript and the prompt cache line (--json)
 uah sessions --json -C ~/src/app --since 2026-09-29T08:00:00Z   # a directory's sessions active since then
 uah sessions rm 3f2a                   # delete a session with its runs and subagents (--dry-run, --json)
 ```
@@ -179,6 +179,7 @@ uah usage --json   # the same for scripts
 - In the TUI, `/usage` shows the same, `/status` shows a row per window, and the footer shows the tightest one beside the context meter (`weekly 78% left · 64% context left`).
 - A notice warns once when a window passes 75, 90, and 95% used. When a run stops at the limit, a notice says when to try again.
 - `uah doctor` warns from 90% used.
+- `/usage`, `/status`, and `uah sessions show` also show the session's prompt cache: how much input the cache served, and the input it missed by cause, such as `prompt cache 86% · missed 119k: effort switches 72k, cold start 9k, other 38k · ≈20% of usage (API-price estimate)`. See [session prompt cache](internal/usage/README.md#session-prompt-cache).
 
 Windows are named by their length (5h, daily, weekly), because a plan can have only a weekly window. uah reads the usage when you ask and after each run, never on a timer. Other providers have no usage to show.
 

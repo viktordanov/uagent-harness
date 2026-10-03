@@ -118,6 +118,6 @@ On a ChatGPT plan you don't see dollars; you see a share of your 5-hour and week
 
 What would move the projections:
 
-- **Long pauses between messages.** If a pause outlasts the cache (minutes), both caches expire and adaptive pays about one extra full-context miss per message. In that case 1-step can cost more than off; 2-steps and time savings are unaffected.
+- **Long pauses between messages.** If a pause outlasts the cache, both caches expire and adaptive pays about one extra full-context miss per message. In that case 1-step can cost more than off; 2-steps and time savings are unaffected. The owner's real sessions show how often this happens ([agentbench `-cache-sessions`](../../tools/agentbench/README.md#real-sessions-prompt-cache)): the cache outlived pauses of up to 30 minutes about 9 times in 10, and 8% of the messages came after a longer pause. `/usage` shows each session's misses by cause ([session prompt cache](../../internal/usage/README.md#session-prompt-cache)).
 - **Compaction.** It resets the conversation, cutting the quadratic term that favours adaptive in long sessions.
 - **Harder tasks.** These chats pass even at all-medium, so they can't show what high effort buys. Earlier benchmarks found review and judgment tasks sensitive to effort; that is the next thing to test.
